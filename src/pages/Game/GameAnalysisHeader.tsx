@@ -33,7 +33,9 @@ const formatClock = (milliseconds: number | null): string => {
   const minutes = Math.floor(totalTenths / 600);
   const seconds = Math.floor((totalTenths % 600) / 10);
   const tenths = totalTenths % 10;
-  return minutes > 0 ? `${minutes}:${String(seconds).padStart(2, "0")}` : `${seconds}.${tenths}`;
+  return minutes > 0
+    ? `${minutes}:${String(seconds).padStart(2, "0")}`
+    : `00:${String(seconds).padStart(2, "0")}.${tenths}`;
 };
 
 const ratingForPlayer = (game: ArchiveGame, username: string) =>

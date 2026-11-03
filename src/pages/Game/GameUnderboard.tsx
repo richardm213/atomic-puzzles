@@ -1,3 +1,5 @@
+import { faCheck, faClipboard } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
 import { z } from "zod";
@@ -46,19 +48,46 @@ const clockStepPath = (values: Array<number | null>, maximum: number): string =>
     .join(" ");
 };
 
-const CopyButton = ({ label, value }: { label: string; value: string }) => {
+const CopyButton = ({
+  label,
+  value,
+  compact = false,
+}: {
+  label: string;
+  value: string;
+  compact?: boolean;
+}) => {
   const [status, setStatus] = useState<"idle" | "copied" | "error">("idle");
+  const statusLabel = status === "copied" ? "Copied" : status === "error" ? "Copy failed" : label;
   return (
     <button
       type="button"
+      className={compact ? "gameShareCopyButton" : undefined}
+      aria-label={statusLabel}
+      title={statusLabel}
       onClick={() =>
         void copyTextToClipboard(value).then((copied) => setStatus(copied ? "copied" : "error"))
       }
     >
-      {status === "copied" ? "Copied" : status === "error" ? "Copy failed" : label}
+      {compact ? <FontAwesomeIcon icon={status === "copied" ? faCheck : faClipboard} /> : statusLabel}
     </button>
   );
 };
+
+const ShareDocumentField = ({
+  label,
+  rows,
+  field,
+}: {
+  label: "FEN" | "PGN";
+  rows: number;
+  field: BoardDocument["fen"];
+}) => (
+  <div className="gameShareDocumentRow">
+    <DocumentField label={label} rows={rows} field={field} />
+    <CopyButton label={`Copy ${label}`} value={String(field.value ?? "")} compact />
+  </div>
+);
 
 export const GameUnderboard = ({
   game,
@@ -286,7 +315,6 @@ export const GameUnderboard = ({
                 label="Copy link"
                 value={typeof window === "undefined" ? "" : window.location.href}
               />
-              <CopyButton label="Copy PGN" value={pgn} />
               <button type="button" onClick={downloadPgn} disabled={!pgn}>
                 Download PGN
               </button>
@@ -296,8 +324,8 @@ export const GameUnderboard = ({
                 {atomicDbRequest.message}
               </p>
             ) : null}
-            <DocumentField label="FEN" rows={2} field={document.fen} />
-            <DocumentField label="PGN" rows={4} field={document.pgn} />
+            <ShareDocumentField label="FEN" rows={1} field={document.fen} />
+            <ShareDocumentField label="PGN" rows={4} field={document.pgn} />
           </div>
         ) : null}
       </div>

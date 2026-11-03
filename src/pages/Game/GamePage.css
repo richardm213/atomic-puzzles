@@ -328,6 +328,40 @@
   grid-template-rows: repeat(2, 30px);
 }
 
+.gameMatchCrosstableStrip.dense .gameMatchResults {
+  padding-inline: 6px;
+  background: color-mix(in srgb, var(--color-panel-strong) 88%, var(--color-surface-inset));
+}
+
+.gameMatchCrosstableStrip.dense .gameMatchResults li,
+.gameMatchCrosstableStrip.dense .gameMatchResults li:nth-child(even) {
+  background: transparent;
+}
+
+.gameMatchCrosstableStrip.dense .gameMatchResultLink .score {
+  font-weight: 600;
+}
+
+.gameMatchCrosstableStrip.dense .gameMatchResultLink .loss {
+  color: var(--color-danger);
+  opacity: 0.38;
+}
+
+.gameMatchCrosstableStrip.dense .gameMatchResultLink .draw {
+  color: var(--color-muted);
+}
+
+.gameMatchCrosstableStrip.dense .gameMatchResults li.current {
+  background: color-mix(in srgb, var(--color-warning) 58%, var(--color-panel-strong));
+  box-shadow:
+    inset 1px 0 0 color-mix(in srgb, var(--color-warning) 72%, transparent),
+    inset -1px 0 0 color-mix(in srgb, var(--color-warning) 72%, transparent);
+}
+
+.gameMatchCrosstableStrip.dense .gameMatchResults li.current .score {
+  color: var(--color-heading);
+}
+
 .gameMatchCrosstableStrip.dense .gameMatchResultLink .score,
 .gameMatchCrosstableStrip.dense .gameMatchPlayers a,
 .gameMatchCrosstableStrip.dense .gameMatchTotals strong {
@@ -732,6 +766,76 @@
 
 .gameSharePanel .analysisTextBox {
   margin: 0;
+}
+
+.gameShareDocumentRow {
+  grid-column: 1 / -1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+}
+
+.gameShareDocumentRow .analysisTextBox {
+  min-height: 50px;
+  padding: 0;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
+  border-radius: var(--radius-ui) 0 0 var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 84%, transparent);
+}
+
+.gameShareDocumentRow .analysisTextBox > span {
+  display: grid;
+  place-items: center;
+  padding-inline: 10px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.gameShareDocumentRow .analysisTextBox textarea {
+  min-height: 48px;
+  max-height: 112px;
+  padding: 14px 12px;
+  border: 0;
+  border-left: 1px solid var(--color-border);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--color-panel-deep) 18%, transparent);
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.gameShareDocumentRow .analysisPgnBox textarea {
+  min-height: 84px;
+}
+
+.gameShareCopyButton {
+  min-width: 48px;
+  margin-left: -1px;
+  border: 1px solid var(--color-border);
+  border-radius: 0 var(--radius-ui) var(--radius-ui) 0;
+  background: var(--color-panel-strong);
+  color: var(--color-muted);
+  font-size: 16px;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.gameShareCopyButton:hover {
+  border-color: var(--color-primary-soft);
+  background: var(--color-table-hover);
+  color: var(--color-heading);
+}
+
+.gameShareCopyButton:focus-visible {
+  position: relative;
+  z-index: 2;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
 }
 
 .gameMatchPlayers a {
