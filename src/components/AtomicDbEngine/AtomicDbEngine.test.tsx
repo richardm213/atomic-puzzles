@@ -8,6 +8,37 @@ import { AtomicDbEngine, AtomicDbEngineControls, AtomicDbEvalBar } from "./Atomi
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 describe("AtomicDbEngine", () => {
+  it("links the AtomicDB source label to the current database position", () => {
+    const position = parseAtomicDbResponse({
+      key: "atomic-position-key",
+      status: "UNKNOWN",
+      score: 1100,
+      best_move: "g1f3",
+      moves: [{ uci: "g1f3", status: "UNKNOWN", score: 1100 }],
+    });
+
+    render(
+      <AtomicDbEngineControls
+        fen={STARTING_FEN}
+        analysis={{
+          status: "ready",
+          error: "",
+          source: "atomicdb",
+          result: { fen: STARTING_FEN, position },
+          principalVariations: {},
+        }}
+        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: true }}
+        setSettings={vi.fn()}
+        onDisable={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Open this position on AtomicDB" })).toHaveAttribute(
+      "href",
+      "https://belzedar.duckdns.org/atomicdb/explore/atomic-position-key/",
+    );
+  });
+
   it("keeps the settled evaluation and bar position while the next evaluation loads", () => {
     const position = parseAtomicDbResponse({
       status: "UNKNOWN",

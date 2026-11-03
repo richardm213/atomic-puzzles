@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AtomicDbAnalysisState } from "../../hooks/useAtomicDbAnalysis";
 import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import {
+  atomicDbPositionUrl,
   type AtomicDbView,
   buildAtomicDbView,
   formatAtomicDbEvaluation,
@@ -87,6 +88,14 @@ export const AtomicDbEngineControls = ({
   const view = useRetainedAtomicDbView(analysis, fen);
   const sourceLabel = analysisSourceLabel(analysis, threatMode);
   const finalResult = resultLabel(view);
+  const atomicDbHref =
+    !threatMode &&
+    analysis.source !== "engine" &&
+    analysis.source !== "terminal" &&
+    view.isCurrent &&
+    view.position?.key
+      ? atomicDbPositionUrl(view.position.key)
+      : null;
 
   const setLineCount = (nextLineCount: number): void => {
     const clampedCount = Math.min(5, Math.max(0, nextLineCount));
@@ -136,7 +145,19 @@ export const AtomicDbEngineControls = ({
         {finalResult ?? (view.evaluation.type === "unknown" ? null : view.evaluationLabel)}
       </strong>
       <span className="atomicDbTopSource">
-        {sourceLabel}
+        {atomicDbHref ? (
+          <a
+            className="atomicDbTopSourceLink"
+            href={atomicDbHref}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open this position on AtomicDB"
+          >
+            {sourceLabel}
+          </a>
+        ) : (
+          sourceLabel
+        )}
         {analysis.status === "loading" && settings.enabled ? (
           <FontAwesomeIcon
             icon={faSpinner}
