@@ -152,6 +152,7 @@ describe("archive-data function", () => {
       moves: ["g1h3", "h7h6"],
       clocks: [50, 60],
       move_ts: null,
+      ratings_are_per_game: true,
       p1_before_rating: 2298.7,
       p1_after_rating: 2307.2,
       p2_before_rating: 2401.9,
@@ -159,7 +160,7 @@ describe("archive-data function", () => {
     });
   });
 
-  it("keeps match-level rating fallback while production remains on schema v3", async () => {
+  it("does not report match-level ratings as game ratings on schema v3", async () => {
     mocks.execute.mockResolvedValueOnce({ rows: [{ value: "3" }] }).mockResolvedValueOnce({
       rows: [
         {
@@ -185,10 +186,11 @@ describe("archive-data function", () => {
     expect(response.statusCode).toBe(200);
     expect(mocks.execute.mock.calls[1]?.[0].sql).toContain("null ratings");
     expect(JSON.parse(response.body)).toMatchObject({
-      p1_before_rating: 2200,
-      p1_after_rating: 2210,
-      p2_before_rating: 2300,
-      p2_after_rating: 2290,
+      ratings_are_per_game: false,
+      p1_before_rating: null,
+      p1_after_rating: null,
+      p2_before_rating: null,
+      p2_after_rating: null,
     });
   });
 

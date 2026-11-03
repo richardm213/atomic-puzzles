@@ -187,6 +187,17 @@ describe("buildSingleGameMatchUrl", () => {
     ).toBe("/games/123456789");
   });
 
+  it("builds internal URLs for one-game PyChess matches", () => {
+    expect(
+      buildSingleGameMatchUrl({
+        matchId: "match-id",
+        firstGameId: "pychess:AbC960",
+        gameCount: 1,
+        sourceValue: "pychess",
+      }),
+    ).toBe("/games/AbC960");
+  });
+
   it("does not build an external game URL for longer matches", () => {
     expect(
       buildSingleGameMatchUrl({

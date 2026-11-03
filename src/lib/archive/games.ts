@@ -24,6 +24,7 @@ export type ArchiveGame = {
   p2_after_rating: number | null;
   p2_before_rd: number | null;
   p2_after_rd: number | null;
+  ratings_are_per_game?: boolean;
 };
 
 export const fetchArchiveGame = async (

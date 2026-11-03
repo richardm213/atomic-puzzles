@@ -46,10 +46,11 @@ const ratingForPlayer = (game: ArchiveGame, username: string) =>
 const formatRating = (rating: number): string => String(Math.round(rating * 10) / 10);
 
 const PlayerRating = ({ game, username }: { game: ArchiveGame; username: string }) => {
+  if (game.ratings_are_per_game !== true) return null;
   const { before, after } = ratingForPlayer(game, username);
   const change = before !== null && after !== null ? after - before : null;
 
-  if (before === null) return <span className="gameAnalysisRating">Unrated</span>;
+  if (before === null) return null;
 
   return (
     <span className="gameAnalysisRating">
@@ -120,7 +121,6 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
       <div className="gameAnalysisMeta">
         <div className="gameAnalysisMetaPrimary">
           <span>{game.time_control}</span>
-          <span aria-hidden="true">•</span>
           <strong>{game.mode}</strong>
         </div>
         {tournamentLocation ? (

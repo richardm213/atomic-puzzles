@@ -23,7 +23,7 @@ const decodeParam = (value: unknown): string => {
 export const GamePage = () => {
   const { gameId: gameIdParam } = useParams({ strict: false });
   const gameId = decodeParam(gameIdParam)
-    .replace(/^chesscom:/i, "")
+    .replace(/^(?:chesscom|pychess):/i, "")
     .trim();
   const gameQuery = useQuery({ ...gameDetailQueryOptions(gameId), enabled: Boolean(gameId) });
   const game = gameQuery.data;

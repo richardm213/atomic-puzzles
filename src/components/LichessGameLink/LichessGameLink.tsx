@@ -1,6 +1,10 @@
 import type { FocusEventHandler, MouseEventHandler, PointerEventHandler, ReactNode } from "react";
 
-import { buildExternalGameUrl, isChessComSource } from "../../lib/matches/routes";
+import {
+  buildExternalGameUrl,
+  isChessComSource,
+  isPyChessSource,
+} from "../../lib/matches/routes";
 
 export type LichessGameLinkProps = {
   gameId: string | number;
@@ -33,9 +37,9 @@ export const LichessGameLink = ({
 }: LichessGameLinkProps) => {
   const interactionProps = { onClick, onPointerEnter, onPointerLeave, onFocus, onBlur, title };
   const normalizedGameId = String(gameId)
-    .replace(/^chesscom:/i, "")
+    .replace(/^(?:chesscom|pychess):/i, "")
     .trim();
-  if (isChessComSource(source) && normalizedGameId) {
+  if ((isChessComSource(source) || isPyChessSource(source)) && normalizedGameId) {
     return (
       <a
         className={className}

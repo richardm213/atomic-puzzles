@@ -424,10 +424,15 @@ const queryGame = async (params: URLSearchParams) => {
   const row = result.rows[0];
   if (!row) return null;
   const normalized = normalizedRows([row])[0] ?? {};
+  const gameRatings = ratingsWithMatchOrientation(row);
   return {
     ...normalized,
     ...timelineWithValidatedLengths(row),
-    ...(ratingsWithMatchOrientation(row) ?? {}),
+    ratings_are_per_game: gameRatings !== null,
+    p1_before_rating: gameRatings?.p1_before_rating ?? null,
+    p1_after_rating: gameRatings?.p1_after_rating ?? null,
+    p2_before_rating: gameRatings?.p2_before_rating ?? null,
+    p2_after_rating: gameRatings?.p2_after_rating ?? null,
   };
 };
 
