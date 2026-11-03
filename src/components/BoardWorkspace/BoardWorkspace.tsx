@@ -13,6 +13,7 @@ type BoardWorkspaceProps = {
   chessboardProps: ComponentProps<typeof Chessboard>;
   boardOverlay?: ReactNode;
   lichessHref: string;
+  sourceLink?: { href: string; label: string };
   atomicDbHref: string | null;
   atomicDbRequest?: {
     state: "idle" | "requested" | "error";
@@ -60,16 +61,23 @@ export const BoardWorkspace = ({
   chessboardProps,
   boardOverlay,
   lichessHref,
+  sourceLink,
   atomicDbHref,
   atomicDbRequest,
   actionClassName,
   secondaryAction,
   document,
 }: BoardWorkspaceProps) => {
+  const primarySourceLink = sourceLink ?? { href: lichessHref, label: "View on Lichess" };
   const lichessLink = (
-    <a className="analysisLichessLink" href={lichessHref} target="_blank" rel="noreferrer">
+    <a
+      className="analysisLichessLink"
+      href={primarySourceLink.href}
+      target="_blank"
+      rel="noreferrer"
+    >
       <FontAwesomeIcon icon={faExternalLinkAlt} />
-      <span>View on Lichess</span>
+      <span>{primarySourceLink.label}</span>
     </a>
   );
   const atomicDbAction = atomicDbHref ? (

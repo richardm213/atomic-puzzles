@@ -1,4 +1,5 @@
 import { getArchiveClient } from "./client";
+import { timelineWithValidatedLengths } from "./gameTimeline";
 
 type JsonRow = Record<string, unknown>;
 
@@ -18,6 +19,15 @@ const SOURCE_IDS = {
   chesscom: 4,
   pychess: 5,
 } as const;
+type ArchiveSchemaVersion = 2 | 3;
+let schemaVersionPromise: Promise<ArchiveSchemaVersion> | null = null;
+
+const getSchemaVersion = (): Promise<ArchiveSchemaVersion> => {
+  schemaVersionPromise ??= getArchiveClient()
+    .execute("select value from metadata where key='schema_version'")
+    .then((result) => (String(result.rows[0]?.value ?? "") === "3" ? 3 : 2));
+  return schemaVersionPromise;
+};
 const modeNameSql = (column: string): string =>
   `case ${column} when 0 then 'hyperbullet' when 1 then 'bullet' when 2 then 'blitz' when 3 then 'wolfrandom' when 4 then 'atomic960' when 5 then 'rapid' else 'unknown' end`;
 const MAX_PAGE_SIZE = 200;
@@ -27,6 +37,7 @@ const DEFAULT_SEARCH_LIMIT = 36;
 const USERNAME_SEARCH_PATTERN = /^[a-z0-9_-]+$/;
 
 const RESOURCE_PARAMETERS: Record<string, ReadonlySet<string>> = {
+  game: new Set(["resource", "gameId"]),
   matches: new Set([
     "resource",
     "mode",
@@ -246,20 +257,28 @@ const queryMatches = async (params: URLSearchParams) => {
     .split(",")
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean);
+  sourceValues.forEach((source) => {
+    if (source !== "unknown" && !(source in SOURCE_IDS)) {
+      throw new ArchiveRequestError("Unsupported source");
+    }
+  });
+  const schemaVersion = await getSchemaVersion();
   if (sourcesSpecified && sourceValues.length === 0) {
     clauses.push("0 = 1");
   } else if (sourceValues.length) {
     const includeUnknown = sourceValues.includes("unknown");
     const sourceIds = sourceValues.flatMap((source) => {
       if (source === "unknown") return [];
-      if (!(source in SOURCE_IDS)) throw new ArchiveRequestError("Unsupported source");
+      if (schemaVersion === 3 && source === "pychess") return [];
       return [SOURCE_IDS[source as keyof typeof SOURCE_IDS]];
     });
     const sourceClauses = [
       ...(sourceIds.length ? [`m.source in (${sourceIds.map(() => "?").join(",")})`] : []),
-      ...(includeUnknown ? ["m.source not in (0,1,2,3,4,5)"] : []),
+      ...(includeUnknown
+        ? [schemaVersion === 3 ? "m.source not in (0,1,2,3,4)" : "m.source not in (0,1,2,3,4,5)"]
+        : []),
     ];
-    clauses.push(`(${sourceClauses.join(" or ")})`);
+    clauses.push(sourceClauses.length ? `(${sourceClauses.join(" or ")})` : "0 = 1");
     args.push(...sourceIds);
   }
   const ratingMin = numberParam(params, "ratingMin");
@@ -287,13 +306,26 @@ const queryMatches = async (params: URLSearchParams) => {
     }
   }
   const where = clauses.length ? clauses.join(" and ") : "1 = 1";
+  const gamesSelection =
+    schemaVersion === 3
+      ? `(select group_concat(game_entry, '|') from (
+          select g.game_id || ',,' || (g.result >> 1) || ',' || ((g.result & 1) + 1) game_entry
+          from games g where g.match_id=m.id order by g.game_index)) games`
+      : "m.games";
+  const tournamentSelection = schemaVersion === 3 ? "t.value tournament_id" : "m.tournament_id";
+  const sourceSelection =
+    schemaVersion === 3
+      ? "case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' else 'unknown' end"
+      : "case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' when 5 then 'pychess' else 'unknown' end";
+  const tournamentJoin =
+    schemaVersion === 3 ? " left join tournaments t on t.id=m.tournament_id" : "";
   const selectMatch = `select m.match_id,${modeNameSql("m.mode")} mode,p1.username player_1,p2.username player_2,m.start_ts,tc.value time_control,
-      case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' when 5 then 'pychess' else 'unknown' end source,
-      m.tournament_id,m.games,m.p1_before_rating/10.0 p1_before_rating,m.p1_after_rating/10.0 p1_after_rating,
+      ${sourceSelection} source,
+      ${tournamentSelection},${gamesSelection},m.p1_before_rating/10.0 p1_before_rating,m.p1_after_rating/10.0 p1_after_rating,
       m.p1_before_rd/10.0 p1_before_rd,m.p1_after_rd/10.0 p1_after_rd,m.p2_before_rating/10.0 p2_before_rating,
       m.p2_after_rating/10.0 p2_after_rating,m.p2_before_rd/10.0 p2_before_rd,m.p2_after_rd/10.0 p2_after_rd
       from matches m join players p1 on p1.id=m.player_1_id join players p2 on p2.id=m.player_2_id
-      join time_controls tc on tc.id=m.time_control_id`;
+      join time_controls tc on tc.id=m.time_control_id${tournamentJoin}`;
   let result;
   let total: number | null = null;
   const queryLimit = includeTotal ? pageSize : pageSize + 1;
@@ -354,6 +386,36 @@ const queryMatches = async (params: URLSearchParams) => {
     totalPages,
     hasPreviousPage: page > 1,
     hasNextPage,
+  };
+};
+
+const queryGame = async (params: URLSearchParams) => {
+  if ((await getSchemaVersion()) !== 3) {
+    throw new ArchiveRequestError("Individual game data requires matches schema version 3");
+  }
+  const gameId = boundedStringParam(params, "gameId", 128);
+  if (!gameId) throw new ArchiveRequestError("gameId is required");
+  const result = await getArchiveClient().execute({
+    sql: `select g.game_id,g.game_index,g.result,g.moves,g.clocks,g.move_ts,
+      m.match_id external_match_id,${modeNameSql("m.mode")} mode,m.start_ts,
+      case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' else 'unknown' end source,
+      p1.username player_1,p2.username player_2,tc.value time_control,t.value tournament,
+      m.p1_before_rating/10.0 p1_before_rating,m.p1_after_rating/10.0 p1_after_rating,
+      m.p1_before_rd/10.0 p1_before_rd,m.p1_after_rd/10.0 p1_after_rd,
+      m.p2_before_rating/10.0 p2_before_rating,m.p2_after_rating/10.0 p2_after_rating,
+      m.p2_before_rd/10.0 p2_before_rd,m.p2_after_rd/10.0 p2_after_rd
+      from games g join matches m on m.id=g.match_id
+      join players p1 on p1.id=m.player_1_id join players p2 on p2.id=m.player_2_id
+      join time_controls tc on tc.id=m.time_control_id left join tournaments t on t.id=m.tournament_id
+      where g.game_id=? limit 1`,
+    args: [gameId],
+  });
+  const row = result.rows[0];
+  if (!row) return null;
+  const normalized = normalizedRows([row])[0] ?? {};
+  return {
+    ...normalized,
+    ...timelineWithValidatedLengths(row),
   };
 };
 
@@ -623,15 +685,16 @@ export const queryAchievementRatingPeaks = async (
 export const queryArchiveResource = async (params: URLSearchParams): Promise<unknown> => {
   const resource = boundedStringParam(params, "resource", 50);
   validateResourceParameters(params, resource);
+  if (resource === "game") return queryGame(params);
   if (resource === "matches") return queryMatches(params);
   if (resource === "player_game_counts") {
     const username = boundedStringParam(params, "username", 100).toLowerCase();
     if (!username) throw new ArchiveRequestError("Username is required");
+    const schemaVersion = await getSchemaVersion();
     const result = await getArchiveClient().execute({
       sql: `select ${modeNameSql("m.mode")} mode,
-        sum(case when trim(coalesce(m.games, ''), '|') = '' then 0
-          else length(trim(m.games, '|')) - length(replace(trim(m.games, '|'), '|', '')) + 1 end) games
-        from matches m
+        ${schemaVersion === 3 ? "count(g.game_id)" : "sum(case when trim(coalesce(m.games, ''), '|') = '' then 0 else length(trim(m.games, '|')) - length(replace(trim(m.games, '|'), '|', '')) + 1 end)"} games
+        from matches m${schemaVersion === 3 ? " join games g on g.match_id=m.id" : ""}
         where (m.player_1_id = (select id from players where username = ?)
           or m.player_2_id = (select id from players where username = ?))
           and m.mode in (0, 1, 2, 4, 5)
@@ -657,10 +720,7 @@ export const queryArchiveResource = async (params: URLSearchParams): Promise<unk
   if (resource === "leaderboard_counts") return queryLeaderboardCounts();
   if (resource === "usernames") return queryUsernames(params);
   if (resource === "health") {
-    const result = await getArchiveClient().execute(
-      "select value from metadata where key='schema_version'",
-    );
-    return { ok: true, schemaVersion: String(result.rows[0]?.value ?? "") };
+    return { ok: true, schemaVersion: String(await getSchemaVersion()) };
   }
   throw new ArchiveRequestError("Unknown archive resource");
 };

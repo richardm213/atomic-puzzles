@@ -41,6 +41,8 @@ import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
+import type { ArchiveGame } from "../../lib/archive/games";
+import { buildChessComGameUrl } from "../../lib/matches/routes";
 import { warmFairyStockfish } from "../../lib/practice/fairyStockfish";
 import { createAtomicPosition, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
@@ -54,6 +56,7 @@ import {
   type ExplorerRequestNavigation,
   fetchExplorerApiResponse,
 } from "../../utils/openingExplorer";
+import { GameAnalysisHeader } from "../Game/GameAnalysisHeader";
 
 const MIN_MOVE_PANEL_HEIGHT = 0;
 const MIN_EXPLORER_PANEL_HEIGHT = 12;
@@ -64,9 +67,7 @@ type ExplorerSpeed = "bullet" | "blitz" | "hyperbullet";
 type ExplorerSpeedValue = 0 | 1 | 2;
 type UsernamePickerTarget = "player" | "opponent";
 type AtomicDbRequestStatus =
-  | { state: "idle" }
-  | { state: "requested" }
-  | { state: "error"; message: string };
+  { state: "idle" } | { state: "requested" } | { state: "error"; message: string };
 const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
 const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
 const BOARD_SIZE_STORAGE_KEY = "atomic-puzzles.analysis.board-size";
@@ -279,7 +280,12 @@ const SpeedFilterIcon = ({ speed }: { speed: ExplorerSpeed }) => {
   );
 };
 
-export const AnalysisPage = () => {
+type AnalysisPageProps = {
+  game?: ArchiveGame;
+  initialPgn?: string;
+};
+
+export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) => {
   const navigate = useNavigate();
   const { _splat: fenPath } = useParams({ strict: false });
   const routeFen = fenFromRoute(fenPath);
@@ -403,10 +409,7 @@ export const AnalysisPage = () => {
   }, [currentFen]);
 
   const handleAtomicDbRequest = async (): Promise<void> => {
-    if (
-      !canRequestAtomicDbAnalysis ||
-      atomicDbRequestStatus.state === "requested"
-    ) {
+    if (!canRequestAtomicDbAnalysis || atomicDbRequestStatus.state === "requested") {
       return;
     }
 
@@ -483,8 +486,12 @@ export const AnalysisPage = () => {
 
   useEffect(() => {
     setRootFen(routeFen);
-    setNavigation({ type: "reset", fen: routeFen });
-  }, [routeFen]);
+    setNavigation(
+      initialPgn
+        ? { type: "loadPgn", pgn: initialPgn, fen: routeFen }
+        : { type: "reset", fen: routeFen },
+    );
+  }, [initialPgn, routeFen]);
 
   const requestNavigation = useCallback((command: PlaybackCommand): void => {
     setNavigation({ type: "command", command });
@@ -889,6 +896,7 @@ export const AnalysisPage = () => {
     filtersOpen,
     flipBoard,
     setAtomicDbEngineSettings,
+    setExplorerOpen,
     threatFen,
     usernamePickerOpen,
   ]);
@@ -896,14 +904,18 @@ export const AnalysisPage = () => {
   return (
     <AnalysisWorkspaceLayout style={analysisPageStyle}>
       <Seo
-        title="Analysis board"
-        description="Analyze atomic chess positions and browse opening explorer filters."
-        path="/analysis"
+        title={game ? `${game.player_1} vs ${game.player_2}` : "Analysis board"}
+        description={
+          game
+            ? `Analyze the atomic chess game between ${game.player_1} and ${game.player_2}.`
+            : "Analyze atomic chess positions and browse opening explorer filters."
+        }
+        path={game ? `/games/${game.game_id}` : "/analysis"}
       />
 
       <AnalysisWorkspacePanel
         ref={rightPanelRef}
-        className={`analysisRightPanel ${explorerOpen ? "explorerOpen" : "explorerCollapsed"} ${
+        className={`analysisRightPanel ${game ? "gameAnalysisPanel" : ""} ${explorerOpen ? "explorerOpen" : "explorerCollapsed"} ${
           movePanelHeight === MIN_MOVE_PANEL_HEIGHT ? "movesCollapsed" : ""
         } ${movePanelHeight !== null ? "customExplorerSplit" : ""} ${
           explorerResizing ? "explorerResizing" : ""
@@ -913,6 +925,7 @@ export const AnalysisPage = () => {
       >
         <div className="analysisMovePanel" ref={movePanelRef}>
           <div className="analysisEngineBlock">
+            {game ? <GameAnalysisHeader game={game} currentPly={currentPly} /> : null}
             <AtomicDbEngineControls
               fen={displayedAnalysisFen}
               analysis={displayedAnalysis}
@@ -1236,19 +1249,26 @@ export const AnalysisPage = () => {
           </>
         }
         lichessHref={currentLichessAnalysisUrl}
+        {...(game?.source === "chesscom"
+          ? {
+              sourceLink: {
+                href: buildChessComGameUrl(game.game_id),
+                label: "View on Chess.com",
+              },
+            }
+          : {})}
         atomicDbHref={atomicDbPositionKey ? atomicDbPositionUrl(atomicDbPositionKey) : null}
-        atomicDbRequest={
-          canRequestAtomicDbAnalysis
-            ? {
+        {...(canRequestAtomicDbAnalysis
+          ? {
+              atomicDbRequest: {
                 state: atomicDbRequestStatus.state,
-                message:
-                  atomicDbRequestStatus.state === "error"
-                    ? atomicDbRequestStatus.message
-                    : undefined,
+                ...(atomicDbRequestStatus.state === "error"
+                  ? { message: atomicDbRequestStatus.message }
+                  : {}),
                 onRequest: () => void handleAtomicDbRequest(),
-              }
-            : undefined
-        }
+              },
+            }
+          : {})}
         document={boardDocument}
       />
     </AnalysisWorkspaceLayout>

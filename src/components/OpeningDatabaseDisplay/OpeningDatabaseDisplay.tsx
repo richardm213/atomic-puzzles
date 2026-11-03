@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
 
-import { buildExternalGameUrl, inferExternalGameSource } from "../../lib/matches/routes";
+import { inferExternalGameSource } from "../../lib/matches/routes";
 import { formatGameCount } from "../../utils/formatters";
+import { LichessGameLink } from "../LichessGameLink/LichessGameLink";
 
 const WIN_RATE_LABEL_MIN_PERCENT = 14;
 
@@ -159,11 +160,7 @@ export const OpeningDatabaseDisplay = ({
           {moves.map((move) => (
             // The row expands the pointer target; the contained button remains the semantic,
             // keyboard-accessible control for the move.
-            <tr
-              key={move.uci}
-              className="analysisExplorerRow"
-              onClick={() => onPlayMove(move.uci)}
-            >
+            <tr key={move.uci} className="analysisExplorerRow" onClick={() => onPlayMove(move.uci)}>
               <td>
                 <button
                   type="button"
@@ -227,14 +224,12 @@ export const OpeningDatabaseDisplay = ({
           <ol>
             {recentGames.map((game) => (
               <li key={game.gameId}>
-                <a
-                  href={buildExternalGameUrl(game.gameId, {
-                    source: inferExternalGameSource(game.gameId),
-                    orientation,
-                    ply: currentPly + (game.uci ? 1 : 0),
-                  })}
-                  target="_blank"
-                  rel="noreferrer"
+                <LichessGameLink
+                  gameId={game.gameId}
+                  source={inferExternalGameSource(game.gameId)}
+                  orientation={orientation}
+                  ply={currentPly + (game.uci ? 1 : 0)}
+                  className=""
                   title={`${game.whiteName} vs ${game.blackName}`}
                   onPointerEnter={() => onHoverMove(game.uci || null)}
                   onPointerLeave={() => onHoverMove(null)}
@@ -252,7 +247,7 @@ export const OpeningDatabaseDisplay = ({
                   <span className={`analysisRecentResult ${game.resultClass}`}>{game.result}</span>
                   <span className="analysisRecentDate">{game.playedOn.slice(0, 7)}</span>
                   <span className="analysisRecentMove">{game.move}</span>
-                </a>
+                </LichessGameLink>
               </li>
             ))}
           </ol>

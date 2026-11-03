@@ -30,6 +30,7 @@ const PredictionMarketPage = lazyRouteComponent(
   "PredictionMarketPage",
 );
 const AnalysisPage = lazyRouteComponent(() => import("./pages/Analysis/Analysis"), "AnalysisPage");
+const GamePage = lazyRouteComponent(() => import("./pages/Game/GamePage"), "GamePage");
 const AchievementsPage = lazyRouteComponent(
   () => import("./pages/Achievements/Achievements"),
   "AchievementsPage",
@@ -296,6 +297,17 @@ const analysisFenRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/analysis/$",
   component: AnalysisPage,
+});
+
+const gameRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/games/$gameId",
+  loader: ({ context, params }) => {
+    void import("./lib/games/queries").then(({ gameDetailQueryOptions }) =>
+      context.queryClient.prefetchQuery(gameDetailQueryOptions(params.gameId)),
+    );
+  },
+  component: GamePage,
 });
 
 const practiceRoute = createRoute({
@@ -729,6 +741,7 @@ const routeTree = rootRoute.addChildren([
   atomicTourPointsRoute,
   analysisRoute,
   analysisFenRoute,
+  gameRoute,
   practiceRoute,
   endgamePracticeRoute,
   recentRoute,

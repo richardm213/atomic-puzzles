@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ execute: vi.fn(), createClient: vi.fn() }));
+const mockSchema2 = () => mocks.execute.mockResolvedValueOnce({ rows: [{ value: "2" }] });
 
 vi.mock("@libsql/client/web", () => ({ createClient: mocks.createClient }));
 
@@ -58,6 +59,7 @@ describe("archive-data function", () => {
   });
 
   it("queries a match page without inventing missing numeric filters", async () => {
+    mockSchema2();
     mocks.execute.mockResolvedValueOnce({ rows: [{ total: 1 }] }).mockResolvedValueOnce({
       rows: [
         {
@@ -79,7 +81,7 @@ describe("archive-data function", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mocks.execute.mock.calls[0]?.[0].args).toEqual([2]);
+    expect(mocks.execute.mock.calls[1]?.[0].args).toEqual([2]);
     expect(JSON.parse(response.body)).toMatchObject({
       total: 1,
       page: 1,
@@ -91,7 +93,68 @@ describe("archive-data function", () => {
     });
   });
 
+  it("reads normalized games and tournament names from schema v3", async () => {
+    mocks.execute
+      .mockResolvedValueOnce({ rows: [{ value: "3" }] })
+      .mockResolvedValueOnce({ rows: [{ total: 1 }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            match_id: "match-v3",
+            player_1: "alice",
+            player_2: "bob",
+            tournament_id: "Atomic Cup",
+            games: "1001,,1,1|1002,,2,2",
+          },
+        ],
+      });
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({
+      queryStringParameters: { resource: "matches", matchId: "match-v3" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mocks.execute.mock.calls[2]?.[0].sql).toContain("from games g where g.match_id=m.id");
+    expect(mocks.execute.mock.calls[2]?.[0].sql).toContain(
+      "left join tournaments t on t.id=m.tournament_id",
+    );
+    expect(JSON.parse(response.body).rows[0]).toMatchObject({
+      tournament_id: "Atomic Cup",
+      games: ["1001,,1,1", "1002,,2,2"],
+    });
+  });
+
+  it("serves a decoded Chess.com game timeline from schema v3", async () => {
+    mocks.execute.mockResolvedValueOnce({ rows: [{ value: "3" }] }).mockResolvedValueOnce({
+      rows: [
+        {
+          game_id: "108184353",
+          result: 2,
+          player_1: "alice",
+          player_2: "bob",
+          moves: new Uint8Array([0xc6, 0x05, 0xf7, 0x0b]),
+          clocks: new Uint8Array([50, 60]),
+          move_ts: null,
+        },
+      ],
+    });
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({
+      queryStringParameters: { resource: "game", gameId: "108184353" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mocks.execute.mock.calls[1]?.[0]).toMatchObject({ args: ["108184353"] });
+    expect(JSON.parse(response.body)).toMatchObject({
+      game_id: "108184353",
+      moves: ["g1h3", "h7h6"],
+      clocks: [50, 60],
+      move_ts: null,
+    });
+  });
+
   it("loads one lookahead row instead of counting the full recent-match result", async () => {
+    mockSchema2();
     mocks.execute.mockResolvedValueOnce({
       rows: Array.from({ length: 26 }, (_, index) => ({
         match_id: `match-${index}`,
@@ -116,8 +179,8 @@ describe("archive-data function", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mocks.execute).toHaveBeenCalledTimes(1);
-    expect(mocks.execute.mock.calls[0]?.[0].args).toEqual([2, 26, 0]);
+    expect(mocks.execute).toHaveBeenCalledTimes(2);
+    expect(mocks.execute.mock.calls[1]?.[0].args).toEqual([2, 26, 0]);
     expect(JSON.parse(response.body)).toMatchObject({
       total: 26,
       totalPages: 2,
@@ -128,6 +191,7 @@ describe("archive-data function", () => {
   });
 
   it("filters either time-control component before paging", async () => {
+    mockSchema2();
     mocks.execute
       .mockResolvedValueOnce({ rows: [{ total: 0 }] })
       .mockResolvedValueOnce({ rows: [] });
@@ -143,11 +207,11 @@ describe("archive-data function", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mocks.execute.mock.calls[0]?.[0]).toMatchObject({ args: [2, "3", "2"] });
-    expect(mocks.execute.mock.calls[0]?.[0].sql).toContain(
+    expect(mocks.execute.mock.calls[1]?.[0]).toMatchObject({ args: [2, "3", "2"] });
+    expect(mocks.execute.mock.calls[1]?.[0].sql).toContain(
       "substr(tc.value, 1, instr(tc.value, '+') - 1) = ?",
     );
-    expect(mocks.execute.mock.calls[0]?.[0].sql).toContain(
+    expect(mocks.execute.mock.calls[1]?.[0].sql).toContain(
       "substr(tc.value, instr(tc.value, '+') + 1) = ?",
     );
   });
@@ -210,6 +274,7 @@ describe("archive-data function", () => {
   });
 
   it("looks up a match id across the unified table when mode is omitted", async () => {
+    mockSchema2();
     mocks.execute.mockResolvedValueOnce({ rows: [{ total: 1 }] }).mockResolvedValueOnce({
       rows: [
         {
@@ -228,8 +293,8 @@ describe("archive-data function", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mocks.execute.mock.calls[0]?.[0].args).toEqual(["Yr9V8s5R"]);
-    expect(mocks.execute.mock.calls[1]?.[0].sql).toContain("when 2 then 'blitz'");
+    expect(mocks.execute.mock.calls[1]?.[0].args).toEqual(["Yr9V8s5R"]);
+    expect(mocks.execute.mock.calls[2]?.[0].sql).toContain("when 2 then 'blitz'");
     expect(JSON.parse(response.body)).toMatchObject({
       rows: [{ match_id: "Yr9V8s5R", mode: "blitz" }],
     });
@@ -238,6 +303,7 @@ describe("archive-data function", () => {
   it("resolves usernames to player ids before querying the large match table", async () => {
     mocks.execute
       .mockResolvedValueOnce({ rows: [{ id: 42 }] })
+      .mockResolvedValueOnce({ rows: [{ value: "2" }] })
       .mockResolvedValueOnce({ rows: [{ total: 0 }] })
       .mockResolvedValueOnce({ rows: [] });
     const { handler } = await import("../functions/archive-data");
@@ -246,17 +312,18 @@ describe("archive-data function", () => {
     });
 
     expect(mocks.execute.mock.calls[0]?.[0]).toMatchObject({ args: ["alice"] });
-    expect(mocks.execute.mock.calls[1]?.[0]).toMatchObject({
+    expect(mocks.execute.mock.calls[2]?.[0]).toMatchObject({
       args: [1, 42, 1, 42, 42],
       sql: expect.stringContaining("union all"),
     });
-    expect(mocks.execute.mock.calls[2]?.[0]).toMatchObject({
+    expect(mocks.execute.mock.calls[3]?.[0]).toMatchObject({
       args: [1, 42, 1, 42, 42, 100, 0],
       sql: expect.stringContaining("order by start_ts desc"),
     });
   });
 
   it("maps PyChess and unknown sources without treating invalid values as lobby", async () => {
+    mockSchema2();
     mocks.execute
       .mockResolvedValueOnce({ rows: [{ total: 0 }] })
       .mockResolvedValueOnce({ rows: [] });
@@ -266,7 +333,7 @@ describe("archive-data function", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mocks.execute.mock.calls[0]?.[0].args).toEqual([4, 5]);
+    expect(mocks.execute.mock.calls[1]?.[0].args).toEqual([4, 5]);
 
     mocks.execute
       .mockResolvedValueOnce({ rows: [{ total: 0 }] })
@@ -275,7 +342,7 @@ describe("archive-data function", () => {
       queryStringParameters: { resource: "matches", mode: "blitz", sources: "unknown" },
     });
     expect(unknownResponse.statusCode).toBe(200);
-    expect(mocks.execute.mock.calls[2]?.[0].sql).toContain("m.source not in (0,1,2,3,4,5)");
+    expect(mocks.execute.mock.calls[3]?.[0].sql).toContain("m.source not in (0,1,2,3,4,5)");
 
     const invalidResponse = await handler({
       queryStringParameters: { resource: "matches", mode: "blitz", sources: "invalid" },

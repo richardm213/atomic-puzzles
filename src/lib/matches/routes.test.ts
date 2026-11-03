@@ -176,7 +176,7 @@ describe("buildSingleGameMatchUrl", () => {
     );
   });
 
-  it("builds Chess.com URLs for one-game Chess.com matches", () => {
+  it("builds internal URLs for one-game Chess.com matches", () => {
     expect(
       buildSingleGameMatchUrl({
         matchId: "match-id",
@@ -184,7 +184,7 @@ describe("buildSingleGameMatchUrl", () => {
         gameCount: 1,
         sourceValue: "chesscom",
       }),
-    ).toBe("https://www.chess.com/variants/atomic/game/123456789");
+    ).toBe("/games/123456789");
   });
 
   it("does not build an external game URL for longer matches", () => {

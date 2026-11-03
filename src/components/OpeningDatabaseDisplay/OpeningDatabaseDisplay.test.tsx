@@ -61,7 +61,7 @@ describe("OpeningDatabaseDisplay recent-game links", () => {
     expect(onPlayMove).toHaveBeenCalledTimes(2);
   });
 
-  it("opens numeric Chess.com games on Chess.com and keeps Lichess move context", () => {
+  it("opens numeric Chess.com games internally and keeps Lichess move context", () => {
     render(
       <OpeningDatabaseDisplay
         moves={[]}
@@ -82,7 +82,7 @@ describe("OpeningDatabaseDisplay recent-game links", () => {
 
     expect(screen.getByTitle("ChessCom White vs Black")).toHaveAttribute(
       "href",
-      "https://www.chess.com/variants/atomic/game/108184353",
+      "/games/108184353",
     );
     expect(screen.getByTitle("Lichess White vs Black")).toHaveAttribute(
       "href",

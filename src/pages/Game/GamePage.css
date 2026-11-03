@@ -1,0 +1,114 @@
+.gameAnalysisHeader {
+  display: grid;
+  gap: 2px;
+  padding: 2px 4px 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.analysisRightPanel.gameAnalysisPanel:not(.customExplorerSplit):not(.explorerCollapsed) {
+  grid-template-rows: minmax(280px, 0.9fr) minmax(160px, 1.1fr) auto;
+}
+
+.analysisRightPanel.gameAnalysisPanel:not(.customExplorerSplit):not(.explorerCollapsed)
+  .analysisMovePanel {
+  grid-template-rows: auto minmax(110px, 1fr);
+}
+
+.gameAnalysisPlayer {
+  min-width: 0;
+  min-height: 32px;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 5px;
+  border-radius: 5px;
+}
+
+.gameAnalysisPlayer.winner {
+  background: color-mix(in srgb, var(--color-primary-soft) 46%, transparent);
+}
+
+.gameAnalysisColor {
+  width: 12px;
+  height: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-text) 52%, transparent);
+  border-radius: 2px;
+}
+
+.gameAnalysisColor.white {
+  background: var(--color-player-white);
+}
+
+.gameAnalysisColor.black {
+  background: var(--color-player-black);
+}
+
+.gameAnalysisPlayerName {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-heading);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gameAnalysisPlayerName:hover,
+.gameAnalysisPlayerName:focus-visible {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+.gameAnalysisPlayerName:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.gameAnalysisRating,
+.gameAnalysisMeta {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gameAnalysisClock {
+  min-width: 51px;
+  color: var(--color-heading);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.gameAnalysisMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  padding: 4px 5px 0 26px;
+}
+
+@media (max-width: 780px) {
+  .analysisRightPanel.gameAnalysisPanel:not(.customExplorerSplit):not(.explorerCollapsed) {
+    grid-template-rows: auto minmax(160px, 220px) auto;
+  }
+
+  .gameAnalysisPlayer {
+    min-height: 44px;
+  }
+}
+
+.gameUnavailablePanel {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-6);
+}
+
+.gameUnavailablePanel h1 {
+  margin: 0 0 var(--space-2);
+}
+
+.gameUnavailablePanel p {
+  color: var(--color-muted);
+}

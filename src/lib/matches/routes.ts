@@ -128,6 +128,14 @@ export const buildSingleGameMatchUrl = (match: MatchRouteInput | null | undefine
     : undefined;
   const candidates = [match?.firstGameId, firstGameFromGames, match?.matchId];
   for (const candidate of candidates) {
+    if (isChessComSource(match?.sourceValue ?? match?.source)) {
+      const chessComGameId = String(candidate ?? "")
+        .trim()
+        .replace(/^chesscom:/i, "");
+      if (chessComGameId && chessComGameId !== "—") {
+        return `/games/${encodeURIComponent(chessComGameId)}`;
+      }
+    }
     const url = buildExternalGameUrl(candidate, { source: match?.sourceValue ?? match?.source });
     if (url) return url;
   }

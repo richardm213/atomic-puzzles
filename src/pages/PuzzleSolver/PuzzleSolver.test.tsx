@@ -739,7 +739,10 @@ describe("PuzzleSolverPage solution options", () => {
     mocks.username = "seaside_tiramisu";
     const loadPuzzlesById = mocks.loadPuzzlesById.getMockImplementation();
     mocks.loadPuzzlesById.mockImplementation(async (puzzleIds: number[]) =>
-      (await loadPuzzlesById!(puzzleIds)).map((puzzle) => ({ ...puzzle, tags: [] })),
+      (await loadPuzzlesById!(puzzleIds)).map((puzzle: Record<string, unknown>) => ({
+        ...puzzle,
+        tags: [],
+      })),
     );
 
     render(<PuzzleSolverPage />);
