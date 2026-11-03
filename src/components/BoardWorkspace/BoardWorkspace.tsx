@@ -26,6 +26,7 @@ type BoardWorkspaceProps = {
   secondaryAction?: ReactNode;
   document: BoardDocument;
   showDocument?: boolean;
+  showActions?: boolean;
 };
 
 export const DocumentField = ({
@@ -73,6 +74,7 @@ export const BoardWorkspace = ({
   secondaryAction,
   document,
   showDocument = true,
+  showActions = true,
 }: BoardWorkspaceProps) => {
   const primarySourceLink = sourceLink ?? { href: lichessHref, label: "View on Lichess" };
   const lichessLink = (
@@ -138,16 +140,18 @@ export const BoardWorkspace = ({
       </div>
       {boardAfter}
       <div className="analysisBoardTextPanel">
-        <div className={actionClassName ?? "analysisBoardActions"}>
-          {lichessLink}
-          {atomicDbAction}
-          {atomicDbRequest?.state === "error" && atomicDbRequest.message ? (
-            <span className="analysisAtomicDbRequestMessage" role="alert">
-              {atomicDbRequest.message}
-            </span>
-          ) : null}
-          {secondaryAction}
-        </div>
+        {showActions ? (
+          <div className={actionClassName ?? "analysisBoardActions"}>
+            {lichessLink}
+            {atomicDbAction}
+            {atomicDbRequest?.state === "error" && atomicDbRequest.message ? (
+              <span className="analysisAtomicDbRequestMessage" role="alert">
+                {atomicDbRequest.message}
+              </span>
+            ) : null}
+            {secondaryAction}
+          </div>
+        ) : null}
         {showDocument ? (
           <>
             <DocumentField label="FEN" rows={2} field={document.fen} />

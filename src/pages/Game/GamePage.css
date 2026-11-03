@@ -18,11 +18,12 @@
 
 .gameAnalysisHeader {
   display: grid;
-  gap: 0;
+  gap: 10px;
+  padding: 14px 12px;
 }
 
 .analysisRightPanel.gameAnalysisPanel:not(.customExplorerSplit):not(.explorerCollapsed) {
-  grid-template-rows: minmax(280px, 0.9fr) minmax(160px, 1.1fr) auto;
+  grid-template-rows: minmax(300px, 1.35fr) minmax(120px, 0.65fr) auto;
 }
 
 .analysisRightPanel.gameAnalysisPanel:not(.customExplorerSplit):not(.explorerCollapsed)
@@ -32,16 +33,12 @@
 
 .gameAnalysisPlayer {
   min-width: 0;
-  min-height: 42px;
+  min-height: 30px;
   display: grid;
   grid-template-columns: 14px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding: 7px 12px;
-}
-
-.gameAnalysisPlayer + .gameAnalysisPlayer {
-  border-top: 1px solid color-mix(in srgb, var(--color-border) 68%, transparent);
+  padding: 2px 0;
 }
 
 .gameBoardClockRow {
@@ -64,8 +61,9 @@
 }
 
 .gameBoardClockRow.active .gameAnalysisClock {
-  background: var(--color-heading);
-  color: var(--color-surface);
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-inset-strong));
+  color: var(--color-heading);
 }
 
 .gameAnalysisColor {
@@ -96,7 +94,7 @@
 
 .gameAnalysisPlayerName:hover,
 .gameAnalysisPlayerName:focus-visible {
-  color: var(--color-primary-hover);
+  color: var(--color-primary-soft);
   text-decoration: underline;
 }
 
@@ -146,24 +144,56 @@
 }
 
 .gameAnalysisMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px 10px;
-  padding: 9px 12px;
-  border-top: 1px solid var(--color-border);
-  background: color-mix(in srgb, var(--color-surface-inset) 52%, transparent);
+  display: grid;
+  gap: 3px;
 }
 
-.gameAnalysisMeta strong {
+.gameAnalysisMetaPrimary {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--color-heading);
+  font-size: 13px;
+}
+
+.gameAnalysisMetaPrimary strong {
   color: var(--color-heading);
   text-transform: capitalize;
 }
 
+.gameAnalysisDate,
+.gameAnalysisTournament {
+  color: var(--color-subtle);
+}
+
+.gameAnalysisTournamentLink {
+  width: fit-content;
+  color: var(--color-primary-soft);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.3;
+  text-decoration: none;
+}
+
+.gameAnalysisTournamentLink:hover,
+.gameAnalysisTournamentLink:focus-visible {
+  color: color-mix(in srgb, var(--color-primary-soft) 72%, var(--color-heading));
+  text-decoration: underline;
+}
+
+.gameAnalysisTournamentLink:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.gameAnalysisPlayers {
+  display: grid;
+  gap: 2px;
+}
+
 .gameAnalysisResult {
-  margin: 0;
-  padding: 11px 12px;
-  border-top: 1px solid var(--color-border);
-  background: color-mix(in srgb, var(--color-panel-strong) 58%, transparent);
+  margin: 2px 0 0;
+  padding: 8px 0 2px;
   color: var(--color-heading);
   font-size: 13px;
   font-weight: 650;
@@ -303,29 +333,26 @@
 .gameUnderboard {
   min-width: 0;
   grid-column: 1 / -1;
-  margin-top: 4px;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel);
+  margin-top: 0;
 }
 
 .gameUnderboardTabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface-inset);
+  background: transparent;
 }
 
 .gameUnderboardTabs button {
-  min-height: 48px;
-  padding: 0 14px;
+  min-height: 40px;
+  padding: 0 10px;
   border: 0;
-  border-bottom: 3px solid transparent;
+  border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--color-muted);
   font: inherit;
-  font-size: 14px;
+  font-size: 12.5px;
+  font-weight: 500;
   cursor: pointer;
   transition:
     color 160ms ease,
@@ -334,19 +361,19 @@
 }
 
 .gameUnderboardTabs button:hover {
-  background: var(--color-table-hover);
   color: var(--color-heading);
 }
 
 .gameUnderboardTabs button[aria-selected="true"] {
   border-bottom-color: var(--color-primary);
   color: var(--color-heading);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .gameUnderboardTabs button:focus-visible,
-.gameMoveTimes button:focus-visible,
-.gameShareActions button:focus-visible {
+.gameMoveTimePair button:focus-visible,
+.gameShareActions button:focus-visible,
+.gameShareActions a:focus-visible {
   position: relative;
   z-index: 2;
   outline: 2px solid var(--color-primary-ring);
@@ -356,6 +383,10 @@
 .gameUnderboardPanel {
   min-height: 172px;
   padding: 14px;
+  border: 1px solid var(--color-border);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-ui) var(--radius-ui);
+  background: var(--color-panel);
 }
 
 .gameUnderboardState {
@@ -368,80 +399,267 @@
   text-align: center;
 }
 
-.gameMoveTimes {
-  height: 158px;
-  display: flex;
-  align-items: stretch;
-  gap: 2px;
+.gameMoveTimesFigure {
   margin: 0;
-  padding: 0 0 4px;
+}
+
+.gameMoveTimesLegend {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 2px 8px;
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.gameMoveTimesLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.gameMoveTimesLegend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-text) 52%, var(--color-panel));
+}
+
+.gameMoveTimesLegend i.black {
+  background: color-mix(in srgb, var(--color-primary) 72%, var(--color-panel));
+}
+
+.gameMoveTimesLegend small {
+  margin-left: auto;
+  color: var(--color-subtle);
+  font-size: 10px;
+}
+
+.gameMoveTimesViewport {
   overflow-x: auto;
-  list-style: none;
   scrollbar-color: color-mix(in srgb, var(--color-muted) 58%, transparent) transparent;
   scrollbar-width: thin;
 }
 
-.gameMoveTimes li {
-  min-width: 32px;
-  flex: 1 0 32px;
+.gameClockTimeline {
+  position: relative;
+  min-width: max(100%, calc(var(--move-pair-count) * 28px));
+  height: 164px;
+  border-block: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(25% - 1px),
+      color-mix(in srgb, var(--color-border) 42%, transparent) 25%
+    ),
+    color-mix(in srgb, var(--color-surface-inset) 44%, transparent);
 }
 
-.gameMoveTimes button {
+.gameClockTimeline svg {
+  position: absolute;
+  inset: 8px 8px 24px;
+  width: calc(100% - 16px);
+  height: calc(100% - 32px);
+  overflow: visible;
+}
+
+.gameClockTimeline path {
+  vector-effect: non-scaling-stroke;
+}
+
+.gameClockTimeline .whiteFill {
+  fill: color-mix(in srgb, var(--color-text) 12%, transparent);
+}
+
+.gameClockTimeline .blackFill {
+  fill: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.gameClockTimeline .whiteLine,
+.gameClockTimeline .blackLine {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2px;
+}
+
+.gameClockTimeline .whiteLine {
+  stroke: color-mix(in srgb, var(--color-text) 68%, var(--color-panel));
+}
+
+.gameClockTimeline .blackLine {
+  stroke: var(--color-primary);
+}
+
+.gameClockTimelineHits {
+  position: absolute;
+  inset: 0 8px;
+  display: grid;
+  grid-template-columns: repeat(var(--move-pair-count), minmax(28px, 1fr));
+}
+
+.gameClockTimelinePair {
   position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: end;
-  justify-content: center;
+  min-width: 28px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.gameClockTimelinePair button {
+  min-width: 0;
   padding: 0;
-  overflow: hidden;
   border: 0;
-  border-radius: 3px 3px 0 0;
-  background: var(--color-surface-inset);
+  background: transparent;
   cursor: pointer;
 }
 
-.gameMoveTimes button:hover {
-  background: var(--color-table-hover);
+.gameClockTimelinePair button:hover,
+.gameClockTimelinePair button:focus-visible,
+.gameClockTimelinePair button.current {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.gameClockTimelinePair button:focus-visible {
+  z-index: 2;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: -2px;
+}
+
+.gameClockTimelinePair > span:last-child {
+  position: absolute;
+  right: 0;
+  bottom: 3px;
+  left: 0;
+  color: var(--color-subtle);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.gameMoveTimesChart {
+  position: relative;
+  min-width: max(100%, calc(var(--move-pair-count) * 34px));
+  height: 148px;
+  display: flex;
+  align-items: stretch;
+  border-block: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+  background: color-mix(in srgb, var(--color-surface-inset) 44%, transparent);
+}
+
+.gameMoveTimesGrid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(25% - 1px),
+    color-mix(in srgb, var(--color-border) 42%, transparent) 25%
+  );
+}
+
+.gameMoveTimePair {
+  position: relative;
+  min-width: 34px;
+  flex: 1 0 34px;
+  display: grid;
+  grid-template-rows: 1fr 20px 1fr;
+}
+
+.gameMoveTimePair button {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.gameMoveTimePair button:hover {
+  background: color-mix(in srgb, var(--color-primary) 7%, transparent);
 }
 
 .gameMoveTimeBar {
-  width: calc(100% - 8px);
+  position: absolute;
+  left: 5px;
+  right: 5px;
   height: var(--move-time-height);
-  min-height: 8px;
+  min-height: 4px;
   display: block;
   border-radius: 3px 3px 0 0;
-  background: color-mix(in srgb, var(--color-text) 42%, var(--color-panel));
+  background: color-mix(in srgb, var(--color-text) 52%, var(--color-panel));
   transition: background 160ms ease;
 }
 
-.gameMoveTimes .black .gameMoveTimeBar {
+.gameMoveTimePair .white .gameMoveTimeBar {
+  bottom: 0;
+}
+
+.gameMoveTimePair .black .gameMoveTimeBar {
+  top: 0;
+  border-radius: 0 0 3px 3px;
   background: color-mix(in srgb, var(--color-primary) 75%, var(--color-panel));
 }
 
-.gameMoveTimes button.current {
-  box-shadow: inset 0 0 0 2px var(--color-primary);
+.gameMoveTimePair button.current {
+  background: color-mix(in srgb, var(--color-primary) 11%, transparent);
 }
 
-.gameMoveTimes button:hover .gameMoveTimeBar,
-.gameMoveTimes button.current .gameMoveTimeBar {
+.gameMoveTimePair button:hover .gameMoveTimeBar,
+.gameMoveTimePair button:focus-visible .gameMoveTimeBar,
+.gameMoveTimePair button.current .gameMoveTimeBar {
   background: var(--color-primary-hover);
 }
 
-.gameMoveTimes small {
-  position: absolute;
-  bottom: 3px;
-  left: 0;
-  right: 0;
-  overflow: hidden;
-  color: var(--color-heading);
+.gameMoveNumber {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  border-block: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  background: var(--color-panel);
+  color: var(--color-subtle);
   font-family: var(--font-mono);
   font-size: 9px;
+}
+
+.gameMoveTimeValue {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  translate: -50% 0;
+  padding: 2px 3px;
+  border-radius: 3px;
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+  font-family: var(--font-mono);
+  font-size: 8px;
   font-weight: 700;
   line-height: 1;
-  text-align: center;
-  text-overflow: clip;
+  opacity: 0;
+  pointer-events: none;
   white-space: nowrap;
+}
+
+.gameMoveTimePair .white .gameMoveTimeValue {
+  bottom: 3px;
+}
+
+.gameMoveTimePair .black .gameMoveTimeValue {
+  top: 3px;
+}
+
+.gameMoveTimePair button:hover .gameMoveTimeValue,
+.gameMoveTimePair button:focus-visible .gameMoveTimeValue,
+.gameMoveTimePair button.current .gameMoveTimeValue {
+  opacity: 1;
+}
+
+.gameMoveTimeEmpty {
+  display: block;
 }
 
 .gameMatchCrosstableEmbedded {
@@ -462,23 +680,29 @@
   gap: 8px;
 }
 
-.gameShareActions button {
+.gameShareActions button,
+.gameShareActions a {
   min-height: 40px;
   padding: 0 14px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
   background: var(--color-panel-strong);
   color: var(--color-heading);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font: inherit;
   font-size: 13px;
   font-weight: 700;
+  text-decoration: none;
   cursor: pointer;
   transition:
     border-color 160ms ease,
     background 160ms ease;
 }
 
-.gameShareActions button:hover:not(:disabled) {
+.gameShareActions button:hover:not(:disabled),
+.gameShareActions a:hover {
   border-color: var(--color-primary-soft);
   background: var(--color-table-hover);
 }
@@ -486,6 +710,13 @@
 .gameShareActions button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.gameShareError {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 12px;
 }
 
 .gameSharePanel .analysisTextBox {
@@ -521,6 +752,15 @@
   font-weight: 800;
 }
 
+@media (min-width: 981px) {
+  .gameAnalysisPage .analysisRightPanel {
+    align-self: stretch;
+    contain: size;
+    height: 100%;
+    max-height: none;
+  }
+}
+
 @media (min-width: 1201px) {
   .analysisPage.gameAnalysisPage {
     width: min(100%, calc(var(--analysis-board-size) + 620px));
@@ -545,6 +785,11 @@
   .gameAnalysisPage .analysisRightPanel {
     grid-column: 3;
   }
+
+  .gameAnalysisPage .gameUnderboard {
+    grid-column: 2;
+    grid-row: 2;
+  }
 }
 
 @media (min-width: 981px) and (max-width: 1200px) {
@@ -559,12 +804,17 @@
 
   .gameAnalysisPage .analysisRightPanel {
     grid-column: 2;
-    grid-row: 1 / span 2;
+    grid-row: 1;
   }
 
   .gameAnalysisPage .gameAnalysisSidebar {
     grid-column: 1;
     grid-row: 2;
+  }
+
+  .gameAnalysisPage .gameUnderboard {
+    grid-column: 1;
+    grid-row: 3;
   }
 }
 

@@ -1,8 +1,13 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import type { ArchiveGame } from "../../lib/archive/games";
 import { decodeGameResult } from "../../lib/archive/games";
 import { gameTerminationLabel } from "../../lib/games/termination";
+import {
+  getTournamentMatchLocation,
+  getTournamentRouteId,
+} from "../../lib/matches/tournaments";
 import { formatLocalDateTime, formatSignedDecimal } from "../../utils/formatters";
 
 const initialClock = (timeControl: string): number | null => {
@@ -90,6 +95,13 @@ export const GameBoardClock = ({
 
 export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
   const { white, black } = decodeGameResult(game);
+  const tournamentLocationQuery = useQuery({
+    queryKey: ["tournament-match-location", game.external_match_id],
+    queryFn: () => getTournamentMatchLocation(game.external_match_id),
+    enabled: Boolean(game.external_match_id),
+    staleTime: 10 * 60 * 1_000,
+  });
+  const tournamentLocation = tournamentLocationQuery.data ?? null;
 
   const player = (username: string, color: "white" | "black") => (
     <div className="gameAnalysisPlayer">
@@ -103,13 +115,32 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
 
   return (
     <header className="gameAnalysisHeader">
-      {player(white, "white")}
-      {player(black, "black")}
       <div className="gameAnalysisMeta">
-        <strong>{game.mode}</strong>
-        <span>{game.time_control}</span>
-        <span>{formatLocalDateTime(game.start_ts)}</span>
-        {game.tournament ? <span>{game.tournament}</span> : null}
+        <div className="gameAnalysisMetaPrimary">
+          <span>{game.time_control}</span>
+          <span aria-hidden="true">•</span>
+          <strong>{game.mode}</strong>
+        </div>
+        {tournamentLocation ? (
+          <Link
+            className="gameAnalysisTournamentLink"
+            to="/tournaments/$tournamentId"
+            params={{
+              tournamentId: getTournamentRouteId(tournamentLocation.tournament.id),
+            }}
+            title={`Open ${tournamentLocation.tournament.title}`}
+          >
+            {tournamentLocation.tournament.title} {tournamentLocation.roundLabel}
+          </Link>
+        ) : null}
+        <span className="gameAnalysisDate">{formatLocalDateTime(game.start_ts)}</span>
+        {!tournamentLocation && game.tournament ? (
+          <span className="gameAnalysisTournament">{game.tournament}</span>
+        ) : null}
+      </div>
+      <div className="gameAnalysisPlayers">
+        {player(white, "white")}
+        {player(black, "black")}
       </div>
       <p className="gameAnalysisResult">{gameTerminationLabel(game)}</p>
     </header>

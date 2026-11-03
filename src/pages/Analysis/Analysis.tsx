@@ -42,7 +42,6 @@ import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import type { ArchiveGame } from "../../lib/archive/games";
-import { buildChessComGameUrl } from "../../lib/matches/routes";
 import { warmFairyStockfish } from "../../lib/practice/fairyStockfish";
 import { createAtomicPosition, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
@@ -433,10 +432,10 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
   };
   const currentPly = boardState?.lineIndex ?? 0;
   const customLines = useMemo(() => boardState?.customLines ?? [], [boardState?.customLines]);
-  const displayedBoardSize = game ? Math.min(Math.max(boardSize, 560), 600) : boardSize;
+  const displayedBoardSize = game ? Math.min(Math.max(boardSize, 600), 680) : boardSize;
   const analysisPageStyle = {
     "--analysis-board-size": game
-      ? `min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 84px))`
+      ? `min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 48px))`
       : `min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 40px))`,
   } as CSSProperties;
   const canStepBack = currentPly > 0;
@@ -1276,16 +1275,9 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
           </>
         }
         lichessHref={currentLichessAnalysisUrl}
-        {...(game?.source === "chesscom"
-          ? {
-              sourceLink: {
-                href: buildChessComGameUrl(game.game_id),
-                label: "View on Chess.com",
-              },
-            }
-          : {})}
+        showActions={!game}
         atomicDbHref={atomicDbPositionKey ? atomicDbPositionUrl(atomicDbPositionKey) : null}
-        {...(canRequestAtomicDbAnalysis
+        {...(!game && canRequestAtomicDbAnalysis
           ? {
               atomicDbRequest: {
                 state: atomicDbRequestStatus.state,
@@ -1306,6 +1298,18 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
           moves={moveList}
           document={boardDocument}
           onNavigatePly={navigateToPly}
+          atomicDbHref={atomicDbPositionKey ? atomicDbPositionUrl(atomicDbPositionKey) : null}
+          {...(canRequestAtomicDbAnalysis
+            ? {
+                atomicDbRequest: {
+                  state: atomicDbRequestStatus.state,
+                  ...(atomicDbRequestStatus.state === "error"
+                    ? { message: atomicDbRequestStatus.message }
+                    : {}),
+                  onRequest: () => void handleAtomicDbRequest(),
+                },
+              }
+            : {})}
         />
       ) : null}
     </AnalysisWorkspaceLayout>
