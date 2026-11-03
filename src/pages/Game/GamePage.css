@@ -114,6 +114,7 @@
   display: inline-flex;
   align-items: baseline;
   gap: 5px;
+  color: color-mix(in srgb, var(--color-heading) 76%, var(--color-muted));
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -163,7 +164,7 @@
 
 .gameAnalysisDate,
 .gameAnalysisTournament {
-  color: var(--color-subtle);
+  color: color-mix(in srgb, var(--color-heading) 68%, var(--color-muted));
 }
 
 .gameAnalysisTournamentLink {
