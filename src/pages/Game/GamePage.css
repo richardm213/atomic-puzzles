@@ -1,6 +1,7 @@
 .gameAnalysisSidebar {
   min-width: 0;
-  padding: 10px;
+  padding: 0;
+  overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
   background: var(--color-panel);
@@ -11,9 +12,13 @@
   align-content: start;
 }
 
+.gameAnalysisPage .analysisBoardColumn {
+  gap: 2px;
+}
+
 .gameAnalysisHeader {
   display: grid;
-  gap: 4px;
+  gap: 0;
 }
 
 .analysisRightPanel.gameAnalysisPanel:not(.customExplorerSplit):not(.explorerCollapsed) {
@@ -27,31 +32,34 @@
 
 .gameAnalysisPlayer {
   min-width: 0;
-  min-height: 32px;
+  min-height: 42px;
   display: grid;
   grid-template-columns: 14px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 7px;
-  padding: 3px 5px;
-  border-radius: 5px;
+  gap: 8px;
+  padding: 7px 12px;
+}
+
+.gameAnalysisPlayer + .gameAnalysisPlayer {
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 68%, transparent);
 }
 
 .gameBoardClockRow {
   width: 100%;
-  min-height: 34px;
+  min-height: 20px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
 }
 
 .gameBoardClockRow .gameAnalysisClock {
-  min-width: 72px;
-  padding: 6px 9px;
+  min-width: 52px;
+  padding: 3px 6px;
   border: 1px solid var(--color-border);
-  border-radius: 5px;
+  border-radius: 4px;
   background: var(--color-surface-inset-strong);
   color: var(--color-heading);
-  font-size: 17px;
+  font-size: 13px;
   line-height: 1;
 }
 
@@ -79,7 +87,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--color-heading);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   text-decoration: none;
   text-overflow: ellipsis;
@@ -100,7 +108,7 @@
 .gameAnalysisRating,
 .gameAnalysisMeta {
   color: var(--color-muted);
-  font-size: 11px;
+  font-size: 10.5px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -140,8 +148,10 @@
 .gameAnalysisMeta {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px 12px;
-  padding: 6px 5px 4px 26px;
+  gap: 5px 10px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface-inset) 52%, transparent);
 }
 
 .gameAnalysisMeta strong {
@@ -150,10 +160,11 @@
 }
 
 .gameAnalysisResult {
-  margin: 4px 5px 0;
-  padding: 10px 5px 2px;
+  margin: 0;
+  padding: 11px 12px;
   border-top: 1px solid var(--color-border);
-  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-panel-strong) 58%, transparent);
+  color: var(--color-heading);
   font-size: 13px;
   font-weight: 650;
   text-align: center;
@@ -512,10 +523,10 @@
 
 @media (min-width: 1201px) {
   .analysisPage.gameAnalysisPage {
-    width: min(100%, calc(var(--analysis-board-size) + 700px));
+    width: min(100%, calc(var(--analysis-board-size) + 620px));
     grid-template-columns: minmax(220px, 250px) minmax(0, var(--analysis-board-size)) minmax(
-        370px,
-        420px
+        310px,
+        340px
       );
     column-gap: 16px;
   }
@@ -538,7 +549,7 @@
 
 @media (min-width: 981px) and (max-width: 1200px) {
   .analysisPage.gameAnalysisPage {
-    grid-template-columns: minmax(0, var(--analysis-board-size)) minmax(330px, 390px);
+    grid-template-columns: minmax(0, var(--analysis-board-size)) minmax(310px, 340px);
   }
 
   .gameAnalysisPage .analysisBoardColumn {

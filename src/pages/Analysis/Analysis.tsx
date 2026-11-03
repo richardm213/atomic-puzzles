@@ -433,8 +433,11 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
   };
   const currentPly = boardState?.lineIndex ?? 0;
   const customLines = useMemo(() => boardState?.customLines ?? [], [boardState?.customLines]);
+  const displayedBoardSize = game ? Math.min(Math.max(boardSize, 560), 600) : boardSize;
   const analysisPageStyle = {
-    "--analysis-board-size": `${game ? Math.min(boardSize, 500) : boardSize}px`,
+    "--analysis-board-size": game
+      ? `min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 84px))`
+      : `min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 40px))`,
   } as CSSProperties;
   const canStepBack = currentPly > 0;
   const canStepForward = currentPly < moveList.length;

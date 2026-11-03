@@ -1071,7 +1071,7 @@ export const PracticePage = () => {
   ]);
 
   const pageStyle = {
-    "--analysis-board-size": "516px",
+    "--analysis-board-size": "min(516px, calc(100dvh - var(--nav-height) - 40px))",
   } as CSSProperties;
 
   return (
