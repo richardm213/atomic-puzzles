@@ -64,7 +64,7 @@ describe("prediction order-book normalization", () => {
     expect(buildPredictionBook([expiringOrder], new Date(expiresAt)).yes.asks).toEqual([]);
   });
 
-  it("keeps average position cost accurate through buys, sells, and paired fills", () => {
+  it("keeps one net position with an accurate cost through buys, sells, and paired fills", () => {
     const fill = (
       id: number,
       overrides: Partial<PredictionPositionFill>,
@@ -109,7 +109,29 @@ describe("prediction order-book normalization", () => {
       "trader",
     );
 
-    expect(positions.yes).toEqual({ quantity: 15, averagePriceCents: 35 });
-    expect(positions.no).toEqual({ quantity: 3, averagePriceCents: 70 });
+    expect(positions.yes).toEqual({ quantity: 12, averagePriceCents: 35 });
+    expect(positions.no).toEqual({ quantity: 0, averagePriceCents: null });
+  });
+
+  it("closes an opposite position before opening the remainder", () => {
+    const positions = calculatePredictionPositionCost(
+      [
+        {
+          id: 1,
+          outcome: "no",
+          price_cents: 60,
+          quantity: 600,
+          buyer_username: "trader",
+          seller_username: "maker",
+          pair_key: null,
+          created_at: "2026-11-04T00:00:00Z",
+        },
+      ],
+      "trader",
+      { yes: { quantity: 500, costCents: 10_000 } },
+    );
+
+    expect(positions.yes).toEqual({ quantity: 0, averagePriceCents: null });
+    expect(positions.no).toEqual({ quantity: 100, averagePriceCents: 60 });
   });
 });

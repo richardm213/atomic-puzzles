@@ -76,6 +76,33 @@ export const calculatePredictionPositionCost = (
     no: { quantity: 0, costCents: 0, ...initialPositions?.no },
   };
 
+  const addPosition = (outcome: "yes" | "no", quantity: number, priceCents: number) => {
+    const position = positions[outcome];
+    const oppositePosition = positions[oppositeOutcome(outcome)];
+    const offsetQuantity = Math.min(quantity, oppositePosition.quantity);
+
+    if (offsetQuantity > 0) {
+      oppositePosition.costCents -=
+        (oppositePosition.costCents / oppositePosition.quantity) * offsetQuantity;
+      oppositePosition.quantity -= offsetQuantity;
+      if (oppositePosition.quantity === 0) oppositePosition.costCents = 0;
+    }
+
+    const remainingQuantity = quantity - offsetQuantity;
+    position.quantity += remainingQuantity;
+    position.costCents += priceCents * remainingQuantity;
+  };
+
+  const initialOffsetQuantity = Math.min(positions.yes.quantity, positions.no.quantity);
+  if (initialOffsetQuantity > 0) {
+    for (const outcome of ["yes", "no"] as const) {
+      const position = positions[outcome];
+      position.costCents -= (position.costCents / position.quantity) * initialOffsetQuantity;
+      position.quantity -= initialOffsetQuantity;
+      if (position.quantity === 0) position.costCents = 0;
+    }
+  }
+
   for (const fill of [...fills].sort(
     (left, right) => left.created_at.localeCompare(right.created_at) || left.id - right.id,
   )) {
@@ -83,8 +110,7 @@ export const calculatePredictionPositionCost = (
     const pairedSell = fill.pair_key !== null && fill.seller_username !== null;
 
     if (fill.buyer_username === normalizedUsername && !pairedSell) {
-      position.quantity += fill.quantity;
-      position.costCents += fill.price_cents * fill.quantity;
+      addPosition(fill.outcome, fill.quantity, fill.price_cents);
     }
 
     if (fill.seller_username === normalizedUsername && position.quantity > 0) {

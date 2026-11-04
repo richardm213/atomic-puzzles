@@ -245,8 +245,6 @@ type ExchangePositionRow = {
   quantity: number;
   reserved_quantity: number;
   updated_at: string;
-  legacyQuantity?: number;
-  legacyCostCents?: number;
 };
 type LegacyPositionCreditRow = {
   market_id: string;
@@ -308,6 +306,7 @@ const loadPredictionMarketStates = async (
   let positions: ExchangePositionRow[] = [];
   let userOrders: ExchangeOrderRow[] = [];
   let positionFills: ExchangeFillRow[] = [];
+  let legacyCredits: LegacyPositionCreditRow[] = [];
   if (username) {
     const [
       positionsResult,
@@ -366,22 +365,10 @@ const loadPredictionMarketStates = async (
     userOrders = (userOrdersResult.data ?? []) as unknown as ExchangeOrderRow[];
     const boughtFills = (boughtFillsResult.data ?? []) as unknown as ExchangeFillRow[];
     const soldFills = (soldFillsResult.data ?? []) as unknown as ExchangeFillRow[];
-    const legacyCredits = (legacyCreditsResult.data ?? []) as unknown as LegacyPositionCreditRow[];
+    legacyCredits = legacyCreditsResult.data ?? [];
     positionFills = [
       ...new Map([...boughtFills, ...soldFills].map((fill) => [fill.id, fill])).values(),
     ];
-    const legacyCreditsByMarket = groupByMarketId(legacyCredits);
-    positions = positions.map((position) => {
-      const credits = (legacyCreditsByMarket.get(position.market_id) ?? []).filter(
-        (credit) => credit.outcome === position.outcome,
-      );
-      const legacyQuantity = credits.reduce((total, credit) => total + credit.quantity, 0);
-      const legacyCostCents = credits.reduce(
-        (total, credit) => total + credit.quantity * credit.price_cents,
-        0,
-      );
-      return { ...position, legacyQuantity, legacyCostCents };
-    });
   }
 
   const bookOrdersByMarket = groupByMarketId(bookOrders);
@@ -389,14 +376,31 @@ const loadPredictionMarketStates = async (
   const positionFillsByMarket = groupByMarketId(positionFills);
   const positionsByMarket = groupByMarketId(positions);
   const userOrdersByMarket = groupByMarketId(userOrders);
+  const legacyCreditsByMarket = groupByMarketId(legacyCredits);
 
   return markets.map((market) => {
     const marketId = market.id;
     const marketBookOrders = bookOrdersByMarket.get(marketId) ?? [];
     const marketPositionFills = positionFillsByMarket.get(marketId) ?? [];
     const marketRecentFills = (recentFillsByMarket.get(marketId) ?? []).slice(0, 100);
+    const marketLegacyCredits = legacyCreditsByMarket.get(marketId) ?? [];
+    const initialPositions = Object.fromEntries(
+      (["yes", "no"] as const).map((outcome) => {
+        const credits = marketLegacyCredits.filter((credit) => credit.outcome === outcome);
+        return [
+          outcome,
+          {
+            quantity: credits.reduce((total, credit) => total + credit.quantity, 0),
+            costCents: credits.reduce(
+              (total, credit) => total + credit.quantity * credit.price_cents,
+              0,
+            ),
+          },
+        ];
+      }),
+    );
     const positionCosts = username
-      ? calculatePredictionPositionCost(marketPositionFills, username)
+      ? calculatePredictionPositionCost(marketPositionFills, username, initialPositions)
       : null;
     return {
       market:
@@ -413,15 +417,11 @@ const loadPredictionMarketStates = async (
       fills: marketRecentFills,
       positions: (positionsByMarket.get(marketId) ?? []).map((position) => {
         const cost = positionCosts?.[position.outcome];
-        const { legacyQuantity = 0, legacyCostCents = 0, ...publicPosition } = position;
-        const trackedQuantity = (cost?.quantity ?? 0) + legacyQuantity;
-        const trackedCostCents =
-          (cost?.averagePriceCents ?? 0) * (cost?.quantity ?? 0) + legacyCostCents;
         return {
-          ...publicPosition,
+          ...position,
           average_price_cents:
-            trackedQuantity === position.quantity && trackedQuantity > 0
-              ? trackedCostCents / trackedQuantity
+            cost?.quantity === position.quantity && cost.quantity > 0
+              ? cost.averagePriceCents
               : null,
         };
       }),
