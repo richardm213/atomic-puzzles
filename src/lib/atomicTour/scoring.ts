@@ -146,6 +146,9 @@ export const atomicTourEventPoints: Readonly<Record<string, AtomicTourEventTier>
   ahc: 1000,
   aoc: 1000,
   a960e: 1000,
+  a960wc: 1000,
+  a960wc2021: 2000,
+  a960wc2023: 2000,
   wolfarena: 1000,
 };
 

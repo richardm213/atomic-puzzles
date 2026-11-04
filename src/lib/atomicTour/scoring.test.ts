@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   atomicChessLeagueTourPoints,
   atomicTourAwardExpiryDate,
+  atomicTourEventPoints,
   atomicTourLosersBracketRoundCountForStart,
   atomicTourLosersBracketWinPoints,
   atomicTourMainStageForResults,
@@ -29,6 +30,12 @@ describe("Atomic Tour scoring", () => {
     expect(calculateKnockoutTourPoints({ tier: 1000, mainStage: "quarterfinal" }).totalPoints).toBe(
       180,
     );
+  });
+
+  it("applies the Atomic 960 series tier and edition-specific overrides", () => {
+    expect(atomicTourEventPoints.a960wc).toBe(1000);
+    expect(atomicTourEventPoints.a960wc2021).toBe(2000);
+    expect(atomicTourEventPoints.a960wc2023).toBe(2000);
   });
 
   it("maps final standings to bracket-equivalent placement tiers", () => {

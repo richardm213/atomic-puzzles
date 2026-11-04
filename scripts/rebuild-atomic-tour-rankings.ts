@@ -193,7 +193,7 @@ const awardKey = (...parts: string[]): string =>
     .join(":");
 
 const knockoutAwards = (event: CatalogRow, matches: MatchRow[]): PointAward[] => {
-  const tier = atomicTourEventPoints[event.series_key];
+  const tier = atomicTourEventPoints[event.id] ?? atomicTourEventPoints[event.series_key];
   if (!tier) return [];
   const fallbackDate = event.end_date ?? today;
   const playerStages = new Map<string, AtomicTourMainStage>();
@@ -539,7 +539,7 @@ const run = async () => {
   const participants = new Map<string, Set<string>>();
   for (const event of catalog as CatalogRow[]) {
     if (requestedEventId && event.id !== requestedEventId) continue;
-    if (!["awc", "ccac", "ahc", "aoc", "a960e"].includes(event.series_key)) continue;
+    if (!["awc", "ccac", "ahc", "aoc", "a960e", "a960wc"].includes(event.series_key)) continue;
     const eventMatches = matches.filter((match) => match.tournament === event.id);
     eventMatches.forEach((match) => {
       addParticipant(participants, event.id, match.p1);
