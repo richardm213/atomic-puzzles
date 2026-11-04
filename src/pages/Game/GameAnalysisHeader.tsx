@@ -137,9 +137,6 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
           </Link>
         ) : null}
         <span className="gameAnalysisDate">{formatLocalDateTime(game.start_ts)}</span>
-        {!tournamentLocation && game.tournament ? (
-          <span className="gameAnalysisTournament">{game.tournament}</span>
-        ) : null}
       </div>
       <div className="gameAnalysisPlayers">
         {player(white, "white")}

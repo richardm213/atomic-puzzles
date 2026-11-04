@@ -1,5 +1,6 @@
 import { faCheck, faClipboard } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
 import { z } from "zod";
@@ -477,6 +478,15 @@ export const GameUnderboard = ({
                       ? "Retry analysis request"
                       : "Request analysis"}
                 </button>
+              ) : null}
+              {game.external_match_id ? (
+                <Link
+                  to="/match/$matchId"
+                  params={{ matchId: game.external_match_id }}
+                  aria-label="View match"
+                >
+                  View match
+                </Link>
               ) : null}
               <CopyButton label="Copy PGN" value={pgn} />
               <button type="button" onClick={downloadPgn} disabled={!pgn}>

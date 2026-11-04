@@ -232,8 +232,7 @@
   text-transform: capitalize;
 }
 
-.gameAnalysisDate,
-.gameAnalysisTournament {
+.gameAnalysisDate {
   color: color-mix(in srgb, var(--color-heading) 68%, var(--color-muted));
 }
 
