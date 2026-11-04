@@ -194,9 +194,9 @@ type BettingHistoryProps = {
 
 const historyStatusFilters = new Set(["all", "open", "won", "lost", "settled", "refunded"]);
 
-const historyFiltersFromSearch = (search: string) => {
+const historyFiltersFromSearch = (search: string, defaultStatus = "all") => {
   const searchParams = new URLSearchParams(search);
-  const requestedStatus = searchParams.get("status") ?? "all";
+  const requestedStatus = searchParams.get("status") ?? defaultStatus;
   return {
     bettor: searchParams.get("bettor") ?? "",
     market: searchParams.get("strike") ?? "all",
@@ -221,8 +221,12 @@ export const BettingHistory = ({
   allBetsError,
 }: BettingHistoryProps) => {
   const initialFilters = useMemo(
-    () => historyFiltersFromSearch(typeof window === "undefined" ? "" : window.location.search),
-    [],
+    () =>
+      historyFiltersFromSearch(
+        typeof window === "undefined" ? "" : window.location.search,
+        view === "all" ? "open" : "all",
+      ),
+    [view],
   );
   const [bettorFilter, setBettorFilter] = useState(initialFilters.bettor);
   const [statusFilter, setStatusFilter] = useState(initialFilters.status);
@@ -273,12 +277,19 @@ export const BettingHistory = ({
   const filtersActive = statusFilter !== "all" || marketFilter !== "all";
 
   useEffect(() => {
-    if (view !== "all") return;
-    const syncFiltersFromHistory = () => {
-      const filters = historyFiltersFromSearch(window.location.search);
+    const syncFiltersFromLocation = () => {
+      const filters = historyFiltersFromSearch(
+        window.location.search,
+        view === "all" ? "open" : "all",
+      );
       setBettorFilter(filters.bettor);
       setMarketFilter(filters.market);
       setStatusFilter(filters.status);
+    };
+    syncFiltersFromLocation();
+    if (view !== "all") return;
+    const syncFiltersFromHistory = () => {
+      syncFiltersFromLocation();
     };
     window.addEventListener("popstate", syncFiltersFromHistory);
     return () => window.removeEventListener("popstate", syncFiltersFromHistory);
@@ -293,7 +304,7 @@ export const BettingHistory = ({
     };
     setOrDelete("bettor", bettorFilter.trim(), "");
     setOrDelete("strike", marketFilter, "all");
-    setOrDelete("status", statusFilter, "all");
+    setOrDelete("status", statusFilter, "open");
     window.history.replaceState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
   }, [bettorFilter, marketFilter, statusFilter, view]);
 
