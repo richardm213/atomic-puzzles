@@ -1,10 +1,12 @@
+import { faArrowRightArrowLeft } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { CSSProperties, ReactNode } from "react";
+import { useState } from "react";
 
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
-import { useAppSettings } from "../../context/AppSettings";
 import type { ArchiveGame } from "../../lib/archive/games";
 import {
   loadRawMatchById,
@@ -54,25 +56,52 @@ const Crosstable = ({
   results,
   label,
   embedded,
+  unit,
+  matchId,
+  onToggleUnit,
 }: {
   playerOne: string;
   playerTwo: string;
   results: CrosstableResult[];
   label: string;
   embedded: boolean;
+  unit: "games" | "matches";
+  matchId: string;
+  onToggleUnit: () => void;
 }) => {
   const playerOneTotal = results.reduce((sum, result) => sum + result.playerOne, 0);
   const playerTwoTotal = results.reduce((sum, result) => sum + result.playerTwo, 0);
   const dense = results.length > 8;
+  const nextUnitLabel = unit === "games" ? "matches in this mode" : "games in this match";
+  const toolbar = (
+    <div className="gameMatchCrosstableToolbar">
+      <button
+        type="button"
+        className="gameMatchCrosstableToggle"
+        aria-label={`Switch to ${nextUnitLabel}`}
+        title={`Switch to ${nextUnitLabel}`}
+        aria-pressed={unit === "matches"}
+        onClick={onToggleUnit}
+      >
+        <FontAwesomeIcon icon={faArrowRightArrowLeft} aria-hidden="true" />
+        <span>{unit === "games" ? "Games" : "Matches"}</span>
+      </button>
+      {matchId ? (
+        <Link className="gameMatchCrosstableMatchLink" to="/matches/$matchId" params={{ matchId }}>
+          View match
+        </Link>
+      ) : null}
+    </div>
+  );
   const content = (
     <>
       {!embedded ? (
         <div className="gameMatchCrosstableHeading">
           <h2 id="game-match-crosstable-title">Crosstable</h2>
-          <span>{label}</span>
+          {toolbar}
         </div>
       ) : (
-        <div className="gameMatchCrosstableMeta">{label}</div>
+        toolbar
       )}
       <div className="gameMatchCrosstableScroll">
         <div
@@ -114,7 +143,10 @@ export const GameMatchCrosstable = ({
   game: ArchiveGame;
   embedded?: boolean;
 }) => {
-  const { gameCrosstableUnit } = useAppSettings();
+  const [unitSelection, setUnitSelection] = useState<{
+    gameId: string;
+    unit: "games" | "matches";
+  }>({ gameId: game.game_id, unit: "games" });
   const matchQuery = useQuery({
     queryKey: ["games", "match-crosstable", game.external_match_id],
     queryFn: () => loadRawMatchById(game.external_match_id),
@@ -122,8 +154,8 @@ export const GameMatchCrosstable = ({
     staleTime: 10 * 60 * 1_000,
   });
   const match = matchQuery.data;
-  const showMatchHistory =
-    gameCrosstableUnit === "matches" || Boolean(match && match.games.length < 2);
+  const unit = unitSelection.gameId === game.game_id ? unitSelection.unit : "games";
+  const showMatchHistory = unit === "matches";
   const players: [string, string] = match?.players ?? [game.player_1, game.player_2];
   const historyQuery = useQuery({
     queryKey: ["games", "player-match-crosstable", game.mode, players[0], players[1]],
@@ -132,9 +164,13 @@ export const GameMatchCrosstable = ({
         filters: { usernamePair: [players[0], players[1]] },
         includeTotal: false,
       }),
-    enabled: showMatchHistory && Boolean(players[0] && players[1]),
+    enabled: Boolean(players[0] && players[1]),
     staleTime: 10 * 60 * 1_000,
   });
+  const toggleUnit = () => {
+    const nextUnit = unit === "games" ? "matches" : "games";
+    setUnitSelection({ gameId: game.game_id, unit: nextUnit });
+  };
 
   if (!match && !showMatchHistory) {
     if (!embedded) return null;
@@ -194,11 +230,14 @@ export const GameMatchCrosstable = ({
         results={results}
         label={`${results.length} ${results.length === 1 ? "match" : "matches"} in ${game.mode}`}
         embedded={embedded}
+        unit={unit}
+        matchId={game.external_match_id}
+        onToggleUnit={toggleUnit}
       />
     );
   }
 
-  if (!match || match.games.length < 2) return null;
+  if (!match) return null;
   const results = match.games.map((matchGame, index): CrosstableResult => {
     const playerOne = scoreForPlayer(matchGame, players[0]);
     const playerTwo = scoreForPlayer(matchGame, players[1]);
@@ -227,6 +266,9 @@ export const GameMatchCrosstable = ({
       results={results}
       label={`${results.length} games`}
       embedded={embedded}
+      unit={unit}
+      matchId={game.external_match_id}
+      onToggleUnit={toggleUnit}
     />
   );
 };

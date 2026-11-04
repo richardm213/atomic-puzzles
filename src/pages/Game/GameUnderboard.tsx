@@ -427,7 +427,9 @@ export const GameUnderboard = ({
           )
         ) : null}
 
-        {activeTab === "crosstable" ? <GameMatchCrosstable game={game} embedded /> : null}
+        <div hidden={activeTab !== "crosstable"}>
+          <GameMatchCrosstable game={game} embedded />
+        </div>
 
         {activeTab === "share" ? (
           <div className="gameSharePanel">

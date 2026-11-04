@@ -35,7 +35,6 @@ const STORAGE_KEYS = {
   showPuzzleTimer: "atomic-puzzles.puzzles.show-timer-v2",
   puzzleAnalysisTarget: "atomic-puzzles.puzzles.analysis-link-target",
   lichessLinkTarget: "atomic-puzzles.games.lichess-link-target",
-  gameCrosstableUnit: "atomic-puzzles.games.crosstable-unit",
   showRatingGraphLines: "profile.ratingGraph.showLines",
   hiddenRatingGraphModes: "profile.ratingGraph.hiddenModes",
 };
@@ -199,8 +198,6 @@ export type AppSettingsContextValue = {
   setPuzzleAnalysisTarget: Dispatch<SetStateAction<"atomic-puzzles" | "lichess">>;
   lichessLinkTarget: "atomic-puzzles" | "lichess";
   setLichessLinkTarget: Dispatch<SetStateAction<"atomic-puzzles" | "lichess">>;
-  gameCrosstableUnit: "games" | "matches";
-  setGameCrosstableUnit: Dispatch<SetStateAction<"games" | "matches">>;
   showCoinBalance: boolean;
   setShowCoinBalance: Dispatch<SetStateAction<boolean>>;
   showCoinChangePopups: boolean;
@@ -333,11 +330,6 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.enum(["atomic-puzzles", "lichess"]),
     "lichess",
   );
-  const [gameCrosstableUnit, setGameCrosstableUnit] = usePersistedState<"games" | "matches">(
-    STORAGE_KEYS.gameCrosstableUnit,
-    z.enum(["games", "matches"]),
-    "games",
-  );
   const [showCoinBalance, setShowCoinBalance] = usePersistedState(
     STORAGE_KEYS.showCoinBalance,
     z.boolean(),
@@ -449,8 +441,6 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setPuzzleAnalysisTarget,
       lichessLinkTarget,
       setLichessLinkTarget,
-      gameCrosstableUnit,
-      setGameCrosstableUnit,
       showCoinBalance,
       setShowCoinBalance,
       showCoinChangePopups,
@@ -502,8 +492,6 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setPuzzleAnalysisTarget,
       lichessLinkTarget,
       setLichessLinkTarget,
-      gameCrosstableUnit,
-      setGameCrosstableUnit,
       showCoinBalance,
       setShowCoinBalance,
       showCoinChangePopups,

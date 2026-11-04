@@ -168,8 +168,6 @@ export const TopNav = () => {
     setPuzzleAnalysisTarget,
     lichessLinkTarget,
     setLichessLinkTarget,
-    gameCrosstableUnit,
-    setGameCrosstableUnit,
     showCoinBalance,
     setShowCoinBalance,
     showCoinChangePopups,
@@ -775,23 +773,6 @@ export const TopNav = () => {
                   <option value="atomic-puzzles">Atomic Puzzles</option>
                 </select>
               </div>
-              {/^\/games\/[^/]+\/?$/.test(pathname) ? (
-                <div className="navSettingsSection">
-                  <label className="navSettingsLabel" htmlFor="game-crosstable-unit-select">
-                    Crosstable
-                  </label>
-                  <select
-                    id="game-crosstable-unit-select"
-                    value={gameCrosstableUnit}
-                    onChange={(event) =>
-                      setGameCrosstableUnit(event.target.value === "matches" ? "matches" : "games")
-                    }
-                  >
-                    <option value="games">Games in this match</option>
-                    <option value="matches">Matches in this mode</option>
-                  </select>
-                </div>
-              ) : null}
               {pathname === "/rankings" || pathname === "/rankings/yearly" ? (
                 <div className="navSettingsSection">
                   <label className="navSettingsCheckbox">

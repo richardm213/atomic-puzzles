@@ -231,11 +231,6 @@
   font-size: 16px;
 }
 
-.gameMatchCrosstableHeading span {
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
 .gameMatchCrosstableScroll {
   max-width: 100%;
   overflow-x: auto;
@@ -798,11 +793,58 @@
   padding-top: 10px;
 }
 
-.gameMatchCrosstableMeta {
+.gameMatchCrosstableToolbar {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
   margin-bottom: 8px;
+}
+
+.gameMatchCrosstableHeading .gameMatchCrosstableToolbar {
+  margin-bottom: 0;
+}
+
+.gameMatchCrosstableToggle,
+.gameMatchCrosstableMatchLink {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  font: inherit;
   color: var(--color-muted);
   font-size: 12px;
-  text-align: right;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.gameMatchCrosstableToggle:hover,
+.gameMatchCrosstableMatchLink:hover {
+  border-color: var(--color-primary-soft);
+  background: var(--color-table-hover);
+  color: var(--color-heading);
+}
+
+.gameMatchCrosstableToggle:active,
+.gameMatchCrosstableMatchLink:active {
+  translate: 0 1px;
+}
+
+.gameMatchCrosstableToggle:focus-visible,
+.gameMatchCrosstableMatchLink:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
 }
 
 .gameSharePanel {
