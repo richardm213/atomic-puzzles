@@ -38,32 +38,69 @@ test("puzzle solver keeps its primary controls within the mobile viewport", asyn
 });
 
 test("puzzle number fits the iPhone 17 and iPhone SE layouts", async ({ page }) => {
+  let puzzleIsSolved = false;
+
+  await page.route("**/__e2e_supabase/rest/v1/rpc/get_puzzle_progress_page_v3", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(
+        puzzleIsSolved
+          ? [
+              {
+                puzzle_id: "101",
+                first_attempt_at: "2026-11-04T08:00:00.000Z",
+                first_attempt_duration_ms: 14_000,
+                puzzle_correct: true,
+                rated: true,
+                incorrect_move: null,
+                correct_move: "e4",
+                total_count: 1,
+              },
+            ]
+          : [],
+      ),
+    }),
+  );
+
   for (const viewport of [
     { width: 402, height: 874 },
     { width: 375, height: 667 },
   ]) {
-    await page.setViewportSize(viewport);
-    await page.goto("/solve/101");
+    for (const solved of [false, true]) {
+      puzzleIsSolved = solved;
+      await page.setViewportSize(viewport);
+      await page.goto("/solve/101");
 
-    const puzzleNumber = page.getByLabel("Puzzle 101", { exact: true });
-    await expect(puzzleNumber).toBeVisible();
+      const puzzleNumber = page.getByLabel("Puzzle 101", { exact: true });
+      await expect(puzzleNumber).toBeVisible();
+      await expect(page.locator(".mobileWorkflowPanel")).toBeVisible({ visible: solved });
 
-    const layout = await page.evaluate(() => {
-      const status = document.querySelector(".mobilePuzzleStatus")?.getBoundingClientRect();
-      const number = document.querySelector(".mobilePuzzleNumber")?.getBoundingClientRect();
-      return {
-        clientWidth: document.documentElement.clientWidth,
-        scrollWidth: document.documentElement.scrollWidth,
-        numberLeft: number?.left ?? -1,
-        numberRight: number?.right ?? Number.POSITIVE_INFINITY,
-        statusLeft: status?.left ?? 0,
-        statusRight: status?.right ?? 0,
-      };
-    });
+      const layout = await page.evaluate(() => {
+        const status = document.querySelector(".mobilePuzzleStatus")?.getBoundingClientRect();
+        const number = document.querySelector(".mobilePuzzleNumber")?.getBoundingClientRect();
+        const navigation = document.querySelector(".mobileBottomNav")?.getBoundingClientRect();
+        return {
+          clientWidth: document.documentElement.clientWidth,
+          viewportHeight: window.innerHeight,
+          scrollWidth: document.documentElement.scrollWidth,
+          numberLeft: number?.left ?? -1,
+          numberRight: number?.right ?? Number.POSITIVE_INFINITY,
+          statusLeft: status?.left ?? 0,
+          statusRight: status?.right ?? 0,
+          navigationLeft: navigation?.left ?? -1,
+          navigationRight: navigation?.right ?? Number.POSITIVE_INFINITY,
+          navigationBottom: navigation?.bottom ?? Number.POSITIVE_INFINITY,
+        };
+      });
 
-    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
-    expect(layout.numberLeft).toBeGreaterThanOrEqual(layout.statusLeft);
-    expect(layout.numberRight).toBeLessThanOrEqual(layout.statusRight);
+      expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
+      expect(layout.numberLeft).toBeGreaterThanOrEqual(layout.statusLeft);
+      expect(layout.numberRight).toBeLessThanOrEqual(layout.statusRight);
+      expect(layout.navigationLeft).toBeGreaterThanOrEqual(0);
+      expect(layout.navigationRight).toBeLessThanOrEqual(layout.clientWidth);
+      expect(layout.navigationBottom).toBeLessThanOrEqual(layout.viewportHeight);
+    }
   }
 });
 
