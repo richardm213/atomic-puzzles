@@ -17,12 +17,12 @@ import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/Rout
 import { Seo } from "../../components/Seo/Seo";
 import { TournamentPlayerLink } from "../../components/TournamentPlayerLink/TournamentPlayerLink";
 import { modeLabels } from "../../constants/matches";
-import { TournamentFairPlayFlag } from "../../features/tournaments/TournamentFairPlayFlag";
 import {
   fetchChampionshipTrophies,
   ProfileTrophyLink,
   sortProfileTrophies,
 } from "../../features/profile/profileTrophies";
+import { TournamentFairPlayFlag } from "../../features/tournaments/TournamentFairPlayFlag";
 import {
   buildAtomicChessLeaguePlayerAppearances,
   countTournamentPlayerTitles,
@@ -407,11 +407,17 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
                 <div className="tournamentProfileRankAndMove">
                   <dt className="tournamentProfileRankLabel">Tour rank</dt>
                   <dd className="tournamentProfileRankValue">
-                    <Link className="tournamentProfileTourRankLink" to="/rankings/tour">
-                      {tourRankingStatsQuery.data.currentRank
-                        ? `#${tourRankingStatsQuery.data.currentRank}`
-                        : "—"}
-                    </Link>
+                    {tourRankingStatsQuery.data.currentRank ? (
+                      <Link
+                        className="tournamentProfileTourRankLink"
+                        to="/rankings/tour"
+                        hash={`${tourRankingStatsQuery.data.currentRank}`}
+                      >
+                        #{tourRankingStatsQuery.data.currentRank}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
                   </dd>
                   <dt className="tournamentProfileMoveLabel">Move</dt>
                   <dd

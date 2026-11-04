@@ -48,7 +48,19 @@ export const AtomicTourRankingsPage = () => {
   }, [selectedDate, snapshotDates]);
 
   const rankingsQuery = useQuery(atomicTourRankingsQueryOptions(selectedDate));
-  const rankings = rankingsQuery.data ?? [];
+  const rankings = useMemo(() => rankingsQuery.data ?? [], [rankingsQuery.data]);
+
+  useEffect(() => {
+    const rankHash = /^#(\d+)$/.exec(window.location.hash);
+    if (!rankHash || !rankings.length) return;
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      document.getElementById(rankHash[1]!)?.scrollIntoView({ block: "start" });
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [rankings]);
+
   const loading =
     snapshotsQuery.isPending ||
     (snapshotDates.length > 0 && (!selectedDate || rankingsQuery.isPending));
@@ -135,7 +147,7 @@ export const AtomicTourRankingsPage = () => {
             </thead>
             <tbody>
               {rankings.map((player) => (
-                <tr key={player.playerName}>
+                <tr key={player.playerName} id={`${player.rank}`}>
                   <td className="atomicTourRank">{player.rank}</td>
                   <td>
                     <span

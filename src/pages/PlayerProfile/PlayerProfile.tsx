@@ -917,6 +917,7 @@ export const PlayerProfilePage = ({
                   <Link
                     className="profileTourRankLink"
                     to="/rankings/tour"
+                    hash={`${tourRankingStatsQuery.data.currentRank}`}
                     aria-label={`Atomic Chess Tour rank ${tourRankingStatsQuery.data.currentRank}`}
                     title={`Atomic Chess Tour rank #${tourRankingStatsQuery.data.currentRank}`}
                   >

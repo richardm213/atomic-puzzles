@@ -167,6 +167,14 @@
   background: color-mix(in srgb, var(--color-table-head) 74%, var(--color-panel-strong));
 }
 
+.atomicTourTable tbody tr {
+  scroll-margin-block-start: 176px;
+}
+
+.atomicTourTable tbody tr:target {
+  background: var(--color-table-hover);
+}
+
 .atomicTourTable th {
   font-size: 0.68rem;
   letter-spacing: 0.055em;

@@ -110,6 +110,7 @@ const PlayerHoverCardContent = ({
           <Link
             className="playerHoverCardTourRank"
             to="/rankings/tour"
+            hash={`${social.tourRank}`}
             aria-label={`Atomic Chess Tour rank ${social.tourRank}`}
             title="Live Atomic Chess Tour rank"
           >
