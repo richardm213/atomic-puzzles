@@ -111,12 +111,7 @@ const AnalysisLink = ({
     <span className="fenAnalyzeIcon" aria-hidden="true">
       <FontAwesomeIcon icon={faMagnifyingGlass} />
     </span>
-    <span className="fenAnalyzeText">
-      <span>Analyze</span>
-      <strong>
-        {mobile ? `Analyze ${label === "Current Position" ? "Position" : label}` : label}
-      </strong>
-    </span>
+    <span className="fenAnalyzeText">Analyze {label}</span>
     <FontAwesomeIcon className="fenAnalyzeExternalIcon" icon={faArrowUpRightFromSquare} />
   </a>
 );
