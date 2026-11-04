@@ -79,7 +79,6 @@ export const MatchDetails = ({
         <strong>Game</strong>
         <strong>Result</strong>
         {showRunningScore ? <strong>Score</strong> : null}
-        <strong>Time control</strong>
         <strong>ID</strong>
       </div>
       <ul className="matchGamesList">
@@ -90,7 +89,6 @@ export const MatchDetails = ({
             {showRunningScore ? (
               <span>{`${formatScore(game.scoreAAfter)} - ${formatScore(game.scoreBAfter)}`}</span>
             ) : null}
-            <span className="timeControlValue">{game.timeControl || match.timeControl}</span>
             <span>
               <LichessGameLink
                 gameId={game.id}
