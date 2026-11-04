@@ -707,6 +707,28 @@ describe("Chessboard orchestration", () => {
     });
   });
 
+  it("loads a requested PGN branch at the requested ply", () => {
+    const states = renderBoard({
+      solutionNavigation: {
+        type: "loadPgn",
+        pgn: "1. e4 e5 (1... c5 2. Nf3) 2. Nf3",
+        fen: STARTING_FEN,
+        line: 1,
+        ply: 2,
+      },
+    });
+
+    expect(states.at(-1)).toMatchObject({
+      lineMoves: ["e4", "c5", "Nf3"],
+      lineIndex: 2,
+      customLineIndex: 1,
+    });
+    expect(states.at(-1)?.customLines).toEqual([
+      ["e4", "e5", "Nf3"],
+      ["e4", "c5", "Nf3"],
+    ]);
+  });
+
   it("preserves a custom branch while cycling between continuation options", () => {
     const states = renderBoard({ solution: "1. e4 e5 2. Nf3", showSolution: true });
 

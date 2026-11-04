@@ -1087,7 +1087,7 @@ const ChessboardComponent = ({
   );
 
   const loadPgnMainline = useCallback(
-    (initialFen: string, pgn: string): void => {
+    (initialFen: string, pgn: string, requestedLine?: number, requestedPly?: number): void => {
       clearMoveEvaluationTimer();
       clearPendingPromotion();
 
@@ -1103,19 +1103,28 @@ const ChessboardComponent = ({
         return;
       }
 
-      resetSession({ history: result.history });
-
+      const lineIndex = Math.max(0, Math.min(requestedLine ?? 0, result.histories.length - 1));
+      const selectedHistory = result.histories[lineIndex] ?? result.history;
+      resetSession({ history: selectedHistory });
       if (result.histories.length > 1) {
         result.histories.forEach((history) => saveVariation(customVariationsRef.current, history));
-        activeLineRef.current = { source: "custom", index: 0 };
+        activateHistory({
+          history: selectedHistory,
+          ply: requestedPly,
+          activeLine: { source: "custom", index: lineIndex },
+          locked: false,
+        });
+        return;
       }
 
-      syncBoard(result.position, result.history.plies[result.history.index]?.lastMove, {
-        solved: false,
-        viewingSolution: false,
+      activateHistory({
+        history: selectedHistory,
+        ply: requestedPly,
+        activeLine: { source: "history" },
+        locked: false,
       });
     },
-    [clearMoveEvaluationTimer, clearPendingPromotion, emitState, resetSession, syncBoard],
+    [activateHistory, clearMoveEvaluationTimer, clearPendingPromotion, emitState, resetSession],
   );
 
   const handleBoardMove = useCallback(
@@ -1201,7 +1210,12 @@ const ChessboardComponent = ({
         resetToFen(solutionNavigation.fen);
         break;
       case "loadPgn":
-        loadPgnMainline(solutionNavigation.fen ?? fenRef.current, solutionNavigation.pgn);
+        loadPgnMainline(
+          solutionNavigation.fen ?? fenRef.current,
+          solutionNavigation.pgn,
+          solutionNavigation.line,
+          solutionNavigation.ply,
+        );
         break;
       case "play":
         playUciMove(solutionNavigation.uci);

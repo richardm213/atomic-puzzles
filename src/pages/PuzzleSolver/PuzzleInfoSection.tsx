@@ -34,9 +34,8 @@ type PuzzleInfoSectionProps = {
     canReveal: boolean;
     buttonTitle: string;
     fen: string;
-    currentFen: string;
-    startAnalysisUrl: string;
-    currentAnalysisUrl: string;
+    analysisUrl: string;
+    onAnalyze: () => void;
     canStart: boolean;
     canPrevious: boolean;
     canNext: boolean;
@@ -84,11 +83,13 @@ const AnalysisLink = ({
   enabled,
   label,
   mobile,
+  onActivate,
 }: {
   href: string;
   enabled: boolean;
   label: string;
   mobile: boolean;
+  onActivate: () => void;
 }) => (
   <a
     className={`fenAnalyzeButton ${mobile ? "mobileAnalyzeButton" : ""} ${
@@ -100,7 +101,11 @@ const AnalysisLink = ({
     aria-label={`Analyze ${label}`}
     aria-disabled={!enabled}
     onClick={(event) => {
-      if (!enabled) event.preventDefault();
+      if (!enabled) {
+        event.preventDefault();
+        return;
+      }
+      onActivate();
     }}
   >
     <span className="fenAnalyzeIcon" aria-hidden="true">
@@ -219,16 +224,11 @@ export const PuzzleInfoSection = ({
       <div className="puzzleInfoPanel">
         <div className={mobile ? "mobileAnalyzeActions" : "analysisButtonsRow"}>
           <AnalysisLink
-            href={solution.startAnalysisUrl}
+            href={solution.analysisUrl}
             enabled={Boolean(solution.fen)}
             label="Puzzle"
             mobile={mobile}
-          />
-          <AnalysisLink
-            href={solution.currentAnalysisUrl}
-            enabled={Boolean(solution.currentFen)}
-            label="Current Position"
-            mobile={mobile}
+            onActivate={solution.onAnalyze}
           />
         </div>
         <div className={mobile ? "lineBox mobileLineBox" : "lineBox"}>

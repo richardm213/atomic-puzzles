@@ -43,6 +43,7 @@ import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
+import { readAnalysisHandoff } from "../../lib/analysis/handoff";
 import { type ArchiveGame, decodeGameResult } from "../../lib/archive/games";
 import { warmFairyStockfish } from "../../lib/practice/fairyStockfish";
 import { createAtomicPosition, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
@@ -328,7 +329,13 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
   const navigate = useNavigate();
   const { gameExplorerOnLeft } = useAppSettings();
   const { _splat: fenPath } = useParams({ strict: false });
-  const routeFen = game && initialFen ? initialFen : fenFromRoute(fenPath);
+  const locationSearch = typeof window === "undefined" ? "" : window.location.search;
+  const analysisHandoff = useMemo(
+    () => (game ? null : readAnalysisHandoff(locationSearch)),
+    [game, locationSearch],
+  );
+  const routeFen =
+    game && initialFen ? initialFen : (analysisHandoff?.fen ?? fenFromRoute(fenPath));
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const rightPanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
@@ -601,12 +608,18 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
   useEffect(() => {
     gamePlyInitializedRef.current = !game;
     setRootFen(routeFen);
+    const startupPgn = initialPgn || analysisHandoff?.pgn || "";
     setNavigation(
-      initialPgn
-        ? { type: "loadPgn", pgn: initialPgn, fen: routeFen }
+      startupPgn
+        ? {
+            type: "loadPgn",
+            pgn: startupPgn,
+            fen: routeFen,
+            ...(analysisHandoff ? { line: analysisHandoff.line, ply: analysisHandoff.ply } : {}),
+          }
         : { type: "reset", fen: routeFen },
     );
-  }, [game, initialPgn, routeFen]);
+  }, [analysisHandoff, game, initialPgn, routeFen]);
 
   const requestNavigation = useCallback((command: PlaybackCommand): void => {
     setNavigation({ type: "command", command });

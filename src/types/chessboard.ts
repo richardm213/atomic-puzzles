@@ -34,7 +34,7 @@ export type SolutionNavigation =
   | { type: "play"; uci: string }
   | { type: "line"; ucis: string[] }
   | { type: "reset"; fen: string }
-  | { type: "loadPgn"; pgn: string; fen?: string }
+  | { type: "loadPgn"; pgn: string; fen?: string; line?: number; ply?: number }
   | { type: "history"; ply: number }
   | { type: "solution"; line: number; ply: number }
   | { type: "custom"; line: number; ply: number };

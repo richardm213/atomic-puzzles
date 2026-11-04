@@ -1822,7 +1822,7 @@ button.puzzleRatingBadge.editable:focus-visible {
 }
 
 .analysisButtonsRow {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .analysisButtonsRow .fenAnalyzeButton,
@@ -2458,7 +2458,7 @@ button.puzzleRatingBadge.editable:focus-visible {
 
   .mobileActionCard .mobileAnalyzeActions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 0;
     padding: 4px 0;
     border-bottom: 1px solid color-mix(in srgb, var(--color-border) 64%, transparent);

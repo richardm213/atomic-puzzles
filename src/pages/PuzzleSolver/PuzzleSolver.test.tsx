@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { readAnalysisHandoff } from "../../lib/analysis/handoff";
 import type { AttemptResolved, SolutionNavigation } from "../../types/chessboard";
 
 const mocks = vi.hoisted(() => ({
@@ -843,16 +844,35 @@ describe("PuzzleSolverPage solution options", () => {
     expect(await screen.findByLabelText("Attempt time 1:05")).toHaveTextContent("1:05");
   });
 
-  it("opens puzzle positions in the Atomic Puzzles analysis board by default", async () => {
+  it("opens the complete puzzle analysis at the current branch and ply", async () => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
 
     await user.click(await screen.findByRole("tab", { name: "Solution" }));
-
-    expect(screen.getByRole("link", { name: "Analyze Puzzle" })).toHaveAttribute(
-      "href",
-      "/analysis/rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R_b_KQkq_-_1_12",
+    const optionList = await screen.findByRole("list", { name: "Solution options" });
+    await user.click(within(optionList).getByRole("button", { name: "1. Rf8" }));
+    await waitFor(() =>
+      expect(mocks.chessboardProps.at(-1)?.solutionNavigation).toEqual({
+        type: "solution",
+        line: 1,
+        ply: 1,
+      }),
     );
+
+    const analyzeLink = screen.getByRole("link", { name: "Analyze Puzzle" });
+    const href = analyzeLink.getAttribute("href") ?? "";
+    expect(href).toMatch(
+      /^\/analysis\/rn2k2r\/pp5p\/1qpp2p1\/2Q5\/1b2P3\/2N5\/PPP3PP\/R3KB1R_b_KQkq_-_1_12\?handoff=/,
+    );
+    expect(
+      screen.queryByRole("link", { name: "Analyze Current Position" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(analyzeLink);
+    const handoff = readAnalysisHandoff(href.slice(href.indexOf("?")));
+    expect(handoff).toMatchObject({ line: 1, ply: 1 });
+    expect(handoff?.pgn).toContain("O-O");
+    expect(handoff?.pgn).toContain("Rf8");
   });
 
   it("retries loading other attempts after a request fails", async () => {

@@ -40,6 +40,11 @@ import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
+import {
+  analysisHandoffUrl,
+  createAnalysisHandoffId,
+  saveAnalysisHandoff,
+} from "../../lib/analysis/handoff";
 import { ApiError } from "../../lib/api/postApi";
 import {
   fetchCustomPuzzleSet,
@@ -535,6 +540,7 @@ export const PuzzleSolverPage = () => {
   const activePuzzle = activePuzzleIndex >= 0 ? (puzzles[activePuzzleIndex] ?? null) : null;
   const activePuzzleId = activePuzzle?.puzzleId;
   const activePuzzleKey = toPuzzleKey(activePuzzleId);
+  const analysisHandoffId = useMemo(createAnalysisHandoffId, [activePuzzleKey]);
   const activePuzzleSetMetadata = useMemo(
     () => (activePuzzle ? puzzleSetMetadataFromRow(activePuzzle, routeSetKey) : null),
     [activePuzzle, routeSetKey],
@@ -576,8 +582,12 @@ export const PuzzleSolverPage = () => {
       : positionFen
         ? `/analysis/${positionFen.replaceAll(" ", "_")}`
         : "/analysis";
-  const startAnalysisUrl = analysisUrl(fen);
-  const currentAnalysisUrl = analysisUrl(currentFen);
+  const puzzleAnalysisUrl =
+    puzzleAnalysisTarget === "lichess"
+      ? analysisUrl(fen)
+      : fen
+        ? analysisHandoffUrl(fen, analysisHandoffId)
+        : "/analysis";
   const activeSetPuzzlePosition = isSetSolveMode
     ? orderedSetPuzzleIndexes.indexOf(activePuzzleIndex)
     : -1;
@@ -1426,6 +1436,16 @@ export const PuzzleSolverPage = () => {
   const activeVariationLineIndex = boardState.viewingSolution
     ? activeSolutionLineIndex
     : solutionLineCount + (boardState.customLineIndex ?? 0);
+  const analysisHandoffLineIndex = useMemo(() => {
+    const activeMoves = boardState.lineMoves ?? [];
+    const exactLineIndex = allVariationLines.findIndex(
+      (line) =>
+        line.length === activeMoves.length &&
+        line.every((move, moveIndex) => move === activeMoves[moveIndex]),
+    );
+    if (exactLineIndex >= 0) return exactLineIndex;
+    return Math.max(0, Math.min(activeVariationLineIndex, allVariationLines.length - 1));
+  }, [activeVariationLineIndex, allVariationLines, boardState.lineMoves]);
 
   useEffect(() => {
     if (!boardShowsSolution || !isOnSolutionPath) return;
@@ -1467,6 +1487,23 @@ export const PuzzleSolverPage = () => {
     () => (moveLinePgn && fen ? `${ensurePuzzlePgnHeaders("", fen)}\n\n${moveLinePgn}` : ""),
     [fen, moveLinePgn],
   );
+
+  const handleAnalyzePuzzle = useCallback(() => {
+    if (puzzleAnalysisTarget !== "atomic-puzzles" || !fen || !puzzlePgn) return;
+    saveAnalysisHandoff(analysisHandoffId, {
+      fen,
+      pgn: puzzlePgn,
+      line: analysisHandoffLineIndex,
+      ply: currentAnalysisMoves.length,
+    });
+  }, [
+    analysisHandoffLineIndex,
+    analysisHandoffId,
+    currentAnalysisMoves.length,
+    fen,
+    puzzleAnalysisTarget,
+    puzzlePgn,
+  ]);
 
   const handleCopyPgn = useCallback(async () => {
     if (!puzzlePgn) return;
@@ -1555,9 +1592,8 @@ export const PuzzleSolverPage = () => {
         canReveal: canRevealSolution,
         buttonTitle: solutionButtonTitle,
         fen,
-        currentFen,
-        startAnalysisUrl,
-        currentAnalysisUrl,
+        analysisUrl: puzzleAnalysisUrl,
+        onAnalyze: handleAnalyzePuzzle,
         canStart: canPlaybackStart,
         canPrevious: canPlaybackPrevious,
         canNext: canPlaybackNext,
