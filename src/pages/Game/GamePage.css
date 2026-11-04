@@ -1014,39 +1014,43 @@
 
 .gameAnalysisPanelResizeHandle {
   position: absolute;
-  right: 10px;
+  right: 0;
   bottom: 0;
-  left: 10px;
   z-index: 12;
-  height: 12px;
+  width: 22px;
+  height: 22px;
   padding: 0;
   border: 0;
   background: transparent;
-  cursor: ns-resize;
+  color: var(--color-muted);
+  cursor: nwse-resize;
+  opacity: 0;
   touch-action: none;
+  transition: opacity 140ms ease;
 }
 
 .gameAnalysisPanelResizeHandle::before {
   position: absolute;
-  bottom: 3px;
-  left: 50%;
-  width: 44px;
-  height: 3px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-muted) 62%, transparent);
+  inset: 5px;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 3px,
+    currentColor 3px 4px,
+    transparent 4px 7px
+  );
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
   content: "";
-  transform: translateX(-50%);
-  transition: background 140ms ease;
 }
 
-.gameAnalysisPanelResizeHandle:hover::before,
-.gameAnalysisPanelResizeHandle:focus-visible::before,
-.gameAnalysisPanel.gamePanelResizing .gameAnalysisPanelResizeHandle::before {
-  background: var(--color-primary);
+.gameAnalysisPanelResizeHandle:hover,
+.gameAnalysisPanelResizeHandle:focus-visible,
+.gameAnalysisPanel.gamePanelResizing .gameAnalysisPanelResizeHandle {
+  color: var(--color-primary-soft);
+  opacity: 0.82;
 }
 
 .gameAnalysisPanel.gamePanelResizing {
-  cursor: ns-resize;
+  cursor: nwse-resize;
   user-select: none;
 }
 
