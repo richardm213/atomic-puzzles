@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import {
+  fetchAllPredictionPositions,
   fetchAllTournamentBets,
   fetchBettingMarkets,
   fetchMarketSuggestions,
@@ -13,6 +14,7 @@ export const bettingQueryKeys = {
   markets: ["betting", "markets"] as const,
   bets: (username: string) => ["betting", "bets", username.toLowerCase()] as const,
   allBets: ["betting", "all-bets"] as const,
+  predictionPositions: ["betting", "prediction-positions"] as const,
   suggestions: ["betting", "suggestions"] as const,
 };
 
@@ -41,6 +43,13 @@ export const allTournamentBetsQueryOptions = () =>
   queryOptions({
     queryKey: bettingQueryKeys.allBets,
     queryFn: fetchAllTournamentBets,
+    staleTime: 10_000,
+  });
+
+export const allPredictionPositionsQueryOptions = () =>
+  queryOptions({
+    queryKey: bettingQueryKeys.predictionPositions,
+    queryFn: fetchAllPredictionPositions,
     staleTime: 10_000,
   });
 

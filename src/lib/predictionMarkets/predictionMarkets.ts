@@ -308,6 +308,28 @@ const positionSchema = z
     updatedAt: position.updated_at,
   }));
 
+export const predictionHistoryPositionSchema = z
+  .object({
+    market_id: z.string(),
+    username: z.string(),
+    outcome: z.enum(["yes", "no"]),
+    quantity: z.number().positive(),
+    reserved_quantity: z.number().nonnegative(),
+    average_price_cents: z.number().nullable(),
+    updated_at: z.string(),
+  })
+  .transform((position) => ({
+    marketId: position.market_id,
+    username: position.username,
+    outcome: position.outcome,
+    quantity: position.quantity,
+    reservedQuantity: position.reserved_quantity,
+    averagePriceCents: position.average_price_cents,
+    updatedAt: position.updated_at,
+  }));
+
+export type PredictionHistoryPosition = z.infer<typeof predictionHistoryPositionSchema>;
+
 type ParsedPredictionPosition = z.infer<typeof positionSchema>;
 
 export const netPredictionPositions = (

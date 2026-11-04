@@ -105,10 +105,21 @@ const roundOf16State: PredictionMarketState = {
 };
 
 describe("buildBetHistory", () => {
-  it("combines prediction fills and excludes liquidity-administration trades", () => {
+  it("uses the current position quantity, cost basis, and update date", () => {
     expect(
       buildBetHistory({
         tournamentBets: [],
+        predictionPositions: [
+          {
+            marketId: "champion-player",
+            username: "buyer",
+            outcome: "yes",
+            quantity: 20,
+            reservedQuantity: 0,
+            averagePriceCents: 55,
+            updatedAt: "2026-10-05T00:00:00Z",
+          },
+        ],
         predictionMarketGroups: [group],
         predictionMarketStates: [state],
       }),
@@ -121,7 +132,7 @@ describe("buildBetHistory", () => {
         totalCost: 11,
         potentialPayout: 20,
         payout: 20,
-        placedAt: "2026-10-03T00:00:00Z",
+        placedAt: "2026-10-05T00:00:00Z",
       }),
     ]);
   });
@@ -130,6 +141,17 @@ describe("buildBetHistory", () => {
     expect(
       buildBetHistory({
         tournamentBets: [],
+        predictionPositions: [
+          {
+            marketId: "awc-r16-natso-crepuscular",
+            username: "buyer",
+            outcome: "no",
+            quantity: 670,
+            reservedQuantity: 0,
+            averagePriceCents: 85,
+            updatedAt: "2026-10-28T00:00:00Z",
+          },
+        ],
         predictionMarketGroups: [roundOf16Group],
         predictionMarketStates: [roundOf16State],
       }),

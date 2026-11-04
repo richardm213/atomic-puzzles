@@ -97,6 +97,13 @@ export const PredictionMarketPage = () => {
     const groupMarketIds = new Set(marketGroup.markets.map((market) => market.id));
     const personalBets = buildBetHistory({
       tournamentBets: legacyBetsQuery.data ?? [],
+      predictionPositions: marketStates.flatMap((state) =>
+        state.positions.map((position) => ({
+          ...position,
+          marketId: state.market.id,
+          username,
+        })),
+      ),
       predictionMarketGroups: [marketGroup],
       predictionMarketStates: marketStates,
     }).filter(

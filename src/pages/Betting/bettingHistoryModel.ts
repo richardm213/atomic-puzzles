@@ -1,11 +1,11 @@
 import { AWC_NOT_TO_WIN_MARKET_ID, type TournamentBet } from "../../lib/betting/betting";
 import {
+  type PredictionHistoryPosition,
   type PredictionMarketGroup,
   type PredictionMarketState,
   type PredictionOutcome,
   predictionOutcomeCountryCode,
   predictionOutcomeLabel,
-  predictionOutcomes,
 } from "../../lib/predictionMarkets/predictionMarkets";
 
 export type BetHistoryEntry = TournamentBet & {
@@ -57,144 +57,70 @@ const predictionSettlement = (
 
 export const buildBetHistory = ({
   tournamentBets,
+  predictionPositions,
   predictionMarketGroups,
   predictionMarketStates,
 }: {
   tournamentBets: TournamentBet[];
+  predictionPositions: PredictionHistoryPosition[];
   predictionMarketGroups: PredictionMarketGroup[];
   predictionMarketStates: PredictionMarketState[];
 }): BetHistoryEntry[] => {
   const predictionMarkets = predictionMarketGroups.flatMap((group) => group.markets);
   const stateByMarketId = new Map(predictionMarketStates.map((state) => [state.market.id, state]));
-  const championMarketByUsername = new Map(
-    (predictionMarketGroups.find((group) => group.id === "awc-2026-champion")?.markets ?? []).map(
-      (market) => [market.username.toLowerCase(), market],
-    ),
-  );
   const roundOf16MarketById = new Map(
     (
       predictionMarketGroups.find((group) => group.id === "awc-2026-round-of-16")?.markets ?? []
     ).map((market) => [market.id, market]),
   );
 
-  const normalizedTournamentBets = tournamentBets.map((bet): BetHistoryEntry => {
-    const roundOf16Definition = roundOf16MarketById.get(bet.marketId);
-    if (roundOf16Definition) {
-      const outcome = predictionOutcomes.find(
-        (entry) =>
-          predictionOutcomeLabel(roundOf16Definition, entry).toLowerCase() ===
-          bet.selection.toLowerCase(),
-      );
-      if (!outcome) return bet;
-      return {
-        ...bet,
-        ...predictionSettlement(
-          stateByMarketId.get(roundOf16Definition.id),
-          outcome,
-          bet.potentialPayout,
-          bet.totalCost,
-        ),
-        marketId: roundOf16Definition.id,
-        selection: predictionOutcomeLabel(roundOf16Definition, outcome),
-        kind: "prediction",
-        predictionUsername: roundOf16Definition.username,
-        predictionOutcome: outcome,
-        predictionSelectionLabel: predictionOutcomeLabel(roundOf16Definition, outcome),
-        predictionSelectionCountryCode: predictionOutcomeCountryCode(roundOf16Definition, outcome),
-        predictionMarketTitle: "AWC 2026 Round of 16",
-      };
-    }
+  const standardBets = tournamentBets.filter(
+    (bet) =>
+      !roundOf16MarketById.has(bet.marketId) &&
+      bet.marketId !== "awc2026-winner" &&
+      bet.marketId !== AWC_NOT_TO_WIN_MARKET_ID,
+  );
 
-    const isChampionNo = bet.marketId === AWC_NOT_TO_WIN_MARKET_ID;
-    if (bet.marketId !== "awc2026-winner" && !isChampionNo) return bet;
-    const definition = championMarketByUsername.get(bet.selection.toLowerCase());
-    if (!definition) return bet;
-    const outcome: PredictionOutcome = isChampionNo ? "no" : "yes";
-    return {
-      ...bet,
-      ...predictionSettlement(
-        stateByMarketId.get(definition.id),
-        outcome,
-        bet.potentialPayout,
-        bet.totalCost,
-      ),
-      marketId: definition.id,
-      selection: definition.username,
-      kind: "prediction",
-      predictionUsername: definition.username,
-      predictionOutcome: outcome,
-      predictionMarketTitle: "Who will win 2026 AWC",
-    };
-  });
-
-  const predictionBets = predictionMarkets.flatMap((definition) => {
-    const state = stateByMarketId.get(definition.id);
+  const predictionMarketById = new Map(predictionMarkets.map((market) => [market.id, market]));
+  const predictionBets = predictionPositions.flatMap((position): BetHistoryEntry[] => {
+    const definition = predictionMarketById.get(position.marketId);
+    if (!definition) return [];
+    const state = stateByMarketId.get(position.marketId);
     const group = predictionMarketGroups.find((candidate) =>
-      candidate.markets.some((market) => market.id === definition.id),
+      candidate.markets.some((market) => market.id === position.marketId),
     );
-    return (state?.fills ?? [])
-      .filter((fill) => fill.buyerUsername.toLowerCase() !== "prediction_admin")
-      .map((fill): BetHistoryEntry => {
-        const totalCost = Math.round(fill.priceCents * fill.quantity * 10_000) / 1_000_000;
-        const hasNamedOutcomes = Boolean(definition.outcomeLabels);
-        return {
-          id: fill.id,
-          marketId: definition.id,
-          username: fill.buyerUsername,
-          selection: definition.username,
-          priceCents: fill.priceCents,
-          stake: totalCost,
-          fee: 0,
-          totalCost,
-          potentialPayout: fill.quantity,
-          ...predictionSettlement(state, fill.outcome, fill.quantity, totalCost),
-          placedAt: fill.createdAt,
-          kind: "prediction",
-          predictionUsername: definition.username,
-          predictionOutcome: fill.outcome,
-          predictionSelectionLabel: hasNamedOutcomes
-            ? predictionOutcomeLabel(definition, fill.outcome)
-            : undefined,
-          predictionSelectionCountryCode: predictionOutcomeCountryCode(definition, fill.outcome),
-          predictionMarketTitle:
-            group?.id === "awc-2026-champion" ? "Who will win 2026 AWC" : group?.title,
-          predictionSettlementPriceCents: state?.market.settlementPriceCents ?? undefined,
-        };
-      });
+    const averagePriceCents = position.averagePriceCents ?? 0;
+    const totalCost = Math.round(averagePriceCents * position.quantity * 10_000) / 1_000_000;
+    const hasNamedOutcomes = Boolean(definition.outcomeLabels);
+    return [
+      {
+        id: 0,
+        marketId: definition.id,
+        username: position.username,
+        selection: definition.username,
+        priceCents: Math.round(averagePriceCents),
+        stake: totalCost,
+        fee: 0,
+        totalCost,
+        potentialPayout: position.quantity,
+        ...predictionSettlement(state, position.outcome, position.quantity, totalCost),
+        placedAt: position.updatedAt,
+        kind: "prediction",
+        historyKey: `prediction-position:${position.marketId}:${position.username}:${position.outcome}`,
+        predictionUsername: definition.username,
+        predictionOutcome: position.outcome,
+        predictionSelectionLabel: hasNamedOutcomes
+          ? predictionOutcomeLabel(definition, position.outcome)
+          : undefined,
+        predictionSelectionCountryCode: predictionOutcomeCountryCode(definition, position.outcome),
+        predictionMarketTitle:
+          group?.id === "awc-2026-champion" ? "Who will win 2026 AWC" : group?.title,
+        predictionSettlementPriceCents: state?.market.settlementPriceCents ?? undefined,
+      },
+    ];
   });
 
-  const combined = new Map<string, BetHistoryEntry>();
-  const standardBets: BetHistoryEntry[] = [];
-  for (const bet of [...normalizedTournamentBets, ...predictionBets]) {
-    if (bet.kind !== "prediction") {
-      standardBets.push(bet);
-      continue;
-    }
-    const key = [bet.username.toLowerCase(), bet.marketId, bet.predictionOutcome, bet.status].join(
-      ":",
-    );
-    const current = combined.get(key);
-    const potentialPayout = (current?.potentialPayout ?? 0) + bet.potentialPayout;
-    const stake = (current?.stake ?? 0) + bet.stake;
-    combined.set(key, {
-      ...(current ?? bet),
-      id: current?.id ?? bet.id,
-      historyKey: `prediction:${key}`,
-      priceCents: potentialPayout > 0 ? Math.round((stake / potentialPayout) * 100) : 0,
-      stake,
-      fee: (current?.fee ?? 0) + bet.fee,
-      totalCost: (current?.totalCost ?? 0) + bet.totalCost,
-      potentialPayout,
-      payout: (current?.payout ?? 0) + bet.payout,
-      placedAt:
-        !current || Date.parse(bet.placedAt) > Date.parse(current.placedAt)
-          ? bet.placedAt
-          : current.placedAt,
-      settledAt: bet.settledAt ?? current?.settledAt ?? null,
-    });
-  }
-
-  return [...standardBets, ...combined.values()].sort(
+  return [...standardBets, ...predictionBets].sort(
     (left, right) => Date.parse(right.placedAt) - Date.parse(left.placedAt),
   );
 };

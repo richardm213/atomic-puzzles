@@ -2,6 +2,10 @@ import { z } from "zod";
 
 import { type VoteValue, voteValueSchema } from "../../../shared/domain/voting";
 import { postApi } from "../api/postApi";
+import {
+  type PredictionHistoryPosition,
+  predictionHistoryPositionSchema,
+} from "../predictionMarkets/predictionMarkets";
 
 export {
   AWC_NOT_TO_WIN_MARKET_ID,
@@ -313,6 +317,23 @@ export const fetchMyTournamentBets = (): Promise<TournamentBet[]> =>
 
 export const fetchAllTournamentBets = (): Promise<TournamentBet[]> =>
   fetchTournamentBets("allBets", "Unable to load all bets.");
+
+const predictionPositionsResponseSchema = z.object({
+  result: z.array(predictionHistoryPositionSchema),
+});
+
+export const fetchAllPredictionPositions = async (): Promise<PredictionHistoryPosition[]> => {
+  const response = await postApi(
+    "/api/betting",
+    { action: "predictionPositions" },
+    {
+      schema: predictionPositionsResponseSchema,
+      errorMessage: "Unable to load prediction positions.",
+      invalidMessage: "The betting service returned invalid prediction positions.",
+    },
+  );
+  return response.result;
+};
 
 export const placeTournamentBet = async ({
   marketId,

@@ -35,6 +35,7 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("bootstrap") }),
   z.object({ action: z.literal("markets") }),
   z.object({ action: z.literal("exchangeMarkets") }),
+  z.object({ action: z.literal("predictionPositions") }),
   z.object({ action: z.literal("bets") }),
   z.object({ action: z.literal("allBets") }),
   z.object({ action: z.literal("suggestions") }),
@@ -246,12 +247,14 @@ type ExchangePositionRow = {
   reserved_quantity: number;
   updated_at: string;
 };
+type PublicPredictionPositionRow = ExchangePositionRow & { username: string };
 type LegacyPositionCreditRow = {
   market_id: string;
   outcome: "yes" | "no";
   quantity: number;
   price_cents: number;
 };
+type PublicLegacyPositionCreditRow = LegacyPositionCreditRow & { username: string };
 
 const groupByMarketId = <Row extends { market_id: string }>(rows: readonly Row[]) => {
   const grouped = new Map<string, Row[]>();
@@ -477,6 +480,81 @@ const loadAllTournamentBets = async (supabase: ReturnType<typeof createServerSup
   return data ?? [];
 };
 
+const loadAllPredictionPositions = async (supabase: ReturnType<typeof createServerSupabase>) => {
+  const [positionsResult, fillsResult, legacyCreditsResult] = await Promise.all([
+    supabase
+      .from("prediction_positions")
+      .select("market_id,username,outcome,quantity,reserved_quantity,updated_at")
+      .gt("quantity", 0)
+      .neq("username", "prediction_admin")
+      .order("updated_at", { ascending: false })
+      .limit(10_000),
+    supabase
+      .from("prediction_fills")
+      .select(exchangeFillColumns)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(10_000),
+    supabase
+      .from("prediction_legacy_position_credits")
+      .select("market_id,username,outcome,quantity,price_cents")
+      .limit(10_000),
+  ]);
+  if (positionsResult.error)
+    throw new Error(`Unable to load prediction positions: ${positionsResult.error.message}`);
+  if (fillsResult.error)
+    throw new Error(`Unable to load prediction position history: ${fillsResult.error.message}`);
+  if (legacyCreditsResult.error)
+    throw new Error(
+      `Unable to load legacy prediction positions: ${legacyCreditsResult.error.message}`,
+    );
+
+  const fillsByMarket = groupByMarketId((fillsResult.data ?? []) as unknown as ExchangeFillRow[]);
+  const legacyByOwner = new Map<string, LegacyPositionCreditRow[]>();
+  for (const credit of (legacyCreditsResult.data ?? []) as PublicLegacyPositionCreditRow[]) {
+    const key = `${credit.market_id}:${credit.username}`;
+    const credits = legacyByOwner.get(key);
+    if (credits) credits.push(credit);
+    else legacyByOwner.set(key, [credit]);
+  }
+
+  const costsByOwner = new Map<string, ReturnType<typeof calculatePredictionPositionCost>>();
+  return ((positionsResult.data ?? []) as PublicPredictionPositionRow[]).map((position) => {
+    const ownerKey = `${position.market_id}:${position.username}`;
+    let costs = costsByOwner.get(ownerKey);
+    if (!costs) {
+      const credits = legacyByOwner.get(ownerKey) ?? [];
+      const initialPositions = Object.fromEntries(
+        (["yes", "no"] as const).map((outcome) => {
+          const outcomeCredits = credits.filter((credit) => credit.outcome === outcome);
+          return [
+            outcome,
+            {
+              quantity: outcomeCredits.reduce((total, credit) => total + credit.quantity, 0),
+              costCents: outcomeCredits.reduce(
+                (total, credit) => total + credit.quantity * credit.price_cents,
+                0,
+              ),
+            },
+          ];
+        }),
+      );
+      costs = calculatePredictionPositionCost(
+        fillsByMarket.get(position.market_id) ?? [],
+        position.username,
+        initialPositions,
+      );
+      costsByOwner.set(ownerKey, costs);
+    }
+    const cost = costs[position.outcome];
+    return {
+      ...position,
+      average_price_cents:
+        cost.quantity === position.quantity && cost.quantity > 0 ? cost.averagePriceCents : null,
+    };
+  });
+};
+
 export const bettingRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, bodySchema, "Invalid betting request.");
   if (
@@ -496,6 +574,7 @@ export const bettingRoute = async (event: FunctionEvent) => {
     input.action === "bootstrap" ||
       input.action === "markets" ||
       input.action === "exchangeMarkets" ||
+      input.action === "predictionPositions" ||
       input.action === "allBets" ||
       input.action === "suggestions" ||
       input.action === "exchangeMarketBatch",
@@ -503,10 +582,11 @@ export const bettingRoute = async (event: FunctionEvent) => {
   const supabase = createServerSupabase("Tournament betting service");
 
   if (input.action === "bootstrap") {
-    const [markets, exchangeMarkets, allBets] = await Promise.all([
+    const [markets, exchangeMarkets, allBets, allPredictionPositions] = await Promise.all([
       loadTournamentMarkets(supabase),
       loadExchangeMarketCatalog(supabase),
       loadAllTournamentBets(supabase),
+      loadAllPredictionPositions(supabase),
     ]);
     const exchangeMarketStates = await loadPredictionMarketStates(
       supabase,
@@ -514,12 +594,22 @@ export const bettingRoute = async (event: FunctionEvent) => {
       identity?.username ?? null,
     );
     return identityResponse(identity, 200, {
-      result: { markets, exchangeMarkets, allBets, exchangeMarketStates },
+      result: {
+        markets,
+        exchangeMarkets,
+        allBets,
+        allPredictionPositions,
+        exchangeMarketStates,
+      },
     });
   }
 
   if (input.action === "exchangeMarkets") {
     return identityResponse(identity, 200, { result: await loadExchangeMarketCatalog(supabase) });
+  }
+
+  if (input.action === "predictionPositions") {
+    return identityResponse(identity, 200, { result: await loadAllPredictionPositions(supabase) });
   }
 
   if (input.action === "exchangeMarketBatch") {

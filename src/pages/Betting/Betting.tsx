@@ -34,6 +34,7 @@ import {
   quoteTournamentBet,
 } from "../../lib/betting/betting";
 import {
+  allPredictionPositionsQueryOptions,
   allTournamentBetsQueryOptions,
   bettingBootstrapQueryOptions,
   bettingMarketsQueryOptions,
@@ -225,6 +226,10 @@ export const BettingPage = () => {
     ...allTournamentBetsQueryOptions(),
     enabled: bootstrapQuery.isError,
   });
+  const predictionPositionsQuery = useQuery({
+    ...allPredictionPositionsQueryOptions(),
+    enabled: bootstrapQuery.isError || bootstrapQuery.data?.predictionPositionsSupported === true,
+  });
   const coinSummaryQuery = useQuery({
     ...coinSummaryQueryOptions(username),
     enabled: isAuthenticated,
@@ -245,6 +250,10 @@ export const BettingPage = () => {
     );
     queryClient.setQueryData(bettingQueryKeys.markets, bootstrapQuery.data.markets);
     queryClient.setQueryData(bettingQueryKeys.allBets, bootstrapQuery.data.allBets);
+    queryClient.setQueryData(
+      bettingQueryKeys.predictionPositions,
+      bootstrapQuery.data.predictionPositions,
+    );
     queryClient.setQueryData(
       predictionMarketCatalogQueryOptions().queryKey,
       bootstrapQuery.data.predictionMarketGroups,
@@ -280,10 +289,16 @@ export const BettingPage = () => {
     () =>
       buildBetHistory({
         tournamentBets: allBetsQuery.data ?? [],
+        predictionPositions: predictionPositionsQuery.data ?? [],
         predictionMarketGroups,
         predictionMarketStates,
       }),
-    [allBetsQuery.data, predictionMarketGroups, predictionMarketStates],
+    [
+      allBetsQuery.data,
+      predictionMarketGroups,
+      predictionMarketStates,
+      predictionPositionsQuery.data,
+    ],
   );
   const pendingBetCount = useMemo(
     () => allHistoryBets.filter((bet) => bet.status === "open").length,
@@ -519,9 +534,23 @@ export const BettingPage = () => {
   const myBets = useMemo(
     () =>
       isAuthenticated
-        ? allHistoryBets.filter((bet) => bet.username.toLowerCase() === username.toLowerCase())
+        ? buildBetHistory({
+            tournamentBets: betsQuery.data ?? [],
+            predictionPositions: (predictionPositionsQuery.data ?? []).filter(
+              (position) => position.username.toLowerCase() === username.toLowerCase(),
+            ),
+            predictionMarketGroups,
+            predictionMarketStates,
+          })
         : [],
-    [allHistoryBets, isAuthenticated, username],
+    [
+      betsQuery.data,
+      isAuthenticated,
+      predictionMarketGroups,
+      predictionMarketStates,
+      predictionPositionsQuery.data,
+      username,
+    ],
   );
   const openBetCost = myBets.reduce(
     (total, bet) => total + (bet.status === "open" ? bet.totalCost : 0),
@@ -673,6 +702,7 @@ export const BettingPage = () => {
       setPredictionStakeTouched(false);
       updateCachedCoinBalance(queryClient, username, result.balance);
       patchPredictionMarketState(queryClient, result.state);
+      void queryClient.invalidateQueries({ queryKey: bettingQueryKeys.predictionPositions });
     },
   });
 
@@ -1761,10 +1791,10 @@ export const BettingPage = () => {
             predictionMarketGroups={predictionMarketGroups}
             predictionMarketStates={predictionMarketStates}
             countryByPlayer={countryByPlayer}
-            myBetsLoading={betsQuery.isPending}
-            allBetsLoading={allBetsQuery.isPending}
-            myBetsError={betsQuery.error}
-            allBetsError={allBetsQuery.error}
+            myBetsLoading={betsQuery.isPending || predictionPositionsQuery.isPending}
+            allBetsLoading={allBetsQuery.isPending || predictionPositionsQuery.isPending}
+            myBetsError={betsQuery.error ?? predictionPositionsQuery.error}
+            allBetsError={allBetsQuery.error ?? predictionPositionsQuery.error}
           />
         )}
       </div>
@@ -1777,6 +1807,7 @@ export const BettingPage = () => {
           onUpdated={(result) => {
             updateCachedCoinBalance(queryClient, username, result.balance);
             patchPredictionMarketState(queryClient, result.state);
+            void queryClient.invalidateQueries({ queryKey: bettingQueryKeys.predictionPositions });
           }}
         />
       ) : null}
