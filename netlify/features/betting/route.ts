@@ -248,6 +248,13 @@ type ExchangePositionRow = {
   updated_at: string;
 };
 type PublicPredictionPositionRow = ExchangePositionRow & { username: string };
+type PredictionPositionSettlementRow = {
+  market_id: string;
+  username: string;
+  outcome: "yes" | "no";
+  quantity: number;
+  position_updated_at: string;
+};
 type LegacyPositionCreditRow = {
   market_id: string;
   outcome: "yes" | "no";
@@ -481,13 +488,18 @@ const loadAllTournamentBets = async (supabase: ReturnType<typeof createServerSup
 };
 
 const loadAllPredictionPositions = async (supabase: ReturnType<typeof createServerSupabase>) => {
-  const [positionsResult, fillsResult, legacyCreditsResult] = await Promise.all([
+  const [positionsResult, settlementsResult, fillsResult, legacyCreditsResult] = await Promise.all([
     supabase
       .from("prediction_positions")
       .select("market_id,username,outcome,quantity,reserved_quantity,updated_at")
       .gt("quantity", 0)
       .neq("username", "prediction_admin")
       .order("updated_at", { ascending: false })
+      .limit(10_000),
+    supabase
+      .from("prediction_position_settlements")
+      .select("market_id,username,outcome,quantity,position_updated_at")
+      .order("resolved_at", { ascending: false })
       .limit(10_000),
     supabase
       .from("prediction_fills")
@@ -502,6 +514,10 @@ const loadAllPredictionPositions = async (supabase: ReturnType<typeof createServ
   ]);
   if (positionsResult.error)
     throw new Error(`Unable to load prediction positions: ${positionsResult.error.message}`);
+  if (settlementsResult.error)
+    throw new Error(
+      `Unable to load settled prediction positions: ${settlementsResult.error.message}`,
+    );
   if (fillsResult.error)
     throw new Error(`Unable to load prediction position history: ${fillsResult.error.message}`);
   if (legacyCreditsResult.error)
@@ -518,8 +534,27 @@ const loadAllPredictionPositions = async (supabase: ReturnType<typeof createServ
     else legacyByOwner.set(key, [credit]);
   }
 
+  const settlements = (settlementsResult.data ?? []) as PredictionPositionSettlementRow[];
+  const settledKeys = new Set(
+    settlements.map((position) => `${position.market_id}:${position.username}:${position.outcome}`),
+  );
+  const positions: PublicPredictionPositionRow[] = [
+    ...settlements.map((position) => ({
+      market_id: position.market_id,
+      username: position.username,
+      outcome: position.outcome,
+      quantity: position.quantity,
+      reserved_quantity: 0,
+      updated_at: position.position_updated_at,
+    })),
+    ...((positionsResult.data ?? []) as PublicPredictionPositionRow[]).filter(
+      (position) =>
+        !settledKeys.has(`${position.market_id}:${position.username}:${position.outcome}`),
+    ),
+  ];
+
   const costsByOwner = new Map<string, ReturnType<typeof calculatePredictionPositionCost>>();
-  return ((positionsResult.data ?? []) as PublicPredictionPositionRow[]).map((position) => {
+  return positions.map((position) => {
     const ownerKey = `${position.market_id}:${position.username}`;
     let costs = costsByOwner.get(ownerKey);
     if (!costs) {
