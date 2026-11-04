@@ -10,6 +10,8 @@ import {
   type AtomicTourMainStage,
   atomicTourMainStageForResults,
   atomicTourPlacementAfterChampionship,
+  atomicTourQualifierWinEarnsPoints,
+  atomicTourQualifierWinPoints,
   atomicTourStageForFinalRank,
   atomicTourStageForRound,
   atomicTourStagePoints,
@@ -108,6 +110,15 @@ const losersRoundOrder = (round: string): number => {
   if (normalized.includes("semifinal")) return 101;
   if (normalized.includes("final")) return 102;
   return 0;
+};
+
+const qualifierRoundOrder = (round: string): number => {
+  const normalized = round.trim().toLowerCase();
+  if (normalized === "first round") return 1;
+  if (normalized === "second round") return 2;
+  if (normalized === "qualifying round") return 3;
+  const numberedRound = normalized.match(/(?:qualifying\s+)?round\s+(\d+)/);
+  return numberedRound ? Number(numberedRound[1]) : 100;
 };
 
 const winner = (match: MatchRow): string => {
@@ -351,6 +362,52 @@ const knockoutAwards = (event: CatalogRow, matches: MatchRow[]): PointAward[] =>
       });
     }
   }
+
+  const qualifierRounds = [
+    ...new Set(
+      matches
+        .filter((match) => match.bracket === "qualifying")
+        .map((match) => match.round.trim())
+        .filter(Boolean),
+    ),
+  ].sort((left, right) => qualifierRoundOrder(left) - qualifierRoundOrder(right));
+  matches
+    .filter((match) => match.bracket === "qualifying" && isBonusEligibleResult(match))
+    .forEach((match) => {
+      const player = winner(match);
+      if (!player || excludedPlayers.has(player)) return;
+      const roundIndex = Math.max(0, qualifierRounds.indexOf(match.round.trim()));
+      const wonPlayedFirstRound = matches.some(
+        (candidate) =>
+          candidate.bracket === "qualifying" &&
+          qualifierRounds.indexOf(candidate.round.trim()) === 0 &&
+          normalize(candidate.outcome_type) !== "withdrawal" &&
+          winner(candidate) === player,
+      );
+      if (
+        !atomicTourQualifierWinEarnsPoints({
+          seriesKey: event.series_key,
+          roundIndex,
+          outcomeType: match.outcome_type,
+          wonPlayedFirstRound,
+        })
+      )
+        return;
+      const awardedOn = match.played_on ?? fallbackDate;
+      awards.push({
+        award_key: awardKey(event.id, player, "qualifier-win", match.id),
+        tournament_id: event.id,
+        player_name: player,
+        source_type: "placement",
+        source_key: match.id,
+        awarded_on: awardedOn,
+        expires_on: atomicTourAwardExpiryDate(awardedOn),
+        points: atomicTourQualifierWinPoints(tier, roundIndex, qualifierRounds.length),
+        description: `qualifier win, ${qualifierRounds.length - roundIndex} ${
+          qualifierRounds.length - roundIndex === 1 ? "round" : "rounds"
+        } from main draw`,
+      });
+    });
   return awards;
 };
 
@@ -469,7 +526,7 @@ const run = async () => {
   const participants = new Map<string, Set<string>>();
   for (const event of catalog as CatalogRow[]) {
     if (requestedEventId && event.id !== requestedEventId) continue;
-    if (!["awc", "ccac", "ahc", "aoc"].includes(event.series_key)) continue;
+    if (!["awc", "ccac", "ahc", "aoc", "a960e"].includes(event.series_key)) continue;
     const eventMatches = matches.filter((match) => match.tournament === event.id);
     eventMatches.forEach((match) => {
       addParticipant(participants, event.id, match.p1);

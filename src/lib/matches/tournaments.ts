@@ -46,11 +46,14 @@ export type TournamentMatch = {
 };
 
 export const isTournamentByePlayer = (playerName: unknown): boolean =>
-  String(playerName ?? "").trim().toLowerCase() === "bye";
+  String(playerName ?? "")
+    .trim()
+    .toLowerCase() === "bye";
 
 export const isTournamentByeMatch = (
   match: Pick<TournamentMatch, "p1" | "p2"> | null | undefined,
-): boolean => Boolean(match && (isTournamentByePlayer(match.p1) || isTournamentByePlayer(match.p2)));
+): boolean =>
+  Boolean(match && (isTournamentByePlayer(match.p1) || isTournamentByePlayer(match.p2)));
 
 export const isTournamentDoubleByeMatch = (
   match: Pick<TournamentMatch, "p1" | "p2"> | null | undefined,
@@ -241,6 +244,7 @@ const tournamentEndDateFallbacks: Readonly<Record<string, string>> = {
 // several time controls rather than one tournament-wide control.
 const tournamentTimeControlFallbacks: Readonly<Record<string, string>> = {
   "wr-arena2026": "3+2",
+  a960e2026: "3+2",
   ahc2026: "0.5+0",
   aoc2026: "3+1",
   ccac2026: "3+0",
@@ -269,7 +273,7 @@ const tournamentCatalogCache = new Map<string, Promise<TournamentMeta[]>>();
 type CsvRow = Record<string, string>;
 
 const roundDisplayOrder: Record<string, string[]> = {
-  qualifying: ["First Round", "Qualifying Round"],
+  qualifying: ["First Round", "Second Round", "Qualifying Round"],
   main: [
     "Round of 128",
     "Round of 64",
@@ -821,7 +825,12 @@ export const addImplicitByeMatches = (matches: TournamentMatch[]): TournamentMat
   }
 
   const qualifyingFirstRound = "First Round";
+  const qualifyingMiddleRound = "Second Round";
   const qualifyingSecondRound = "Qualifying Round";
+  const hasThreeRoundQualifyingStage = matches.some(
+    (match) => match.bracket === "qualifying" && match.round === qualifyingMiddleRound,
+  );
+  if (hasThreeRoundQualifyingStage) return augmented;
   const hasPlayedQualifyingFirstRound = matches.some(
     (match) => match.bracket === "qualifying" && match.round === qualifyingFirstRound,
   );
@@ -1312,7 +1321,10 @@ export const getTournamentBracket = async (
 
         return {
           key: bracketKey,
-          label: getBracketLabel(bracketKey),
+          label:
+            meta.seriesKey === "a960e" && bracketKey === "qualifying"
+              ? "Group Stage"
+              : getBracketLabel(bracketKey),
           rounds,
         };
       })

@@ -3,10 +3,7 @@ import {
   type TournamentBracketStage,
   type TournamentMatch,
 } from "../../lib/matches/tournaments";
-import {
-  getBrowserStorageJson,
-  removeBrowserStorageItem,
-} from "../../utils/browserStorage";
+import { getBrowserStorageJson, removeBrowserStorageItem } from "../../utils/browserStorage";
 
 export type StageLayout = {
   rounds: TournamentBracketStage["rounds"];
@@ -43,6 +40,7 @@ export const getStartRoundOptions = (
 
 const roundShortLabels: Record<string, string> = {
   "First Round": "Q1",
+  "Second Round": "Q2",
   "Qualifying Round": "Q2",
   "Round of 128": "R128",
   "Round of 64": "R64",
@@ -70,10 +68,11 @@ export const getRoundShortLabel = (roundName: string): string =>
 export const getStageRoundShortLabel = (
   stage: TournamentBracketStage,
   roundName: string,
-): string =>
-  stage.key === "qualifying" && stage.rounds.length === 1
-    ? "Q1"
-    : getRoundShortLabel(roundName);
+): string => {
+  if (stage.key !== "qualifying") return getRoundShortLabel(roundName);
+  const roundIndex = stage.rounds.findIndex((round) => round.roundName === roundName);
+  return roundIndex >= 0 ? `Q${roundIndex + 1}` : getRoundShortLabel(roundName);
+};
 
 export const CARD_WIDTH = 260;
 const CARD_HEIGHT = 102;
@@ -151,8 +150,16 @@ export const getVisibleRounds = (
   startRoundName: string,
 ): TournamentBracketStage["rounds"] => {
   const startIndex = stage.rounds.findIndex((round) => round.roundName === startRoundName);
+  if (isRoundRobinQualifyingStage(stage)) {
+    return [stage.rounds[Math.max(0, startIndex)]!];
+  }
   return stage.rounds.slice(Math.max(0, startIndex));
 };
+
+export const isRoundRobinQualifyingStage = (stage: TournamentBracketStage): boolean =>
+  stage.key === "qualifying" &&
+  stage.rounds.length > 1 &&
+  !stage.rounds.some((round) => round.matches.some((match) => Boolean(match.winner_to)));
 
 const orderRoundsByAdvancement = (
   rounds: TournamentBracketStage["rounds"],

@@ -7,6 +7,8 @@ import {
   atomicTourLosersBracketWinPoints,
   atomicTourMainStageForResults,
   atomicTourPlacementAfterChampionship,
+  atomicTourQualifierWinEarnsPoints,
+  atomicTourQualifierWinPoints,
   atomicTourStageForFinalRank,
   atomicTourStageForRound,
   calculateKnockoutTourPoints,
@@ -115,6 +117,49 @@ describe("Atomic Tour scoring", () => {
     expect(atomicTourLosersBracketWinPoints(2000, 0, "quarterfinal")).toBe(200);
     expect(atomicTourLosersBracketRoundCountForStart("round-of-32")).toBe(8);
     expect(atomicTourLosersBracketRoundCountForStart("quarterfinal")).toBe(4);
+  });
+
+  it("values qualifier wins by distance from the main draw rather than round label", () => {
+    expect(atomicTourQualifierWinPoints(2000, 0, 1)).toBe(40);
+    expect(atomicTourQualifierWinPoints(2000, 0, 2)).toBe(30);
+    expect(atomicTourQualifierWinPoints(2000, 1, 2)).toBe(40);
+    expect(atomicTourQualifierWinPoints(1000, 0, 3)).toBe(10);
+    expect(atomicTourQualifierWinPoints(1000, 2, 3)).toBe(20);
+  });
+
+  it("excludes qualifier walkovers except an AWC Q2 walkover after a played Q1 win", () => {
+    expect(
+      atomicTourQualifierWinEarnsPoints({
+        seriesKey: "a960e",
+        roundIndex: 2,
+        outcomeType: "withdrawal",
+        wonPlayedFirstRound: true,
+      }),
+    ).toBe(false);
+    expect(
+      atomicTourQualifierWinEarnsPoints({
+        seriesKey: "awc",
+        roundIndex: 1,
+        outcomeType: "withdrawal",
+        wonPlayedFirstRound: true,
+      }),
+    ).toBe(true);
+    expect(
+      atomicTourQualifierWinEarnsPoints({
+        seriesKey: "awc",
+        roundIndex: 1,
+        outcomeType: "withdrawal",
+        wonPlayedFirstRound: false,
+      }),
+    ).toBe(false);
+    expect(
+      atomicTourQualifierWinEarnsPoints({
+        seriesKey: "awc",
+        roundIndex: 0,
+        outcomeType: null,
+        wonPlayedFirstRound: false,
+      }),
+    ).toBe(true);
   });
 
   it("keeps a losers-bracket finalist meaningfully below the champion", () => {

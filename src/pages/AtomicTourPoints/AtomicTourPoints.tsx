@@ -189,6 +189,10 @@ export const AtomicTourPointsPage = () => {
           non-champions, the combined bonus is capped below the next main-draw tier and at 20% of
           the event maximum. Champions can earn a bonus up to 10% of the event maximum.
         </p>
+        <p className="atomicTourPointsNote">
+          Qualifier walkovers earn no points. The exception is an AWC Q2 walkover after a played
+          Q1 win.
+        </p>
       </div>
     </div>
   );

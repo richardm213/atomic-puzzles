@@ -120,6 +120,7 @@ export const atomicTourMainStageForResults = (
 };
 
 const losersWinPercentages = [0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16] as const;
+const qualifierWinPercentages = [0.01, 0.015, 0.02] as const;
 
 export const atomicTourLosersBracketRoundCount = losersWinPercentages.length;
 
@@ -144,6 +145,7 @@ export const atomicTourEventPoints: Readonly<Record<string, AtomicTourEventTier>
   ccac: 2000,
   ahc: 1000,
   aoc: 1000,
+  a960e: 1000,
   wolfarena: 1000,
 };
 
@@ -163,6 +165,36 @@ export const atomicTourLosersBracketWinPoints = (
       Math.min(Math.max(0, adjustedRoundIndex), losersWinPercentages.length - 1)
     ]!;
   return Math.round(tier * percentage);
+};
+
+export const atomicTourQualifierWinPoints = (
+  tier: AtomicTourEventTier,
+  roundIndex: number,
+  totalRounds: number,
+): number => {
+  const normalizedRoundCount = Math.max(1, Math.floor(totalRounds));
+  const normalizedRoundIndex = Math.min(
+    Math.max(0, Math.floor(roundIndex)),
+    normalizedRoundCount - 1,
+  );
+  const roundsRemaining = normalizedRoundCount - normalizedRoundIndex - 1;
+  const percentageIndex = Math.max(0, qualifierWinPercentages.length - roundsRemaining - 1);
+  return Math.round(tier * qualifierWinPercentages[percentageIndex]!);
+};
+
+export const atomicTourQualifierWinEarnsPoints = ({
+  seriesKey,
+  roundIndex,
+  outcomeType,
+  wonPlayedFirstRound,
+}: {
+  seriesKey: string;
+  roundIndex: number;
+  outcomeType: string | null | undefined;
+  wonPlayedFirstRound: boolean;
+}): boolean => {
+  if (outcomeType?.trim().toLowerCase() !== "withdrawal") return true;
+  return seriesKey === "awc" && roundIndex === 1 && wonPlayedFirstRound;
 };
 
 export const calculateKnockoutTourPoints = ({

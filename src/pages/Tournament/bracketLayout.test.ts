@@ -6,6 +6,7 @@ import {
   getRoundShortLabel,
   getStageRoundShortLabel,
   getStartRoundOptions,
+  getVisibleRounds,
   zoomDisplayPercent,
 } from "./bracketLayout";
 
@@ -91,10 +92,49 @@ describe("bracket layout", () => {
         { roundName: "Qualifying Round", matches: [match("qualifier-r2")] },
       ],
     };
+    const threeRoundQualifyingStage: TournamentBracketStage = {
+      ...singleRoundQualifyingStage,
+      rounds: [
+        { roundName: "First Round", matches: [match("qualifier-r1")] },
+        { roundName: "Second Round", matches: [match("qualifier-r2")] },
+        { roundName: "Qualifying Round", matches: [match("qualifier-r3")] },
+      ],
+    };
 
     expect(getStageRoundShortLabel(singleRoundQualifyingStage, "Qualifying Round")).toBe("Q1");
     expect(getStageRoundShortLabel(twoRoundQualifyingStage, "First Round")).toBe("Q1");
     expect(getStageRoundShortLabel(twoRoundQualifyingStage, "Qualifying Round")).toBe("Q2");
+    expect(getStageRoundShortLabel(threeRoundQualifyingStage, "Qualifying Round")).toBe("Q3");
+  });
+
+  it("shows one round at a time for round-robin qualifying stages", () => {
+    const roundRobinStage: TournamentBracketStage = {
+      key: "qualifying",
+      label: "Qualifying",
+      rounds: [
+        { roundName: "First Round", matches: [match("group-r1")] },
+        { roundName: "Second Round", matches: [match("group-r2")] },
+        { roundName: "Qualifying Round", matches: [match("group-r3")] },
+      ],
+    };
+    const knockoutStage: TournamentBracketStage = {
+      ...roundRobinStage,
+      rounds: [
+        {
+          roundName: "First Round",
+          matches: [match("knockout-r1", "knockout-r2")],
+        },
+        { roundName: "Qualifying Round", matches: [match("knockout-r2")] },
+      ],
+    };
+
+    expect(
+      getVisibleRounds(roundRobinStage, "Second Round").map((round) => round.roundName),
+    ).toEqual(["Second Round"]);
+    expect(getVisibleRounds(knockoutStage, "First Round").map((round) => round.roundName)).toEqual([
+      "First Round",
+      "Qualifying Round",
+    ]);
   });
 
   it("preserves bye anchors across selectable starting rounds without drawing empty branches", () => {

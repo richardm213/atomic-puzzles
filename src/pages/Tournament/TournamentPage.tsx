@@ -57,6 +57,7 @@ import {
   getStartRoundOptions,
   getTournamentViewStorageKey,
   HEADER_SPACE,
+  isRoundRobinQualifyingStage,
   type PositionedMatch,
   readSavedTournamentView,
   SEEDS_STAGE_KEY,
@@ -64,6 +65,7 @@ import {
   type StageLayout,
   zoomDisplayPercent,
 } from "./bracketLayout";
+import { buildRoundRobinGroups, type GroupStageHistoryEntry } from "./groupStage";
 import { WolfarenaTournamentPage } from "./WolfarenaTournamentPage";
 
 type StageKey = string;
@@ -312,16 +314,18 @@ const buildTournamentEntryMarkers = (
 ): Map<string, TournamentEntryMarker> => {
   const markers = new Map<string, TournamentEntryMarker>();
 
-  bracket.matches
-    .filter((match) => match.bracket === "qualifying" && !match.winner_to)
-    .forEach((match) => {
-      const winner = winnerName(match);
-      if (!winner || winner === "Draw") return;
-      markers.set(normalizeUsername(winner), {
-        label: "Q",
-        description: "Qualified through the qualifying draw.",
+  if (bracket.seriesKey !== "a960e") {
+    bracket.matches
+      .filter((match) => match.bracket === "qualifying" && !match.winner_to)
+      .forEach((match) => {
+        const winner = winnerName(match);
+        if (!winner || winner === "Draw") return;
+        markers.set(normalizeUsername(winner), {
+          label: "Q",
+          description: "Qualified through the qualifying draw.",
+        });
       });
-    });
+  }
 
   bracket.matches.forEach((match) => {
     if (!match.replacement_player || !match.replacement_for) return;
@@ -435,10 +439,7 @@ const TournamentSeeds = ({
             aria-hidden="true"
           />
           <span className="tournamentSeedsIdentity">
-            <TournamentPlayerLink
-              className="tournamentSeedsPlayerLink"
-              username={playerName}
-            >
+            <TournamentPlayerLink className="tournamentSeedsPlayerLink" username={playerName}>
               {playerName}
             </TournamentPlayerLink>
             <TournamentFairPlayFlag playerName={playerName} />
@@ -714,6 +715,46 @@ const TournamentZoomControls = ({
   </div>
 );
 
+const GroupHistoryChip = ({ entry }: { entry: GroupStageHistoryEntry }) => {
+  const description = `${entry.roundName}: ${
+    entry.result === "W" ? "win" : entry.result === "L" ? "loss" : "tie"
+  } against ${entry.opponent}`;
+  const className = `tournamentGroupHistoryChip is${entry.result}`;
+
+  if (!entry.match.match_id) {
+    return (
+      <span className={className} title={description} aria-label={description}>
+        {entry.result}
+      </span>
+    );
+  }
+
+  if (isExternalMatchUrl(entry.match.match_id)) {
+    return (
+      <a
+        className={className}
+        href={entry.match.match_id}
+        title={description}
+        aria-label={description}
+      >
+        {entry.result}
+      </a>
+    );
+  }
+
+  return (
+    <Link
+      className={className}
+      to="/match/$matchId"
+      params={{ matchId: entry.match.match_id }}
+      title={description}
+      aria-label={description}
+    >
+      {entry.result}
+    </Link>
+  );
+};
+
 const TournamentStageSection = ({
   stage,
   layout,
@@ -759,15 +800,17 @@ const TournamentStageSection = ({
   onPointerEnd: (event: ReactPointerEvent<HTMLDivElement>) => void;
   loserSourcesByMatchId: Map<string, LoserSource[]>;
 }) => {
+  const [groupViews, setGroupViews] = useState<Record<string, "standings" | "matches">>({});
   const startRoundOptions = getStartRoundOptions(stage);
   const trophyMatchId = trophyAssetPath ? getStageTrophyMatchId(stage, decisiveMatchId) : "";
+  const roundRobinGroups = isRoundRobinQualifyingStage(stage) ? buildRoundRobinGroups(stage) : null;
 
   return (
     <section className="tournamentStageSection" aria-labelledby={`${stage.key}-heading`}>
       <div className="tournamentStageHeader">
         <h2 id={`${stage.key}-heading`}>{stage.label}</h2>
       </div>
-      {!hideStartRoundControls && startRoundOptions.length > 1 ? (
+      {!roundRobinGroups && !hideStartRoundControls && startRoundOptions.length > 1 ? (
         <div className="tournamentRoundNavigator" aria-label={`Starting round for ${stage.label}`}>
           <div className="tournamentRoundTabs" role="tablist" aria-label={`${stage.label} rounds`}>
             {startRoundOptions.map((round) => {
@@ -790,109 +833,222 @@ const TournamentStageSection = ({
           </div>
         </div>
       ) : null}
-      {layout ? (
-        <div
-          className="tournamentRoundHeaderRail"
-          style={{
-            height: `${HEADER_SPACE * zoomLevel}px`,
-            marginBottom: `${-HEADER_SPACE * zoomLevel}px`,
-          }}
-        >
-          <div
-            className="tournamentRoundHeaderTrack"
-            ref={(node) => setHeaderTrackRef(stage.key, node)}
-            style={{
-              width: `${layout.width * zoomLevel}px`,
-            }}
-          >
-            {layout.rounds.map((round, roundIndex) => (
-              <div
-                key={`${stage.key}-${round.roundName}-sticky`}
-                className="tournamentRoundHeader tournamentRoundHeaderSticky"
-                style={{
-                  left: `${(BOARD_PADDING + roundIndex * (CARD_WIDTH + COLUMN_GAP)) * zoomLevel}px`,
-                  width: `${CARD_WIDTH * zoomLevel}px`,
-                }}
-              >
-                <span>
-                  {stage.key === "qualifying"
-                    ? getStageRoundShortLabel(stage, round.roundName)
-                    : round.roundName}
-                </span>
-              </div>
-            ))}
-          </div>
+      {roundRobinGroups ? (
+        <div className="tournamentGroupStageGrid" aria-label={stage.label}>
+          {roundRobinGroups.map((group) => {
+            const view = groupViews[group.name] ?? "standings";
+            return (
+              <section className="tournamentGroupStageCard" key={group.name}>
+                <header className="tournamentGroupStageCardHeader">
+                  <h3>Group {group.name}</h3>
+                  <div
+                    className="tournamentGroupStageTabs"
+                    role="tablist"
+                    aria-label={`Group ${group.name} view`}
+                  >
+                    {(["standings", "matches"] as const).map((tab) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        role="tab"
+                        aria-selected={view === tab}
+                        className={view === tab ? "isActive" : ""}
+                        onClick={() =>
+                          setGroupViews((current) => ({ ...current, [group.name]: tab }))
+                        }
+                      >
+                        {tab === "standings" ? "Standings" : "Matches"}
+                      </button>
+                    ))}
+                  </div>
+                </header>
+
+                {view === "standings" ? (
+                  <div className="tournamentGroupStandingsWrap">
+                    <table className="tournamentGroupStandings">
+                      <thead>
+                        <tr>
+                          <th scope="col">Rank</th>
+                          <th scope="col">Player</th>
+                          <th scope="col">W-L-T</th>
+                          <th scope="col">History</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.standings.map((standing, index) => (
+                          <tr key={standing.playerName}>
+                            <td>{index + 1}</td>
+                            <th scope="row">
+                              <PlayerLabel
+                                playerName={standing.playerName}
+                                seed={topSeedMap.get(standing.playerName)}
+                                seedCount={seedCount}
+                                entryMarker={undefined}
+                                isWinner={false}
+                                countryCode={countryMap.get(standing.playerName)}
+                                shouldSuppressClick={shouldSuppressMatchClick}
+                              />
+                            </th>
+                            <td className="tournamentGroupRecord">
+                              {standing.wins}-{standing.losses}-{standing.ties}
+                            </td>
+                            <td>
+                              <span className="tournamentGroupHistory">
+                                {standing.history.length ? (
+                                  standing.history.map((entry) => (
+                                    <GroupHistoryChip
+                                      key={`${entry.match.id}-${standing.playerName}`}
+                                      entry={entry}
+                                    />
+                                  ))
+                                ) : (
+                                  <span className="tournamentGroupHistoryEmpty">—</span>
+                                )}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="tournamentGroupRounds">
+                    {group.rounds.map((round, roundIndex) => (
+                      <section className="tournamentGroupRound" key={round.roundName}>
+                        <h4>Round {roundIndex + 1}</h4>
+                        <div className="tournamentGroupRoundMatches">
+                          {round.matches.map((match) => (
+                            <div className="tournamentGroupRoundMatch" key={match.id}>
+                              <TournamentMatchCard
+                                match={{ ...match, x: 0, y: 0 }}
+                                topSeedMap={topSeedMap}
+                                entryMarkers={entryMarkers}
+                                seedCount={seedCount}
+                                countryMap={countryMap}
+                                trophyAssetPath={undefined}
+                                showTrophy={false}
+                                placeTrophyOnSide={false}
+                                shouldSuppressClick={shouldSuppressMatchClick}
+                                loserSources={[]}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </div>
-      ) : null}
-      <div
-        className="tournamentDrawViewport"
-        aria-label={`${stage.label} draw starting at ${startRoundName}`}
-      >
-        <div
-          className={`tournamentRoundsScroller${isDragging ? " isDragging" : ""}${stage.key === "main" ? " isMainBracket" : ""}`}
-          ref={(node) => setScrollerRef(stage.key, node)}
-          onPointerDown={(event) => onPointerDown(stage.key, event)}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerEnd}
-          onPointerCancel={onPointerEnd}
-          onLostPointerCapture={onPointerEnd}
-          onScroll={(event) => onScrollerScroll(stage.key, event)}
-        >
-          {!layout ? null : (
+      ) : (
+        <>
+          {layout ? (
             <div
-              className="tournamentTreeBoardViewport"
+              className="tournamentRoundHeaderRail"
               style={{
-                width: `${layout.width * zoomLevel}px`,
-                height: `${layout.height * zoomLevel}px`,
+                height: `${HEADER_SPACE * zoomLevel}px`,
+                marginBottom: `${-HEADER_SPACE * zoomLevel}px`,
               }}
             >
               <div
-                className={`tournamentTreeBoard${stage.key === "main" ? " isMainTree" : ""}`}
+                className="tournamentRoundHeaderTrack"
+                ref={(node) => setHeaderTrackRef(stage.key, node)}
                 style={{
-                  width: `${layout.width}px`,
-                  height: `${layout.height}px`,
-                  transform: `scale(${zoomLevel})`,
+                  width: `${layout.width * zoomLevel}px`,
                 }}
               >
-                <svg
-                  className="tournamentTreeLines"
-                  viewBox={`0 0 ${layout.width} ${layout.height}`}
-                  preserveAspectRatio="none"
-                  aria-hidden="true"
-                >
-                  {layout.connectors.map((connector) => (
-                    <line
-                      key={connector.key}
-                      x1={connector.x1}
-                      y1={connector.y1}
-                      x2={connector.x2}
-                      y2={connector.y2}
-                    />
-                  ))}
-                </svg>
-
-                {layout.positionedMatches.map((match) => (
-                  <TournamentMatchCard
-                    key={match.id}
-                    match={match}
-                    topSeedMap={topSeedMap}
-                    entryMarkers={entryMarkers}
-                    seedCount={seedCount}
-                    countryMap={countryMap}
-                    trophyAssetPath={trophyAssetPath}
-                    showTrophy={match.id === trophyMatchId}
-                    placeTrophyOnSide={
-                      startRoundName === "Semifinals" || startRoundName === "Finals"
-                    }
-                    shouldSuppressClick={shouldSuppressMatchClick}
-                    loserSources={loserSourcesByMatchId.get(match.id) ?? []}
-                  />
+                {layout.rounds.map((round, roundIndex) => (
+                  <div
+                    key={`${stage.key}-${round.roundName}-sticky`}
+                    className="tournamentRoundHeader tournamentRoundHeaderSticky"
+                    style={{
+                      left: `${(BOARD_PADDING + roundIndex * (CARD_WIDTH + COLUMN_GAP)) * zoomLevel}px`,
+                      width: `${CARD_WIDTH * zoomLevel}px`,
+                    }}
+                  >
+                    <span>
+                      {stage.key === "qualifying"
+                        ? getStageRoundShortLabel(stage, round.roundName)
+                        : round.roundName}
+                    </span>
+                  </div>
                 ))}
               </div>
             </div>
-          )}
-        </div>
-      </div>
+          ) : null}
+          <div
+            className="tournamentDrawViewport"
+            aria-label={`${stage.label} draw starting at ${startRoundName}`}
+          >
+            <div
+              className={`tournamentRoundsScroller${isDragging ? " isDragging" : ""}${stage.key === "main" ? " isMainBracket" : ""}`}
+              ref={(node) => setScrollerRef(stage.key, node)}
+              onPointerDown={(event) => onPointerDown(stage.key, event)}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerEnd}
+              onPointerCancel={onPointerEnd}
+              onLostPointerCapture={onPointerEnd}
+              onScroll={(event) => onScrollerScroll(stage.key, event)}
+            >
+              {!layout ? null : (
+                <div
+                  className="tournamentTreeBoardViewport"
+                  style={{
+                    width: `${layout.width * zoomLevel}px`,
+                    height: `${layout.height * zoomLevel}px`,
+                  }}
+                >
+                  <div
+                    className={`tournamentTreeBoard${stage.key === "main" ? " isMainTree" : ""}`}
+                    style={{
+                      width: `${layout.width}px`,
+                      height: `${layout.height}px`,
+                      transform: `scale(${zoomLevel})`,
+                    }}
+                  >
+                    <svg
+                      className="tournamentTreeLines"
+                      viewBox={`0 0 ${layout.width} ${layout.height}`}
+                      preserveAspectRatio="none"
+                      aria-hidden="true"
+                    >
+                      {layout.connectors.map((connector) => (
+                        <line
+                          key={connector.key}
+                          x1={connector.x1}
+                          y1={connector.y1}
+                          x2={connector.x2}
+                          y2={connector.y2}
+                        />
+                      ))}
+                    </svg>
+
+                    {layout.positionedMatches.map((match) => (
+                      <TournamentMatchCard
+                        key={match.id}
+                        match={match}
+                        topSeedMap={topSeedMap}
+                        entryMarkers={entryMarkers}
+                        seedCount={seedCount}
+                        countryMap={countryMap}
+                        trophyAssetPath={trophyAssetPath}
+                        showTrophy={match.id === trophyMatchId}
+                        placeTrophyOnSide={
+                          startRoundName === "Semifinals" || startRoundName === "Finals"
+                        }
+                        shouldSuppressClick={shouldSuppressMatchClick}
+                        loserSources={loserSourcesByMatchId.get(match.id) ?? []}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </section>
   );
 };
@@ -1430,7 +1586,7 @@ const BracketTournamentPage = ({
               ) : null}
             </div>
           ) : null}
-          {activeStage ? (
+          {activeStage && !isRoundRobinQualifyingStage(activeStage) ? (
             <TournamentZoomControls
               stageLabel={activeStage.label}
               zoomLevel={clampZoom(zoomLevels[activeStage.key] || DEFAULT_STAGE_ZOOM)}

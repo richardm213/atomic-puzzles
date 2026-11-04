@@ -10,6 +10,7 @@ The Atomic Tour is a rolling points ranking backed by Supabase.
 | Chess.com Atomic Championship |                2,000 |
 | Atomic Hyper Championship     |                1,000 |
 | Atomic Openings Championship  |                1,000 |
+| Atomic 960 Elimination        |                1,000 |
 | Wolfarena                     |                1,000 |
 
 Atomic Chess League board wins award 100 points in Elite and 50 in Challenger. Draws award half.
@@ -39,6 +40,12 @@ capped at 10% of the event maximum, so a 2,000-point champion can finish with up
 Byes do not earn points. Following the ATP rule, a player who advances by bye and then loses their
 first played match receives only the event's first-round loser points. A played win advances the
 player to the next guaranteed point tier.
+
+Qualifier wins are scored by distance from the main draw rather than by the displayed round name.
+The final qualifying round awards 2% of the event maximum, the preceding round 1.5%, and an earlier
+third round 1%. A one-round qualifying draw therefore awards 2%, while a three-round draw awards
+1%, 1.5%, and 2% in sequence. Played wins, withdrawals, and disqualifications count; byes and
+unplayed pairings do not.
 
 ## Ranking behavior
 
