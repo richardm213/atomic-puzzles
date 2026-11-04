@@ -9,6 +9,8 @@ const playerSocialSchema = z.object({
   username: z.string(),
   flair: z.enum(PLAYER_FLAIRS).nullable(),
   countryCode: z.string(),
+  countryCodeSource: z.enum(["profile", "tournament"]).nullable(),
+  tournamentCountryCode: z.string(),
   tourRank: z.number().int().positive().nullable(),
   ratings: z.array(
     z.object({
@@ -46,4 +48,12 @@ export const updatePlayerFlair = (flair: PlayerFlair | null) =>
     body: { action: "setFlair", flair },
     schema: mutationResponseSchema,
     errorMessage: "Unable to update flair.",
+  });
+
+export const updatePlayerCountry = (countryCode: string | null) =>
+  apiRequest("/api/player-social", {
+    method: "POST",
+    body: { action: "setCountry", countryCode },
+    schema: mutationResponseSchema,
+    errorMessage: "Unable to update country.",
   });

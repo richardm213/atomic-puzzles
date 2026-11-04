@@ -20,7 +20,16 @@ const usernameSchema = z
   .max(100)
   .regex(/^[a-z0-9_-]+$/i);
 const flairSchema = z.enum(PLAYER_FLAIRS);
-const mutationSchema = z.object({ action: z.literal("setFlair"), flair: flairSchema.nullable() });
+const countryCodeSchema = z
+  .string()
+  .trim()
+  .length(2)
+  .transform((value) => value.toUpperCase())
+  .refine((value) => /^[A-Z]{2}$/.test(value), "Country code must use two letters.");
+const mutationSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("setFlair"), flair: flairSchema.nullable() }),
+  z.object({ action: z.literal("setCountry"), countryCode: countryCodeSchema.nullable() }),
+]);
 
 const storedRatings = (value: unknown): StoredPlayerRating[] => {
   if (!Array.isArray(value)) return [];
@@ -50,7 +59,7 @@ const getPlayerSocial = async (event: FunctionEvent) => {
   const [profileResult, countryResult, tourResult] = await Promise.all([
     supabase
       .from("player_social_profiles")
-      .select("flair,archive_start_date,total_games,ratings")
+      .select("flair,country_code,archive_start_date,total_games,ratings")
       .eq("username", username)
       .maybeSingle(),
     supabase
@@ -70,10 +79,15 @@ const getPlayerSocial = async (event: FunctionEvent) => {
     throw new Error("Unable to load player social data.");
   }
 
+  const profileCountryCode = String(profileResult.data?.country_code ?? "").toUpperCase();
+  const tournamentCountryCode = String(countryResult.data?.country_code ?? "").toUpperCase();
+
   return jsonResponse(200, {
     username,
     flair: profileResult.data?.flair ?? null,
-    countryCode: String(countryResult.data?.country_code ?? "").toUpperCase(),
+    countryCode: profileCountryCode || tournamentCountryCode,
+    countryCodeSource: profileCountryCode ? "profile" : tournamentCountryCode ? "tournament" : null,
+    tournamentCountryCode,
     tourRank: Number(tourResult.data?.rank) || null,
     ratings: storedRatings(profileResult.data?.ratings),
     startDate: profileResult.data?.archive_start_date ?? null,
@@ -90,14 +104,22 @@ const mutatePlayerSocial = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, mutationSchema, "Invalid player social request.");
   const supabase = createServerSupabase("Player social service");
 
-  const { error } = await supabase
-    .from("player_social_profiles")
-    .upsert(
-      { username: viewerUsername, flair: input.flair, updated_at: new Date().toISOString() },
-      { onConflict: "username" },
+  const profileUpdate =
+    input.action === "setFlair" ? { flair: input.flair } : { country_code: input.countryCode };
+  const { error } = await supabase.from("player_social_profiles").upsert(
+    {
+      username: viewerUsername,
+      ...profileUpdate,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "username" },
+  );
+  if (error) {
+    throw new Error(
+      input.action === "setFlair" ? "Unable to update flair." : "Unable to update country.",
     );
-  if (error) throw new Error("Unable to update flair.");
-  return identityResponse(identity, 200, { ok: true, flair: input.flair });
+  }
+  return identityResponse(identity, 200, { ok: true, ...profileUpdate });
 };
 
 export const playerSocialRoute = async (event: FunctionEvent) =>

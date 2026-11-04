@@ -71,4 +71,24 @@ describe("player social function", () => {
     expect(response.statusCode).toBe(400);
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
+
+  it("stores a site-profile country without changing tournament countries", async () => {
+    const upsert = vi.fn(async () => ({ error: null }));
+    const from = vi.fn(() => ({ upsert }));
+    mocks.createClient.mockReturnValue({ from });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: ownerHeaders("Alice"),
+      body: JSON.stringify({ action: "setCountry", countryCode: "dk" }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(from).toHaveBeenCalledWith("player_social_profiles");
+    expect(from).not.toHaveBeenCalledWith("player_countries");
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ username: "alice", country_code: "DK" }),
+      { onConflict: "username" },
+    );
+  });
 });
