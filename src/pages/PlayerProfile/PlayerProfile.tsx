@@ -26,7 +26,6 @@ import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
-import { PlayerSocialControls } from "../../components/PlayerSocialControls/PlayerSocialControls";
 import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
@@ -104,6 +103,7 @@ import {
 import { atomicTourPlayerRankingStatsQueryOptions } from "../../lib/atomicTour/queries";
 import { getTimeControlOptions } from "../../lib/matches/collection";
 import { inferExternalGameSource } from "../../lib/matches/routes";
+import { playerSocialQueryOptions } from "../../lib/playerSocial/playerSocial";
 import { puzzleRankingTrophiesQueryOptions } from "../../lib/puzzles/puzzleQueries";
 import { profileAliasQueryOptions } from "../../lib/users/aliasQueries";
 import { registeredSiteUsernameQueryOptions } from "../../lib/users/userQueries";
@@ -209,6 +209,7 @@ export const PlayerProfilePage = ({
   const profileAliasEntry: AliasIdentityRow | null = profileAliasQuery.data ?? null;
   const aliasesLoaded = Boolean(requestedUsername) && !profileAliasQuery.isPending;
   const canonicalUsername = profileAliasEntry?.username ?? normalizedUsername;
+  const profileSocialQuery = useQuery(playerSocialQueryOptions(canonicalUsername));
   const isBanned = Boolean(profileAliasEntry?.banned);
   const isBot = Boolean(profileAliasEntry?.bot);
   const isExcluded = isBanned || isBot;
@@ -910,6 +911,14 @@ export const PlayerProfilePage = ({
                 }`}
               >
                 <h1>{profileDisplayUsername}</h1>
+                {profileSocialQuery.data?.flair ? (
+                  <span
+                    className="profileFlair"
+                    aria-label={`Flair ${profileSocialQuery.data.flair}`}
+                  >
+                    {profileSocialQuery.data.flair}
+                  </span>
+                ) : null}
                 {tourRankingStatsQuery.data?.currentRank ? (
                   <Link
                     className="profileTourRankLink"
@@ -922,7 +931,6 @@ export const PlayerProfilePage = ({
                 ) : null}
                 {isBanned ? <span className="profileCheaterTag">CHEATER</span> : null}
                 {isBot ? <span className="profileBotTag">BOT</span> : null}
-                <PlayerSocialControls username={canonicalUsername} />
                 {!showProfileActionButtons ? (
                   <details ref={profileActionsMenuRef} className="profileActionsMenu">
                     <summary aria-label="Profile actions" title="Profile actions">

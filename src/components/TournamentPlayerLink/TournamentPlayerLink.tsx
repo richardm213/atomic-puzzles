@@ -21,7 +21,7 @@ export const TournamentPlayerLink = ({
   ...props
 }: TournamentPlayerLinkProps) => (
   <PlayerHoverCardTrigger username={username}>
-    {({ flair, ...triggerProps }) => (
+    {(triggerProps) => (
       <Link
         {...props}
         {...triggerProps}
@@ -29,11 +29,6 @@ export const TournamentPlayerLink = ({
         params={{ username: normalizeUsername(username) }}
       >
         {children ?? username}
-        {flair ? (
-          <span className="playerLinkFlair" aria-label={`Flair ${flair}`}>
-            {flair}
-          </span>
-        ) : null}
       </Link>
     )}
   </PlayerHoverCardTrigger>

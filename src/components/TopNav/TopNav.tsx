@@ -37,6 +37,7 @@ import { getBrowserStorageItem, setBrowserStorageItem } from "../../utils/browse
 import { getErrorMessage } from "../../utils/errors";
 import { normalizeUsername } from "../../utils/playerNames";
 import { PlayerLink } from "../PlayerLink/PlayerLink";
+import { PlayerFlairPicker } from "../PlayerSocialControls/PlayerSocialControls";
 import { TournamentPlayerLink } from "../TournamentPlayerLink/TournamentPlayerLink";
 import { NavNotificationsPanel } from "./NavNotificationsPanel";
 import { NavPlayerSearch } from "./NavPlayerSearch";
@@ -724,6 +725,12 @@ export const TopNav = () => {
           </button>
           {settingsOpen ? (
             <div className="navSettingsMenu" role="menu" aria-label="Site settings">
+              {isAuthenticated && normalizedAuthUsername ? (
+                <div className="navSettingsSection">
+                  <span className="navSettingsLabel">Flair</span>
+                  <PlayerFlairPicker username={normalizedAuthUsername} />
+                </div>
+              ) : null}
               <div className="navSettingsSection">
                 <label className="navSettingsLabel" htmlFor="site-theme-select">
                   Theme

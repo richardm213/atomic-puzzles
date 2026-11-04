@@ -1,15 +1,13 @@
 import "./PlayerHoverCard.css";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import type { FocusEventHandler, MouseEventHandler, MutableRefObject, ReactNode, Ref } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { type Mode, modeLabels } from "../../constants/matches";
-import {
-  playerFlairQueryOptions,
-  playerSocialQueryOptions,
-} from "../../lib/playerSocial/playerSocial";
+import { playerSocialQueryOptions } from "../../lib/playerSocial/playerSocial";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { normalizeUsername } from "../../utils/playerNames";
 import { lichessIcons } from "./lichessIcons";
@@ -22,7 +20,6 @@ type PlayerHoverCardTriggerProps = {
     onMouseEnter: MouseEventHandler<HTMLAnchorElement>;
     onMouseLeave: MouseEventHandler<HTMLAnchorElement>;
     ref: (element: HTMLAnchorElement | null) => void;
-    flair: string | null;
   }) => ReactNode;
   username: string;
 };
@@ -108,9 +105,14 @@ const PlayerHoverCardContent = ({
           </span>
         ) : null}
         {social?.tourRank ? (
-          <span className="playerHoverCardTourRank" title="Live Atomic Chess Tour rank">
+          <Link
+            className="playerHoverCardTourRank"
+            to="/rankings/tour"
+            aria-label={`Atomic Chess Tour rank ${social.tourRank}`}
+            title="Live Atomic Chess Tour rank"
+          >
             #{social.tourRank}
-          </span>
+          </Link>
         ) : null}
       </header>
 
@@ -156,7 +158,6 @@ export const PlayerHoverCardTrigger = ({
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ left: 12, top: 12 });
   const queryClient = useQueryClient();
-  const flairQuery = useQuery(playerFlairQueryOptions(username));
 
   const clearTimers = useCallback(() => {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
@@ -219,7 +220,6 @@ export const PlayerHoverCardTrigger = ({
   return (
     <>
       {children({
-        flair: flairQuery.data ?? null,
         ref: (element) => {
           triggerRef.current = element;
           assignRef(anchorRef, element);

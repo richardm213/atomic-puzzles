@@ -18,14 +18,9 @@ export const PlayerLink = forwardRef<HTMLAnchorElement, PlayerLinkProps>(
   ({ children, username, ...props }, ref) => {
     return (
       <PlayerHoverCardTrigger username={username} anchorRef={ref}>
-        {({ flair, ...triggerProps }) => (
+        {(triggerProps) => (
           <Link {...props} {...triggerProps} to="/@/$username" params={{ username }}>
             {children}
-            {flair ? (
-              <span className="playerLinkFlair" aria-label={`Flair ${flair}`}>
-                {flair}
-              </span>
-            ) : null}
           </Link>
         )}
       </PlayerHoverCardTrigger>

@@ -77,6 +77,16 @@
   color: var(--color-primary-soft);
   font-size: 11px;
   font-weight: 700;
+  text-decoration: none;
+}
+
+.playerHoverCardTourRank:hover {
+  color: var(--color-heading);
+}
+
+.playerHoverCardTourRank:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
 }
 
 .playerHoverCardRatings {
