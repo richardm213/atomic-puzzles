@@ -71,7 +71,7 @@
 .matchGamesHeader,
 .matchGameRow {
   display: grid;
-  grid-template-columns: 80px minmax(0, 1fr) minmax(90px, auto);
+  grid-template-columns: 80px minmax(0, 1fr) 90px minmax(90px, auto);
   gap: 12px;
   align-items: center;
   min-width: 0;
@@ -79,7 +79,7 @@
 
 .matchGamesWithScore .matchGamesHeader,
 .matchGamesWithScore .matchGameRow {
-  grid-template-columns: 80px minmax(0, 1fr) 80px minmax(90px, auto);
+  grid-template-columns: 80px minmax(0, 1fr) 80px 90px minmax(90px, auto);
 }
 
 .matchGamesHeader {
@@ -142,10 +142,8 @@
     grid-template-columns: 68px minmax(0, 1fr);
   }
 
-  .matchGamesWithScore .matchGamesHeader > :nth-child(3),
-  .matchGamesWithScore .matchGamesHeader > :nth-child(4),
-  .matchGamesWithScore .matchGameRow > :nth-child(3),
-  .matchGamesWithScore .matchGameRow > :nth-child(4) {
+  .matchGamesWithScore .matchGamesHeader > :nth-child(n + 3),
+  .matchGamesWithScore .matchGameRow > :nth-child(n + 3) {
     grid-column: 1 / -1;
     overflow-wrap: anywhere;
   }

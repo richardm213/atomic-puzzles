@@ -124,6 +124,27 @@ describe("archive-data function", () => {
     });
   });
 
+  it("includes per-game time controls from schema v5 matches", async () => {
+    mocks.execute
+      .mockResolvedValueOnce({ rows: [{ value: "5" }] })
+      .mockResolvedValueOnce({ rows: [{ total: 1 }] })
+      .mockResolvedValueOnce({
+        rows: [{ match_id: "mixed-clock", games: "g1,,1,1,3+2|g2,,2,2,3+0" }],
+      });
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({
+      queryStringParameters: { resource: "matches", matchId: "mixed-clock" },
+    });
+
+    expect(mocks.execute.mock.calls[2]?.[0].sql).toContain(
+      "join time_controls gtc on gtc.id=g.time_control_id",
+    );
+    expect(JSON.parse(response.body).rows[0].games).toEqual([
+      "g1,,1,1,3+2",
+      "g2,,2,2,3+0",
+    ]);
+  });
+
   it("serves a schema-v4 timeline when clocks omit the final move", async () => {
     mocks.execute.mockResolvedValueOnce({ rows: [{ value: "4" }] }).mockResolvedValueOnce({
       rows: [

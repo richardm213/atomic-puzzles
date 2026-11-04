@@ -39,9 +39,20 @@ describe("normalizedPlayersFromMatch", () => {
 describe("normalizedGamesFromMatch", () => {
   it("normalizes object games", () => {
     const result = normalizedGamesFromMatch({
-      games: [{ id: "g1", white: "alice", black: "bob", winner: "w" }],
+      time_control: "3+2",
+      games: [
+        { id: "g1", white: "alice", black: "bob", winner: "w", time_control: "3+0" },
+      ],
     });
-    expect(result).toEqual([{ id: "g1", white: "alice", black: "bob", winner: "white" }]);
+    expect(result).toEqual([
+      {
+        id: "g1",
+        white: "alice",
+        black: "bob",
+        winner: "white",
+        timeControl: "3+0",
+      },
+    ]);
   });
 
   it("falls back to em-dash when there's no id", () => {

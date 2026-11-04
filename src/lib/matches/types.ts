@@ -16,6 +16,7 @@ export type RawGameObject = {
   white?: string | null;
   black?: string | null;
   winner?: WinnerCode | null;
+  time_control?: string | null;
 };
 
 export type RawMatchLike = {
@@ -37,6 +38,7 @@ export type MappedGameSummary = {
   resultLabel: string;
   scoreAAfter: number;
   scoreBAfter: number;
+  timeControl?: string;
 };
 
 export type MatchCardData = {

@@ -19,7 +19,7 @@ const SOURCE_IDS = {
   chesscom: 4,
   pychess: 5,
 } as const;
-type ArchiveSchemaVersion = 2 | 3 | 4;
+type ArchiveSchemaVersion = 2 | 3 | 4 | 5;
 let schemaVersionPromise: Promise<ArchiveSchemaVersion> | null = null;
 
 const getSchemaVersion = (): Promise<ArchiveSchemaVersion> => {
@@ -27,7 +27,7 @@ const getSchemaVersion = (): Promise<ArchiveSchemaVersion> => {
     .execute("select value from metadata where key='schema_version'")
     .then((result) => {
       const value = Number(result.rows[0]?.value);
-      return value >= 4 ? 4 : value === 3 ? 3 : 2;
+      return value >= 5 ? 5 : value === 4 ? 4 : value === 3 ? 3 : 2;
     });
   return schemaVersionPromise;
 };
@@ -61,6 +61,7 @@ const RESOURCE_PARAMETERS: Record<string, ReadonlySet<string>> = {
     "pageSize",
     "includeTotal",
   ]),
+  player_summary: new Set(["resource", "username"]),
   player_game_counts: new Set(["resource", "username"]),
   latest_match: new Set(["resource"]),
   aliases: new Set(["resource", "username", "query", "limit"]),
@@ -314,8 +315,8 @@ const queryMatches = async (params: URLSearchParams) => {
   const gamesSelection =
     normalizedSchema
       ? `(select group_concat(game_entry, '|') from (
-          select g.game_id || ',,' || (g.result >> 1) || ',' || ((g.result & 1) + 1) game_entry
-          from games g where g.match_id=m.id order by g.game_index)) games`
+          select g.game_id || ',,' || (g.result >> 1) || ',' || ((g.result & 1) + 1)${schemaVersion >= 5 ? " || ',' || gtc.value" : ""} game_entry
+          from games g${schemaVersion >= 5 ? " join time_controls gtc on gtc.id=g.time_control_id" : ""} where g.match_id=m.id order by g.game_index)) games`
       : "m.games";
   const tournamentSelection = normalizedSchema ? "t.value tournament_id" : "m.tournament_id";
   const sourceSelection =
@@ -405,19 +406,22 @@ const queryGame = async (params: URLSearchParams) => {
     schemaVersion >= 4
       ? "case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' when 5 then 'pychess' else 'unknown' end"
       : "case m.source when 0 then 'lobby' when 1 then 'arena' when 2 then 'friend' when 3 then 'swiss' when 4 then 'chesscom' else 'unknown' end";
+  const gameTimeControlJoin =
+    schemaVersion >= 5 ? " join time_controls gtc on gtc.id=g.time_control_id" : "";
+  const gameTimeControlSelection = schemaVersion >= 5 ? "gtc.value" : "tc.value";
   const result = await getArchiveClient().execute({
     sql: `select g.game_id,g.game_index,g.result,g.moves,g.clocks,g.move_ts,
       ${schemaVersion >= 4 ? "g.ratings" : "null ratings"},
       m.match_id external_match_id,${modeNameSql("m.mode")} mode,m.start_ts,
       ${sourceSelection} source,
-      p1.username player_1,p2.username player_2,tc.value time_control,t.value tournament,
+      p1.username player_1,p2.username player_2,${gameTimeControlSelection} time_control,t.value tournament,
       m.p1_before_rating/10.0 p1_before_rating,m.p1_after_rating/10.0 p1_after_rating,
       m.p1_before_rd/10.0 p1_before_rd,m.p1_after_rd/10.0 p1_after_rd,
       m.p2_before_rating/10.0 p2_before_rating,m.p2_after_rating/10.0 p2_after_rating,
       m.p2_before_rd/10.0 p2_before_rd,m.p2_after_rd/10.0 p2_after_rd
       from games g join matches m on m.id=g.match_id
       join players p1 on p1.id=m.player_1_id join players p2 on p2.id=m.player_2_id
-      join time_controls tc on tc.id=m.time_control_id left join tournaments t on t.id=m.tournament_id
+      join time_controls tc on tc.id=m.time_control_id${gameTimeControlJoin} left join tournaments t on t.id=m.tournament_id
       where g.game_id=? limit 1`,
     args: [gameId],
   });
@@ -704,6 +708,42 @@ export const queryArchiveResource = async (params: URLSearchParams): Promise<unk
   validateResourceParameters(params, resource);
   if (resource === "game") return queryGame(params);
   if (resource === "matches") return queryMatches(params);
+  if (resource === "player_summary") {
+    const username = boundedStringParam(params, "username", 100).toLowerCase();
+    if (!username || !USERNAME_SEARCH_PATTERN.test(username)) {
+      throw new ArchiveRequestError("Valid username is required");
+    }
+    const schemaVersion = await getSchemaVersion();
+    const normalizedSchema = schemaVersion >= 3;
+    const playerIdSql = `(select coalesce(
+      (select a.player_id from aliases a where a.alias=? or (a.count_games<>'p' and lower(a.alias)=?)
+        order by case when a.alias=? then 0 else 1 end limit 1),
+      (select p.id from players p where p.username=? limit 1)
+    ))`;
+    const gameCountSql = normalizedSchema
+      ? "count(g.game_id)"
+      : "sum(case when trim(coalesce(m.games, ''), '|') = '' then 0 else length(trim(m.games, '|')) - length(replace(trim(m.games, '|'), '|', '')) + 1 end)";
+    const result = await getArchiveClient().execute({
+      sql: `select min(m.start_ts) start_ts,coalesce(${gameCountSql},0) total_games
+        from matches m${normalizedSchema ? " join games g on g.match_id=m.id" : ""}
+        where m.player_1_id=${playerIdSql} or m.player_2_id=${playerIdSql}`,
+      args: [
+        username,
+        username,
+        username,
+        username,
+        username,
+        username,
+        username,
+        username,
+      ],
+    });
+    const row = result.rows[0];
+    return {
+      start_ts: row?.start_ts === null || row?.start_ts === undefined ? null : Number(row.start_ts),
+      total_games: Number(row?.total_games) || 0,
+    };
+  }
   if (resource === "player_game_counts") {
     const username = boundedStringParam(params, "username", 100).toLowerCase();
     if (!username) throw new ArchiveRequestError("Username is required");

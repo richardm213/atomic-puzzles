@@ -8,6 +8,7 @@ export type NormalizedGame = {
   white: string;
   black: string;
   winner: WinnerWord;
+  timeControl?: string;
 };
 
 export type RatingEntry = RatingFields;
@@ -41,6 +42,7 @@ export const normalizedGamesFromMatch = (
       white: String(game.white ?? ""),
       black: String(game.black ?? ""),
       winner: winnerToFullWord(game.winner),
+      timeControl: String(game.time_control ?? match?.time_control ?? "").trim(),
     };
   });
 };

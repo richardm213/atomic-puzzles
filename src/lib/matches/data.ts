@@ -28,6 +28,7 @@ export type ParsedMatchGame = {
   winner: WinnerCode;
   white: string;
   black: string;
+  time_control?: string | null;
 };
 
 export type ParsedMatch = {
@@ -122,7 +123,7 @@ const parseMatchRows = (rows: MatchRow[]): ParsedMatch[] => {
     const p2 = row.player_2;
     const games = archiveGameEntries(row.games)
       .map((entry, gameOffset): ParsedMatchGame => {
-        const [gameId, winnerCodeRaw, winnerPlayerRaw, whitePlayerRaw] = String(entry ?? "").split(
+        const [gameId, winnerCodeRaw, winnerPlayerRaw, whitePlayerRaw, timeControlRaw] = String(entry ?? "").split(
           ",",
         );
         const winnerCode = String(winnerCodeRaw ?? "")
@@ -147,6 +148,7 @@ const parseMatchRows = (rows: MatchRow[]): ParsedMatch[] => {
           winner,
           white,
           black,
+          time_control: String(timeControlRaw ?? row.time_control).trim() || null,
         };
       })
       .filter((game) => game.id)

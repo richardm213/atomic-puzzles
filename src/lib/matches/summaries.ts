@@ -86,6 +86,7 @@ export const summarizeMatchGames = (
       resultLabel,
       scoreAAfter: scoreA,
       scoreBAfter: scoreB,
+      ...(game.timeControl ? { timeControl: game.timeControl } : {}),
     };
   });
 
