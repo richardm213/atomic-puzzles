@@ -795,7 +795,14 @@
 
 .gameMatchCrosstableEmbedded {
   min-width: 0;
-  padding-top: 37px;
+  padding-top: 10px;
+}
+
+.gameMatchCrosstableMeta {
+  margin-bottom: 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+  text-align: right;
 }
 
 .gameSharePanel {
