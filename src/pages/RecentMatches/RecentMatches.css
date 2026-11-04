@@ -7,6 +7,24 @@
   min-width: 0;
 }
 
+@media (min-width: 1600px) {
+  .recentMatchesPanel,
+  .rankingsPanel.recentMatchesPanel {
+    width: min(1040px, 100%);
+  }
+
+  .matchFilterGrid {
+    gap: 14px 16px;
+  }
+}
+
+@media (min-width: 2400px) {
+  .recentMatchesPanel,
+  .rankingsPanel.recentMatchesPanel {
+    width: min(1120px, 100%);
+  }
+}
+
 .recentMatchesPanel h1 {
   margin-bottom: 0;
 }

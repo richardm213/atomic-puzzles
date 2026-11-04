@@ -76,8 +76,9 @@ const NOTATION_LAYOUT_STORAGE_KEY = "atomic-puzzles.analysis.notation-layout";
 const EXPLORER_OPEN_STORAGE_KEY = "atomic-puzzles.analysis.explorer-open";
 const DEFAULT_ANALYSIS_BOARD_SIZE = 516;
 const MIN_ANALYSIS_BOARD_SIZE = 320;
-const MAX_ANALYSIS_BOARD_SIZE = 760;
+const MAX_ANALYSIS_BOARD_SIZE = 920;
 const ANALYSIS_DESKTOP_RESERVED_WIDTH = 430;
+const GAME_DESKTOP_RESERVED_WIDTH = 700;
 const DEFAULT_PLAYER_START_DATE = "2025-01";
 const SPEED_FILTERS: Array<{ key: ExplorerSpeed; label: string; value: ExplorerSpeedValue }> = [
   { key: "hyperbullet", label: "Hyper", value: 2 },
@@ -141,7 +142,7 @@ const clampAnalysisBoardSize = (size: number, maxSize = MAX_ANALYSIS_BOARD_SIZE)
     ),
   );
 
-const getMaxAnalysisBoardSize = (): number => {
+const getMaxAnalysisBoardSize = (isGame = false): number => {
   if (typeof window === "undefined") return MAX_ANALYSIS_BOARD_SIZE;
 
   const viewportWidth = window.innerWidth;
@@ -155,8 +156,20 @@ const getMaxAnalysisBoardSize = (): number => {
 
   return Math.max(
     MIN_ANALYSIS_BOARD_SIZE,
-    Math.min(MAX_ANALYSIS_BOARD_SIZE, viewportWidth - ANALYSIS_DESKTOP_RESERVED_WIDTH),
+    Math.min(
+      MAX_ANALYSIS_BOARD_SIZE,
+      viewportWidth - (isGame ? GAME_DESKTOP_RESERVED_WIDTH : ANALYSIS_DESKTOP_RESERVED_WIDTH),
+    ),
   );
+};
+
+const getResponsiveAnalysisBoardFloor = (viewportWidth: number): number => {
+  if (viewportWidth >= 3000) return 820;
+  if (viewportWidth >= 2400) return 760;
+  if (viewportWidth >= 1800) return 680;
+  if (viewportWidth >= 1600) return 640;
+  if (viewportWidth >= 981) return 600;
+  return MIN_ANALYSIS_BOARD_SIZE;
 };
 
 const defaultExplorerOpen = (): boolean =>
@@ -308,6 +321,9 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
     boardSizeSchema,
     DEFAULT_ANALYSIS_BOARD_SIZE,
   );
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === "undefined" ? 1440 : window.innerWidth,
+  );
   const [notationLayout, setNotationLayout] = usePersistedState(
     NOTATION_LAYOUT_STORAGE_KEY,
     notationLayoutSchema,
@@ -444,7 +460,11 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
   };
   const currentPly = boardState?.lineIndex ?? 0;
   const customLines = useMemo(() => boardState?.customLines ?? [], [boardState?.customLines]);
-  const displayedBoardSize = game ? Math.min(Math.max(boardSize, 600), 680) : boardSize;
+  const responsiveBoardFloor = getResponsiveAnalysisBoardFloor(viewportWidth);
+  const displayedBoardSize = Math.min(
+    Math.max(boardSize, responsiveBoardFloor),
+    getMaxAnalysisBoardSize(Boolean(game)),
+  );
   const analysisPageStyle = {
     "--analysis-board-size": game
       ? `min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 48px))`
@@ -550,13 +570,16 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
 
   useEffect(() => {
     const handleWindowResize = (): void => {
-      setBoardSize((currentSize) => clampAnalysisBoardSize(currentSize, getMaxAnalysisBoardSize()));
+      setViewportWidth(window.innerWidth);
+      setBoardSize((currentSize) =>
+        clampAnalysisBoardSize(currentSize, getMaxAnalysisBoardSize(Boolean(game))),
+      );
     };
 
     handleWindowResize();
     window.addEventListener("resize", handleWindowResize);
     return () => window.removeEventListener("resize", handleWindowResize);
-  }, [setBoardSize]);
+  }, [game, setBoardSize]);
 
   const handleBoardResizePointerDown = (event: ReactPointerEvent<HTMLButtonElement>): void => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
@@ -580,7 +603,9 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
       const deltaY = moveEvent.clientY - startY;
       const resizeDelta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
 
-      setBoardSize(clampAnalysisBoardSize(startSize + resizeDelta, getMaxAnalysisBoardSize()));
+      setBoardSize(
+        clampAnalysisBoardSize(startSize + resizeDelta, getMaxAnalysisBoardSize(Boolean(game))),
+      );
     };
 
     const handlePointerUp = (upEvent: PointerEvent): void => {

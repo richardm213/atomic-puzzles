@@ -210,6 +210,27 @@
   gap: 16px;
 }
 
+@media (min-width: 1600px) {
+  .puzzleDashboardShell {
+    width: min(1040px, 100%);
+    gap: 20px;
+  }
+
+  .puzzleSetsShell {
+    width: min(860px, 100%);
+  }
+}
+
+@media (min-width: 2400px) {
+  .puzzleDashboardShell {
+    width: min(1120px, 100%);
+  }
+
+  .puzzleSetsShell {
+    width: min(920px, 100%);
+  }
+}
+
 .puzzleEditorPlayback,
 .puzzleQueueSubmitRow,
 .puzzleReviewActions,

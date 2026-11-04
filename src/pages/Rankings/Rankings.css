@@ -3,6 +3,23 @@
   min-width: 0;
 }
 
+@media (min-width: 1600px) {
+  .rankingsPanel {
+    width: min(860px, 100%);
+  }
+
+  .rankingsLeaderboardPanel .rankingsTable th,
+  .rankingsLeaderboardPanel .rankingsTable td {
+    padding-inline: 16px;
+  }
+}
+
+@media (min-width: 2400px) {
+  .rankingsPanel {
+    width: min(920px, 100%);
+  }
+}
+
 .rankingsPanel h1 {
   margin-bottom: 20px;
   line-height: 1.1;

@@ -2,6 +2,18 @@
   --site-page-max-width: 792px;
 }
 
+@media (min-width: 1600px) {
+  .tournamentsPage {
+    --site-page-max-width: 940px;
+  }
+}
+
+@media (min-width: 2400px) {
+  .tournamentsPage {
+    --site-page-max-width: 1000px;
+  }
+}
+
 .tournamentsPanel {
   display: grid;
   gap: var(--space-8);

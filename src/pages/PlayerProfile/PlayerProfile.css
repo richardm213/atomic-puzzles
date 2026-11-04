@@ -4,6 +4,18 @@
   width: min(768px, 100%);
 }
 
+@media (min-width: 1600px) {
+  .playerProfilePanel {
+    width: min(920px, 100%);
+  }
+}
+
+@media (min-width: 2400px) {
+  .playerProfilePanel {
+    width: min(980px, 100%);
+  }
+}
+
 .playerProfilePanel > .puzzleCommunity {
   margin-top: var(--space-6);
 }

@@ -1093,6 +1093,28 @@
   }
 }
 
+@media (min-width: 1600px) {
+  .analysisPage.gameAnalysisPage {
+    width: min(100%, calc(var(--analysis-board-size) + 674px));
+    grid-template-columns: minmax(230px, 260px) minmax(0, var(--analysis-board-size)) minmax(
+        340px,
+        370px
+      );
+    column-gap: 28px;
+  }
+}
+
+@media (min-width: 2400px) {
+  .analysisPage.gameAnalysisPage {
+    width: min(100%, calc(var(--analysis-board-size) + 732px));
+    grid-template-columns: minmax(240px, 270px) minmax(0, var(--analysis-board-size)) minmax(
+        360px,
+        400px
+      );
+    column-gap: 32px;
+  }
+}
+
 @media (min-width: 981px) and (max-width: 1200px) {
   .analysisPage.gameAnalysisPage {
     grid-template-columns: minmax(0, var(--analysis-board-size)) minmax(310px, 340px);

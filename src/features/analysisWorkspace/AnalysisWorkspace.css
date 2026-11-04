@@ -18,6 +18,22 @@
   row-gap: clamp(8px, 1.2vw, 12px);
 }
 
+@media (min-width: 1600px) {
+  .analysisPage:not(.gameAnalysisPage) {
+    width: min(100%, calc(var(--analysis-board-size, 640px) + 430px));
+    grid-template-columns: minmax(0, var(--analysis-board-size, 640px)) minmax(360px, 400px);
+    column-gap: 30px;
+  }
+}
+
+@media (min-width: 2400px) {
+  .analysisPage:not(.gameAnalysisPage) {
+    width: min(100%, calc(var(--analysis-board-size, 760px) + 456px));
+    grid-template-columns: minmax(0, var(--analysis-board-size, 760px)) minmax(380px, 420px);
+    column-gap: 36px;
+  }
+}
+
 :root[data-theme="light"] .analysisPage {
   --color-panel: rgba(247, 250, 253, 0.98);
   --color-panel-strong: var(--analysis-workspace-panel-strong);
