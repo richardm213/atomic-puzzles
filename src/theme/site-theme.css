@@ -41,6 +41,10 @@
   --color-pychess-border-hover: #c4b5fd;
   --color-pychess-shadow: rgba(124, 58, 237, 0.2);
   --color-pychess-shadow-hover: rgba(124, 58, 237, 0.28);
+  --color-chesscom-icon-shadow: #2f6b20;
+  --color-chesscom-icon-body: #5f9f32;
+  --color-chesscom-icon-front: #6da737;
+  --color-chesscom-icon-highlight: #a5d877;
   --color-success: #86efac;
   --color-warning: #facc15;
   --color-danger: #fca5a5;

@@ -1048,19 +1048,19 @@
 }
 
 .chessComIconShadow {
-  fill: #2f6b20;
+  fill: var(--color-chesscom-icon-shadow);
 }
 
 .chessComIconBody {
-  fill: #5f9f32;
+  fill: var(--color-chesscom-icon-body);
 }
 
 .chessComIconFront {
-  fill: #6da737;
+  fill: var(--color-chesscom-icon-front);
 }
 
 .chessComIconHighlight {
-  fill: #a5d877;
+  fill: var(--color-chesscom-icon-highlight);
 }
 
 :root:not([data-theme="light"]) .profileAliasStatus {

@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
 import { z } from "zod";
 
-import { DocumentField } from "../../components/BoardWorkspace/BoardWorkspace";
+import { ChessComProfileIcon } from "../../features/profile/profilePresentation";
 import type { BoardDocument } from "../../hooks/useBoardDocument";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import type { ArchiveGame } from "../../lib/archive/games";
@@ -44,9 +44,7 @@ const clockLinePath = (
       ply % 2 === side
         ? [
             {
-              x:
-                ((Math.floor(ply / 2) + 1 + (color === "black" ? 0.5 : 0)) / slotCount) *
-                100,
+              x: ((Math.floor(ply / 2) + 1 + (color === "black" ? 0.5 : 0)) / slotCount) * 100,
               y:
                 color === "white"
                   ? 4 + (1 - Math.max(0, value) / maximum) * 42
@@ -125,12 +123,29 @@ const ShareDocumentField = ({
   label: "FEN" | "PGN";
   rows: number;
   field: BoardDocument["fen"];
-}) => (
-  <div className="gameShareDocumentRow">
-    <DocumentField label={label} rows={rows} field={field} />
-    <CopyButton label={`Copy ${label}`} value={String(field.value ?? "")} compact />
-  </div>
-);
+}) => {
+  const { error, ...textareaProps } = field;
+  return (
+    <div className={`gameShareDocumentRow ${label === "PGN" ? "gameSharePgnRow" : ""}`}>
+      <div className="gameShareDocumentHeader">
+        <span>{label}</span>
+        <CopyButton label={`Copy ${label}`} value={String(field.value ?? "")} compact />
+      </div>
+      <textarea
+        {...textareaProps}
+        rows={rows}
+        spellCheck={false}
+        aria-label={label}
+        aria-invalid={Boolean(error)}
+      />
+      {error ? (
+        <small className="gameShareDocumentError" role="alert">
+          {error}
+        </small>
+      ) : null}
+    </div>
+  );
+};
 
 export const GameUnderboard = ({
   game,
@@ -305,16 +320,8 @@ export const GameUnderboard = ({
                       <path className="blackLine" d={blackClockPath} />
                       <line
                         className="currentPlyLine"
-                        x1={
-                          currentPly === 0
-                            ? 0
-                            : (((currentPly + 1) / 2) / timelineSlotCount) * 100
-                        }
-                        x2={
-                          currentPly === 0
-                            ? 0
-                            : (((currentPly + 1) / 2) / timelineSlotCount) * 100
-                        }
+                        x1={currentPly === 0 ? 0 : ((currentPly + 1) / 2 / timelineSlotCount) * 100}
+                        x2={currentPly === 0 ? 0 : ((currentPly + 1) / 2 / timelineSlotCount) * 100}
                         y1="0"
                         y2="100"
                       />
@@ -363,8 +370,7 @@ export const GameUnderboard = ({
                         role="tooltip"
                       >
                         <strong>
-                          {Math.ceil(hoveredPly / 2)}.{hoveredColor === "black" ? ".." : ""}{" "}
-                          {moves[hoveredPly - 1] ?? "Move"}
+                          {`${Math.ceil(hoveredPly / 2)}.${hoveredColor === "black" ? ".." : ""} ${moves[hoveredPly - 1] ?? "Move"}`}
                         </strong>
                         <span>{formatMoveTimeForChart(hoveredDuration)}</span>
                         <span>Clock: {formatClockForChart(hoveredClock)}</span>
@@ -427,8 +433,15 @@ export const GameUnderboard = ({
           <div className="gameSharePanel">
             <div className="gameShareActions">
               {game.source === "chesscom" ? (
-                <a href={buildChessComGameUrl(game.game_id)} target="_blank" rel="noreferrer">
-                  View on Chess.com
+                <a
+                  className="gameShareChessComLink"
+                  href={buildChessComGameUrl(game.game_id)}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="View on Chess.com"
+                  title="View on Chess.com"
+                >
+                  <ChessComProfileIcon />
                 </a>
               ) : null}
               {atomicDbHref ? (
