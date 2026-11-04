@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { DataTable } from "../../components/DataTable/DataTable";
 import { InlineState } from "../../components/InlineState/InlineState";
+import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { TournamentPlayerLink } from "../../components/TournamentPlayerLink/TournamentPlayerLink";
 import {
@@ -48,6 +49,11 @@ export const AtomicTourRankingsPage = () => {
 
   const rankingsQuery = useQuery(atomicTourRankingsQueryOptions(selectedDate));
   const rankings = rankingsQuery.data ?? [];
+  const loading =
+    snapshotsQuery.isPending ||
+    (snapshotDates.length > 0 && (!selectedDate || rankingsQuery.isPending));
+
+  if (loading) return <RouteLoadingFallback />;
 
   return (
     <div className="sitePage atomicTourPage">
@@ -110,9 +116,7 @@ export const AtomicTourRankingsPage = () => {
           </a>
         </div>
 
-        {snapshotsQuery.isPending || rankingsQuery.isPending ? (
-          <InlineState>Loading Atomic Tour standings…</InlineState>
-        ) : snapshotsQuery.error || rankingsQuery.error ? (
+        {snapshotsQuery.error || rankingsQuery.error ? (
           <InlineState kind="error">Atomic Tour standings are temporarily unavailable.</InlineState>
         ) : rankings.length ? (
           <DataTable className="atomicTourTable" wrapperClassName="atomicTourTableWrap">
