@@ -40,7 +40,6 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { getBrowserStorageItem, setBrowserStorageItem } from "../../utils/browserStorage";
 import { getErrorMessage } from "../../utils/errors";
 import { normalizeUsername } from "../../utils/playerNames";
-import { PlayerLink } from "../PlayerLink/PlayerLink";
 import {
   PlayerCountryPicker,
   PlayerFlairPicker,
@@ -608,9 +607,10 @@ export const TopNav = () => {
               </button>
               {profileMenuOpen ? (
                 <div className="navProfileDropdown" role="menu" aria-label="Account menu">
-                  <PlayerLink
+                  <Link
                     className="navProfileDropdownItem"
-                    username={resolvedProfileUsername}
+                    to="/@/$username"
+                    params={{ username: resolvedProfileUsername }}
                     role="menuitem"
                     onClick={() => setOpenPanel(null)}
                   >
@@ -618,7 +618,7 @@ export const TopNav = () => {
                       <FontAwesomeIcon icon={faUser} />
                     </span>
                     View profile
-                  </PlayerLink>
+                  </Link>
                   <TournamentPlayerLink
                     className="navProfileDropdownItem"
                     username={resolvedProfileUsername}
