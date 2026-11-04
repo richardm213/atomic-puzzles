@@ -40,16 +40,17 @@ type AtomicDbEngineControlsProps = {
   onToggleNotation?: () => void;
 };
 
-const analysisSourceLabel = (analysis: AtomicDbAnalysisState, threatMode = false): string =>
-  threatMode
-    ? "Threat · Fairy-Stockfish 14"
-    : analysis.source === "terminal"
+const analysisSourceLabel = (analysis: AtomicDbAnalysisState, threatMode = false): string => {
+  const source =
+    analysis.source === "terminal"
       ? "Final position"
       : analysis.source === "engine"
         ? "Fairy-Stockfish 14"
         : analysis.source === "mixed"
           ? "AtomicDB + Fairy-Stockfish 14"
           : "AtomicDB";
+  return threatMode ? `Threat · ${source}` : source;
+};
 
 const resultLabel = (view: AtomicDbView): string | null => {
   if (view.position?.outcome === "WHITE_WIN") return "1–0";

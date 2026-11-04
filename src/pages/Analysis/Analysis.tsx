@@ -463,7 +463,7 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
     debounceMs: 0,
     enabled:
       atomicDbEngineSettings.enabled && threatMode && threatFen !== null && !atomicDbLinePlaying,
-    engineOnly: true,
+    fallbackToEngine: true,
     lineCount: atomicDbEngineSettings.lineCount,
     plyCount: 5,
     suspended: navigation !== null,

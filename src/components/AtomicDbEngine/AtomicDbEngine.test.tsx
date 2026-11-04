@@ -63,6 +63,27 @@ describe("AtomicDbEngine", () => {
     );
   });
 
+  it("identifies AtomicDB as the threat-analysis source", () => {
+    render(
+      <AtomicDbEngineControls
+        fen={STARTING_FEN}
+        analysis={{
+          status: "ready",
+          error: "",
+          source: "atomicdb",
+          result: { fen: STARTING_FEN, position: null },
+          principalVariations: {},
+        }}
+        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: true }}
+        setSettings={vi.fn()}
+        onDisable={vi.fn()}
+        threatMode
+      />,
+    );
+
+    expect(screen.getByText("Threat · AtomicDB")).toBeVisible();
+  });
+
   it("shows an evaluation instead of a game result for a non-terminal solved position", () => {
     const fen = "nrkn1qrb/ppp1pppp/8/1Q1p4/b7/1N2P3/PPPP1PPP/1RKNB1RB b KQkq - 3 3";
     const position = parseAtomicDbResponse({
