@@ -45,6 +45,9 @@ export const TournamentArchiveCard = ({ tournament, champion }: TournamentArchiv
             {formatCalendarDateRange(tournament.startDate, tournament.endDate)}
           </span>
         ) : null}
+        {tournament.hostNames?.length ? (
+          <span className={styles.hosts}>Hosted by {tournament.hostNames.join(" · ")}</span>
+        ) : null}
       </div>
 
       {showWinner ? (

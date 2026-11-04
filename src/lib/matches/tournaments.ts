@@ -15,6 +15,7 @@ export type TournamentMeta = {
   status: "available" | "pending";
   matchMode?: Mode;
   timeControl?: string;
+  hostNames?: string[];
   hideStartRoundControls?: boolean;
   defaultMainBracketStartRound?: string;
   completeMainBracketFromRound?: string;
@@ -152,6 +153,7 @@ type TournamentMetaRowFromDb = {
   status?: string | null;
   match_mode?: string | null;
   time_control?: string | null;
+  host_names?: unknown;
   hide_start_round_controls?: boolean | null;
   default_main_bracket_start_round?: string | null;
   complete_main_bracket_from_round?: string | null;
@@ -190,11 +192,40 @@ const TOURNAMENT_MATCHES_SELECT_COLUMNS =
 const PLAYER_COUNTRIES_SELECT_COLUMNS = "player_name,country_code";
 const TOURNAMENT_SEEDS_SELECT_COLUMNS = "tournament,player_name,seed";
 const TOURNAMENT_CATALOG_WITH_DATES_SELECT_COLUMNS =
-  "id,series_key,series_name,title,heading_title,year,start_date,end_date,status,match_mode,hide_start_round_controls,default_main_bracket_start_round,complete_main_bracket_from_round,trophy_asset_path,show_champion,display_order,home_feature_order";
+  "id,series_key,series_name,title,heading_title,year,start_date,end_date,status,match_mode,time_control,host_names,hide_start_round_controls,default_main_bracket_start_round,complete_main_bracket_from_round,trophy_asset_path,show_champion,display_order,home_feature_order";
+const TOURNAMENT_CATALOG_WITHOUT_HOSTS_SELECT_COLUMNS =
+  "id,series_key,series_name,title,heading_title,year,start_date,end_date,status,match_mode,time_control,hide_start_round_controls,default_main_bracket_start_round,complete_main_bracket_from_round,trophy_asset_path,show_champion,display_order,home_feature_order";
 const TOURNAMENT_CATALOG_START_DATE_SELECT_COLUMNS =
   "id,series_key,series_name,title,heading_title,year,start_date,status,match_mode,hide_start_round_controls,default_main_bracket_start_round,complete_main_bracket_from_round,trophy_asset_path,show_champion,display_order,home_feature_order";
 const TOURNAMENT_CATALOG_LEGACY_SELECT_COLUMNS =
   "id,series_key,series_name,title,heading_title,year,status,match_mode,hide_start_round_controls,default_main_bracket_start_round,complete_main_bracket_from_round,trophy_asset_path,show_champion,display_order,home_feature_order";
+
+// Keeps host attribution visible during a rolling deploy and documents the verified legacy hosts.
+const tournamentHostFallbacks: Readonly<Record<string, readonly string[]>> = {
+  awc2016: ["chronatog"],
+  awc2017: ["chronatog"],
+  awc2018: ["chronatog"],
+  awc2019: ["chronatog"],
+  awc2020: ["chronatog"],
+  awc2021: ["chronatog"],
+  awc2022: ["chronatog"],
+  awc2023: ["chronatog"],
+  awc2024: ["chronatog"],
+  awc2025: ["howlind"],
+  awc2026: ["howlind"],
+  "a960wc2020-1": ["iubar"],
+  "a960wc2020-2": ["iubar"],
+  a960wc2021: ["iubar"],
+  a960wc2023: ["iubar"],
+  "acl-s1": ["maxwellssilvrhammer", "howlind"],
+  "acl-s2": ["howlind"],
+  a960e2026: ["quasabianth"],
+  aoc2026: ["jakestatefarm"],
+  ahc2026: ["seaside_tiramisu"],
+  ccac2025: ["Chess.com"],
+  ccac2026: ["Chess.com"],
+  "wr-arena2026": ["wolfram_ep"],
+};
 
 // Keeps the archive usable during a rolling deploy while the database migration propagates.
 const tournamentStartDateFallbacks: Readonly<Record<string, string>> = {
@@ -217,6 +248,10 @@ const tournamentStartDateFallbacks: Readonly<Record<string, string>> = {
   awc2018: "2018-09-24",
   awc2017: "2017-10-30",
   awc2016: "2016-09-12",
+  "a960wc2020-1": "2020-06-01",
+  "a960wc2020-2": "2020-08-10",
+  a960wc2021: "2021-01-17",
+  a960wc2023: "2023-01-14",
 };
 
 const tournamentEndDateFallbacks: Readonly<Record<string, string>> = {
@@ -238,6 +273,10 @@ const tournamentEndDateFallbacks: Readonly<Record<string, string>> = {
   awc2018: "2018-12-22",
   awc2017: "2017-12-14",
   awc2016: "2016-12-04",
+  "a960wc2020-1": "2020-07-08",
+  "a960wc2020-2": "2020-09-12",
+  a960wc2021: "2021-03-06",
+  a960wc2023: "2023-03-19",
 };
 
 // Verified against archived matches. ACL seasons intentionally stay unset because they use
@@ -245,6 +284,10 @@ const tournamentEndDateFallbacks: Readonly<Record<string, string>> = {
 const tournamentTimeControlFallbacks: Readonly<Record<string, string>> = {
   "wr-arena2026": "3+2",
   a960e2026: "3+2",
+  "a960wc2020-1": "3+2",
+  "a960wc2020-2": "5+2",
+  a960wc2021: "5+2",
+  a960wc2023: "5+2",
   ahc2026: "0.5+0",
   aoc2026: "3+1",
   ccac2026: "3+0",
@@ -435,6 +478,12 @@ export const normalizeTournamentMetaRow = (row: TournamentMetaRowFromDb): Tourna
   const startDate = String(row?.start_date ?? tournamentStartDateFallbacks[id] ?? "").trim();
   const endDate = String(row?.end_date ?? tournamentEndDateFallbacks[id] ?? "").trim();
   const timeControl = String(row?.time_control ?? tournamentTimeControlFallbacks[id] ?? "").trim();
+  const databaseHostNames = Array.isArray(row?.host_names)
+    ? row.host_names.map((host) => String(host).trim()).filter(Boolean)
+    : [];
+  const hostNames = databaseHostNames.length
+    ? databaseHostNames
+    : [...(tournamentHostFallbacks[id] ?? [])];
   const hasValidStartDate = /^\d{4}-\d{2}-\d{2}$/.test(startDate);
   const hasValidEndDate = /^\d{4}-\d{2}-\d{2}$/.test(endDate);
   return {
@@ -448,6 +497,7 @@ export const normalizeTournamentMetaRow = (row: TournamentMetaRowFromDb): Tourna
     status,
     matchMode: mode,
     ...(timeControl ? { timeControl } : {}),
+    hostNames,
     hideStartRoundControls: Boolean(row?.hide_start_round_controls),
     showChampion: row?.show_champion !== false,
     displayOrder: Number(row?.display_order) || 0,
@@ -1106,6 +1156,7 @@ export const fetchTournamentCatalog = async (): Promise<TournamentMeta[]> =>
     // as time_control are filled from the verified fallback map without a failed discovery request.
     const selectColumns = [
       TOURNAMENT_CATALOG_WITH_DATES_SELECT_COLUMNS,
+      TOURNAMENT_CATALOG_WITHOUT_HOSTS_SELECT_COLUMNS,
       TOURNAMENT_CATALOG_START_DATE_SELECT_COLUMNS,
       TOURNAMENT_CATALOG_LEGACY_SELECT_COLUMNS,
     ];
@@ -1120,7 +1171,7 @@ export const fetchTournamentCatalog = async (): Promise<TournamentMeta[]> =>
       } catch (error) {
         const isMissingRollingDeployColumn =
           error instanceof Error &&
-          ["time_control", "end_date", "start_date"].some((column) =>
+          ["host_names", "time_control", "end_date", "start_date"].some((column) =>
             error.message.includes(column),
           );
         if (!isMissingRollingDeployColumn || index === selectColumns.length - 1) throw error;

@@ -1524,7 +1524,7 @@ const BracketTournamentPage = ({
             </div>
           </div>
           <h1>{heading}</h1>
-          {bracket.startDate || bracket.timeControl ? (
+          {bracket.startDate || bracket.timeControl || bracket.hostNames?.length ? (
             <div className="tournamentHeroDetails">
               {bracket.startDate ? (
                 <span className="tournamentStartDate">
@@ -1536,6 +1536,9 @@ const BracketTournamentPage = ({
                   {bracket.matchMode ? `${modeLabels[bracket.matchMode]} ` : null}
                   {formatTimeControl(bracket.timeControl)}
                 </span>
+              ) : null}
+              {bracket.hostNames?.length ? (
+                <span className="tournamentHosts">Hosted by {bracket.hostNames.join(" · ")}</span>
               ) : null}
             </div>
           ) : null}

@@ -87,6 +87,15 @@
   line-height: 1.25;
 }
 
+.hosts {
+  overflow: hidden;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .champion {
   position: relative;
   z-index: 2;

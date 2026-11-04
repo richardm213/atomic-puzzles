@@ -29,6 +29,7 @@ create table if not exists public.tournament_catalog (
   match_mode text not null default 'blitz'
     check (match_mode in ('hyperbullet', 'bullet', 'blitz', 'wolfrandom', 'atomic960')),
   time_control text,
+  host_names text[] not null default '{}'::text[],
   hide_start_round_controls boolean not null default false,
   default_main_bracket_start_round text,
   complete_main_bracket_from_round text,
@@ -51,6 +52,9 @@ alter table public.tournament_catalog
 
 alter table public.tournament_catalog
   add column if not exists time_control text;
+
+alter table public.tournament_catalog
+  add column if not exists host_names text[] not null default '{}'::text[];
 
 do $$
 begin

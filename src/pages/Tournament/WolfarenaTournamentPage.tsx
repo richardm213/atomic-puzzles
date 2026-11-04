@@ -206,7 +206,9 @@ const WolfarenaTournamentArchive = ({
             Tournaments
           </Link>
           <h1>{wolfarena2026.title}</h1>
-          {tournamentMeta?.startDate || tournamentMeta?.timeControl ? (
+          {tournamentMeta?.startDate ||
+          tournamentMeta?.timeControl ||
+          tournamentMeta?.hostNames?.length ? (
             <div className="tournamentHeroDetails">
               {tournamentMeta.startDate ? (
                 <span className="tournamentStartDate">
@@ -217,6 +219,11 @@ const WolfarenaTournamentArchive = ({
                 <span className="tournamentTimeControl timeControlValue">
                   {tournamentMeta.matchMode ? `${modeLabels[tournamentMeta.matchMode]} ` : null}
                   {formatTimeControl(tournamentMeta.timeControl)}
+                </span>
+              ) : null}
+              {tournamentMeta.hostNames?.length ? (
+                <span className="tournamentHosts">
+                  Hosted by {tournamentMeta.hostNames.join(" · ")}
                 </span>
               ) : null}
             </div>
