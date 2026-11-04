@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { type AriaRole, forwardRef, type MouseEventHandler, type ReactNode } from "react";
 
+import { PlayerHoverCardTrigger } from "../PlayerHoverCard/PlayerHoverCard";
+
 type PlayerLinkProps = {
   "aria-label"?: string | undefined;
   children?: ReactNode | undefined;
@@ -15,9 +17,18 @@ type PlayerLinkProps = {
 export const PlayerLink = forwardRef<HTMLAnchorElement, PlayerLinkProps>(
   ({ children, username, ...props }, ref) => {
     return (
-      <Link ref={ref} {...props} to="/@/$username" params={{ username }}>
-        {children}
-      </Link>
+      <PlayerHoverCardTrigger username={username} anchorRef={ref}>
+        {({ flair, ...triggerProps }) => (
+          <Link {...props} {...triggerProps} to="/@/$username" params={{ username }}>
+            {children}
+            {flair ? (
+              <span className="playerLinkFlair" aria-label={`Flair ${flair}`}>
+                {flair}
+              </span>
+            ) : null}
+          </Link>
+        )}
+      </PlayerHoverCardTrigger>
     );
   },
 );

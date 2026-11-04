@@ -26,6 +26,7 @@ import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
+import { PlayerSocialControls } from "../../components/PlayerSocialControls/PlayerSocialControls";
 import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
@@ -921,6 +922,7 @@ export const PlayerProfilePage = ({
                 ) : null}
                 {isBanned ? <span className="profileCheaterTag">CHEATER</span> : null}
                 {isBot ? <span className="profileBotTag">BOT</span> : null}
+                <PlayerSocialControls username={canonicalUsername} />
                 {!showProfileActionButtons ? (
                   <details ref={profileActionsMenuRef} className="profileActionsMenu">
                     <summary aria-label="Profile actions" title="Profile actions">

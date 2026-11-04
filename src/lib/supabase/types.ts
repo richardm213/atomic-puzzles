@@ -37,6 +37,20 @@ export type SupabaseUser = {
   created_at: string;
 };
 
+export type PlayerSocialProfileRow = {
+  username: string;
+  flair: string | null;
+  archive_start_date: string | null;
+  total_games: number;
+  updated_at: string;
+};
+
+export type PlayerFollowRow = {
+  follower_username: string;
+  followed_username: string;
+  created_at: string;
+};
+
 export type PuzzleUserRatingRow = {
   user_id: number;
   username: string;
@@ -254,6 +268,16 @@ export type Database = {
       users: TableDef<
         { id: number; username: string; created_at: string | null },
         { username: string }
+      >;
+      player_social_profiles: TableDef<
+        PlayerSocialProfileRow,
+        Pick<PlayerSocialProfileRow, "username"> & Partial<PlayerSocialProfileRow>,
+        Partial<PlayerSocialProfileRow>
+      >;
+      player_follows: TableDef<
+        PlayerFollowRow,
+        Pick<PlayerFollowRow, "follower_username" | "followed_username">,
+        never
       >;
     };
     Views: Record<string, never>;

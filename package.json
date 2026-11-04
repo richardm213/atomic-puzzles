@@ -24,6 +24,7 @@
     "test:e2e:report": "playwright show-report",
     "benchmark:fsf": "node scripts/run-fsf-benchmark.mjs",
     "benchmark:openings": "node scripts/run-opening-explorer-benchmark.mjs",
+    "backfill:player-social": "npx --yes tsx scripts/backfill-player-social-profiles.ts",
     "format": "prettier . --check",
     "format:write": "prettier . --write"
   },

@@ -21,4 +21,5 @@
 /api/atomicdb-request    /.netlify/functions/atomicdb-request    200
 /api/endgame-practice    /.netlify/functions/endgame-practice    200
 /api/archive-data    /.netlify/functions/archive-data    200
+/api/player-social    /.netlify/functions/player-social    200
 /*    /index.html   200

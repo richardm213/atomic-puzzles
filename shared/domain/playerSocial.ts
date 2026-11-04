@@ -1,0 +1,48 @@
+export const DEFAULT_FOLLOWED_PLAYERS = ["admin", "seaside_tiramisu"] as const;
+
+// Native Unicode emoji use the current platform artwork (Apple artwork on Apple devices).
+// Chess-piece emoji are intentionally omitted so flair stays distinct from rating modes.
+export const PLAYER_FLAIRS = [
+  "😀",
+  "😎",
+  "🥳",
+  "🤓",
+  "🫡",
+  "🫠",
+  "👻",
+  "👽",
+  "🤖",
+  "🐺",
+  "🦊",
+  "🐯",
+  "🦁",
+  "🐸",
+  "🐙",
+  "🦋",
+  "🐝",
+  "🦖",
+  "🐉",
+  "🦄",
+  "🪿",
+  "🪼",
+  "🫎",
+  "🌞",
+  "🌙",
+  "⭐",
+  "🔥",
+  "⚡",
+  "❄️",
+  "🌊",
+  "🍀",
+  "🌵",
+  "🍎",
+  "🍉",
+  "🍄",
+  "🚀",
+  "🎯",
+  "🎨",
+  "🎸",
+  "🏆",
+] as const;
+
+export type PlayerFlair = (typeof PLAYER_FLAIRS)[number];

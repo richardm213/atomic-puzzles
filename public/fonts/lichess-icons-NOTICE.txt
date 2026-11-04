@@ -1,0 +1,5 @@
+Lichess icon font
+Source: https://github.com/lichess-org/lila/blob/master/public/font/lichess.woff2
+Mapping: https://github.com/lichess-org/lila/blob/master/ui/lib/src/licon.ts
+License: GNU Affero General Public License v3 or later (see https://github.com/lichess-org/lila/blob/master/COPYING.md)
+Only used for the player-card performance icon vocabulary.

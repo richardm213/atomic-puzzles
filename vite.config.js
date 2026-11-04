@@ -128,6 +128,7 @@ const localPuzzleFunctionsPlugin = ({ archiveOrigin, useLocalArchive }) => {
     ["/api/atomicdb-analysis", "/netlify/functions/atomicdb-analysis.ts"],
     ["/api/atomicdb-request", "/netlify/functions/atomicdb-request.ts"],
     ["/api/archive-data", "/netlify/functions/archive-data.ts"],
+    ["/api/player-social", "/netlify/functions/player-social.ts"],
   ]);
 
   return {

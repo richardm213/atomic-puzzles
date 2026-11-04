@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import type { ArchiveGame } from "../../lib/archive/games";
 import { decodeGameResult } from "../../lib/archive/games";
 import { gameTerminationLabel } from "../../lib/games/termination";
@@ -110,9 +111,9 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
   const player = (username: string, color: "white" | "black") => (
     <div className="gameAnalysisPlayer">
       <span className={`gameAnalysisColor ${color}`} aria-label={`${color} pieces`} />
-      <Link to="/@/$username" params={{ username }} className="gameAnalysisPlayerName">
+      <PlayerLink username={username} className="gameAnalysisPlayerName">
         {username}
-      </Link>
+      </PlayerLink>
       <PlayerRating game={game} username={username} />
     </div>
   );
