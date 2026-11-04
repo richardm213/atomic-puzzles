@@ -1943,7 +1943,7 @@ export const PuzzleSolverPage = () => {
                 {canLinkSourceMatch ? (
                   <Link
                     className="puzzleHeaderEventLink"
-                    to="/matches/$matchId"
+                    to="/match/$matchId"
                     params={{ matchId: sourceMatchId }}
                   >
                     {activePuzzleSetMetadata.eventName}

@@ -27,7 +27,7 @@ export const CommunityCommentTargetLink = ({
 
   if (targetType === "match") {
     return (
-      <Link className={className} to="/matches/$matchId" params={{ matchId: targetId }}>
+      <Link className={className} to="/match/$matchId" params={{ matchId: targetId }}>
         {targetContext} match {targetId}
       </Link>
     );

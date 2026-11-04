@@ -86,7 +86,7 @@ describe("OpeningDatabaseDisplay recent-game links", () => {
     const chessComLink = screen.getByTitle("ChessCom White vs Black");
     const lichessLink = screen.getByTitle("Lichess White vs Black");
 
-    expect(chessComLink).toHaveAttribute("href", "/games/108184353");
+    expect(chessComLink).toHaveAttribute("href", "/game/108184353");
     expect(chessComLink).toHaveAttribute("target", "_blank");
     expect(lichessLink).toHaveAttribute(
       "href",

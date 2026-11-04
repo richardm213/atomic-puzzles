@@ -106,7 +106,7 @@ export const buildAtomicPuzzlesGameUrl = (gameId: string | number | null | undef
     .trim()
     .replace(/^(?:chesscom|pychess):/i, "");
   if (!normalizedGameId || normalizedGameId === "—") return "";
-  return `/games/${encodeURIComponent(normalizedGameId)}`;
+  return `/game/${encodeURIComponent(normalizedGameId)}`;
 };
 
 export const buildExternalGameUrl = (

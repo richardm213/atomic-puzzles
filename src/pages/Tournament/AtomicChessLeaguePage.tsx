@@ -166,7 +166,7 @@ const BoardMatchRow = ({ board }: { board: AtomicChessLeagueBoardMatch }) => {
         <BoardMatchContent board={board} />
         <Link
           className="aclBoardMatchOverlayLink"
-          to="/matches/$matchId"
+          to="/match/$matchId"
           params={{ matchId: board.matchId }}
           aria-label={`Open ${label}`}
         />

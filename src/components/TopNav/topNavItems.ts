@@ -107,6 +107,7 @@ export const navItems: NavItem[] = [
     isActive: (pathname) =>
       pathname === "/recent" ||
       pathname === "/matches" ||
+      pathname.startsWith("/match/") ||
       pathname.startsWith("/matches/") ||
       pathname === "/h2h" ||
       pathname.startsWith("/h2h/"),
@@ -115,7 +116,10 @@ export const navItems: NavItem[] = [
         to: "/recent",
         label: "Game search",
         isActive: (pathname) =>
-          pathname === "/recent" || pathname === "/matches" || pathname.startsWith("/matches/"),
+          pathname === "/recent" ||
+          pathname === "/matches" ||
+          pathname.startsWith("/match/") ||
+          pathname.startsWith("/matches/"),
       },
       {
         to: "/h2h",

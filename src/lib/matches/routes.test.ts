@@ -184,7 +184,7 @@ describe("buildSingleGameMatchUrl", () => {
         gameCount: 1,
         sourceValue: "chesscom",
       }),
-    ).toBe("/games/123456789");
+    ).toBe("/game/123456789");
   });
 
   it("builds internal URLs for one-game PyChess matches", () => {
@@ -195,7 +195,7 @@ describe("buildSingleGameMatchUrl", () => {
         gameCount: 1,
         sourceValue: "pychess",
       }),
-    ).toBe("/games/AbC960");
+    ).toBe("/game/AbC960");
   });
 
   it("uses Atomic Puzzles for one-game Lichess matches when selected", () => {
@@ -209,7 +209,7 @@ describe("buildSingleGameMatchUrl", () => {
         },
         { lichessLinkTarget: "atomic-puzzles" },
       ),
-    ).toBe("/games/AbC%20123");
+    ).toBe("/game/AbC%20123");
   });
 
   it("does not build an external game URL for longer matches", () => {

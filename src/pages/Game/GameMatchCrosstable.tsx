@@ -89,7 +89,7 @@ const Crosstable = ({
         </button>
       ) : null}
       {matchId ? (
-        <Link className="gameMatchCrosstableMatchLink" to="/matches/$matchId" params={{ matchId }}>
+        <Link className="gameMatchCrosstableMatchLink" to="/match/$matchId" params={{ matchId }}>
           View match
         </Link>
       ) : null}
@@ -219,7 +219,7 @@ export const GameMatchCrosstable = ({
         current: historyMatch.match_id === game.external_match_id,
         link: (
           <Link
-            to="/games/$gameId"
+            to="/game/$gameId"
             params={{ gameId: firstGameId }}
             className="gameMatchResultLink"
             title={`Match ${index + 1} · ${date}`}
@@ -257,7 +257,7 @@ export const GameMatchCrosstable = ({
       current: matchGame.id === game.game_id,
       link: (
         <Link
-          to="/games/$gameId"
+          to="/game/$gameId"
           params={{ gameId: matchGame.id }}
           className="gameMatchResultLink"
           title={`Game ${index + 1}`}

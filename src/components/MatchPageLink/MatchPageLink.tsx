@@ -32,7 +32,7 @@ export const MatchPageLink = ({
     return (
       <Link
         className={`matchPageLink ${className}`.trim()}
-        to="/matches/$matchId"
+        to="/match/$matchId"
         params={buildMatchRouteParams(match)}
         target="_blank"
         rel="noreferrer"

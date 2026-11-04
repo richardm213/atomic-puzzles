@@ -572,7 +572,7 @@ const TournamentMatchCard = ({
         ) : (
           <Link
             className="tournamentMatchCardOpenLink"
-            to="/matches/$matchId"
+            to="/match/$matchId"
             params={{ matchId: match.match_id }}
             aria-label={openMatchLabel}
             onClick={handleOpenMatchClick}

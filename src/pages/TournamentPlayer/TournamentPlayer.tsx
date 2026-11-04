@@ -169,7 +169,7 @@ const TournamentMatchRow = ({
       {match.matchId ? (
         <Link
           className="tournamentProfileMatchLink"
-          to="/matches/$matchId"
+          to="/match/$matchId"
           params={{ matchId: match.matchId }}
           aria-label={`Open ${match.roundLabel} match against ${match.opponent}`}
         />

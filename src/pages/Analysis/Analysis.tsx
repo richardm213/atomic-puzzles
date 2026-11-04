@@ -1131,7 +1131,7 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
             ? `Analyze the atomic chess game between ${game.player_1} and ${game.player_2}.`
             : "Analyze atomic chess positions and browse opening explorer filters."
         }
-        path={game ? `/games/${game.game_id}` : "/analysis"}
+        path={game ? `/game/${game.game_id}` : "/analysis"}
       />
 
       <AnalysisWorkspacePanel

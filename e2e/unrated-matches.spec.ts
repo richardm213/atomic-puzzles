@@ -87,7 +87,7 @@ test("recent matches keep unrated and banned states usable on mobile", async ({ 
   await expect(stats).not.toContainText(/NaN|null|Rating 0|RD 0/);
   await expect(page.getByRole("link", { name: "Open match page in new tab" })).toHaveAttribute(
     "href",
-    "/matches/unrated-match",
+    "/match/unrated-match",
   );
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
@@ -96,7 +96,7 @@ test("recent matches keep unrated and banned states usable on mobile", async ({ 
 
 test("unrated match detail retains its score and game links", async ({ page }) => {
   await mockUnratedArchive(page);
-  await page.goto("/matches/unrated-match");
+  await page.goto("/match/unrated-match");
 
   await expect(page.getByLabel("Score 1.5 to 0.5", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "game1234", exact: true })).toBeVisible();

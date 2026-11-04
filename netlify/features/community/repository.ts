@@ -134,7 +134,7 @@ const mentionDestinationPath = (target: CommunityTarget, commentId: number): str
   const hash = `#comment-${commentId}`;
   if (target.type === "puzzle") return `/solve/${encodeURIComponent(target.id)}${hash}`;
   if (target.type === "profile") return `/@/${encodeURIComponent(target.id)}${hash}`;
-  if (target.type === "match") return `/matches/${encodeURIComponent(target.id)}${hash}`;
+  if (target.type === "match") return `/match/${encodeURIComponent(target.id)}${hash}`;
   return `/tournaments/${encodeURIComponent(target.id)}${hash}`;
 };
 

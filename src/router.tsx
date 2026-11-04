@@ -301,13 +301,21 @@ const analysisFenRoute = createRoute({
 
 const gameRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/games/$gameId",
+  path: "/game/$gameId",
   loader: ({ context, params }) => {
     void import("./lib/games/queries").then(({ gameDetailQueryOptions }) =>
       context.queryClient.prefetchQuery(gameDetailQueryOptions(params.gameId)),
     );
   },
   component: GamePage,
+});
+
+const legacyGameRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/games/$gameId",
+  beforeLoad: ({ params }) => {
+    throw redirect({ to: "/game/$gameId", params: { gameId: params.gameId } });
+  },
 });
 
 const practiceRoute = createRoute({
@@ -460,7 +468,7 @@ const matchesAliasRoute = createRoute({
 
 const matchRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/matches/$matchId",
+  path: "/match/$matchId",
   loader: ({ context, params }) => {
     void import("./lib/matches/queries").then(({ matchDetailQueryOptions }) =>
       context.queryClient.prefetchQuery(matchDetailQueryOptions(params.matchId)),
@@ -469,11 +477,19 @@ const matchRoute = createRoute({
   component: MatchPage,
 });
 
+const legacyMatchDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/matches/$matchId",
+  beforeLoad: ({ params }) => {
+    throw redirect({ to: "/match/$matchId", params: { matchId: params.matchId } });
+  },
+});
+
 const legacyMatchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/matches/$mode/$matchId",
   beforeLoad: ({ params }) => {
-    throw redirect({ to: "/matches/$matchId", params: { matchId: params.matchId } });
+    throw redirect({ to: "/match/$matchId", params: { matchId: params.matchId } });
   },
 });
 
@@ -742,6 +758,7 @@ const routeTree = rootRoute.addChildren([
   analysisRoute,
   analysisFenRoute,
   gameRoute,
+  legacyGameRoute,
   practiceRoute,
   endgamePracticeRoute,
   recentRoute,
@@ -760,6 +777,7 @@ const routeTree = rootRoute.addChildren([
   h2hRoute,
   h2hMatchupRoute,
   matchRoute,
+  legacyMatchDetailRoute,
   legacyMatchRoute,
   matchesAliasRoute,
   solveRoute,

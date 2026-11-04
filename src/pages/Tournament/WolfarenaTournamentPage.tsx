@@ -106,7 +106,7 @@ const MatchContent = ({ match }: { match: WolfarenaMatch }) => {
       {match.additionalMatchIds?.length ? (
         <div className="wolfarenaMatchParts" aria-label="Archived match parts">
           {[match.matchId, ...match.additionalMatchIds].map((matchId, index) => (
-            <Link key={matchId} to="/matches/$matchId" params={{ matchId }}>
+            <Link key={matchId} to="/match/$matchId" params={{ matchId }}>
               Part {index + 1}
             </Link>
           ))}
@@ -122,7 +122,7 @@ const MatchCard = ({ match }: { match: WolfarenaMatch }) =>
       <MatchContent match={match} />
       <Link
         className="wolfarenaMatchCardOverlayLink"
-        to="/matches/$matchId"
+        to="/match/$matchId"
         params={{ matchId: match.matchId }}
         aria-label={`Open ${match.player1} against ${match.player2}, ${match.score1} to ${match.score2}`}
       />
