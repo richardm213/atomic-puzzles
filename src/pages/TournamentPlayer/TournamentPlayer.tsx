@@ -19,6 +19,11 @@ import { TournamentPlayerLink } from "../../components/TournamentPlayerLink/Tour
 import { modeLabels } from "../../constants/matches";
 import { TournamentFairPlayFlag } from "../../features/tournaments/TournamentFairPlayFlag";
 import {
+  fetchChampionshipTrophies,
+  ProfileTrophyLink,
+  sortProfileTrophies,
+} from "../../features/profile/profileTrophies";
+import {
   buildAtomicChessLeaguePlayerAppearances,
   countTournamentPlayerTitles,
   mergeTournamentPlayerAppearances,
@@ -303,6 +308,11 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
   const tourRankingStatsQuery = useQuery(
     atomicTourPlayerRankingStatsQueryOptions(identityUsernames),
   );
+  const championshipTrophiesQuery = useQuery({
+    queryKey: ["profile", canonicalUsername, "tournament-trophies", identityUsernames],
+    queryFn: () => fetchChampionshipTrophies(identityUsernames),
+    enabled: !aliasQuery.isPending && identityUsernames.length > 0,
+  });
   const wolfarenaQuery = useQuery(wolfarenaTournamentQueryOptions("wr-arena2026"));
   const appearances = useMemo(() => {
     const merged = mergeTournamentPlayerAppearances(
@@ -335,6 +345,7 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
     catalogQuery.isPending ||
     countryQuery.isPending ||
     historyQuery.isPending ||
+    championshipTrophiesQuery.isPending ||
     tourRankingStatsQuery.isPending
   ) {
     return <RouteLoadingFallback />;
@@ -349,6 +360,7 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
     (tourEntriesQuery.data ?? []).map((entry) => [entry.tournamentId, entry]),
   );
   const fullRecord = `${totalWins} - ${totalLosses}${totalDraws ? ` - ${totalDraws}` : ""}`;
+  const tournamentTrophies = sortProfileTrophies(championshipTrophiesQuery.data ?? [], "date");
 
   return (
     <div className="sitePage tournamentProfilePage">
@@ -365,20 +377,29 @@ export const TournamentPlayerPage = ({ username }: { username?: string }) => {
         </Link>
 
         <header className="tournamentProfileHeader">
-          <div className="tournamentProfileTitleRow">
-            <h1>
-              {canonicalUsername}
-              <TournamentFairPlayFlag playerName={canonicalUsername} />
-            </h1>
-            <PlayerLink
-              className="tournamentProfileFullProfile"
-              username={canonicalUsername}
-              aria-label="Open full profile"
-              title="Open full profile"
-            >
-              <FontAwesomeIcon icon={faUser} aria-hidden="true" />
-              Full profile
-            </PlayerLink>
+          <div className="tournamentProfileIdentityRow">
+            <div className="tournamentProfileTitleRow">
+              <h1>
+                {canonicalUsername}
+                <TournamentFairPlayFlag playerName={canonicalUsername} />
+              </h1>
+              <PlayerLink
+                className="tournamentProfileFullProfile"
+                username={canonicalUsername}
+                aria-label="Open full profile"
+                title="Open full profile"
+              >
+                <FontAwesomeIcon icon={faUser} aria-hidden="true" />
+                Full profile
+              </PlayerLink>
+            </div>
+            {tournamentTrophies.length ? (
+              <div className="tournamentProfileTrophyRow" aria-label="Tournament trophies">
+                {tournamentTrophies.map((trophy) => (
+                  <ProfileTrophyLink key={trophy.key} trophy={trophy} />
+                ))}
+              </div>
+            ) : null}
           </div>
           <div className="tournamentProfileHeaderMeta">
             {tourRankingStatsQuery.data ? (
