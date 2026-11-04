@@ -19,7 +19,7 @@ export type AtomicDbAnalysisState = {
   status: AtomicDbAnalysisStatus;
   error: string;
   principalVariations: Record<string, string[]>;
-  source?: "atomicdb" | "engine" | "terminal" | undefined;
+  source?: "atomicdb" | "engine" | "mixed" | "terminal" | undefined;
 };
 
 export type AtomicDbAnalysisOptions = {
@@ -72,6 +72,30 @@ const enginePosition = (candidates: EngineCandidate[]): AtomicDbPosition => {
       backedPlies: candidate.depth ?? 0,
     })),
   };
+};
+
+const engineMove = (candidate: EngineCandidate): AtomicDbPosition["moves"][number] => ({
+  uci: candidate.move,
+  outcome: "UNKNOWN",
+  closure: null,
+  score: candidate.scoreType === "cp" ? candidate.score : null,
+  point: null,
+  mate: candidate.scoreType === "mate" ? candidate.score : null,
+  backedPlies: candidate.depth ?? 0,
+});
+
+const fillAtomicDbPosition = (
+  position: AtomicDbPosition,
+  candidates: EngineCandidate[],
+  lineCount: number,
+): AtomicDbPosition => {
+  const atomicDbMoves = position.moves.slice(0, lineCount);
+  const usedMoves = new Set(atomicDbMoves.map((move) => move.uci));
+  const engineMoves = candidates
+    .filter((candidate) => !usedMoves.has(candidate.move))
+    .slice(0, Math.max(0, lineCount - atomicDbMoves.length))
+    .map(engineMove);
+  return { ...position, moves: [...atomicDbMoves, ...engineMoves] };
 };
 
 export const useAtomicDbAnalysis = (
@@ -201,9 +225,75 @@ export const useAtomicDbAnalysis = (
       }
     };
 
+    const publishAtomicDbWithEngineFill = async (position: AtomicDbPosition): Promise<void> => {
+      setState({
+        result: { fen, position },
+        requestedFen: fen,
+        status: "loading",
+        error: "",
+        principalVariations: {},
+        source: "mixed",
+      });
+      loadLines(position);
+
+      const publishMixedCandidates = (
+        candidates: EngineCandidate[],
+        status: AtomicDbAnalysisStatus,
+      ): void => {
+        if (controller.signal.aborted) return;
+        const filledPosition = fillAtomicDbPosition(position, candidates, lineCount);
+        const engineLines = Object.fromEntries(
+          candidates
+            .filter((candidate) => !position.moves.some((move) => move.uci === candidate.move))
+            .map((candidate) => [
+              candidate.move,
+              candidate.principalVariation?.slice(0, plyCount) ?? [candidate.move],
+            ]),
+        );
+        startTransition(() => {
+          setState((current) =>
+            current.requestedFen === fen
+              ? {
+                  ...current,
+                  result: { fen, position: filledPosition },
+                  status,
+                  error: "",
+                  principalVariations: { ...current.principalVariations, ...engineLines },
+                  source: "mixed",
+                }
+              : current,
+          );
+        });
+      };
+
+      try {
+        const candidates = await analyzeFairyStockfishPosition(
+          fen,
+          lineCount,
+          controller.signal,
+          (progressCandidates) => publishMixedCandidates(progressCandidates, "loading"),
+        );
+        if (!controller.signal.aborted) publishMixedCandidates(candidates, "ready");
+      } catch {
+        if (controller.signal.aborted) return;
+        // AtomicDB remains useful even if the optional local fill cannot finish.
+        startTransition(() => {
+          setState((current) =>
+            current.requestedFen === fen
+              ? { ...current, status: "ready", error: "", source: "atomicdb" }
+              : current,
+          );
+        });
+      }
+    };
+
     const publishAtomicDbOrFallback = (position: AtomicDbPosition | null): void => {
       if (fallbackToEngine && lineCount > 0 && (!position || position.moves.length === 0)) {
         void publishEngineFallback();
+        return;
+      }
+      if (fallbackToEngine && position && position.moves.length < lineCount) {
+        void publishAtomicDbWithEngineFill(position);
         return;
       }
       publishPosition(position);

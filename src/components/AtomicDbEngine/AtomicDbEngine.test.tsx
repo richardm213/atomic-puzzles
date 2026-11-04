@@ -44,7 +44,7 @@ describe("AtomicDbEngine", () => {
         analysis={{
           status: "ready",
           error: "",
-          source: "atomicdb",
+          source: "mixed",
           result: { fen: STARTING_FEN, position },
           principalVariations: {},
         }}
@@ -57,6 +57,9 @@ describe("AtomicDbEngine", () => {
     expect(screen.getByRole("link", { name: "Open this position on AtomicDB" })).toHaveAttribute(
       "href",
       "https://belzedar.duckdns.org/atomicdb/explore/atomic-position-key/",
+    );
+    expect(screen.getByRole("link", { name: "Open this position on AtomicDB" })).toHaveTextContent(
+      "AtomicDB + Fairy-Stockfish 14",
     );
   });
 

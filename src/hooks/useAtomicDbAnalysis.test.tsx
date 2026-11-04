@@ -60,7 +60,7 @@ describe("useAtomicDbAnalysis", () => {
   });
 
   it("falls back to Fairy-Stockfish only after AtomicDB returns no analyzed moves", async () => {
-    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 12 30";
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 13 31";
     const fetchMock = vi.fn().mockResolvedValue(responseFor(0));
     vi.stubGlobal("fetch", fetchMock);
     analyzeWithEngineMock.mockResolvedValue([
@@ -93,6 +93,84 @@ describe("useAtomicDbAnalysis", () => {
       backedPlies: 18,
     });
     expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5", "g1f3"]);
+  });
+
+  it("fills missing requested AtomicDB lines with distinct Fairy-Stockfish moves", async () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 12 30";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((input: string | URL | Request) => {
+        const url = new URL(String(input), "https://example.test");
+        return Promise.resolve(
+          new Response(
+            JSON.stringify(
+              url.searchParams.has("line_moves")
+                ? { lines: { g1f3: ["g1f3", "g8f6"] }, positions: {} }
+                : {
+                    key: "partial-position",
+                    status: "UNKNOWN",
+                    score: 90,
+                    best_move: "g1f3",
+                    moves: [{ uci: "g1f3", status: "UNKNOWN", score: 90 }],
+                  },
+            ),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }),
+    );
+    analyzeWithEngineMock.mockResolvedValue([
+      {
+        move: "g1f3",
+        multipv: 1,
+        scoreType: "cp",
+        score: 80,
+        depth: 18,
+        principalVariation: ["g1f3", "g8f6"],
+      },
+      {
+        move: "e2e4",
+        multipv: 2,
+        scoreType: "cp",
+        score: 65,
+        depth: 18,
+        principalVariation: ["e2e4", "e7e5"],
+      },
+      {
+        move: "d2d4",
+        multipv: 3,
+        scoreType: "cp",
+        score: 50,
+        depth: 18,
+        principalVariation: ["d2d4", "d7d5"],
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(fen, {
+        debounceMs: 0,
+        fallbackToEngine: true,
+        lineCount: 3,
+        plyCount: 2,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(analyzeWithEngineMock).toHaveBeenCalledWith(
+      fen,
+      3,
+      expect.any(AbortSignal),
+      expect.any(Function),
+    );
+    expect(result.current.source).toBe("mixed");
+    expect(result.current.result?.position?.key).toBe("partial-position");
+    expect(result.current.result?.position?.moves.map((move) => move.uci)).toEqual([
+      "g1f3",
+      "e2e4",
+      "d2d4",
+    ]);
+    expect(result.current.principalVariations.g1f3).toEqual(["g1f3", "g8f6"]);
+    expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5"]);
   });
 
   it("can analyze an engine-only position without requesting AtomicDB", async () => {

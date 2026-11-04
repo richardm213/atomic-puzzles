@@ -47,7 +47,9 @@ const analysisSourceLabel = (analysis: AtomicDbAnalysisState, threatMode = false
       ? "Final position"
       : analysis.source === "engine"
         ? "Fairy-Stockfish 14"
-        : "AtomicDB";
+        : analysis.source === "mixed"
+          ? "AtomicDB + Fairy-Stockfish 14"
+          : "AtomicDB";
 
 const resultLabel = (view: AtomicDbView): string | null => {
   if (view.position?.outcome === "WHITE_WIN") return "1–0";
