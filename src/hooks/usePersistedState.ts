@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { getBrowserStorageItem, setBrowserStorageJson } from "../utils/browserStorage";
 
@@ -27,9 +27,21 @@ export const usePersistedState = <T>(
     return parsed.success ? parsed.data : defaultValue;
   });
 
-  useEffect(() => {
-    setBrowserStorageJson("local", storageKey, value);
-  }, [storageKey, value]);
+  const setPersistedValue = useCallback<Dispatch<SetStateAction<T>>>(
+    (nextValue) => {
+      setValue((currentValue) => {
+        const resolvedValue =
+          typeof nextValue === "function"
+            ? (nextValue as (current: T) => T)(currentValue)
+            : nextValue;
+        // Persist in the same turn as the UI update so a navigation or unmount
+        // cannot strand the new setting between render and an effect.
+        setBrowserStorageJson("local", storageKey, resolvedValue);
+        return resolvedValue;
+      });
+    },
+    [storageKey],
+  );
 
-  return [value, setValue];
+  return [value, setPersistedValue];
 };

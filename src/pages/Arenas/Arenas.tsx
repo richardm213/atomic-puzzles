@@ -3,7 +3,7 @@ import "./Arenas.css";
 import { faCalendarDays, faCrown } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { memo, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { memo, useDeferredValue, useMemo, useState } from "react";
 
 import { Seo } from "../../components/Seo/Seo";
 import { type Arena, arenaHref, arenasQueryOptions, filterArenas } from "../../lib/supabase/arenas";
@@ -97,9 +97,21 @@ export const ArenasPage = () => {
     typeof preferences.search === "string" ? preferences.search : "",
   );
   const deferredSearch = useDeferredValue(search);
-  useEffect(() => {
-    setBrowserStorageJson("local", "arena-archive-preferences", { view, frequency, search });
-  }, [view, frequency, search]);
+  const persistPreferences = (next: { view: View; frequency: string; search: string }): void => {
+    setBrowserStorageJson("local", "arena-archive-preferences", next);
+  };
+  const selectView = (nextView: View): void => {
+    setView(nextView);
+    persistPreferences({ view: nextView, frequency, search });
+  };
+  const selectFrequency = (nextFrequency: string): void => {
+    setFrequency(nextFrequency);
+    persistPreferences({ view, frequency: nextFrequency, search });
+  };
+  const updateSearch = (nextSearch: string): void => {
+    setSearch(nextSearch);
+    persistPreferences({ view, frequency, search: nextSearch });
+  };
   const query = useQuery(arenasQueryOptions());
   const arenas = useMemo(
     () => filterArenas(query.data ?? [], frequency, deferredSearch),
@@ -140,7 +152,7 @@ export const ArenasPage = () => {
           <select
             aria-label="View"
             value={view}
-            onChange={(event) => setView(event.target.value as View)}
+            onChange={(event) => selectView(event.target.value as View)}
           >
             {views.map((option) => (
               <option key={option} value={option}>
@@ -158,7 +170,7 @@ export const ArenasPage = () => {
               type="button"
               data-frequency={option}
               aria-pressed={frequency === option}
-              onClick={() => setFrequency(option)}
+              onClick={() => selectFrequency(option)}
             >
               {option === "all" ? "All" : option.charAt(0).toUpperCase() + option.slice(1)}
             </button>
@@ -170,7 +182,7 @@ export const ArenasPage = () => {
             type="search"
             placeholder="Tournament or winner"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => updateSearch(event.target.value)}
           />
         </label>
       </div>
@@ -198,6 +210,7 @@ export const ArenasPage = () => {
                   onClick={() => {
                     setSearch("");
                     setFrequency("all");
+                    persistPreferences({ view, frequency: "all", search: "" });
                   }}
                 >
                   Clear filters

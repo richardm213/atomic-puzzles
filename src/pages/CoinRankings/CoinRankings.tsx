@@ -175,10 +175,6 @@ export const CoinRankingsPage = () => {
   );
 
   useEffect(() => {
-    setBrowserStorageJson("local", filterStorageKey, selectedCategories);
-  }, [selectedCategories]);
-
-  useEffect(() => {
     if (transactionsQuery.data && transactionPage > transactionTotalPages) {
       setTransactionPage(transactionTotalPages);
     }
@@ -218,9 +214,11 @@ export const CoinRankingsPage = () => {
 
   const toggleCategory = (category: TransactionCategory, checked: boolean) => {
     setTransactionPage(1);
-    setSelectedCategories((current) =>
-      checked ? [...current, category] : current.filter((entry) => entry !== category),
-    );
+    setSelectedCategories((current) => {
+      const next = checked ? [...current, category] : current.filter((entry) => entry !== category);
+      setBrowserStorageJson("local", filterStorageKey, next);
+      return next;
+    });
   };
 
   return (

@@ -22,8 +22,12 @@ const RankingsOpeningSetting = () => {
 };
 
 const PuzzleTimerSetting = () => {
-  const { showPuzzleTimer } = useAppSettings();
-  return <span>{showPuzzleTimer ? "Timer shown" : "Timer hidden"}</span>;
+  const { showPuzzleTimer, setShowPuzzleTimer } = useAppSettings();
+  return (
+    <button type="button" onClick={() => setShowPuzzleTimer((shown) => !shown)}>
+      {showPuzzleTimer ? "Timer shown" : "Timer hidden"}
+    </button>
+  );
 };
 
 const BoardCoordinatesSetting = () => {
@@ -123,7 +127,7 @@ describe("puzzle timer preference", () => {
   });
 
   it("respects an existing preference to show the timer", () => {
-    window.localStorage.setItem("atomic-puzzles.puzzles.show-timer-v2", "true");
+    window.localStorage.setItem("atomic-puzzles.puzzles.show-timer-v3", "true");
     render(
       <AppSettingsProvider>
         <PuzzleTimerSetting />
@@ -134,7 +138,7 @@ describe("puzzle timer preference", () => {
   });
 
   it("respects an existing preference to hide the timer", () => {
-    window.localStorage.setItem("atomic-puzzles.puzzles.show-timer-v2", "false");
+    window.localStorage.setItem("atomic-puzzles.puzzles.show-timer-v3", "false");
     render(
       <AppSettingsProvider>
         <PuzzleTimerSetting />
@@ -144,8 +148,8 @@ describe("puzzle timer preference", () => {
     expect(screen.getByText("Timer hidden")).toBeInTheDocument();
   });
 
-  it("ignores the old preference key and uses the current default", () => {
-    window.localStorage.setItem("atomic-puzzles.puzzles.show-timer", "true");
+  it("ignores the old opt-in preference and uses the current default", () => {
+    window.localStorage.setItem("atomic-puzzles.puzzles.show-timer-v2", "false");
     render(
       <AppSettingsProvider>
         <PuzzleTimerSetting />
@@ -153,6 +157,27 @@ describe("puzzle timer preference", () => {
     );
 
     expect(screen.getByText("Timer shown")).toBeInTheDocument();
+  });
+
+  it("persists later visibility changes", async () => {
+    const firstRender = render(
+      <AppSettingsProvider>
+        <PuzzleTimerSetting />
+      </AppSettingsProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Timer shown" }));
+    await waitFor(() => {
+      expect(window.localStorage.getItem("atomic-puzzles.puzzles.show-timer-v3")).toBe("false");
+    });
+    firstRender.unmount();
+
+    render(
+      <AppSettingsProvider>
+        <PuzzleTimerSetting />
+      </AppSettingsProvider>,
+    );
+    expect(screen.getByRole("button", { name: "Timer hidden" })).toBeInTheDocument();
   });
 });
 

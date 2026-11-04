@@ -32,9 +32,8 @@ const STORAGE_KEYS = {
   showProfileActionButtons: "atomic-puzzles.profile.show-action-buttons",
   showCoinBalance: "atomic-puzzles.coins.show-balance",
   showCoinChangePopups: "atomic-puzzles.puzzles.show-coin-change-popups",
-  // The original key was written as `true` for users before the timer became opt-in.
-  // Start from a clean preference so unchecked is the effective default for everyone.
-  showPuzzleTimer: "atomic-puzzles.puzzles.show-timer-v2",
+  // v3 makes the timer visible by default for everyone while preserving later changes.
+  showPuzzleTimer: "atomic-puzzles.puzzles.show-timer-v3",
   puzzleAnalysisTarget: "atomic-puzzles.puzzles.analysis-link-target",
   lichessLinkTarget: "atomic-puzzles.games.lichess-link-target",
   gameExplorerOnLeft: "atomic-puzzles.games.explorer-on-left",
