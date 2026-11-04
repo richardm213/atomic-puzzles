@@ -46,6 +46,10 @@ canvas {
   max-width: 100%;
 }
 
+img[src*="/a960e-trophies/"] {
+  scale: 0.92;
+}
+
 ::selection {
   background: color-mix(in srgb, var(--color-primary) 48%, transparent);
   color: var(--color-heading);
