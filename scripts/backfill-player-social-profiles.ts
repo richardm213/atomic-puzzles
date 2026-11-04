@@ -1,10 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { getArchiveClient } from "../netlify/archive/client";
-import {
-  PLAYER_RATING_SNAPSHOT_DATE,
-  type StoredPlayerRating,
-} from "../shared/domain/playerSocial";
+import { type StoredPlayerRating } from "../shared/domain/playerSocial";
 
 type PlayerSummaryRow = {
   username: string;
@@ -38,6 +35,11 @@ const summaryResult = await archive.execute(`with player_matches as (
   left join games g on g.match_id=m.id
   group by p.id,p.username
   order by p.id`);
+const latestRatingWeekResult = await archive.execute("select max(week) week from weekly_ratings");
+const latestRatingWeek = String(latestRatingWeekResult.rows[0]?.week ?? "");
+if (!/^\d{4}-\d{2}-\d{2}$/.test(latestRatingWeek)) {
+  throw new Error("The Turso archive does not contain a valid latest rating week.");
+}
 const ratingResult = await archive.execute({
   sql: `select p.username,r.mode,r.rating/10.0 rating,r.rd/10.0 rd
     from weekly_ratings r
@@ -47,7 +49,7 @@ const ratingResult = await archive.execute({
       where snapshot.username_id=r.username_id and snapshot.mode=r.mode and snapshot.week<=?
     )
     order by p.id,r.mode`,
-  args: [PLAYER_RATING_SNAPSHOT_DATE],
+  args: [latestRatingWeek],
 });
 const ratingsByUsername = new Map<string, StoredPlayerRating[]>();
 for (const row of ratingResult.rows) {
@@ -80,10 +82,34 @@ const rows: PlayerSummaryRow[] = summaryResult.rows.map((row) => {
         : new Date(milliseconds).toISOString().slice(0, 10),
     total_games: Number(row.total_games) || 0,
     ratings: ratingsByUsername.get(username) ?? [],
-    ratings_snapshot_date: PLAYER_RATING_SNAPSHOT_DATE,
+    ratings_snapshot_date: latestRatingWeek,
     updated_at: updatedAt,
   };
 });
+const rowsByUsername = new Map(rows.map((row) => [row.username, row]));
+const existingUsernames: string[] = [];
+for (let offset = 0; ; offset += 1_000) {
+  const { data, error } = await supabase
+    .from("player_social_profiles")
+    .select("username")
+    .order("username")
+    .range(offset, offset + 999);
+  if (error) throw new Error(`Unable to load existing player profiles: ${error.message}`);
+  existingUsernames.push(...(data ?? []).map((row) => String(row.username)));
+  if ((data?.length ?? 0) < 1_000) break;
+}
+for (const username of existingUsernames) {
+  if (rowsByUsername.has(username)) continue;
+  const aliasResult = await archive.execute({
+    sql: `select p.username from aliases a join players p on p.id=a.player_id
+      where a.alias=? or (a.count_games<>'p' and lower(a.alias)=?)
+      order by case when a.alias=? then 0 else 1 end limit 1`,
+    args: [username, username, username],
+  });
+  const canonicalUsername = String(aliasResult.rows[0]?.username ?? "").toLowerCase();
+  const canonicalRow = rowsByUsername.get(canonicalUsername);
+  if (canonicalRow) rows.push({ ...canonicalRow, username });
+}
 
 for (let offset = 0; offset < rows.length; offset += 500) {
   const batch = rows.slice(offset, offset + 500);
