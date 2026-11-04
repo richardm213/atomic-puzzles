@@ -12,13 +12,6 @@ const playerSocialSchema = z.object({
   countryCodeSource: z.enum(["profile", "tournament"]).nullable(),
   tournamentCountryCode: z.string(),
   tourRank: z.number().int().positive().nullable(),
-  ratings: z.array(
-    z.object({
-      tc: z.string(),
-      rating: z.number().nullable(),
-      rd: z.number().nullable(),
-    }),
-  ),
   startDate: z.string().nullable(),
   totalGames: z.number().nonnegative(),
 });

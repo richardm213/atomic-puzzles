@@ -1,12 +1,13 @@
 import "./PlayerHoverCard.css";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { FocusEventHandler, MouseEventHandler, MutableRefObject, ReactNode, Ref } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { type Mode, modeLabels } from "../../constants/matches";
+import { fetchPlayerRatingsRows } from "../../lib/archive/ratings";
 import { playerSocialQueryOptions } from "../../lib/playerSocial/playerSocial";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { normalizeUsername } from "../../utils/playerNames";
@@ -32,6 +33,16 @@ const ratingLichessIcons = {
   rapid: lichessIcons.rapid,
   atomic960: lichessIcons.chess960,
 } as const;
+
+const playerHoverRatingsQueryOptions = (username: string) => {
+  const normalizedUsername = normalizeUsername(username);
+  return queryOptions({
+    queryKey: ["player-hover-ratings", normalizedUsername],
+    queryFn: () => fetchPlayerRatingsRows({ username: normalizedUsername }),
+    enabled: Boolean(normalizedUsername),
+    staleTime: 5 * 60 * 1_000,
+  });
+};
 
 const WolfIcon = () => (
   <svg viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true">
@@ -86,9 +97,10 @@ const PlayerHoverCardContent = ({
 }) => {
   const canonicalUsername = normalizeUsername(username);
   const socialQuery = useQuery(playerSocialQueryOptions(canonicalUsername));
+  const ratingsQuery = useQuery(playerHoverRatingsQueryOptions(canonicalUsername));
   const social = socialQuery.data;
   const countryCode = social?.countryCode ?? "";
-  const ratings = new Map((social?.ratings ?? []).map((row) => [row.tc, row]));
+  const ratings = new Map((ratingsQuery.data ?? []).map((row) => [row.tc, row]));
 
   return (
     <div className="playerHoverCardBody" onMouseEnter={onRemainOpen}>
@@ -230,6 +242,7 @@ export const PlayerHoverCardTrigger = ({
         onMouseEnter: () => {
           if (supportsHover()) {
             void queryClient.prefetchQuery(playerSocialQueryOptions(username));
+            void queryClient.prefetchQuery(playerHoverRatingsQueryOptions(username));
             openCard();
           }
         },

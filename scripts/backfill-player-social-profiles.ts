@@ -1,18 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { getArchiveClient } from "../netlify/archive/client";
-import { type StoredPlayerRating } from "../shared/domain/playerSocial";
 
 type PlayerSummaryRow = {
   username: string;
   archive_start_date: string | null;
   total_games: number;
-  ratings: StoredPlayerRating[];
-  ratings_snapshot_date: string;
   updated_at: string;
 };
-
-const modeNames = ["hyperbullet", "bullet", "blitz", "wolfrandom", "atomic960", "rapid"];
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL?.trim() || process.env.SUPABASE_URL?.trim() || "";
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
@@ -35,38 +30,6 @@ const summaryResult = await archive.execute(`with player_matches as (
   left join games g on g.match_id=m.id
   group by p.id,p.username
   order by p.id`);
-const latestRatingWeekResult = await archive.execute("select max(week) week from weekly_ratings");
-const latestRatingWeek = String(latestRatingWeekResult.rows[0]?.week ?? "");
-if (!/^\d{4}-\d{2}-\d{2}$/.test(latestRatingWeek)) {
-  throw new Error("The Turso archive does not contain a valid latest rating week.");
-}
-const ratingResult = await archive.execute({
-  sql: `select p.username,r.mode,r.rating/10.0 rating,r.rd/10.0 rd
-    from weekly_ratings r
-    join players p on p.id=r.username_id
-    where r.week=(
-      select max(snapshot.week) from weekly_ratings snapshot
-      where snapshot.username_id=r.username_id and snapshot.mode=r.mode and snapshot.week<=?
-    )
-    order by p.id,r.mode`,
-  args: [latestRatingWeek],
-});
-const ratingsByUsername = new Map<string, StoredPlayerRating[]>();
-for (const row of ratingResult.rows) {
-  const username = String(row.username).trim().toLowerCase();
-  const mode = modeNames[Number(row.mode)] ?? "";
-  if (!mode) continue;
-  const rating = row.rating === null || row.rating === undefined ? null : Number(row.rating);
-  const rd = row.rd === null || row.rd === undefined ? null : Number(row.rd);
-  ratingsByUsername.set(username, [
-    ...(ratingsByUsername.get(username) ?? []),
-    {
-      tc: mode,
-      rating: Number.isFinite(rating) ? rating : null,
-      rd: Number.isFinite(rd) ? rd : null,
-    },
-  ]);
-}
 const updatedAt = new Date().toISOString();
 const rows: PlayerSummaryRow[] = summaryResult.rows.map((row) => {
   const timestamp =
@@ -81,8 +44,6 @@ const rows: PlayerSummaryRow[] = summaryResult.rows.map((row) => {
         ? null
         : new Date(milliseconds).toISOString().slice(0, 10),
     total_games: Number(row.total_games) || 0,
-    ratings: ratingsByUsername.get(username) ?? [],
-    ratings_snapshot_date: latestRatingWeek,
     updated_at: updatedAt,
   };
 });

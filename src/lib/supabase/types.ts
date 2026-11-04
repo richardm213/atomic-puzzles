@@ -43,8 +43,6 @@ export type PlayerSocialProfileRow = {
   country_code: string | null;
   archive_start_date: string | null;
   total_games: number;
-  ratings: unknown;
-  ratings_snapshot_date: string | null;
   updated_at: string;
 };
 

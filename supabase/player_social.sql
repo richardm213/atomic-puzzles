@@ -6,8 +6,6 @@ create table if not exists public.player_social_profiles (
   country_code text,
   archive_start_date date,
   total_games bigint not null default 0 check (total_games >= 0),
-  ratings jsonb not null default '[]'::jsonb,
-  ratings_snapshot_date date,
   updated_at timestamptz not null default now(),
   constraint player_social_profiles_username_check
     check (username = lower(btrim(username)) and username ~ '^[a-z0-9_-]{1,100}$'),
@@ -18,8 +16,6 @@ create table if not exists public.player_social_profiles (
 );
 
 alter table public.player_social_profiles
-  add column if not exists ratings jsonb not null default '[]'::jsonb,
-  add column if not exists ratings_snapshot_date date,
   add column if not exists country_code text;
 
 alter table public.player_social_profiles
