@@ -46,8 +46,7 @@ const matchResultForPlayers = (
     ],
     [0, 0],
   );
-  if (gameScore[0] === gameScore[1]) return [0.5, 0.5];
-  return gameScore[0] > gameScore[1] ? [1, 0] : [0, 1];
+  return gameScore;
 };
 
 const Crosstable = ({
@@ -109,7 +108,7 @@ const Crosstable = ({
       )}
       <div className="gameMatchCrosstableScroll">
         <div
-          className={`gameMatchCrosstableStrip${dense ? " dense" : ""}`}
+          className={`gameMatchCrosstableStrip ${unit}${dense ? " dense" : ""}`}
           style={{ "--game-count": results.length } as CSSProperties}
         >
           <ol className="gameMatchResults" aria-label={label}>

@@ -239,8 +239,10 @@
 }
 
 .gameMatchCrosstableStrip {
+  --result-column-width: 20px;
+
   width: 100%;
-  min-width: calc(var(--game-count) * 20px + 194px);
+  min-width: calc(var(--game-count) * var(--result-column-width) + 194px);
   display: grid;
   grid-template-columns: minmax(0, 1fr) 140px 54px;
   overflow: clip;
@@ -249,17 +251,21 @@
   font-variant-numeric: tabular-nums;
 }
 
+.gameMatchCrosstableStrip.matches {
+  --result-column-width: 34px;
+}
+
 .gameMatchResults {
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(var(--game-count), minmax(20px, 1fr));
+  grid-template-columns: repeat(var(--game-count), minmax(var(--result-column-width), 1fr));
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .gameMatchResults li {
-  min-width: 20px;
+  min-width: var(--result-column-width);
   background: var(--color-surface-inset);
 }
 
@@ -1237,16 +1243,22 @@
   }
 
   .gameMatchCrosstableStrip {
-    min-width: calc(var(--game-count) * 18px + 144px);
+    --result-column-width: 18px;
+
+    min-width: calc(var(--game-count) * var(--result-column-width) + 144px);
     grid-template-columns: minmax(0, 1fr) 100px 44px;
   }
 
+  .gameMatchCrosstableStrip.matches {
+    --result-column-width: 34px;
+  }
+
   .gameMatchResults {
-    grid-template-columns: repeat(var(--game-count), minmax(18px, 1fr));
+    grid-template-columns: repeat(var(--game-count), minmax(var(--result-column-width), 1fr));
   }
 
   .gameMatchResults li {
-    min-width: 18px;
+    min-width: var(--result-column-width);
   }
 
   .gameMatchPlayers a,
