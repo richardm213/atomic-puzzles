@@ -216,6 +216,12 @@ body:has(.puzzlePage) {
   min-width: 0;
 }
 
+.puzzleTitleBlock {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
 .puzzleTitleRow h1 {
   white-space: nowrap;
 }
@@ -479,10 +485,18 @@ button.puzzleRatingBadge.editable:focus-visible {
 }
 
 .puzzleHeaderMetadata {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
   min-width: 0;
-  padding: 2px 0;
+  padding: 0;
+}
+
+.puzzleHeaderMetadata .puzzleAttemptedBadge {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
 }
 
 .puzzleHeaderSetMetadata {

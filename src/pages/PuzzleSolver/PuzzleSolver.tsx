@@ -1899,30 +1899,65 @@ export const PuzzleSolverPage = () => {
       <div className="panel puzzlePanel">
         <header className="puzzleHeader">
           <div className="puzzleHeaderTopline">
-            <div className="puzzleTitleRow">
-              <h1>{activePuzzleId ? `Puzzle ${activePuzzleId}` : "Puzzle"}</h1>
-              {!isMobileLayout ? (
-                <nav className="puzzleHeaderNavigation" aria-label="Puzzle navigation">
-                  <button
-                    type="button"
-                    aria-label="Previous"
-                    title="Previous puzzle"
-                    onClick={handlePreviousPuzzle}
-                    disabled={!canGoToPreviousPuzzle}
+            <div className="puzzleTitleBlock">
+              <div className="puzzleTitleRow">
+                <h1>{activePuzzleId ? `Puzzle ${activePuzzleId}` : "Puzzle"}</h1>
+                {!isMobileLayout ? (
+                  <nav className="puzzleHeaderNavigation" aria-label="Puzzle navigation">
+                    <button
+                      type="button"
+                      aria-label="Previous"
+                      title="Previous puzzle"
+                      onClick={handlePreviousPuzzle}
+                      disabled={!canGoToPreviousPuzzle}
+                    >
+                      <FontAwesomeIcon icon={faChevronLeft} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Next"
+                      title="Next puzzle"
+                      onClick={handleNextPuzzle}
+                      disabled={!canGoToNextPuzzle}
+                    >
+                      <FontAwesomeIcon icon={faChevronRight} aria-hidden="true" />
+                    </button>
+                  </nav>
+                ) : null}
+              </div>
+              <div className="puzzleHeaderMetadata">
+                <div className="puzzleHeaderMeta" title={author}>
+                  <span>Created by</span>
+                  {authorDashboardUsername ? (
+                    <Link
+                      className="puzzleHeaderAuthorLink"
+                      to="/@/$username/puzzles"
+                      params={{ username: authorDashboardUsername }}
+                    >
+                      {author}
+                    </Link>
+                  ) : (
+                    <strong>{author}</strong>
+                  )}
+                </div>
+                {event && !showPuzzleSetMetadata ? (
+                  <div className="puzzleHeaderEvent" title={event}>
+                    {event}
+                  </div>
+                ) : null}
+                {hasPersistedAttempt ? (
+                  <span
+                    className="puzzleAttemptedBadge"
+                    role="img"
+                    tabIndex={0}
+                    title={attemptedPuzzleBadgeLabel}
+                    aria-label={attemptedPuzzleBadgeLabel}
+                    data-tooltip={attemptedPuzzleBadgeLabel}
                   >
-                    <FontAwesomeIcon icon={faChevronLeft} aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Next"
-                    title="Next puzzle"
-                    onClick={handleNextPuzzle}
-                    disabled={!canGoToNextPuzzle}
-                  >
-                    <FontAwesomeIcon icon={faChevronRight} aria-hidden="true" />
-                  </button>
-                </nav>
-              ) : null}
+                    <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                  </span>
+                ) : null}
+              </div>
             </div>
             <div className="puzzleHeaderStatus">
               <div className="puzzleHeaderRatings">
@@ -1935,18 +1970,6 @@ export const PuzzleSolverPage = () => {
                   running={elapsedTimerRunning}
                   readElapsedTimeMs={readElapsedTimeMs}
                 />
-              ) : null}
-              {hasPersistedAttempt ? (
-                <span
-                  className="puzzleAttemptedBadge"
-                  role="img"
-                  tabIndex={0}
-                  title={attemptedPuzzleBadgeLabel}
-                  aria-label={attemptedPuzzleBadgeLabel}
-                  data-tooltip={attemptedPuzzleBadgeLabel}
-                >
-                  <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-                </span>
               ) : null}
               {unratedReason ? (
                 <span
@@ -2001,28 +2024,6 @@ export const PuzzleSolverPage = () => {
               ) : null}
             </section>
           ) : null}
-
-          <div className="puzzleHeaderMetadata">
-            <div className="puzzleHeaderMeta" title={author}>
-              <span>Created by</span>
-              {authorDashboardUsername ? (
-                <Link
-                  className="puzzleHeaderAuthorLink"
-                  to="/@/$username/puzzles"
-                  params={{ username: authorDashboardUsername }}
-                >
-                  {author}
-                </Link>
-              ) : (
-                <strong>{author}</strong>
-              )}
-            </div>
-            {event && !showPuzzleSetMetadata ? (
-              <div className="puzzleHeaderEvent" title={event}>
-                {event}
-              </div>
-            ) : null}
-          </div>
 
           {renderPlayerRows()}
           {ratingSaveStatus.state === "error" ? (
