@@ -8,6 +8,70 @@
   box-shadow: var(--shadow-soft);
 }
 
+.gameAnalysisSidebar.withExplorer {
+  height: var(--game-analysis-panel-height, calc(var(--analysis-board-size, 516px) + 48px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.gameAnalysisSidebar.withExplorer .analysisExplorerPanel {
+  padding: 2px 8px 8px;
+}
+
+.gameAnalysisSidebar.withExplorer .analysisExplorerTabs button {
+  padding-inline: 6px;
+}
+
+.gameAnalysisSidebar.withExplorer .analysisExplorerPlayerLabel small {
+  display: none;
+}
+
+.gameAnalysisSidebar.withExplorer .analysisDateFilters {
+  grid-template-columns: 1fr;
+}
+
+.gameAnalysisSidebar.withExplorer
+  .analysisExplorerTable.withPerformance
+  .analysisExplorerMoveColumn {
+  width: 24%;
+}
+
+.gameAnalysisSidebar.withExplorer
+  .analysisExplorerTable.withPerformance
+  .analysisExplorerGamesColumn {
+  width: 18%;
+}
+
+.gameAnalysisSidebar.withExplorer .analysisExplorerPerformanceColumn,
+.gameAnalysisSidebar.withExplorer .analysisPerformanceCell,
+.gameAnalysisSidebar.withExplorer .analysisExplorerTable.withPerformance th:nth-child(3),
+.gameAnalysisSidebar.withExplorer
+  .analysisExplorerTable.withPerformance
+  .analysisExplorerSummaryRow
+  td:nth-child(3) {
+  display: none;
+}
+
+.gameAnalysisSidebar.withExplorer
+  .analysisExplorerTable.withPerformance
+  .analysisExplorerWinRateColumn {
+  width: 58%;
+}
+
+.gameAnalysisSidebar.withExplorer .analysisWinRateBar {
+  min-width: 0;
+}
+
+.gameAnalysisSidebar.withExplorer .analysisRecentGames a {
+  grid-template-columns: minmax(0, 1fr) 52px;
+}
+
+.gameAnalysisSidebar.withExplorer .analysisRecentRatings,
+.gameAnalysisSidebar.withExplorer .analysisRecentDate,
+.gameAnalysisSidebar.withExplorer .analysisRecentMove {
+  display: none;
+}
+
 .analysisPage.gameAnalysisPage {
   align-content: start;
 }

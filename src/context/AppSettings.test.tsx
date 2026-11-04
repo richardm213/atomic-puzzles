@@ -63,6 +63,15 @@ const LichessLinkTargetSetting = () => {
   );
 };
 
+const GameExplorerPlacementSetting = () => {
+  const { gameExplorerOnLeft, setGameExplorerOnLeft } = useAppSettings();
+  return (
+    <button type="button" onClick={() => setGameExplorerOnLeft((onLeft) => !onLeft)}>
+      {gameExplorerOnLeft ? "Explorer on left" : "Explorer on right"}
+    </button>
+  );
+};
+
 const CoinVisibilitySettings = () => {
   const { showCoinBalance, setShowCoinBalance, showCoinChangePopups, setShowCoinChangePopups } =
     useAppSettings();
@@ -203,6 +212,26 @@ describe("Lichess game link preference", () => {
       expect(window.localStorage.getItem("atomic-puzzles.games.lichess-link-target")).toBe(
         '"atomic-puzzles"',
       );
+    });
+  });
+});
+
+describe("game opening explorer placement", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("defaults to the right and persists the left-side option", async () => {
+    render(
+      <AppSettingsProvider>
+        <GameExplorerPlacementSetting />
+      </AppSettingsProvider>,
+    );
+
+    const toggle = screen.getByRole("button", { name: "Explorer on right" });
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(toggle).toHaveTextContent("Explorer on left");
+      expect(window.localStorage.getItem("atomic-puzzles.games.explorer-on-left")).toBe("true");
     });
   });
 });

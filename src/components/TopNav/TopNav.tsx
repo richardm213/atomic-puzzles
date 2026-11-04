@@ -168,6 +168,8 @@ export const TopNav = () => {
     setPuzzleAnalysisTarget,
     lichessLinkTarget,
     setLichessLinkTarget,
+    gameExplorerOnLeft,
+    setGameExplorerOnLeft,
     showCoinBalance,
     setShowCoinBalance,
     showCoinChangePopups,
@@ -773,6 +775,18 @@ export const TopNav = () => {
                   <option value="atomic-puzzles">Atomic Puzzles</option>
                 </select>
               </div>
+              {/^\/game\/[^/]+\/?$/.test(pathname) ? (
+                <div className="navSettingsSection">
+                  <label className="navSettingsCheckbox">
+                    <span>Opening explorer on left</span>
+                    <input
+                      type="checkbox"
+                      checked={gameExplorerOnLeft}
+                      onChange={(event) => setGameExplorerOnLeft(event.target.checked)}
+                    />
+                  </label>
+                </div>
+              ) : null}
               {pathname === "/rankings" || pathname === "/rankings/yearly" ? (
                 <div className="navSettingsSection">
                   <label className="navSettingsCheckbox">

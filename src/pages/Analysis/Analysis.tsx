@@ -25,6 +25,7 @@ import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import { pairPlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
+import { useAppSettings } from "../../context/AppSettings";
 import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
 import {
   AnalysisWorkspaceLayout,
@@ -323,6 +324,7 @@ type AnalysisPageProps = {
 
 export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) => {
   const navigate = useNavigate();
+  const { gameExplorerOnLeft } = useAppSettings();
   const { _splat: fenPath } = useParams({ strict: false });
   const routeFen = fenFromRoute(fenPath);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
@@ -520,9 +522,11 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
   const showExplorerResults = !filtersOpen;
   const playerRatingValue = clampRating(minRating);
   const activeStartDate = explorerScope === "player" ? playerStartDate : generalStartDate;
+  const moveGameExplorerLeft = Boolean(game && gameExplorerOnLeft && viewportWidth > 1200);
+  const explorerInAnalysisPanel = explorerOpen && !moveGameExplorerLeft;
   const resolvedGamePanelHeight = gamePanelHeight ?? defaultGamePanelHeight;
   const rightPanelStyle = {
-    ...(explorerOpen && movePanelHeight !== null
+    ...(explorerInAnalysisPanel && movePanelHeight !== null
       ? { "--analysis-move-panel-height": `${movePanelHeight}px` }
       : {}),
     ...(game && resolvedGamePanelHeight !== null
@@ -1119,6 +1123,213 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
     usernamePickerOpen,
   ]);
 
+  const openingExplorerPanel = explorerOpen ? (
+    <OpeningExplorerPanel
+      className="analysisExplorerPanel"
+      ariaLabel="Opening explorer"
+      tableClassName="analysisExplorerTableWrap"
+      displayProps={
+        showExplorerResults
+          ? {
+              moves: explorerMoves,
+              recentGames,
+              status: explorerStatus,
+              error: explorerError,
+              emptyMessage:
+                explorerScope === "player" && !username.trim()
+                  ? "Enter a username for player explorer."
+                  : "No database games for this position.",
+              showPerformance: explorerScope === "player",
+              orientation,
+              currentPly,
+              onPlayMove: playExplorerMove,
+              onHoverMove: setHoveredExplorerMoveUci,
+            }
+          : undefined
+      }
+    >
+      {moveGameExplorerLeft ? null : (
+        <OpeningExplorerResizeHandle
+          valueNow={explorerSplitValue}
+          onPointerDown={handleExplorerResizePointerDown}
+          onKeyDown={handleExplorerResizeKeyDown}
+        />
+      )}
+      <div className="analysisExplorerCompactHeader">
+        <div className="analysisExplorerTabs" role="tablist" aria-label="Opening explorer source">
+          <button
+            type="button"
+            role="tab"
+            className={explorerScope === "general" ? "active" : ""}
+            aria-selected={explorerScope === "general"}
+            onClick={() => {
+              updateExplorerSettings({ explorerScope: "general" });
+              setFiltersOpen(false);
+            }}
+          >
+            <FontAwesomeIcon icon={faBookOpen} />
+            <span>General</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            className={explorerScope === "player" ? "active" : ""}
+            aria-selected={explorerScope === "player"}
+            onClick={(event) =>
+              showPlayerExplorer(event.currentTarget.getAttribute("aria-selected") === "true")
+            }
+          >
+            <span className="analysisExplorerPlayerLabel">
+              <span>
+                {username.trim() || "Player"}
+                {opponent.trim() ? ` vs ${opponent.trim()}` : ""}
+              </span>
+              <small>as {playerColor}</small>
+            </span>
+          </button>
+        </div>
+        <button
+          type="button"
+          className={`analysisFilterToggle ${filtersOpen ? "open" : ""}`}
+          aria-expanded={filtersOpen}
+          aria-controls="analysis-explorer-filters"
+          aria-label={filtersOpen ? "Close opening explorer settings" : "Opening explorer settings"}
+          title={filtersOpen ? "Close settings" : "Opening explorer settings"}
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          <FontAwesomeIcon icon={filtersOpen ? faXmark : faGear} />
+        </button>
+      </div>
+      {filtersOpen ? (
+        <div className="analysisFilterPanel" id="analysis-explorer-filters">
+          {explorerScope === "player" ? (
+            <div className="analysisPlayerSettings">
+              <span>Player</span>
+              <div className="analysisPlayerSettingsRow">
+                <button
+                  type="button"
+                  className="analysisPlayerNameButton"
+                  onClick={() => openUsernamePicker("player")}
+                >
+                  {username.trim() || "Choose player"}
+                </button>
+                <button
+                  type="button"
+                  className="analysisPlayerSideButton"
+                  aria-label={`Switch to ${playerColor === "white" ? "black" : "white"}`}
+                  title="Switch sides"
+                  onClick={switchPlayerColor}
+                >
+                  <FontAwesomeIcon icon={faArrowsRotate} />
+                  <span>as {playerColor}</span>
+                </button>
+              </div>
+              <div className="analysisOpponentField">
+                <span>Opponent</span>
+                <div className="analysisOpponentFieldRow">
+                  <button
+                    type="button"
+                    className="analysisPlayerNameButton"
+                    onClick={() => openUsernamePicker("opponent")}
+                  >
+                    {opponent.trim() || "Choose opponent"}
+                  </button>
+                  {opponent.trim() ? (
+                    <button
+                      type="button"
+                      className="analysisOpponentClearButton"
+                      aria-label="Clear opponent"
+                      title="Clear opponent"
+                      onClick={() => updateExplorerSettings({ opponent: "" })}
+                    >
+                      <FontAwesomeIcon icon={faXmark} />
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <div className="analysisFilterGroup">
+            <span>Speed</span>
+            <div className="analysisSpeedToggles" aria-label="Speed filters">
+              {SPEED_FILTERS.map((speed) => (
+                <button
+                  key={speed.key}
+                  type="button"
+                  className={selectedSpeeds.includes(speed.key) ? "active" : ""}
+                  aria-label={speed.label}
+                  aria-pressed={selectedSpeeds.includes(speed.key)}
+                  title={speed.label}
+                  onClick={() => toggleSpeed(speed.key)}
+                >
+                  <SpeedFilterIcon speed={speed.key} />
+                </button>
+              ))}
+            </div>
+          </div>
+          {explorerScope === "player" ? (
+            <label className="analysisRatingSlider">
+              <span>Min opponent rating</span>
+              <output>{playerRatingValue}</output>
+              <input
+                type="range"
+                min={PLAYER_MIN_RATING}
+                max={MAX_EXPLORER_RATING}
+                step={PLAYER_RATING_STEP}
+                value={playerRatingValue}
+                onChange={(event) =>
+                  updateExplorerSettings({ minRating: Number(event.target.value) })
+                }
+              />
+            </label>
+          ) : null}
+          <div className="analysisDateFilters">
+            <label>
+              <span>Since</span>
+              <input
+                type="text"
+                value={activeStartDate}
+                inputMode="numeric"
+                maxLength={7}
+                pattern="\d{4}-\d{2}"
+                placeholder="YYYY-MM"
+                onChange={(event) => {
+                  const nextStartDate = event.target.value;
+                  if (explorerScope === "player") {
+                    updateExplorerSettings({ playerStartDate: nextStartDate });
+                  } else {
+                    updateExplorerSettings({ generalStartDate: nextStartDate });
+                  }
+                }}
+              />
+            </label>
+            <label>
+              <span>Until</span>
+              <input
+                type="text"
+                value={endDate}
+                inputMode="numeric"
+                maxLength={7}
+                pattern="\d{4}-\d{2}"
+                placeholder="YYYY-MM"
+                onChange={(event) => updateExplorerSettings({ endDate: event.target.value })}
+              />
+            </label>
+          </div>
+          <div className="analysisExplorerToolbar">
+            <button
+              type="button"
+              className="analysisPrimaryButton"
+              onClick={() => setFiltersOpen(false)}
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </OpeningExplorerPanel>
+  ) : null;
+
   return (
     <AnalysisWorkspaceLayout
       className={game ? "gameAnalysisPage" : undefined}
@@ -1136,9 +1347,11 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
 
       <AnalysisWorkspacePanel
         ref={rightPanelRef}
-        className={`analysisRightPanel ${game ? "gameAnalysisPanel" : ""} ${explorerOpen ? "explorerOpen" : "explorerCollapsed"} ${
-          movePanelHeight === MIN_MOVE_PANEL_HEIGHT ? "movesCollapsed" : ""
-        } ${movePanelHeight !== null ? "customExplorerSplit" : ""} ${
+        className={`analysisRightPanel ${game ? "gameAnalysisPanel" : ""} ${explorerInAnalysisPanel ? "explorerOpen" : "explorerCollapsed"} ${
+          explorerInAnalysisPanel && movePanelHeight === MIN_MOVE_PANEL_HEIGHT
+            ? "movesCollapsed"
+            : ""
+        } ${explorerInAnalysisPanel && movePanelHeight !== null ? "customExplorerSplit" : ""} ${
           explorerResizing ? "explorerResizing" : ""
         } ${gamePanelResizing ? "gamePanelResizing" : ""}`}
         style={rightPanelStyle}
@@ -1188,216 +1401,7 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
           </div>
         </div>
 
-        {explorerOpen ? (
-          <OpeningExplorerPanel
-            className="analysisExplorerPanel"
-            ariaLabel="Opening explorer"
-            tableClassName="analysisExplorerTableWrap"
-            displayProps={
-              showExplorerResults
-                ? {
-                    moves: explorerMoves,
-                    recentGames,
-                    status: explorerStatus,
-                    error: explorerError,
-                    emptyMessage:
-                      explorerScope === "player" && !username.trim()
-                        ? "Enter a username for player explorer."
-                        : "No database games for this position.",
-                    showPerformance: explorerScope === "player",
-                    orientation,
-                    currentPly,
-                    onPlayMove: playExplorerMove,
-                    onHoverMove: setHoveredExplorerMoveUci,
-                  }
-                : undefined
-            }
-          >
-            <OpeningExplorerResizeHandle
-              valueNow={explorerSplitValue}
-              onPointerDown={handleExplorerResizePointerDown}
-              onKeyDown={handleExplorerResizeKeyDown}
-            />
-            <div className="analysisExplorerCompactHeader">
-              <div
-                className="analysisExplorerTabs"
-                role="tablist"
-                aria-label="Opening explorer source"
-              >
-                <button
-                  type="button"
-                  role="tab"
-                  className={explorerScope === "general" ? "active" : ""}
-                  aria-selected={explorerScope === "general"}
-                  onClick={() => {
-                    updateExplorerSettings({ explorerScope: "general" });
-                    setFiltersOpen(false);
-                  }}
-                >
-                  <FontAwesomeIcon icon={faBookOpen} />
-                  <span>General</span>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  className={explorerScope === "player" ? "active" : ""}
-                  aria-selected={explorerScope === "player"}
-                  onClick={(event) =>
-                    showPlayerExplorer(event.currentTarget.getAttribute("aria-selected") === "true")
-                  }
-                >
-                  <span className="analysisExplorerPlayerLabel">
-                    <span>
-                      {username.trim() || "Player"}
-                      {opponent.trim() ? ` vs ${opponent.trim()}` : ""}
-                    </span>
-                    <small>as {playerColor}</small>
-                  </span>
-                </button>
-              </div>
-              <button
-                type="button"
-                className={`analysisFilterToggle ${filtersOpen ? "open" : ""}`}
-                aria-expanded={filtersOpen}
-                aria-controls="analysis-explorer-filters"
-                aria-label={
-                  filtersOpen ? "Close opening explorer settings" : "Opening explorer settings"
-                }
-                title={filtersOpen ? "Close settings" : "Opening explorer settings"}
-                onClick={() => setFiltersOpen((open) => !open)}
-              >
-                <FontAwesomeIcon icon={filtersOpen ? faXmark : faGear} />
-              </button>
-            </div>
-            {filtersOpen ? (
-              <div className="analysisFilterPanel" id="analysis-explorer-filters">
-                {explorerScope === "player" ? (
-                  <div className="analysisPlayerSettings">
-                    <span>Player</span>
-                    <div className="analysisPlayerSettingsRow">
-                      <button
-                        type="button"
-                        className="analysisPlayerNameButton"
-                        onClick={() => openUsernamePicker("player")}
-                      >
-                        {username.trim() || "Choose player"}
-                      </button>
-                      <button
-                        type="button"
-                        className="analysisPlayerSideButton"
-                        aria-label={`Switch to ${playerColor === "white" ? "black" : "white"}`}
-                        title="Switch sides"
-                        onClick={switchPlayerColor}
-                      >
-                        <FontAwesomeIcon icon={faArrowsRotate} />
-                        <span>as {playerColor}</span>
-                      </button>
-                    </div>
-                    <div className="analysisOpponentField">
-                      <span>Opponent</span>
-                      <div className="analysisOpponentFieldRow">
-                        <button
-                          type="button"
-                          className="analysisPlayerNameButton"
-                          onClick={() => openUsernamePicker("opponent")}
-                        >
-                          {opponent.trim() || "Choose opponent"}
-                        </button>
-                        {opponent.trim() ? (
-                          <button
-                            type="button"
-                            className="analysisOpponentClearButton"
-                            aria-label="Clear opponent"
-                            title="Clear opponent"
-                            onClick={() => updateExplorerSettings({ opponent: "" })}
-                          >
-                            <FontAwesomeIcon icon={faXmark} />
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-                <div className="analysisFilterGroup">
-                  <span>Speed</span>
-                  <div className="analysisSpeedToggles" aria-label="Speed filters">
-                    {SPEED_FILTERS.map((speed) => (
-                      <button
-                        key={speed.key}
-                        type="button"
-                        className={selectedSpeeds.includes(speed.key) ? "active" : ""}
-                        aria-label={speed.label}
-                        aria-pressed={selectedSpeeds.includes(speed.key)}
-                        title={speed.label}
-                        onClick={() => toggleSpeed(speed.key)}
-                      >
-                        <SpeedFilterIcon speed={speed.key} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {explorerScope === "player" ? (
-                  <label className="analysisRatingSlider">
-                    <span>Min opponent rating</span>
-                    <output>{playerRatingValue}</output>
-                    <input
-                      type="range"
-                      min={PLAYER_MIN_RATING}
-                      max={MAX_EXPLORER_RATING}
-                      step={PLAYER_RATING_STEP}
-                      value={playerRatingValue}
-                      onChange={(event) =>
-                        updateExplorerSettings({ minRating: Number(event.target.value) })
-                      }
-                    />
-                  </label>
-                ) : null}
-                <div className="analysisDateFilters">
-                  <label>
-                    <span>Since</span>
-                    <input
-                      type="text"
-                      value={activeStartDate}
-                      inputMode="numeric"
-                      maxLength={7}
-                      pattern="\d{4}-\d{2}"
-                      placeholder="YYYY-MM"
-                      onChange={(event) => {
-                        const nextStartDate = event.target.value;
-                        if (explorerScope === "player") {
-                          updateExplorerSettings({ playerStartDate: nextStartDate });
-                        } else {
-                          updateExplorerSettings({ generalStartDate: nextStartDate });
-                        }
-                      }}
-                    />
-                  </label>
-                  <label>
-                    <span>Until</span>
-                    <input
-                      type="text"
-                      value={endDate}
-                      inputMode="numeric"
-                      maxLength={7}
-                      pattern="\d{4}-\d{2}"
-                      placeholder="YYYY-MM"
-                      onChange={(event) => updateExplorerSettings({ endDate: event.target.value })}
-                    />
-                  </label>
-                </div>
-                <div className="analysisExplorerToolbar">
-                  <button
-                    type="button"
-                    className="analysisPrimaryButton"
-                    onClick={() => setFiltersOpen(false)}
-                  >
-                    Apply
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </OpeningExplorerPanel>
-        ) : null}
+        {moveGameExplorerLeft ? null : openingExplorerPanel}
 
         <AnalysisToolbar
           active={explorerOpen}
@@ -1423,8 +1427,12 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
       </AnalysisWorkspacePanel>
 
       {game ? (
-        <aside className="gameAnalysisSidebar" aria-label="Game details">
+        <aside
+          className={`gameAnalysisSidebar ${moveGameExplorerLeft ? "withExplorer" : ""}`}
+          aria-label="Game details"
+        >
           <GameAnalysisHeader game={game} />
+          {moveGameExplorerLeft ? openingExplorerPanel : null}
         </aside>
       ) : null}
 

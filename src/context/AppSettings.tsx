@@ -35,6 +35,7 @@ const STORAGE_KEYS = {
   showPuzzleTimer: "atomic-puzzles.puzzles.show-timer-v2",
   puzzleAnalysisTarget: "atomic-puzzles.puzzles.analysis-link-target",
   lichessLinkTarget: "atomic-puzzles.games.lichess-link-target",
+  gameExplorerOnLeft: "atomic-puzzles.games.explorer-on-left",
   showRatingGraphLines: "profile.ratingGraph.showLines",
   hiddenRatingGraphModes: "profile.ratingGraph.hiddenModes",
 };
@@ -198,6 +199,8 @@ export type AppSettingsContextValue = {
   setPuzzleAnalysisTarget: Dispatch<SetStateAction<"atomic-puzzles" | "lichess">>;
   lichessLinkTarget: "atomic-puzzles" | "lichess";
   setLichessLinkTarget: Dispatch<SetStateAction<"atomic-puzzles" | "lichess">>;
+  gameExplorerOnLeft: boolean;
+  setGameExplorerOnLeft: Dispatch<SetStateAction<boolean>>;
   showCoinBalance: boolean;
   setShowCoinBalance: Dispatch<SetStateAction<boolean>>;
   showCoinChangePopups: boolean;
@@ -330,6 +333,11 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.enum(["atomic-puzzles", "lichess"]),
     "lichess",
   );
+  const [gameExplorerOnLeft, setGameExplorerOnLeft] = usePersistedState(
+    STORAGE_KEYS.gameExplorerOnLeft,
+    z.boolean(),
+    false,
+  );
   const [showCoinBalance, setShowCoinBalance] = usePersistedState(
     STORAGE_KEYS.showCoinBalance,
     z.boolean(),
@@ -441,6 +449,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setPuzzleAnalysisTarget,
       lichessLinkTarget,
       setLichessLinkTarget,
+      gameExplorerOnLeft,
+      setGameExplorerOnLeft,
       showCoinBalance,
       setShowCoinBalance,
       showCoinChangePopups,
@@ -492,6 +502,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setPuzzleAnalysisTarget,
       lichessLinkTarget,
       setLichessLinkTarget,
+      gameExplorerOnLeft,
+      setGameExplorerOnLeft,
       showCoinBalance,
       setShowCoinBalance,
       showCoinChangePopups,
