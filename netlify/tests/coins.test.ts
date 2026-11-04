@@ -412,7 +412,7 @@ describe("coins function", () => {
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
-  it("accepts the yearly Nitro reward and reports its 11,000-coin price", async () => {
+  it("accepts the yearly Nitro reward and reports its 12,000-coin price", async () => {
     mocks.resolveCanonicalArchiveUsername.mockRejectedValue(new Error("Archive unavailable"));
     const rpc = vi.fn(async () => ({ data: null, error: { message: "Not enough coins" } }));
     mocks.createClient.mockReturnValue({ rpc });
@@ -434,7 +434,7 @@ describe("coins function", () => {
     });
     expect(response.statusCode).toBe(409);
     expect(JSON.parse(response.body)).toMatchObject({
-      error: "You need 11,000 coins to buy this item.",
+      error: "You need 12,000 coins to buy this item.",
     });
   });
 
