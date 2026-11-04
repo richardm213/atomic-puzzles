@@ -91,7 +91,7 @@ export const AtomicDbEngineControls = ({
   const visibleLineCount = settings.enabled ? settings.lineCount : 0;
   const view = useRetainedAtomicDbView(analysis, fen);
   const sourceLabel = analysisSourceLabel(analysis, threatMode);
-  const finalResult = resultLabel(view);
+  const finalResult = analysis.source === "terminal" ? resultLabel(view) : null;
   const atomicDbHref =
     !threatMode &&
     analysis.source !== "engine" &&
@@ -269,7 +269,7 @@ export const AtomicDbEngine = ({
   const { status, error } = analysis;
   const view = useRetainedAtomicDbView(analysis, fen);
   const sourceLabel = analysisSourceLabel(analysis, threatMode);
-  const finalMessage = terminalMessage(view);
+  const finalMessage = analysis.source === "terminal" ? terminalMessage(view) : null;
   const { position } = view;
   const visibleMoves = useMemo(
     () => position?.moves.slice(0, lineCount) ?? [],
@@ -407,7 +407,8 @@ export const AtomicDbEvalBar = ({
   const { status } = analysis;
   const view = useRetainedAtomicDbView(analysis, fen);
   const sourceLabel = analysisSourceLabel(analysis, threatMode);
-  const displayedEvaluation = resultLabel(view) ?? view.evaluationLabel;
+  const displayedEvaluation =
+    (analysis.source === "terminal" ? resultLabel(view) : null) ?? view.evaluationLabel;
 
   return (
     <div

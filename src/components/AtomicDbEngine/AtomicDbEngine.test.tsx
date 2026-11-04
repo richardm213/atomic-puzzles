@@ -60,6 +60,38 @@ describe("AtomicDbEngine", () => {
     );
   });
 
+  it("shows an evaluation instead of a game result for a non-terminal solved position", () => {
+    const position = parseAtomicDbResponse({
+      status: "WHITE_WIN",
+      best_move: "g1f3",
+      moves: [{ uci: "g1f3", status: "WHITE_WIN", mate: 4 }],
+    });
+    const analysis: AtomicDbAnalysisState = {
+      status: "ready",
+      error: "",
+      source: "atomicdb",
+      result: { fen: STARTING_FEN, position },
+      principalVariations: {},
+    };
+
+    render(
+      <>
+        <AtomicDbEngineControls
+          fen={STARTING_FEN}
+          analysis={analysis}
+          settings={{ enabled: true, lineCount: 1, showFollowUpMoves: true }}
+          setSettings={vi.fn()}
+          onDisable={vi.fn()}
+        />
+        <AtomicDbEvalBar fen={STARTING_FEN} analysis={analysis} enabled orientation="white" />
+      </>,
+    );
+
+    expect(screen.queryByText("1–0")).not.toBeInTheDocument();
+    expect(screen.getByText("#4")).toBeVisible();
+    expect(screen.getByRole("meter")).toHaveAttribute("aria-label", "AtomicDB evaluation #4");
+  });
+
   it("keeps the settled evaluation and bar position while the next evaluation loads", () => {
     const position = parseAtomicDbResponse({
       status: "UNKNOWN",

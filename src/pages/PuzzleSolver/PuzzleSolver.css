@@ -700,7 +700,7 @@ button.puzzleRatingBadge.editable:focus-visible {
   height: 28px;
   border: 0;
   background: transparent;
-  color: var(--color-gold);
+  color: var(--color-cyan-bright);
   font-size: 14px;
   opacity: 0.88;
   transition:
@@ -710,7 +710,7 @@ button.puzzleRatingBadge.editable:focus-visible {
 
 .puzzleAttemptedBadge:hover,
 .puzzleAttemptedBadge:focus-visible {
-  color: var(--puzzle-gold);
+  color: var(--color-primary-pale);
   opacity: 1;
 }
 
