@@ -320,14 +320,15 @@ const SpeedFilterIcon = ({ speed }: { speed: ExplorerSpeed }) => {
 
 type AnalysisPageProps = {
   game?: ArchiveGame;
+  initialFen?: string;
   initialPgn?: string;
 };
 
-export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) => {
+export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPageProps = {}) => {
   const navigate = useNavigate();
   const { gameExplorerOnLeft } = useAppSettings();
   const { _splat: fenPath } = useParams({ strict: false });
-  const routeFen = fenFromRoute(fenPath);
+  const routeFen = game && initialFen ? initialFen : fenFromRoute(fenPath);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const rightPanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);

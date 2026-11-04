@@ -410,7 +410,7 @@ const queryGame = async (params: URLSearchParams) => {
     schemaVersion >= 5 ? " join time_controls gtc on gtc.id=g.time_control_id" : "";
   const gameTimeControlSelection = schemaVersion >= 5 ? "gtc.value" : "tc.value";
   const result = await getArchiveClient().execute({
-    sql: `select g.game_id,g.game_index,g.result,g.moves,g.clocks,g.move_ts,
+    sql: `select g.game_id,g.game_index,g.result,g.moves,g.clocks,g.move_ts,g.initial_fen,
       ${schemaVersion >= 4 ? "g.ratings" : "null ratings"},
       m.match_id external_match_id,${modeNameSql("m.mode")} mode,m.start_ts,
       ${sourceSelection} source,

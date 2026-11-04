@@ -8,6 +8,7 @@ export type ArchiveGame = {
   moves: string[] | null;
   clocks: number[] | null;
   move_ts: number[] | null;
+  initial_fen: string | null;
   external_match_id: string;
   mode: ArchiveMode;
   start_ts: number;

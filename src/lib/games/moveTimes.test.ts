@@ -10,6 +10,7 @@ const game = (overrides: Partial<ArchiveGame>): ArchiveGame => ({
   moves: ["e2e4", "e7e5", "g1f3"],
   clocks: [178_516, 178_751, 179_248],
   move_ts: [10_000, 13_405, 14_954],
+  initial_fen: null,
   external_match_id: "match-1",
   mode: "blitz",
   start_ts: 1_000,

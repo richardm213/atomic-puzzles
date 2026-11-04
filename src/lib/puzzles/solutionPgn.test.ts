@@ -313,6 +313,16 @@ describe("serializeSanLinesToPgn", () => {
 });
 
 describe("serializeUciLinesToPgn / normalizeSolutionPgn", () => {
+  it("serializes moves from an Atomic960 starting FEN", () => {
+    const atomic960Fen = "brkqnrnb/pppppppp/8/8/8/8/PPPPPPPP/BRKQNRNB w FBfb - 0 1";
+
+    expect(
+      serializeUciLinesToPgn(atomic960Fen, [
+        [{ uci: "e1f3", key: "e1f3", annotation: "", retry: false }],
+      ]),
+    ).toBe("1. Nef3");
+  });
+
   it("round-trips exact move annotations through UCI lines", () => {
     const lines = parseSolutionUciLines(STARTING_FEN, "1. e4! e5?! 2. Nf3!!");
     expect(serializeUciLinesToPgn(STARTING_FEN, lines)).toBe("1. e4! e5?! 2. Nf3!!");

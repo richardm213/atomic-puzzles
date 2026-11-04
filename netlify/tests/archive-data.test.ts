@@ -181,6 +181,33 @@ describe("archive-data function", () => {
     });
   });
 
+  it("returns the stored Atomic960 starting FEN for an archived game", async () => {
+    const initialFen = "brkqnrnb/pppppppp/8/8/8/8/PPPPPPPP/BRKQNRNB w FBfb - 0 1";
+    mocks.execute.mockResolvedValueOnce({ rows: [{ value: "5" }] }).mockResolvedValueOnce({
+      rows: [
+        {
+          game_id: "atomic960-game",
+          result: 2,
+          player_1: "alice",
+          player_2: "bob",
+          initial_fen: initialFen,
+          moves: null,
+          clocks: null,
+          move_ts: null,
+          ratings: null,
+        },
+      ],
+    });
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({
+      queryStringParameters: { resource: "game", gameId: "atomic960-game" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mocks.execute.mock.calls[1]?.[0].sql).toContain("g.initial_fen");
+    expect(JSON.parse(response.body)).toMatchObject({ initial_fen: initialFen });
+  });
+
   it("does not report match-level ratings as game ratings on schema v3", async () => {
     mocks.execute.mockResolvedValueOnce({ rows: [{ value: "3" }] }).mockResolvedValueOnce({
       rows: [

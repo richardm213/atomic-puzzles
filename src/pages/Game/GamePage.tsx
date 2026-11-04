@@ -31,14 +31,15 @@ export const GamePage = () => {
   const gameId = decodedGameId.replace(/^(?:chesscom|pychess):/i, "").trim();
   const gameQuery = useQuery({ ...gameDetailQueryOptions(gameId), enabled: Boolean(gameId) });
   const game = gameQuery.data;
+  const initialFen = game?.initial_fen?.trim() || INITIAL_FEN;
   const pgn = useMemo(
     () =>
       game?.moves?.length
-        ? serializeUciLinesToPgn(INITIAL_FEN, [
+        ? serializeUciLinesToPgn(initialFen, [
             game.moves.map((uci) => ({ uci, key: uci, annotation: "", retry: false })),
           ])
         : "",
-    [game?.moves],
+    [game?.moves, initialFen],
   );
 
   if (gameQuery.isPending) return <RouteLoadingFallback />;
@@ -71,5 +72,5 @@ export const GamePage = () => {
     );
   }
 
-  return <AnalysisPage game={game} initialPgn={pgn} />;
+  return <AnalysisPage game={game} initialFen={initialFen} initialPgn={pgn} />;
 };
