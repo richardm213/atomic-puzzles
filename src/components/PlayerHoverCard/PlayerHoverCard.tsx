@@ -94,6 +94,16 @@ const PlayerHoverCardContent = ({
     <div className="playerHoverCardBody" onMouseEnter={onRemainOpen}>
       <header className="playerHoverCardHeader">
         <strong>{canonicalUsername}</strong>
+        {social?.tourRank ? (
+          <Link
+            className="playerHoverCardTourRank"
+            to="/rankings/tour"
+            aria-label={`Atomic Chess Tour rank ${social.tourRank}`}
+            title="Live Atomic Chess Tour rank"
+          >
+            #{social.tourRank}
+          </Link>
+        ) : null}
         {social?.flair ? <span className="playerHoverCardFlair">{social.flair}</span> : null}
         {countryCode ? (
           <span className="playerHoverCardCountry" title={countryName(countryCode)}>
@@ -106,16 +116,6 @@ const PlayerHoverCardContent = ({
             />
             <span>{countryLabel(countryCode)}</span>
           </span>
-        ) : null}
-        {social?.tourRank ? (
-          <Link
-            className="playerHoverCardTourRank"
-            to="/rankings/tour"
-            aria-label={`Atomic Chess Tour rank ${social.tourRank}`}
-            title="Live Atomic Chess Tour rank"
-          >
-            #{social.tourRank}
-          </Link>
         ) : null}
       </header>
 
