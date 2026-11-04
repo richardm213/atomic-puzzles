@@ -8,6 +8,27 @@ import { AtomicDbEngine, AtomicDbEngineControls, AtomicDbEvalBar } from "./Atomi
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 describe("AtomicDbEngine", () => {
+  it("offers the move-notation layout in engine settings", () => {
+    const onToggleNotation = vi.fn();
+    render(
+      <AtomicDbEngineControls
+        fen={STARTING_FEN}
+        analysis={{ status: "idle", error: "", result: null, principalVariations: {} }}
+        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: true }}
+        setSettings={vi.fn()}
+        onDisable={vi.fn()}
+        notationInline
+        onToggleNotation={onToggleNotation}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Engine settings" }));
+    const notationButton = screen.getByRole("button", { name: /Move notation/ });
+    expect(within(notationButton).getByText("Inline")).toBeVisible();
+    fireEvent.click(notationButton);
+    expect(onToggleNotation).toHaveBeenCalledOnce();
+  });
+
   it("links the AtomicDB source label to the current database position", () => {
     const position = parseAtomicDbResponse({
       key: "atomic-position-key",

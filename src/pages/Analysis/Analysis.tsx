@@ -1064,6 +1064,10 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
               onThreatModeChange={setThreatMode}
               threatAvailable={threatFen !== null}
               threatMode={effectiveThreatMode}
+              notationInline={notationLayout === "inline"}
+              onToggleNotation={() =>
+                setNotationLayout((current) => (current === "inline" ? "non-inline" : "inline"))
+              }
             />
             <AtomicDbEngine
               fen={displayedAnalysisFen}
@@ -1305,11 +1309,7 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
           ariaLabel="Analysis menu"
           canStepBack={canStepBack}
           canStepForward={canStepForward}
-          notationInline={notationLayout === "inline"}
           onNavigate={requestNavigation}
-          onToggleNotation={() =>
-            setNotationLayout((current) => (current === "inline" ? "non-inline" : "inline"))
-          }
           onToggle={() => setExplorerOpen((open) => !open)}
           toggleAriaLabel={explorerOpen ? "Hide opening explorer" : "Show opening explorer"}
           toggleClassName="explorer"

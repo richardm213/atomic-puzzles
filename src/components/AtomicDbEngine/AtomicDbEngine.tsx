@@ -1,6 +1,6 @@
 import "./AtomicDbEngine.css";
 
-import { faArrowsRotate, faGear, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faAlignLeft, faArrowsRotate, faGear, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -36,6 +36,8 @@ type AtomicDbEngineControlsProps = {
   onThreatModeChange?: (enabled: boolean) => void;
   threatAvailable?: boolean;
   threatMode?: boolean;
+  notationInline?: boolean;
+  onToggleNotation?: () => void;
 };
 
 const analysisSourceLabel = (analysis: AtomicDbAnalysisState, threatMode = false): string =>
@@ -81,6 +83,8 @@ export const AtomicDbEngineControls = ({
   onThreatModeChange,
   threatAvailable = true,
   threatMode = false,
+  notationInline,
+  onToggleNotation,
 }: AtomicDbEngineControlsProps) => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
@@ -222,6 +226,15 @@ export const AtomicDbEngineControls = ({
                   onChange={(event) => onThreatModeChange(event.target.checked)}
                 />
               </label>
+            ) : null}
+            {onToggleNotation ? (
+              <button type="button" className="atomicDbSettingsAction" onClick={onToggleNotation}>
+                <FontAwesomeIcon icon={faAlignLeft} aria-hidden="true" />
+                <span>Move notation</span>
+                <span className="atomicDbSettingsActionValue">
+                  {notationInline ? "Inline" : "Rows"}
+                </span>
+              </button>
             ) : null}
             {onFlipBoard ? (
               <button
