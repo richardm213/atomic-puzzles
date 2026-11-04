@@ -478,10 +478,7 @@ export const GameUnderboard = ({
                       : "Request analysis"}
                 </button>
               ) : null}
-              <CopyButton
-                label="Copy link"
-                value={typeof window === "undefined" ? "" : window.location.href}
-              />
+              <CopyButton label="Copy PGN" value={pgn} />
               <button type="button" onClick={downloadPgn} disabled={!pgn}>
                 Download PGN
               </button>
