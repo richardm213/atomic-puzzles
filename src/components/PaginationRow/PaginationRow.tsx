@@ -1,5 +1,7 @@
 import "./PaginationRow.css";
 
+import { faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";
 
 export type PaginationRowProps = {
@@ -9,6 +11,7 @@ export type PaginationRowProps = {
   formatLabel?: (currentPage: number, totalPages: number) => string;
   disabled?: boolean;
   ariaLabel?: string;
+  navigationVariant?: "text" | "arrows";
 };
 
 export const PaginationRow = ({
@@ -18,6 +21,7 @@ export const PaginationRow = ({
   formatLabel,
   disabled,
   ariaLabel = "Pagination",
+  navigationVariant = "text",
 }: PaginationRowProps) => {
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [pageInput, setPageInput] = useState(String(currentPage));
@@ -43,10 +47,17 @@ export const PaginationRow = ({
     <nav className="paginationRow" aria-label={ariaLabel}>
       <button
         type="button"
+        className={navigationVariant === "arrows" ? "paginationArrowButton" : undefined}
+        aria-label="Previous"
+        title={navigationVariant === "arrows" ? "Previous page" : undefined}
         onClick={() => onPageChange(Math.max(1, currentPage - 1))}
         disabled={disabled || currentPage <= 1}
       >
-        Previous
+        {navigationVariant === "arrows" ? (
+          <FontAwesomeIcon icon={faChevronLeft} aria-hidden="true" />
+        ) : (
+          "Previous"
+        )}
       </button>
       {isEditingPage ? (
         <form
@@ -95,10 +106,17 @@ export const PaginationRow = ({
       )}
       <button
         type="button"
+        className={navigationVariant === "arrows" ? "paginationArrowButton" : undefined}
+        aria-label="Next"
+        title={navigationVariant === "arrows" ? "Next page" : undefined}
         onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
         disabled={disabled || currentPage >= totalPages}
       >
-        Next
+        {navigationVariant === "arrows" ? (
+          <FontAwesomeIcon icon={faChevronRight} aria-hidden="true" />
+        ) : (
+          "Next"
+        )}
       </button>
     </nav>
   );

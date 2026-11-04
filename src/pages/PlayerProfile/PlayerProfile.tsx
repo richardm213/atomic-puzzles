@@ -13,7 +13,7 @@ import {
   faTrophy,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
@@ -197,7 +197,10 @@ export const PlayerProfilePage = ({
   );
   const [showRatingGraph, setShowRatingGraph] = useState(false);
   const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
+  const [displayedMatchPage, setDisplayedMatchPage] = useState(1);
   const profileActionsMenuRef = useRef<HTMLDetailsElement>(null);
+  const matchHistoryTableRef = useRef<HTMLDivElement>(null);
+  const pendingMatchPageScrollRef = useRef<number | null>(null);
   const profileAliasQuery = useQuery({
     ...profileAliasQueryOptions(requestedUsername),
     enabled: Boolean(requestedUsername),
@@ -431,6 +434,7 @@ export const PlayerProfilePage = ({
       pageSize,
     ),
     enabled: aliasesLoaded && profileHistoryTab === "matches" && Boolean(canonicalUsername),
+    placeholderData: keepPreviousData,
   });
   const matches = useMemo(
     () => matchHistoryQuery.data?.matches ?? [],
@@ -465,6 +469,43 @@ export const PlayerProfilePage = ({
     return filteredMatches.slice(pageStart, pageStart + pageSize);
   }, [currentPage, filteredMatches, isClientPagedResults, pageSize]);
   const requestedServerPage = isClientPagedResults ? 1 : currentPage;
+
+  useEffect(() => {
+    const pageDataReady =
+      isClientPagedResults ||
+      (matchHistoryQuery.data !== undefined &&
+        !matchHistoryQuery.isPlaceholderData &&
+        !matchHistoryQuery.isFetching);
+    if (!pageDataReady) return;
+
+    setDisplayedMatchPage(currentPage);
+    if (pendingMatchPageScrollRef.current === null) return;
+    if (pendingMatchPageScrollRef.current !== currentPage) {
+      pendingMatchPageScrollRef.current = null;
+      return;
+    }
+    pendingMatchPageScrollRef.current = null;
+
+    const table = matchHistoryTableRef.current;
+    if (!table) return;
+    const top = Math.max(
+      0,
+      window.scrollY + table.getBoundingClientRect().top - window.innerHeight * 0.15,
+    );
+    window.scrollTo({ top, left: 0, behavior: "auto" });
+  }, [
+    currentPage,
+    isClientPagedResults,
+    matchHistoryQuery.data,
+    matchHistoryQuery.isFetching,
+    matchHistoryQuery.isPlaceholderData,
+  ]);
+
+  const handleMatchPageChange = (nextPage: number): void => {
+    if (nextPage === currentPage || loadingMatches) return;
+    pendingMatchPageScrollRef.current = nextPage;
+    setPage(nextPage);
+  };
 
   useEffect(() => {
     if (
@@ -1368,7 +1409,10 @@ export const PlayerProfilePage = ({
 
                     {error ? <div className="errorText">{error}</div> : null}
 
-                    <div className="rankingsTableWrap matchHistoryTableWrap profileMatchTableWrap">
+                    <div
+                      ref={matchHistoryTableRef}
+                      className="rankingsTableWrap matchHistoryTableWrap profileMatchTableWrap"
+                    >
                       <table className="rankingsTable matchHistoryTable profileMatchTable">
                         <colgroup>
                           <col className="profileMatchDateColumn" />
@@ -1543,11 +1587,12 @@ export const PlayerProfilePage = ({
                     </div>
 
                     <PaginationRow
-                      currentPage={currentPage}
+                      currentPage={displayedMatchPage}
                       totalPages={totalPages}
-                      onPageChange={setPage}
+                      onPageChange={handleMatchPageChange}
                       formatLabel={(current, total) => `Page ${current} / ${total}`}
                       disabled={loadingMatches}
+                      navigationVariant="arrows"
                     />
                   </>
                 ) : null}

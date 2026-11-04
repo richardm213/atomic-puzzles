@@ -227,29 +227,50 @@ describe("profile match pagination", () => {
     );
   });
 
-  it("keeps an uncached next page selected while loading, then supports Previous", async () => {
-    let resolvePage!: (result: { matches: never[]; total: number }) => void;
+  it("keeps the current rows until the next page loads, then positions the table", async () => {
+    let resolvePage!: (result: { matches: ParsedMatch[]; total: number }) => void;
     loadRawMatchesByMode.mockImplementation((_mode, { page }) =>
       page === 1
-        ? Promise.resolve({ matches: [], total: 75 })
+        ? Promise.resolve({ matches: [match("m1", 100)], total: 75 })
         : new Promise((resolve) => {
             resolvePage = resolve;
           }),
     );
     renderProfile();
     await screen.findByText("Page 1 / 3");
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    const currentRowContent = await screen.findByText("bob (1745)");
+    const tableWrap = screen.getByRole("table").parentElement;
+    expect(tableWrap).not.toBeNull();
+    vi.spyOn(tableWrap!, "getBoundingClientRect").mockReturnValue({
+      top: 600,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      width: 0,
+      height: 0,
+      x: 0,
+      y: 600,
+      toJSON: () => ({}),
+    });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 1_000 });
+    Object.defineProperty(window, "scrollY", { configurable: true, value: 200 });
+    vi.mocked(window.scrollTo).mockClear();
+
+    const nextButton = screen.getByRole("button", { name: "Next" });
+    expect(nextButton).toHaveTextContent("");
+    fireEvent.click(nextButton);
     await waitFor(() =>
       expect(loadRawMatchesByMode).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ page: 2 }),
       ),
     );
+    expect(currentRowContent).toBeInTheDocument();
+    expect(screen.getByText("Page 1 / 3")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
-    await act(async () => resolvePage({ matches: [], total: 75 }));
+    await act(async () => resolvePage({ matches: [match("m2", 200)], total: 75 }));
     await screen.findByText("Page 2 / 3");
-    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
-    await screen.findByText("Page 1 / 3");
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 650, left: 0, behavior: "auto" });
   });
 
   it("clamps a page when the loaded total really shrinks", async () => {
