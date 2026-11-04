@@ -14,12 +14,14 @@ describe("analysis handoff", () => {
       pgn: "1. Ka2 (1. Kb2)",
       line: 1,
       ply: 1,
+      orientation: "black",
     });
 
     expect(readAnalysisHandoff("?handoff=handoff-1")).toMatchObject({
       pgn: "1. Ka2 (1. Kb2)",
       line: 1,
       ply: 1,
+      orientation: "black",
     });
   });
 
@@ -30,6 +32,7 @@ describe("analysis handoff", () => {
       pgn: "1. Ka2",
       line: 0,
       ply: 0,
+      orientation: "white",
     });
     vi.advanceTimersByTime(11 * 60 * 1000);
 

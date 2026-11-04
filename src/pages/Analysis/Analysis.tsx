@@ -610,6 +610,7 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
   useEffect(() => {
     gamePlyInitializedRef.current = !game;
     setRootFen(routeFen);
+    if (!game) setOrientation(analysisHandoff?.orientation ?? "white");
     const startupPgn = initialPgn || analysisHandoff?.pgn || "";
     setNavigation(
       startupPgn

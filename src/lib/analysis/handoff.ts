@@ -6,6 +6,7 @@ export type AnalysisHandoff = {
   pgn: string;
   line: number;
   ply: number;
+  orientation: "white" | "black";
   createdAt: number;
 };
 
@@ -48,6 +49,7 @@ export const readAnalysisHandoff = (search: string): AnalysisHandoff | null => {
       Number(parsed.line) < 0 ||
       !Number.isInteger(parsed.ply) ||
       Number(parsed.ply) < 0 ||
+      (parsed.orientation !== "white" && parsed.orientation !== "black") ||
       typeof parsed.createdAt !== "number" ||
       Date.now() - parsed.createdAt > HANDOFF_MAX_AGE_MS
     ) {

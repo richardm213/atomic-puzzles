@@ -870,9 +870,71 @@ describe("PuzzleSolverPage solution options", () => {
 
     fireEvent.click(analyzeLink);
     const handoff = readAnalysisHandoff(href.slice(href.indexOf("?")));
-    expect(handoff).toMatchObject({ line: 1, ply: 1 });
+    expect(handoff).toMatchObject({ line: 1, ply: 1, orientation: "black" });
     expect(handoff?.pgn).toContain("O-O");
     expect(handoff?.pgn).toContain("Rf8");
+  });
+
+  it("opens analysis at the puzzle start from an exact solution leaf", async () => {
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    await user.click(await screen.findByRole("tab", { name: "Solution" }));
+    const solutionLine = await screen.findByRole("list", { name: "Solution variations" });
+    await user.click(within(solutionLine).getAllByRole("button", { name: "3. Ba3" })[0]!);
+    await waitFor(() =>
+      expect(mocks.chessboardProps.at(-1)?.solutionNavigation).toEqual({
+        type: "solution",
+        line: 0,
+        ply: 5,
+      }),
+    );
+
+    const analyzeLink = screen.getByRole("link", { name: "Analyze Puzzle" });
+    const href = analyzeLink.getAttribute("href") ?? "";
+    fireEvent.click(analyzeLink);
+
+    expect(readAnalysisHandoff(href.slice(href.indexOf("?")))).toMatchObject({
+      line: 0,
+      ply: 0,
+    });
+  });
+
+  it("keeps a custom line's leaf position when opening analysis", async () => {
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    await user.click(await screen.findByRole("tab", { name: "Solution" }));
+    act(() => {
+      mocks.chessboardProps.at(-1)?.onStateChange?.({
+        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
+        turn: "black",
+        status: "black to move",
+        error: "",
+        lineMoves: ["O-O", "Kd7"],
+        solutionLines: [
+          ["O-O", "O-O-O", "Rf2", "Be2", "Ba3"],
+          ["Rf8", "O-O-O", "Rf2", "Be2", "Ba3"],
+        ],
+        customLines: [["O-O", "Kd7"]],
+        solutionLineIndex: 0,
+        customLineIndex: 0,
+        lineIndex: 2,
+        viewingSolution: false,
+        showWrongMove: false,
+        showRetryMove: false,
+        solved: false,
+      });
+    });
+
+    const analyzeLink = screen.getByRole("link", { name: "Analyze Puzzle" });
+    const href = analyzeLink.getAttribute("href") ?? "";
+    fireEvent.click(analyzeLink);
+
+    expect(readAnalysisHandoff(href.slice(href.indexOf("?")))).toMatchObject({
+      line: 2,
+      ply: 2,
+    });
   });
 
   it("retries loading other attempts after a request fails", async () => {

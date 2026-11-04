@@ -1433,6 +1433,9 @@ export const PuzzleSolverPage = () => {
   const isOnSolutionPath =
     matchingSolutionLineIndexes.length > 0 &&
     activeSolutionLine.length >= currentAnalysisMoves.length;
+  const isAtSolutionLeaf = matchingSolutionLineIndexes.some(
+    (lineIndex) => boardState.solutionLines?.[lineIndex]?.length === currentAnalysisMoves.length,
+  );
   const activeVariationLineIndex = boardState.viewingSolution
     ? activeSolutionLineIndex
     : solutionLineCount + (boardState.customLineIndex ?? 0);
@@ -1494,13 +1497,18 @@ export const PuzzleSolverPage = () => {
       fen,
       pgn: puzzlePgn,
       line: analysisHandoffLineIndex,
-      ply: currentAnalysisMoves.length,
+      // A completed solution is more useful from its root; partial and custom analysis should
+      // preserve the exact position the user was investigating.
+      ply: isAtSolutionLeaf ? 0 : currentAnalysisMoves.length,
+      orientation,
     });
   }, [
     analysisHandoffLineIndex,
     analysisHandoffId,
     currentAnalysisMoves.length,
     fen,
+    isAtSolutionLeaf,
+    orientation,
     puzzleAnalysisTarget,
     puzzlePgn,
   ]);
