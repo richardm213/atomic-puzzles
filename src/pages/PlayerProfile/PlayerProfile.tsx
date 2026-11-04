@@ -161,12 +161,7 @@ export const PlayerProfilePage = ({
   historyOnly?: boolean;
 }) => {
   const queryClient = useQueryClient();
-  const {
-    showRapidProfileRatings,
-    showWolfrandomProfileRatings,
-    showAtomic960ProfileRatings,
-    showProfileActionButtons,
-  } = useAppSettings();
+  const { profileRatingSlots, showProfileActionButtons } = useAppSettings();
   const requestedUsername = useMemo(() => String(username ?? "").trim(), [username]);
   const normalizedUsername = useMemo(
     () => normalizeUsername(requestedUsername),
@@ -720,34 +715,33 @@ export const PlayerProfilePage = ({
     [visibleMonthRanks],
   );
   const profileMetricRows = useMemo(() => {
-    const visibleRatingModes = getVisibleProfileRatingModes(ratingDisplayByMode, {
-      rapid: showRapidProfileRatings,
-      wolfrandom: showWolfrandomProfileRatings,
-      atomic960: showAtomic960ProfileRatings,
-    });
-
-    return getProfileMetricCardRows(
+    const visibleRatingModes = getVisibleProfileRatingModes(
       ratingDisplayByMode,
-      Object.fromEntries(
-        Object.entries(latestMonthKeyByMode).map(([mode, monthRank]) => [
-          mode,
-          monthRank?.monthKey ?? "",
-        ]),
-      ),
-      isExcluded,
-    ).filter((row) => {
-      const mode = row.key.replace(/-row$/, "") as (typeof modeOptions)[number];
-      if (!visibleRatingModes.includes(mode)) return false;
-      if (!profileModeOptions.includes(mode)) return false;
-      if (!isExcluded) return true;
-      return Number.isFinite(ratingDisplayByMode[mode]?.currentRating);
+      profileRatingSlots,
+    );
+    const rowsByMode = new Map(
+      getProfileMetricCardRows(
+        ratingDisplayByMode,
+        Object.fromEntries(
+          Object.entries(latestMonthKeyByMode).map(([mode, monthRank]) => [
+            mode,
+            monthRank?.monthKey ?? "",
+          ]),
+        ),
+        isExcluded,
+      ).map((row) => [row.key.replace(/-row$/, "") as (typeof modeOptions)[number], row]),
+    );
+
+    return visibleRatingModes.flatMap((mode) => {
+      const row = rowsByMode.get(mode);
+      if (!row || !profileModeOptions.includes(mode)) return [];
+      if (isExcluded && !Number.isFinite(ratingDisplayByMode[mode]?.currentRating)) return [];
+      return [row];
     });
   }, [
-    showRapidProfileRatings,
-    showWolfrandomProfileRatings,
-    showAtomic960ProfileRatings,
     isExcluded,
     latestMonthKeyByMode,
+    profileRatingSlots,
     profileModeOptions,
     ratingDisplayByMode,
   ]);

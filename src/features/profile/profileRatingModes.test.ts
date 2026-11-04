@@ -16,13 +16,12 @@ const ratings = (games: Partial<Record<Mode, number>>): RatingDisplayByMode =>
   }));
 
 describe("getVisibleProfileRatingModes", () => {
-  it("keeps optional pools hidden when they do not outplay a standard pool", () => {
+  it("uses the highest-volume remaining optional pool for the fourth row", () => {
     expect(
       getVisibleProfileRatingModes(
-        ratings({ blitz: 100, bullet: 90, hyperbullet: 80, rapid: 80 }),
-        {},
+        ratings({ blitz: 100, bullet: 90, hyperbullet: 80, rapid: 20, atomic960: 10 }),
       ),
-    ).toEqual(["blitz", "bullet", "hyperbullet"]);
+    ).toEqual(["blitz", "bullet", "hyperbullet", "rapid"]);
   });
 
   it("uses the highest-volume replacement when only one pool can be displaced", () => {
@@ -36,9 +35,8 @@ describe("getVisibleProfileRatingModes", () => {
           wolfrandom: 40,
           atomic960: 35,
         }),
-        {},
       ),
-    ).toEqual(["blitz", "bullet", "wolfrandom"]);
+    ).toEqual(["blitz", "bullet", "wolfrandom", "atomic960"]);
   });
 
   it("can replace all three standard pools", () => {
@@ -52,17 +50,34 @@ describe("getVisibleProfileRatingModes", () => {
           wolfrandom: 50,
           atomic960: 40,
         }),
-        {},
       ),
     ).toEqual(["rapid", "wolfrandom", "atomic960"]);
   });
 
-  it("also shows an explicitly enabled optional pool", () => {
+  it("does not show rows for pools without games", () => {
+    expect(getVisibleProfileRatingModes(ratings({ blitz: 100, bullet: 90 }))).toEqual([
+      "blitz",
+      "bullet",
+    ]);
+  });
+
+  it("persists explicit slot choices while replacing unavailable choices", () => {
+    expect(
+      getVisibleProfileRatingModes(ratings({ blitz: 100, bullet: 90, rapid: 30, atomic960: 20 }), [
+        "rapid",
+        "wolfrandom",
+        "bullet",
+        "atomic960",
+      ]),
+    ).toEqual(["rapid", "blitz", "bullet", "atomic960"]);
+  });
+
+  it("keeps slot choices unique", () => {
     expect(
       getVisibleProfileRatingModes(
-        ratings({ blitz: 100, bullet: 90, hyperbullet: 80, rapid: 10 }),
-        { rapid: true },
+        ratings({ blitz: 100, bullet: 90, hyperbullet: 80, rapid: 30 }),
+        ["rapid", "rapid", "rapid", "rapid"],
       ),
-    ).toEqual(["blitz", "bullet", "hyperbullet", "rapid"]);
+    ).toEqual(["rapid", "blitz", "bullet"]);
   });
 });

@@ -23,6 +23,10 @@ import { type ChangeEvent, useCallback, useEffect, useRef, useState } from "reac
 import { atomic960Enabled, modeLabels, publicModeOptions } from "../../constants/matches";
 import { getBoardThemeColors, type Theme, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
+import {
+  automaticProfileRatingSlot,
+  type ProfileRatingSlotPreference,
+} from "../../features/profile/profileRatingModes";
 import { useNotificationNavigation } from "../../hooks/useNotificationNavigation";
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
@@ -150,12 +154,8 @@ export const TopNav = () => {
     setHideRankingsOpenings,
     showChessComRankings,
     setShowChessComRankings,
-    showRapidProfileRatings,
-    setShowRapidProfileRatings,
-    showWolfrandomProfileRatings,
-    setShowWolfrandomProfileRatings,
-    showAtomic960ProfileRatings,
-    setShowAtomic960ProfileRatings,
+    profileRatingSlots,
+    setProfileRatingSlots,
     showProfileActionButtons,
     setShowProfileActionButtons,
     hiddenRatingGraphModes,
@@ -720,51 +720,53 @@ export const TopNav = () => {
             className={`navSettingsButton ${settingsOpen ? "open" : ""}`}
             type="button"
             aria-label="Open settings"
-            aria-haspopup="menu"
+            aria-haspopup="dialog"
             aria-expanded={settingsOpen}
             onClick={() => togglePanel({ type: "settings" })}
           >
             <FontAwesomeIcon icon={faGear} aria-hidden="true" />
           </button>
           {settingsOpen ? (
-            <div className="navSettingsMenu" role="menu" aria-label="Site settings">
+            <div className="navSettingsMenu" role="dialog" aria-label="Site settings">
               {isAuthenticated && normalizedAuthUsername ? (
-                <>
-                  <div className="navSettingsSection">
+                <div className="navSettingsSection navSettingsStack">
+                  <span className="navSettingsGroupTitle">Profile</span>
+                  <div className="navSettingsField">
                     <span className="navSettingsLabel">Flair</span>
                     <PlayerFlairPicker username={normalizedAuthUsername} />
                   </div>
-                  <div className="navSettingsSection">
+                  <div className="navSettingsField">
                     <span className="navSettingsLabel">Profile country</span>
                     <PlayerCountryPicker username={normalizedAuthUsername} />
                   </div>
-                </>
+                </div>
               ) : null}
-              <div className="navSettingsSection">
-                <label className="navSettingsLabel" htmlFor="site-theme-select">
-                  Theme
-                </label>
-                <select
-                  id="site-theme-select"
-                  value={theme}
-                  onChange={(event) => {
-                    const nextTheme = event.target.value as Theme;
-                    if (nextTheme === "amethyst" && !canUseAmethystTheme) return;
-                    if (nextTheme === "amethyst" && boardTheme === "blue") {
-                      setBoardTheme("purple");
-                      setBoardColorOverrideTheme("");
-                    }
-                    setTheme(nextTheme);
-                  }}
-                >
-                  <option value="dark">Dark</option>
-                  <option value="light">Light</option>
-                  <option value="amethyst" disabled={!canUseAmethystTheme}>
-                    {canUseAmethystTheme ? "Amethyst" : "Amethyst — Locked"}
-                  </option>
-                </select>
-              </div>
-              <div className="navSettingsSection">
+              <div className="navSettingsSection navSettingsStack">
+                <span className="navSettingsGroupTitle">General</span>
+                <div className="navSettingsField">
+                  <label className="navSettingsLabel" htmlFor="site-theme-select">
+                    Theme
+                  </label>
+                  <select
+                    id="site-theme-select"
+                    value={theme}
+                    onChange={(event) => {
+                      const nextTheme = event.target.value as Theme;
+                      if (nextTheme === "amethyst" && !canUseAmethystTheme) return;
+                      if (nextTheme === "amethyst" && boardTheme === "blue") {
+                        setBoardTheme("purple");
+                        setBoardColorOverrideTheme("");
+                      }
+                      setTheme(nextTheme);
+                    }}
+                  >
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="amethyst" disabled={!canUseAmethystTheme}>
+                      {canUseAmethystTheme ? "Amethyst" : "Amethyst — Locked"}
+                    </option>
+                  </select>
+                </div>
                 <label className="navSettingsCheckbox">
                   <span>Show coin balance</span>
                   <input
@@ -773,23 +775,23 @@ export const TopNav = () => {
                     onChange={(event) => setShowCoinBalance(event.target.checked)}
                   />
                 </label>
-              </div>
-              <div className="navSettingsSection">
-                <label className="navSettingsLabel" htmlFor="lichess-link-target-select">
-                  Lichess links
-                </label>
-                <select
-                  id="lichess-link-target-select"
-                  value={lichessLinkTarget}
-                  onChange={(event) =>
-                    setLichessLinkTarget(
-                      event.target.value === "atomic-puzzles" ? "atomic-puzzles" : "lichess",
-                    )
-                  }
-                >
-                  <option value="lichess">Lichess</option>
-                  <option value="atomic-puzzles">Atomic Puzzles</option>
-                </select>
+                <div className="navSettingsField">
+                  <label className="navSettingsLabel" htmlFor="lichess-link-target-select">
+                    Open Lichess links in
+                  </label>
+                  <select
+                    id="lichess-link-target-select"
+                    value={lichessLinkTarget}
+                    onChange={(event) =>
+                      setLichessLinkTarget(
+                        event.target.value === "atomic-puzzles" ? "atomic-puzzles" : "lichess",
+                      )
+                    }
+                  >
+                    <option value="lichess">Lichess</option>
+                    <option value="atomic-puzzles">Atomic Puzzles</option>
+                  </select>
+                </div>
               </div>
               {/^\/game\/[^/]+\/?$/.test(pathname) ? (
                 <div className="navSettingsSection">
@@ -804,7 +806,8 @@ export const TopNav = () => {
                 </div>
               ) : null}
               {pathname === "/rankings" || pathname === "/rankings/yearly" ? (
-                <div className="navSettingsSection">
+                <div className="navSettingsSection navSettingsStack">
+                  <span className="navSettingsGroupTitle">Rankings</span>
                   <label className="navSettingsCheckbox">
                     <span>Hide openings</span>
                     <input
@@ -824,33 +827,50 @@ export const TopNav = () => {
                 </div>
               ) : null}
               {/^\/@\/[^/]+\/?$/.test(pathname) ? (
-                <div className="navSettingsSection">
-                  <label className="navSettingsCheckbox">
-                    <span>Show Rapid ratings</span>
-                    <input
-                      type="checkbox"
-                      checked={showRapidProfileRatings}
-                      onChange={(event) => setShowRapidProfileRatings(event.target.checked)}
-                    />
-                  </label>
-                  <label className="navSettingsCheckbox">
-                    <span>Show Wolfrandom ratings</span>
-                    <input
-                      type="checkbox"
-                      checked={showWolfrandomProfileRatings}
-                      onChange={(event) => setShowWolfrandomProfileRatings(event.target.checked)}
-                    />
-                  </label>
-                  {atomic960Enabled ? (
-                    <label className="navSettingsCheckbox">
-                      <span>Show Atomic960 ratings</span>
-                      <input
-                        type="checkbox"
-                        checked={showAtomic960ProfileRatings}
-                        onChange={(event) => setShowAtomic960ProfileRatings(event.target.checked)}
-                      />
-                    </label>
-                  ) : null}
+                <div className="navSettingsSection navSettingsStack">
+                  <span className="navSettingsGroupTitle">Profile ratings</span>
+                  <div className="navSettingsSlotGrid">
+                    {profileRatingSlots.map((preference, slotIndex) => {
+                      const options = publicModeOptions.filter(
+                        (mode) =>
+                          (atomic960Enabled || mode !== "atomic960") &&
+                          (slotIndex < 3 ||
+                            mode === "rapid" ||
+                            mode === "wolfrandom" ||
+                            mode === "atomic960"),
+                      );
+                      const slotNumber = slotIndex + 1;
+                      return (
+                        <label
+                          key={`profile-rating-slot-${slotNumber}`}
+                          className="navSettingsField"
+                          htmlFor={`profile-rating-slot-${slotNumber}`}
+                        >
+                          <span className="navSettingsLabel">Rating {slotNumber}</span>
+                          <select
+                            id={`profile-rating-slot-${slotNumber}`}
+                            value={preference}
+                            onChange={(event) => {
+                              const nextPreference = event.target
+                                .value as ProfileRatingSlotPreference;
+                              setProfileRatingSlots((current) => {
+                                const next = [...current] as typeof current;
+                                next[slotIndex] = nextPreference;
+                                return next;
+                              });
+                            }}
+                          >
+                            <option value={automaticProfileRatingSlot}>Automatic</option>
+                            {options.map((mode) => (
+                              <option key={mode} value={mode}>
+                                {modeLabels[mode]}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      );
+                    })}
+                  </div>
                   <label className="navSettingsCheckbox">
                     <span>Show profile action buttons</span>
                     <input

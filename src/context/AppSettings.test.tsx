@@ -89,15 +89,18 @@ const CoinVisibilitySettings = () => {
 
 const ProfileRatingSetting = () => {
   const {
-    showWolfrandomProfileRatings,
-    setShowWolfrandomProfileRatings,
+    profileRatingSlots,
+    setProfileRatingSlots,
     showProfileActionButtons,
     setShowProfileActionButtons,
   } = useAppSettings();
   return (
     <>
-      <button type="button" onClick={() => setShowWolfrandomProfileRatings((shown) => !shown)}>
-        {showWolfrandomProfileRatings ? "Wolfrandom shown" : "Wolfrandom hidden"}
+      <button
+        type="button"
+        onClick={() => setProfileRatingSlots((slots) => ["rapid", slots[1], slots[2], slots[3]])}
+      >
+        {profileRatingSlots[0]}
       </button>
       <button type="button" onClick={() => setShowProfileActionButtons((shown) => !shown)}>
         {showProfileActionButtons ? "Action buttons" : "Action menu"}
@@ -301,20 +304,20 @@ describe("rankings opening preference", () => {
 describe("profile rating preference", () => {
   beforeEach(() => window.localStorage.clear());
 
-  it("hides Wolfrandom ratings by default and persists the opt-in setting", async () => {
+  it("uses automatic rating slots by default and persists a customized slot", async () => {
     render(
       <AppSettingsProvider>
         <ProfileRatingSetting />
       </AppSettingsProvider>,
     );
 
-    const toggle = screen.getByRole("button", { name: "Wolfrandom hidden" });
+    const toggle = screen.getByRole("button", { name: "auto" });
     fireEvent.click(toggle);
 
     await waitFor(() => {
-      expect(toggle).toHaveTextContent("Wolfrandom shown");
-      expect(window.localStorage.getItem("atomic-puzzles.profile.show-wolfrandom-ratings")).toBe(
-        "true",
+      expect(toggle).toHaveTextContent("rapid");
+      expect(window.localStorage.getItem("atomic-puzzles.profile.rating-slots")).toBe(
+        '["rapid","auto","auto","auto"]',
       );
     });
   });

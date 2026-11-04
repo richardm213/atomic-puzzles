@@ -10,6 +10,10 @@ import {
 } from "react";
 import { z } from "zod";
 
+import {
+  defaultProfileRatingSlotPreferences,
+  type ProfileRatingSlotPreferences,
+} from "../features/profile/profileRatingModes";
 import { usePersistedState } from "../hooks/usePersistedState";
 
 const STORAGE_KEYS = {
@@ -24,9 +28,7 @@ const STORAGE_KEYS = {
   showBoardCoordinates: "atomic-puzzles.board.show-coordinates",
   hideRankingsOpenings: "atomic-puzzles.rankings.hide-openings",
   showChessComRankings: "atomic-puzzles.rankings.show-chesscom-users",
-  showRapidProfileRatings: "atomic-puzzles.profile.show-rapid-ratings",
-  showWolfrandomProfileRatings: "atomic-puzzles.profile.show-wolfrandom-ratings",
-  showAtomic960ProfileRatings: "atomic-puzzles.profile.show-atomic960-ratings",
+  profileRatingSlots: "atomic-puzzles.profile.rating-slots",
   showProfileActionButtons: "atomic-puzzles.profile.show-action-buttons",
   showCoinBalance: "atomic-puzzles.coins.show-balance",
   showCoinChangePopups: "atomic-puzzles.puzzles.show-coin-change-popups",
@@ -177,12 +179,8 @@ export type AppSettingsContextValue = {
   setHideRankingsOpenings: Dispatch<SetStateAction<boolean>>;
   showChessComRankings: boolean;
   setShowChessComRankings: Dispatch<SetStateAction<boolean>>;
-  showRapidProfileRatings: boolean;
-  setShowRapidProfileRatings: Dispatch<SetStateAction<boolean>>;
-  showWolfrandomProfileRatings: boolean;
-  setShowWolfrandomProfileRatings: Dispatch<SetStateAction<boolean>>;
-  showAtomic960ProfileRatings: boolean;
-  setShowAtomic960ProfileRatings: Dispatch<SetStateAction<boolean>>;
+  profileRatingSlots: ProfileRatingSlotPreferences;
+  setProfileRatingSlots: Dispatch<SetStateAction<ProfileRatingSlotPreferences>>;
   showProfileActionButtons: boolean;
   setShowProfileActionButtons: Dispatch<SetStateAction<boolean>>;
   hiddenRatingGraphModes: string[];
@@ -221,6 +219,21 @@ const pieceSetSchema = z.string().refine(isValidPieceSet);
 const boardThemeSchema = z.string().refine(isValidBoardTheme);
 const hexColorSchema = z.string().refine(isValidHexColor);
 const boardColorOverrideSchema = z.string();
+const profileRatingSlotSchema = z.enum([
+  "auto",
+  "blitz",
+  "bullet",
+  "hyperbullet",
+  "rapid",
+  "wolfrandom",
+  "atomic960",
+]);
+const profileRatingSlotsSchema = z.tuple([
+  profileRatingSlotSchema,
+  profileRatingSlotSchema,
+  profileRatingSlotSchema,
+  profileRatingSlotSchema,
+]);
 
 export const getBoardThemeColors = (
   boardTheme: string,
@@ -300,21 +313,12 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.boolean(),
     false,
   );
-  const [showWolfrandomProfileRatings, setShowWolfrandomProfileRatings] = usePersistedState(
-    STORAGE_KEYS.showWolfrandomProfileRatings,
-    z.boolean(),
-    false,
-  );
-  const [showRapidProfileRatings, setShowRapidProfileRatings] = usePersistedState(
-    STORAGE_KEYS.showRapidProfileRatings,
-    z.boolean(),
-    false,
-  );
-  const [showAtomic960ProfileRatings, setShowAtomic960ProfileRatings] = usePersistedState(
-    STORAGE_KEYS.showAtomic960ProfileRatings,
-    z.boolean(),
-    true,
-  );
+  const [profileRatingSlots, setProfileRatingSlots] =
+    usePersistedState<ProfileRatingSlotPreferences>(
+      STORAGE_KEYS.profileRatingSlots,
+      profileRatingSlotsSchema,
+      defaultProfileRatingSlotPreferences,
+    );
   const [showProfileActionButtons, setShowProfileActionButtons] = usePersistedState(
     STORAGE_KEYS.showProfileActionButtons,
     z.boolean(),
@@ -427,12 +431,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setHideRankingsOpenings,
       showChessComRankings,
       setShowChessComRankings,
-      showRapidProfileRatings,
-      setShowRapidProfileRatings,
-      showWolfrandomProfileRatings,
-      setShowWolfrandomProfileRatings,
-      showAtomic960ProfileRatings,
-      setShowAtomic960ProfileRatings,
+      profileRatingSlots,
+      setProfileRatingSlots,
       showProfileActionButtons,
       setShowProfileActionButtons,
       hiddenRatingGraphModes,
@@ -480,12 +480,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setHideRankingsOpenings,
       showChessComRankings,
       setShowChessComRankings,
-      showRapidProfileRatings,
-      setShowRapidProfileRatings,
-      showWolfrandomProfileRatings,
-      setShowWolfrandomProfileRatings,
-      showAtomic960ProfileRatings,
-      setShowAtomic960ProfileRatings,
+      profileRatingSlots,
+      setProfileRatingSlots,
       showProfileActionButtons,
       setShowProfileActionButtons,
       hiddenRatingGraphModes,
