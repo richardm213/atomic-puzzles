@@ -67,7 +67,7 @@ export const ensurePuzzlePgnHeaders = (headerText: string, fen: string): string 
   return [...requiredHeaders, ...headerLines].join("\n");
 };
 
-export const parsePuzzlePgnInput = (input: string, fallbackFen: string): ParsedPuzzlePgn => {
+export const parseAtomicPgnInput = (input: string, fallbackFen: string): ParsedPuzzlePgn => {
   const headers = new Map<string, string>();
   const headerLines: string[] = [];
   const movetextLines: string[] = [];
@@ -93,9 +93,6 @@ export const parsePuzzlePgnInput = (input: string, fallbackFen: string): ParsedP
   }
 
   const solution = movetextLines.join("\n").trim();
-  if (solution && !PGN_MOVETEXT_PATTERN.test(solution)) {
-    throw new Error("Enter PGN movetext beginning with a move number.");
-  }
 
   return {
     fen: headers.get("fen")?.trim() || fallbackFen.trim(),
@@ -104,6 +101,14 @@ export const parsePuzzlePgnInput = (input: string, fallbackFen: string): ParsedP
     hadHeaders,
     headerText: headerLines.join("\n"),
   };
+};
+
+export const parsePuzzlePgnInput = (input: string, fallbackFen: string): ParsedPuzzlePgn => {
+  const parsed = parseAtomicPgnInput(input, fallbackFen);
+  if (parsed.solution && !PGN_MOVETEXT_PATTERN.test(parsed.solution)) {
+    throw new Error("Enter PGN movetext beginning with a move number.");
+  }
+  return parsed;
 };
 
 export const validateParsedPuzzleSubmission = (

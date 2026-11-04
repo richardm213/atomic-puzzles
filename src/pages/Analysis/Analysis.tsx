@@ -600,8 +600,10 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
       setNavigation({ type: "reset", fen: nextFen });
       void navigate({ to: analysisPathFromFen(nextFen) });
     },
-    onCommitPgn: (nextPgn) => {
-      setNavigation({ type: "loadPgn", pgn: nextPgn, fen: rootFen });
+    onCommitPgn: (nextPgn, initialFen) => {
+      const nextRootFen = initialFen ?? rootFen;
+      if (initialFen) setRootFen(initialFen);
+      setNavigation({ type: "loadPgn", pgn: nextPgn, fen: nextRootFen });
     },
   });
 

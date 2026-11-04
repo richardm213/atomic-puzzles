@@ -47,6 +47,37 @@ describe("buildPgnHistory", () => {
     }
   });
 
+  it("loads a complete atomic puzzle PGN from its setup position", () => {
+    const fen = "rn3r1k/pp6/2p4p/3p4/3P3P/8/PPP1pR2/4R1K1 w - - 0 23";
+    const result = buildPgnHistory(
+      fen,
+      `[Event "Atomic Puzzle 176"]
+[Variant "Atomic"]
+[SetUp "1"]
+[FEN "${fen}"]
+
+23. Rg2 Rf1+ 24. Rexe2 h5 25. Rg8+ Kh7
+24. Rg7+ (26. Rh8+ Kg7 27. Rh7+ Kg8 28. Rxb7)
+26... Kh8 27. Rxb7 *`,
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.history.plies.slice(1).map((ply) => ply.san)).toEqual([
+        "Rg2",
+        "Rf1+",
+        "Rexe2",
+        "h5",
+        "Rg8+",
+        "Kh7",
+        "Rg7+",
+        "Kh8",
+        "Rxb7",
+      ]);
+      expect(result.histories).toHaveLength(2);
+    }
+  });
+
   it("distinguishes invalid FEN and PGN errors", () => {
     expect(buildPgnHistory("bad", "1. e4")).toMatchObject({ ok: false, kind: "fen" });
     expect(buildPgnHistory(STARTING_FEN, "1. Bxh8")).toMatchObject({

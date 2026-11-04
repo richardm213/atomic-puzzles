@@ -1,6 +1,7 @@
 import type { ChangeEvent, FocusEvent, KeyboardEvent, TextareaHTMLAttributes } from "react";
 import { useEffect, useRef, useState } from "react";
 
+import { parseAtomicPgnInput } from "../lib/puzzles/puzzleSubmission";
 import { createAtomicPosition } from "../lib/puzzles/solutionPgn";
 import type { ChessboardState } from "../types/chessboard";
 import { getErrorMessage } from "../utils/errors";
@@ -12,7 +13,7 @@ type BoardDocumentOptions = {
   pgn: string;
   boardState: ChessboardState | null;
   onCommitFen: (fen: string) => void;
-  onCommitPgn: (pgn: string) => void;
+  onCommitPgn: (pgn: string, initialFen?: string) => void;
   pgnAfterFenCommit?: (fen: string) => string;
 };
 
@@ -96,10 +97,22 @@ export const useBoardDocument = ({
       return;
     }
 
-    setPgnDraft(draft);
-    setPgnError("");
-    finish("pgn");
-    onCommitPgn(draft);
+    try {
+      // A pasted PGN can be a complete document. Read its setup FEN here so every
+      // board using this shared editor starts the moves from the position declared
+      // by the document rather than from the position that happened to be loaded.
+      const parsed = parseAtomicPgnInput(draft, "");
+      const initialFen = parsed.fen || undefined;
+      if (initialFen) createAtomicPosition(initialFen);
+
+      setPgnDraft(draft);
+      if (initialFen) setFenDraft(initialFen);
+      setPgnError("");
+      finish("pgn");
+      onCommitPgn(draft, initialFen);
+    } catch (error) {
+      setPgnError(getErrorMessage(error, "Invalid PGN"));
+    }
   };
 
   const field = (

@@ -853,12 +853,14 @@ export const PracticePage = () => {
       setPracticeRootFen(nextFen);
       queueNavigation({ type: "reset", fen: nextFen });
     },
-    onCommitPgn: (draft) => {
+    onCommitPgn: (draft, initialFen) => {
       resetOpponentMoveChoices();
       setHoveredMoveUci(null);
       resetPracticeClock();
       setSessionStarted(false);
-      queueNavigation({ type: "loadPgn", pgn: draft, fen: practiceRootFen });
+      const nextRootFen = initialFen ?? practiceRootFen;
+      if (initialFen) setPracticeRootFen(initialFen);
+      queueNavigation({ type: "loadPgn", pgn: draft, fen: nextRootFen });
     },
   });
 
