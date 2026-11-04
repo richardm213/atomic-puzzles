@@ -45,13 +45,11 @@ const playerHoverRatingsQueryOptions = (username: string) => {
 };
 
 const WolfIcon = () => (
-  <svg viewBox="0 0 128 128" width="1em" height="1em" aria-hidden="true">
-    <path
-      fill="currentColor"
-      fillRule="evenodd"
-      d="M10 7 43 27 64 15l21 12 33-20-12 41 10 12-17 12-8 27-27 24-27-24-8-27-17-12 10-12L10 7Zm17 19 5 25-8 8 13 5 15-10-14-17-11-11Zm74 0-11 11-14 17 15 10 13-5-8-8 5-25ZM43 69l9 29 12 13 12-13 9-29-21 12-21-12Zm6-16-12-5 7 10 12 3-7-8Zm30 0-7 8 12-3 7-10-12 5Z"
-    />
-    <path fill="currentColor" d="m55 91 9-5 9 5-9 8-9-8Z" />
+  <svg className="playerHoverCardWolfIcon" viewBox="0 0 64 64" aria-hidden="true">
+    <path d="M5 4 25 14a30 30 0 0 1 14 0L59 4c2 12 1 24-5 33l7 12-12-4C45 56 39 62 32 62s-13-6-17-17L3 49l7-12C4 28 3 16 5 4Z" />
+    <ellipse className="playerHoverCardWolfIconDetail" cx="22" cy="30" rx="4" ry="6" />
+    <ellipse className="playerHoverCardWolfIconDetail" cx="42" cy="30" rx="4" ry="6" />
+    <path className="playerHoverCardWolfIconDetail" d="m25 43 7-4 7 4-7 8-7-8Z" />
   </svg>
 );
 const assignRef = <T,>(ref: Ref<T> | undefined, value: T | null): void => {

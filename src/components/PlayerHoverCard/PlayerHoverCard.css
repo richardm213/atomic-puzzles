@@ -106,9 +106,16 @@
   font-weight: 650;
 }
 
-.playerHoverCardRating svg {
-  width: 14px;
+.playerHoverCardWolfIcon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
   color: var(--color-subtle);
+  fill: currentcolor;
+}
+
+.playerHoverCardWolfIconDetail {
+  fill: var(--color-panel);
 }
 
 .playerHoverCardLichessIcon {
