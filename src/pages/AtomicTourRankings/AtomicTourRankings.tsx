@@ -12,6 +12,7 @@ import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/Rout
 import { Seo } from "../../components/Seo/Seo";
 import { TournamentPlayerLink } from "../../components/TournamentPlayerLink/TournamentPlayerLink";
 import {
+  atomicTourMonthlyExpirationsQueryOptions,
   atomicTourRankingsQueryOptions,
   atomicTourSnapshotDatesQueryOptions,
 } from "../../lib/atomicTour/queries";
@@ -48,7 +49,16 @@ export const AtomicTourRankingsPage = () => {
   }, [selectedDate, snapshotDates]);
 
   const rankingsQuery = useQuery(atomicTourRankingsQueryOptions(selectedDate));
+  const expirationsQuery = useQuery(atomicTourMonthlyExpirationsQueryOptions(selectedDate));
   const rankings = rankingsQuery.data ?? [];
+  const expirationMonthEnd = expirationsQuery.data?.monthEnd ?? "";
+  const expirationLabel = expirationMonthEnd
+    ? new Date(`${expirationMonthEnd}T00:00:00Z`).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      })
+    : "month end";
   const loading =
     snapshotsQuery.isPending ||
     (snapshotDates.length > 0 && (!selectedDate || rankingsQuery.isPending));
@@ -131,6 +141,14 @@ export const AtomicTourRankingsPage = () => {
                 <th scope="col">
                   <abbr title="Points change">+/−</abbr>
                 </th>
+                <th scope="col">
+                  <abbr title={`Points expiring at the end of ${formatSnapshotDate(selectedDate)}`}>
+                    <span className="atomicTourExpirationHeadingFull">
+                      Expires {expirationLabel}
+                    </span>
+                    <span className="atomicTourExpirationHeadingShort">Expires</span>
+                  </abbr>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -154,10 +172,7 @@ export const AtomicTourRankingsPage = () => {
                     </span>
                   </td>
                   <td>
-                    <TournamentPlayerLink
-                      className="atomicTourPlayer"
-                      username={player.playerName}
-                    >
+                    <TournamentPlayerLink className="atomicTourPlayer" username={player.playerName}>
                       <img
                         className="atomicTourPlayerFlag"
                         crossOrigin="anonymous"
@@ -186,6 +201,22 @@ export const AtomicTourRankingsPage = () => {
                     >
                       {formatSigned(player.pointsChange)}
                     </span>
+                  </td>
+                  <td>
+                    {(() => {
+                      const expiringPoints =
+                        expirationsQuery.data?.pointsByPlayer[
+                          normalizeUsername(player.playerName)
+                        ] ?? 0;
+                      return expiringPoints ? (
+                        <span
+                          className="atomicTourExpiration"
+                          title={`${expiringPoints.toLocaleString("en-US")} points expire ${expirationLabel}`}
+                        >
+                          −{expiringPoints.toLocaleString("en-US")}
+                        </span>
+                      ) : null;
+                    })()}
                   </td>
                 </tr>
               ))}

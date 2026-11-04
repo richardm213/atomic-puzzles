@@ -62,7 +62,12 @@ type PointAwardSummary = Pick<
 >;
 
 const excludedPlayers = new Set(["neverofzero", "thuban", "taisthuban", "jasos12"]);
-const today = new Date().toISOString().slice(0, 10);
+const today = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Los_Angeles",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(new Date());
 const requestedEventId =
   process.argv
     .find((argument) => argument.startsWith("--event="))
@@ -402,10 +407,18 @@ const knockoutAwards = (event: CatalogRow, matches: MatchRow[]): PointAward[] =>
         source_key: match.id,
         awarded_on: awardedOn,
         expires_on: atomicTourAwardExpiryDate(awardedOn),
-        points: atomicTourQualifierWinPoints(tier, roundIndex, qualifierRounds.length),
-        description: `qualifier win, ${qualifierRounds.length - roundIndex} ${
-          qualifierRounds.length - roundIndex === 1 ? "round" : "rounds"
-        } from main draw`,
+        points: atomicTourQualifierWinPoints(
+          tier,
+          roundIndex,
+          qualifierRounds.length,
+          event.series_key,
+        ),
+        description:
+          event.series_key === "a960e"
+            ? "group-stage win"
+            : `qualifier win, ${qualifierRounds.length - roundIndex} ${
+                qualifierRounds.length - roundIndex === 1 ? "round" : "rounds"
+              } from main draw`,
       });
     });
   return awards;

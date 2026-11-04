@@ -32,8 +32,8 @@ Round-of-16 losers begins at 6%, and one starting with quarterfinal losers begin
 later-round win is therefore worth more even when a player entered the bracket late. Played wins,
 wins by disqualification, and wins by withdrawal all count; only byes are excluded. Grand Finals
 and Grand Final resets do not earn a bonus. For
-non-champions, the bonus is capped one point below the next winners-bracket tier and at 20% of the
-event maximum overall. A champion who returned through the losers bracket keeps a smaller bonus
+non-champions, the bonus is capped ten points below the next winners-bracket tier and at 20% of
+the event maximum overall. A champion who returned through the losers bracket keeps a smaller bonus
 capped at 10% of the event maximum, so a 2,000-point champion can finish with up to 2,200 and a
 1,000-point champion with up to 1,100.
 
@@ -42,10 +42,11 @@ first played match receives only the event's first-round loser points. A played 
 player to the next guaranteed point tier.
 
 Qualifier wins are scored by distance from the main draw rather than by the displayed round name.
-The final qualifying round awards 2% of the event maximum, the preceding round 1.5%, and an earlier
-third round 1%. A one-round qualifying draw therefore awards 2%, while a three-round draw awards
-1%, 1.5%, and 2% in sequence. Played wins, withdrawals, and disqualifications count; byes and
-unplayed pairings do not.
+The final AWC qualifying round awards 2% of the event maximum, the preceding round 1.5%, and an
+earlier third round 1%. A one-round AWC qualifying draw therefore awards 2%, while a three-round
+draw awards 1%, 1.5%, and 2% in sequence. Atomic 960 group-stage wins are a fixed 20 points each.
+Played wins and wins by disqualification count. Qualifier walkovers do not, except for an AWC Q2
+walkover after a played Q1 win. Byes and unplayed pairings do not earn points.
 
 ## Ranking behavior
 

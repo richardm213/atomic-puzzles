@@ -127,6 +127,12 @@ describe("Atomic Tour scoring", () => {
     expect(atomicTourQualifierWinPoints(1000, 2, 3)).toBe(20);
   });
 
+  it("awards a fixed 20 points for every Atomic 960 group-stage win", () => {
+    expect(atomicTourQualifierWinPoints(1000, 0, 3, "a960e")).toBe(20);
+    expect(atomicTourQualifierWinPoints(1000, 1, 3, "a960e")).toBe(20);
+    expect(atomicTourQualifierWinPoints(1000, 2, 3, "a960e")).toBe(20);
+  });
+
   it("excludes qualifier walkovers except an AWC Q2 walkover after a played Q1 win", () => {
     expect(
       atomicTourQualifierWinEarnsPoints({
@@ -171,6 +177,17 @@ describe("Atomic Tour scoring", () => {
 
     expect(runnerUp.totalPoints).toBe(1600);
     expect(runnerUp.totalPoints).toBeLessThan(2000);
+  });
+
+  it("keeps capped losers-bracket bonuses on round ten-point values", () => {
+    const result = calculateKnockoutTourPoints({
+      tier: 1000,
+      mainStage: "round-of-16",
+      losersBracketWinRounds: [0, 1, 2, 3, 4, 5, 6, 7],
+    });
+
+    expect(result.bonusPoints).toBe(80);
+    expect(result.totalPoints).toBe(170);
   });
 
   it("allows a champion who returned through the losers bracket to exceed the title base", () => {

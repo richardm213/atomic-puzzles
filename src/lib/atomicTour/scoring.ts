@@ -171,7 +171,9 @@ export const atomicTourQualifierWinPoints = (
   tier: AtomicTourEventTier,
   roundIndex: number,
   totalRounds: number,
+  seriesKey = "awc",
 ): number => {
+  if (seriesKey === "a960e") return Math.round(tier * 0.02);
   const normalizedRoundCount = Math.max(1, Math.floor(totalRounds));
   const normalizedRoundIndex = Math.min(
     Math.max(0, Math.floor(roundIndex)),
@@ -224,7 +226,7 @@ export const calculateKnockoutTourPoints = ({
       : Math.min(
           atomicTourStagePoints(tier, stageOrder[stageOrder.indexOf(mainStage) + 1]!) -
             basePoints -
-            1,
+            10,
           Math.round(tier * 0.2),
         );
   const bonusPoints = Math.max(0, Math.min(requestedBonus, bonusCeiling));

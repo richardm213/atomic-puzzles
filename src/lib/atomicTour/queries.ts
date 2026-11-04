@@ -29,6 +29,11 @@ export type AtomicTourPlayerRankingStats = {
   peakRankDate: string;
 };
 
+export type AtomicTourMonthlyExpirations = {
+  monthEnd: string;
+  pointsByPlayer: Record<string, number>;
+};
+
 type RankingRow = {
   snapshot_date?: string | null | undefined;
   player_name?: string | null | undefined;
@@ -51,6 +56,15 @@ const rankingsResponseSchema = z.object({
     }),
   ),
 });
+
+const monthEndFor = (value: string): string => {
+  const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(value);
+  if (!match) return "";
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return `${match[1]}-${match[2]}-${String(lastDay).padStart(2, "0")}`;
+};
 const fetchAtomicTourSnapshotDates = async (): Promise<string[]> =>
   (
     await apiRequest("/api/public-data?resource=atomic-tour-snapshot-dates", {
@@ -142,6 +156,39 @@ export const atomicTourRankingsQueryOptions = (snapshotDate: string) =>
     enabled: Boolean(snapshotDate),
     staleTime: 5 * 60 * 1_000,
   });
+
+export const atomicTourMonthlyExpirationsQueryOptions = (snapshotDate: string) => {
+  const monthEnd = monthEndFor(snapshotDate);
+  const monthStart = monthEnd ? `${monthEnd.slice(0, 7)}-01` : "";
+  return queryOptions({
+    queryKey: ["atomic-tour", "expirations", monthStart],
+    queryFn: async (): Promise<AtomicTourMonthlyExpirations> => {
+      const rows = await loadSupabaseRows<{
+        player_name?: string | null;
+        points?: number | string | null;
+      }>(
+        "atomic_tour_point_awards",
+        getSupabaseClient()
+          .from("atomic_tour_point_awards")
+          .select("player_name,points")
+          .gte("expires_on", monthStart)
+          .lte("expires_on", monthEnd),
+      );
+      const pointsByPlayer: Record<string, number> = {};
+      for (const row of rows) {
+        const playerName = String(row.player_name ?? "")
+          .trim()
+          .toLowerCase();
+        const points = Number(row.points);
+        if (!playerName || !Number.isFinite(points) || points <= 0) continue;
+        pointsByPlayer[playerName] = (pointsByPlayer[playerName] ?? 0) + points;
+      }
+      return { monthEnd, pointsByPlayer };
+    },
+    enabled: Boolean(monthStart && monthEnd),
+    staleTime: 5 * 60 * 1_000,
+  });
+};
 
 export const atomicTourPlayerRankingStatsQueryOptions = (playerNames: string[]) => {
   const normalizedNames = [
