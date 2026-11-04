@@ -1,18 +1,14 @@
 import "./PlayerHoverCard.css";
 
-import { faDog, faMedal, faUserCheck, faUserPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FocusEventHandler, MouseEventHandler, MutableRefObject, ReactNode, Ref } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { type Mode, modeLabels } from "../../constants/matches";
-import { useAuth } from "../../context/AuthContext";
 import {
   playerFlairQueryOptions,
   playerSocialQueryOptions,
-  updateFollow,
 } from "../../lib/playerSocial/playerSocial";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { normalizeUsername } from "../../utils/playerNames";
@@ -39,6 +35,17 @@ const ratingLichessIcons = {
   rapid: lichessIcons.rapid,
   atomic960: lichessIcons.chess960,
 } as const;
+
+const WolfIcon = () => (
+  <svg viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true">
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M2 1 8 5l4-3 4 3 6-4-2 9 2 2-3 2-1.5 4L12 23l-5.5-5L5 14l-3-2 2-2-2-9Zm4.1 8.2 4.1 1.6-1.7 2.4-3-2.1.6-1.9Zm11.8 0 .6 1.9-3 2.1-1.7-2.4 4.1-1.6ZM8.2 15l3.8-2.3 3.8 2.3-1 3.3L12 21l-2.8-2.7-1-3.3Z"
+    />
+    <path fill="currentColor" d="m10.4 16.1 1.6-.8 1.6.8-1.6 1.5-1.6-1.5Z" />
+  </svg>
+);
 const assignRef = <T,>(ref: Ref<T> | undefined, value: T | null): void => {
   if (typeof ref === "function") ref(value);
   else if (ref) (ref as MutableRefObject<T | null>).current = value;
@@ -77,19 +84,11 @@ const PlayerHoverCardContent = ({
   username: string;
   onRemainOpen: () => void;
 }) => {
-  const queryClient = useQueryClient();
-  const { isAuthenticated } = useAuth();
   const canonicalUsername = normalizeUsername(username);
   const socialQuery = useQuery(playerSocialQueryOptions(canonicalUsername));
   const social = socialQuery.data;
   const countryCode = social?.countryCode ?? "";
   const ratings = new Map((social?.ratings ?? []).map((row) => [row.tc, row]));
-  const followMutation = useMutation({
-    mutationFn: (follow: boolean) => updateFollow(canonicalUsername, follow),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["player-social", canonicalUsername] });
-    },
-  });
 
   return (
     <div className="playerHoverCardBody" onMouseEnter={onRemainOpen}>
@@ -98,13 +97,19 @@ const PlayerHoverCardContent = ({
         {social?.flair ? <span className="playerHoverCardFlair">{social.flair}</span> : null}
         {countryCode ? (
           <span className="playerHoverCardCountry" title={countryName(countryCode)}>
-            <img src={countryCodeToFlagUrl(countryCode)} alt="" aria-hidden="true" />
+            <img
+              crossOrigin="anonymous"
+              src={countryCodeToFlagUrl(countryCode)}
+              alt=""
+              decoding="async"
+              aria-hidden="true"
+            />
             <span>{countryName(countryCode)}</span>
           </span>
         ) : null}
         {social?.tourRank ? (
           <span className="playerHoverCardTourRank" title="Live Atomic Chess Tour rank">
-            <FontAwesomeIcon icon={faMedal} aria-hidden="true" />#{social.tourRank}
+            #{social.tourRank}
           </span>
         ) : null}
       </header>
@@ -120,7 +125,7 @@ const PlayerHoverCardContent = ({
           return (
             <span key={mode} className={`playerHoverCardRating ${mode}`} title={modeLabels[mode]}>
               {mode === "wolfrandom" ? (
-                <FontAwesomeIcon icon={faDog} aria-hidden="true" />
+                <WolfIcon />
               ) : (
                 <span className="playerHoverCardLichessIcon" aria-hidden="true">
                   {ratingLichessIcons[mode]}
@@ -130,27 +135,6 @@ const PlayerHoverCardContent = ({
             </span>
           );
         })}
-      </div>
-
-      <div className="playerHoverCardActions">
-        {social?.canFollow && isAuthenticated ? (
-          <button
-            type="button"
-            className={social.isFollowing ? "isFollowing" : ""}
-            disabled={followMutation.isPending}
-            aria-pressed={social.isFollowing}
-            onClick={() => followMutation.mutate(!social.isFollowing)}
-          >
-            <FontAwesomeIcon
-              icon={social.isFollowing ? faUserCheck : faUserPlus}
-              aria-hidden="true"
-            />
-            {followMutation.isPending ? "Saving…" : social.isFollowing ? "Following" : "Follow"}
-          </button>
-        ) : (
-          <span />
-        )}
-        <span>{social ? `${social.followerCount.toLocaleString("en-US")} followers` : ""}</span>
       </div>
 
       <footer className="playerHoverCardFooter">
@@ -185,7 +169,7 @@ export const PlayerHoverCardTrigger = ({
     const bounds = trigger.getBoundingClientRect();
     const width = Math.min(270, window.innerWidth - 16);
     const left = Math.max(8, Math.min(bounds.left, window.innerWidth - width - 8));
-    const estimatedHeight = 170;
+    const estimatedHeight = 138;
     const below = bounds.bottom + 8;
     const top =
       below + estimatedHeight <= window.innerHeight

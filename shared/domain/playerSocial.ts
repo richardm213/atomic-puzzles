@@ -1,4 +1,3 @@
-export const DEFAULT_FOLLOWED_PLAYERS = ["admin", "seaside_tiramisu"] as const;
 export const PLAYER_RATING_SNAPSHOT_DATE = "2026-10-31";
 
 export type StoredPlayerRating = {

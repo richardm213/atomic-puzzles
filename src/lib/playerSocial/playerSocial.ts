@@ -20,10 +20,6 @@ const playerSocialSchema = z.object({
   ),
   startDate: z.string().nullable(),
   totalGames: z.number().nonnegative(),
-  followerCount: z.number().nonnegative(),
-  isFollowing: z.boolean(),
-  isSelf: z.boolean(),
-  canFollow: z.boolean(),
 });
 
 const mutationResponseSchema = z.object({ ok: z.boolean() }).passthrough();
@@ -103,14 +99,6 @@ const loadPlayerFlair = (username: string): Promise<PlayerFlair | null> =>
   new Promise((resolve, reject) => {
     pendingFlairs.set(username, [...(pendingFlairs.get(username) ?? []), { resolve, reject }]);
     flairBatchTimer ??= setTimeout(() => void flushFlairBatch(), 0);
-  });
-
-export const updateFollow = (username: string, follow: boolean) =>
-  apiRequest("/api/player-social", {
-    method: "POST",
-    body: { action: follow ? "follow" : "unfollow", username },
-    schema: mutationResponseSchema,
-    errorMessage: follow ? "Unable to follow player." : "Unable to unfollow player.",
   });
 
 export const updatePlayerFlair = (flair: PlayerFlair | null) =>
