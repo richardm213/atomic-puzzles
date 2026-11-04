@@ -57,6 +57,9 @@ const countryName = (countryCode: string): string => {
   }
 };
 
+const countryLabel = (countryCode: string): string =>
+  countryCode.toUpperCase() === "US" ? "USA" : countryName(countryCode);
+
 const startedLabel = (dateValue: string | null | undefined): string => {
   if (!dateValue) return "";
   const date = new Date(`${dateValue}T00:00:00Z`);
@@ -101,7 +104,7 @@ const PlayerHoverCardContent = ({
               decoding="async"
               aria-hidden="true"
             />
-            <span>{countryName(countryCode)}</span>
+            <span>{countryLabel(countryCode)}</span>
           </span>
         ) : null}
         {social?.tourRank ? (
