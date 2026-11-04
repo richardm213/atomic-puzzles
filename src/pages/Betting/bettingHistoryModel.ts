@@ -91,6 +91,7 @@ export const buildBetHistory = ({
     );
     const averagePriceCents = position.averagePriceCents ?? 0;
     const totalCost = Math.round(averagePriceCents * position.quantity * 10_000) / 1_000_000;
+    if (totalCost < 1) return [];
     const hasNamedOutcomes = Boolean(definition.outcomeLabels);
     return [
       {
