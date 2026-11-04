@@ -8,7 +8,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   SetStateAction,
 } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import {
@@ -64,6 +64,7 @@ const MIN_MOVE_PANEL_HEIGHT = 0;
 const MIN_EXPLORER_PANEL_HEIGHT = 12;
 const EXPLORER_RESIZE_STEP = 24;
 const MIN_GAME_ANALYSIS_PANEL_HEIGHT = 440;
+const DEFAULT_GAME_PANEL_OVERHANG = 32;
 
 type ExplorerScope = "general" | "player";
 type ExplorerSpeed = "bullet" | "blitz" | "hyperbullet";
@@ -330,6 +331,7 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const rightPanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
+  const moveContentRef = useRef<HTMLDivElement | null>(null);
   const gamePlyInitializedRef = useRef(!game);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
   const [atomicDbEngineSettings, setAtomicDbEngineSettings] = useAtomicDbEngineSettings();
@@ -545,6 +547,12 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
 
   const movePairs = pairPlayedMoves(moveList);
 
+  useLayoutEffect(() => {
+    if (currentPly <= 2 && moveContentRef.current) {
+      moveContentRef.current.scrollTop = 0;
+    }
+  }, [currentPly, game?.game_id]);
+
   const variationPgn = customLines.length ? serializeSanLinesToPgn(rootFen, customLines) : "";
 
   useEffect(() => {
@@ -554,7 +562,9 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
     if (!boardColumn) return;
 
     const syncHeight = (): void =>
-      setDefaultGamePanelHeight(Math.round(boardColumn.getBoundingClientRect().height));
+      setDefaultGamePanelHeight(
+        Math.round(boardColumn.getBoundingClientRect().height + DEFAULT_GAME_PANEL_OVERHANG),
+      );
     syncHeight();
     const observer = new ResizeObserver(syncHeight);
     observer.observe(boardColumn);
@@ -1387,7 +1397,7 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
               threatMode={effectiveThreatMode}
             />
           </div>
-          <div className="analysisMoveContent">
+          <div className="analysisMoveContent" ref={moveContentRef}>
             <MoveNotation
               lines={customLines}
               moves={moveList}

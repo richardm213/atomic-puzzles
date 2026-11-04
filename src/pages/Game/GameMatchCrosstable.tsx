@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { CSSProperties, ReactNode } from "react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import type { ArchiveGame } from "../../lib/archive/games";
@@ -69,10 +69,34 @@ const Crosstable = ({
   matchId: string;
   onToggleUnit: () => void;
 }) => {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const currentResultRef = useRef<HTMLLIElement | null>(null);
   const playerOneTotal = results.reduce((sum, result) => sum + result.playerOne, 0);
   const playerTwoTotal = results.reduce((sum, result) => sum + result.playerTwo, 0);
   const dense = results.length > 8;
   const nextUnitLabel = unit === "games" ? "matches in this mode" : "games in this match";
+  const currentResultId = results.find((result) => result.current)?.id;
+
+  useLayoutEffect(() => {
+    const scroll = scrollRef.current;
+    const currentResult = currentResultRef.current;
+    if (!scroll || !currentResult) return;
+
+    const alignCurrentResult = (): void => {
+      if (scroll.clientWidth === 0) return;
+      const scrollBounds = scroll.getBoundingClientRect();
+      const currentBounds = currentResult.getBoundingClientRect();
+      scroll.scrollLeft = Math.max(0, scroll.scrollLeft + currentBounds.right - scrollBounds.right);
+    };
+
+    alignCurrentResult();
+    if (typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(alignCurrentResult);
+    observer.observe(scroll);
+    return () => observer.disconnect();
+  }, [currentResultId, results.length, unit]);
+
   const toolbar = (
     <div className="gameMatchCrosstableToolbar">
       {canToggleUnit ? (
@@ -105,14 +129,18 @@ const Crosstable = ({
       ) : (
         toolbar
       )}
-      <div className="gameMatchCrosstableScroll">
+      <div className="gameMatchCrosstableScroll" ref={scrollRef}>
         <div
           className={`gameMatchCrosstableStrip ${unit}${dense ? " dense" : ""}`}
           style={{ "--game-count": results.length } as CSSProperties}
         >
           <ol className="gameMatchResults" aria-label={label}>
             {results.map((result) => (
-              <li key={result.id} className={result.current ? "current" : ""}>
+              <li
+                key={result.id}
+                ref={result.current ? currentResultRef : undefined}
+                className={result.current ? "current" : ""}
+              >
                 {result.link}
               </li>
             ))}

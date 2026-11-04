@@ -37,8 +37,8 @@ const formatClock = (milliseconds: number | null): string => {
 
 const ratingForPlayer = (game: ArchiveGame, username: string) =>
   username === game.player_1
-    ? { before: game.p1_before_rating, after: game.p1_after_rating }
-    : { before: game.p2_before_rating, after: game.p2_after_rating };
+    ? { before: game.p1_before_rating, after: game.p1_after_rating, beforeRd: game.p1_before_rd }
+    : { before: game.p2_before_rating, after: game.p2_after_rating, beforeRd: game.p2_before_rd };
 
 const formatRating = (rating: number): string => String(Math.round(rating));
 
@@ -46,7 +46,7 @@ const formatRatingChange = (change: number): string => (change > 0 ? `+${change}
 
 const PlayerRating = ({ game, username }: { game: ArchiveGame; username: string }) => {
   if (game.ratings_are_per_game !== true) return null;
-  const { before, after } = ratingForPlayer(game, username);
+  const { before, after, beforeRd } = ratingForPlayer(game, username);
   const change = before !== null && after !== null ? after - before : null;
   const roundedChange = change === null ? null : Math.round(change);
   const formattedChange = roundedChange === null ? null : formatRatingChange(roundedChange);
@@ -55,7 +55,7 @@ const PlayerRating = ({ game, username }: { game: ArchiveGame; username: string 
 
   return (
     <span className="gameAnalysisRating">
-      <span>{formatRating(before)}</span>
+      <span>{`${formatRating(before)}${(beforeRd ?? 0) >= 100 ? "?" : ""}`}</span>
       {roundedChange !== null && formattedChange !== null ? (
         <span
           className={`gameAnalysisRatingChange ${roundedChange > 0 ? "positive" : roundedChange < 0 ? "negative" : "neutral"}`}

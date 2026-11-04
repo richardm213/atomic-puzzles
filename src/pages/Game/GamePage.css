@@ -389,7 +389,6 @@
 }
 
 .gameMatchCrosstableStrip.dense .gameMatchResults {
-  padding-inline: 6px;
   background: color-mix(in srgb, var(--color-panel-strong) 88%, var(--color-surface-inset));
 }
 
