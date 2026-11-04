@@ -175,15 +175,35 @@ export const parseAtomicDbResponse = (value: unknown): AtomicDbPosition => {
     throw new Error("AtomicDB returned an unexpected response.");
   }
 
+  const bestMove = nullableString(response.best_move);
+  const moves = response.moves.map(parseMove).filter((move): move is AtomicDbMove => move !== null);
+  // Solved AtomicDB positions can name a forced best move without repeating it in `moves`.
+  // Keep the position usable by treating its solved evaluation as that move's evaluation.
+  if (
+    bestMove &&
+    /^[a-h][1-8][a-h][1-8][nbrq]?$/.test(bestMove) &&
+    !moves.some((move) => move.uci === bestMove)
+  ) {
+    moves.unshift({
+      uci: bestMove,
+      outcome: parseOutcome(response.status),
+      closure: nullableString(response.closure),
+      score: nullableNumber(response.score),
+      point: nullableNumber(response.point),
+      mate: null,
+      backedPlies: 0,
+    });
+  }
+
   return {
     key: nullableString(response.key),
     outcome: parseOutcome(response.status),
     closure: nullableString(response.closure),
     score: nullableNumber(response.score),
     point: nullableNumber(response.point),
-    bestMove: nullableString(response.best_move),
+    bestMove,
     // AtomicDB ranks moves for the player to move. Preserve that order, including ties.
-    moves: response.moves.map(parseMove).filter((move): move is AtomicDbMove => move !== null),
+    moves,
   };
 };
 

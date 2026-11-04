@@ -39,6 +39,25 @@ describe("AtomicDB client", () => {
     expect(result.moves[0]).toMatchObject({ score: 500, backedPlies: 48 });
   });
 
+  it("restores a solved best move omitted from AtomicDB's move list", () => {
+    const position = parseAtomicDbResponse({
+      status: "BLACK_WIN",
+      closure: "MATE_PV",
+      score: -10000,
+      point: -9998,
+      best_move: "b2a3",
+      moves: [
+        { uci: "b1a1", status: "UNKNOWN", score: null },
+        { uci: "b1c2", status: "UNKNOWN", score: null },
+      ],
+    });
+
+    expect(position.moves.map((move) => move.uci)).toEqual(["b2a3", "b1a1", "b1c2"]);
+    expect(
+      formatAtomicDbEvaluation(getAtomicDbMoveEvaluation(position.moves[0]!, WHITE_TO_MOVE)),
+    ).toBe("-#2");
+  });
+
   it("converts side-to-move centipawns to White's perspective exactly once", () => {
     const position = parseAtomicDbResponse({
       status: "UNKNOWN",
