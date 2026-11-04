@@ -117,6 +117,7 @@
 .analysisUsernamePickerClose:focus-visible,
 .analysisUsernamePickerForm input:focus-visible,
 .analysisUsernamePickerSubmit:focus-visible,
+.analysisGameUsernameGrid button:focus-visible,
 .analysisRecentUsernameChip button:focus-visible,
 .usernamePickerTabs button:focus-visible,
 .usernamePickerDatabaseList button:focus-visible {
@@ -130,6 +131,60 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 14px 12px;
+}
+
+.analysisGameUsernameGrid {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.analysisGameUsernameGrid button {
+  max-width: min(200px, 62vw);
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    filter 140ms ease,
+    transform 140ms ease;
+}
+
+.analysisGameUsernameGrid button.white {
+  border-color: color-mix(in srgb, var(--color-player-black) 18%, var(--color-player-white));
+  background: var(--color-player-white);
+  color: var(--color-player-black);
+}
+
+.analysisGameUsernameGrid button.black {
+  border-color: color-mix(in srgb, var(--color-player-white) 24%, var(--color-player-black));
+  background: var(--color-player-black);
+  color: var(--color-player-white);
+}
+
+.analysisGameUsernameGrid button:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.analysisGameUsernameGrid button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.analysisGameUsernameGrid button.active {
+  box-shadow: 0 0 0 2px var(--color-primary-ring);
+}
+
+.analysisGameUsernameGrid button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .usernamePickerTabs {

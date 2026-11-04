@@ -900,10 +900,16 @@
   cursor: not-allowed;
 }
 
-.gameShareActions .gameShareChessComLink {
+.gameShareActions .gameShareSourceLink {
   width: 40px;
   padding: 0;
   flex: 0 0 40px;
+}
+
+.gameShareLichessLink svg {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 
 .gameShareChessComLink .chessComProfileIcon {

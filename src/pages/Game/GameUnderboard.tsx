@@ -4,12 +4,15 @@ import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
 import { z } from "zod";
 
-import { ChessComProfileIcon } from "../../features/profile/profilePresentation";
+import {
+  ChessComProfileIcon,
+  LichessProfileIcon,
+} from "../../features/profile/profilePresentation";
 import type { BoardDocument } from "../../hooks/useBoardDocument";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import type { ArchiveGame } from "../../lib/archive/games";
 import { moveDurationsMilliseconds } from "../../lib/games/moveTimes";
-import { buildChessComGameUrl } from "../../lib/matches/routes";
+import { buildChessComGameUrl, buildLichessGameUrl } from "../../lib/matches/routes";
 import { copyTextToClipboard } from "../../utils/clipboard";
 import { GameMatchCrosstable } from "./GameMatchCrosstable";
 
@@ -436,7 +439,7 @@ export const GameUnderboard = ({
             <div className="gameShareActions">
               {game.source === "chesscom" ? (
                 <a
-                  className="gameShareChessComLink"
+                  className="gameShareSourceLink gameShareChessComLink"
                   href={buildChessComGameUrl(game.game_id)}
                   target="_blank"
                   rel="noreferrer"
@@ -444,6 +447,18 @@ export const GameUnderboard = ({
                   title="View on Chess.com"
                 >
                   <ChessComProfileIcon />
+                </a>
+              ) : null}
+              {game.source !== "chesscom" && game.source !== "pychess" ? (
+                <a
+                  className="gameShareSourceLink gameShareLichessLink"
+                  href={buildLichessGameUrl(game.game_id)}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="View on Lichess"
+                  title="View on Lichess"
+                >
+                  <LichessProfileIcon />
                 </a>
               ) : null}
               {atomicDbHref ? (

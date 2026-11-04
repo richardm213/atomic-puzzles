@@ -12,6 +12,10 @@ type UsernamePickerModalProps = {
   id: string;
   title: string;
   recentUsernames: string[];
+  presetUsernames?: Array<{
+    username: string;
+    color: "white" | "black";
+  }>;
   selectedUsernames?: string[];
   maxSelectedUsernames?: number;
   submitLabel?: string;
@@ -50,6 +54,7 @@ export const UsernamePickerModal = ({
   id,
   title,
   recentUsernames,
+  presetUsernames = [],
   selectedUsernames = [],
   maxSelectedUsernames = 1,
   submitLabel = "Select",
@@ -69,6 +74,30 @@ export const UsernamePickerModal = ({
   const canSelectMore =
     maxSelectedUsernames === 1 || selectedUsernames.length < maxSelectedUsernames;
   const trimmedDraft = usernameDraft.trim();
+  const uniquePresetUsernames = useMemo(
+    () =>
+      presetUsernames.filter(
+        ({ username }, index, usernames) =>
+          username.trim() &&
+          usernames.findIndex(
+            (candidate) => candidate.username.toLowerCase() === username.toLowerCase(),
+          ) === index,
+      ),
+    [presetUsernames],
+  );
+  const uniqueRecentUsernames = useMemo(
+    () =>
+      recentUsernames.filter(
+        (username, index, usernames) =>
+          !containsUsername(
+            uniquePresetUsernames.map((preset) => preset.username),
+            username,
+          ) &&
+          usernames.findIndex((candidate) => candidate.toLowerCase() === username.toLowerCase()) ===
+            index,
+      ),
+    [recentUsernames, uniquePresetUsernames],
+  );
   const filteredOpeningPlayers = useMemo(() => {
     const query = trimmedDraft.toLowerCase();
     if (!query) return openingPlayers;
@@ -203,9 +232,32 @@ export const UsernamePickerModal = ({
             All Players
           </button>
         </div>
-        {activeTab === "recent" && recentUsernames.length ? (
+        {activeTab === "recent" && uniquePresetUsernames.length ? (
+          <div className="analysisGameUsernameGrid" aria-label="Players in this game">
+            {uniquePresetUsernames.map(({ username, color }) => {
+              const isSelected = containsUsername(selectedUsernames, username);
+              const isDisabled = !canSelectMore && !isSelected;
+
+              return (
+                <button
+                  type="button"
+                  className={`${color}${isSelected ? " active" : ""}`}
+                  disabled={isDisabled}
+                  key={username}
+                  aria-label={`${username}, ${color} player`}
+                  onClick={() => {
+                    if (!isDisabled) onSelectUsername(username);
+                  }}
+                >
+                  {username}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+        {activeTab === "recent" && uniqueRecentUsernames.length ? (
           <div className="analysisRecentUsernameGrid" aria-label="Recent username searches">
-            {recentUsernames.map((recentUsername) => {
+            {uniqueRecentUsernames.map((recentUsername) => {
               const isSelected = containsUsername(selectedUsernames, recentUsername);
               const isDisabled = !canSelectMore && !isSelected;
 
@@ -235,7 +287,9 @@ export const UsernamePickerModal = ({
             })}
           </div>
         ) : null}
-        {activeTab === "recent" && recentUsernames.length === 0 ? (
+        {activeTab === "recent" &&
+        uniquePresetUsernames.length === 0 &&
+        uniqueRecentUsernames.length === 0 ? (
           <div className="usernamePickerListState">No recent players.</div>
         ) : null}
         {activeTab === "database" ? (

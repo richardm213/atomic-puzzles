@@ -6,6 +6,7 @@ import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
+  SetStateAction,
 } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
@@ -41,7 +42,7 @@ import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
-import type { ArchiveGame } from "../../lib/archive/games";
+import { type ArchiveGame, decodeGameResult } from "../../lib/archive/games";
 import { warmFairyStockfish } from "../../lib/practice/fairyStockfish";
 import { createAtomicPosition, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
@@ -127,6 +128,20 @@ const DEFAULT_EXPLORER_SETTINGS = {
 };
 
 type StoredExplorerSettings = typeof DEFAULT_EXPLORER_SETTINGS;
+
+const gameExplorerSettings = (
+  game: ArchiveGame,
+  settings: StoredExplorerSettings,
+): StoredExplorerSettings => {
+  const { white } = decodeGameResult(game);
+  return {
+    ...settings,
+    explorerScope: "player",
+    playerColor: "white",
+    username: white,
+    opponent: "",
+  };
+};
 
 const clampRating = (rating: number): number =>
   Math.max(
@@ -343,10 +358,40 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
   const [gamePanelHeight, setGamePanelHeight] = useState<number | null>(null);
   const [defaultGamePanelHeight, setDefaultGamePanelHeight] = useState<number | null>(null);
   const [gamePanelResizing, setGamePanelResizing] = useState(false);
-  const [explorerSettings, setExplorerSettings] = usePersistedState<StoredExplorerSettings>(
-    EXPLORER_SETTINGS_STORAGE_KEY,
-    explorerSettingsSchema,
-    DEFAULT_EXPLORER_SETTINGS,
+  const [persistedExplorerSettings, setPersistedExplorerSettings] =
+    usePersistedState<StoredExplorerSettings>(
+      EXPLORER_SETTINGS_STORAGE_KEY,
+      explorerSettingsSchema,
+      DEFAULT_EXPLORER_SETTINGS,
+    );
+  const [gameExplorerState, setGameExplorerState] = useState<{
+    gameId: string;
+    settings: StoredExplorerSettings;
+  } | null>(null);
+  const explorerSettings = game
+    ? gameExplorerState?.gameId === game.game_id
+      ? gameExplorerState.settings
+      : gameExplorerSettings(game, persistedExplorerSettings)
+    : persistedExplorerSettings;
+  const setExplorerSettings = useCallback(
+    (update: SetStateAction<StoredExplorerSettings>): void => {
+      if (!game) {
+        setPersistedExplorerSettings(update);
+        return;
+      }
+
+      setGameExplorerState((current) => {
+        const currentSettings =
+          current?.gameId === game.game_id
+            ? current.settings
+            : gameExplorerSettings(game, persistedExplorerSettings);
+        return {
+          gameId: game.game_id,
+          settings: typeof update === "function" ? update(currentSettings) : update,
+        };
+      });
+    },
+    [game, persistedExplorerSettings, setPersistedExplorerSettings],
   );
   const {
     explorerScope,
@@ -835,19 +880,44 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
   const commitUsername = (nextUsername: string): void => {
     const trimmedUsername = nextUsername.trim();
     if (!trimmedUsername) return;
+    const gamePlayers = game ? decodeGameResult(game) : null;
+    const selectedGamePlayerColor = gamePlayers
+      ? trimmedUsername.toLowerCase() === gamePlayers.white.toLowerCase()
+        ? "white"
+        : trimmedUsername.toLowerCase() === gamePlayers.black.toLowerCase()
+          ? "black"
+          : null
+      : null;
 
     if (usernamePickerTarget === "opponent") {
       updateExplorerSettings({ opponent: trimmedUsername });
     } else {
-      updateExplorerSettings({ username: trimmedUsername });
+      updateExplorerSettings({
+        username: trimmedUsername,
+        ...(selectedGamePlayerColor ? { playerColor: selectedGamePlayerColor } : {}),
+      });
     }
 
     updateExplorerSettings({ explorerScope: "player" });
     ensurePlayerStartDate();
     setFiltersOpen(false);
-    rememberUsername(trimmedUsername);
+    if (!selectedGamePlayerColor) rememberUsername(trimmedUsername);
     closeUsernamePicker();
   };
+
+  const gamePlayerPresets = useMemo(() => {
+    if (!game || usernamePickerTarget !== "player") return [];
+    const { white, black } = decodeGameResult(game);
+    const selectedUsername = username.trim().toLowerCase();
+    return [
+      { username: white, color: "white" as const },
+      { username: black, color: "black" as const },
+    ].sort(
+      (left, right) =>
+        Number(left.username.toLowerCase() === selectedUsername) -
+        Number(right.username.toLowerCase() === selectedUsername),
+    );
+  }, [game, username, usernamePickerTarget]);
 
   const switchPlayerColor = (): void => {
     setExplorerSettings((current) => ({
@@ -1363,6 +1433,7 @@ export const AnalysisPage = ({ game, initialPgn = "" }: AnalysisPageProps = {}) 
           id="analysis-username-picker-title"
           title={usernamePickerTarget === "opponent" ? "Choose opponent" : "Choose player"}
           recentUsernames={recentUsernames}
+          presetUsernames={gamePlayerPresets}
           selectedUsernames={[
             (usernamePickerTarget === "opponent" ? opponent : username).trim(),
           ].filter(Boolean)}
