@@ -57,6 +57,7 @@ const Crosstable = ({
   label,
   embedded,
   unit,
+  canToggleUnit,
   matchId,
   onToggleUnit,
 }: {
@@ -66,6 +67,7 @@ const Crosstable = ({
   label: string;
   embedded: boolean;
   unit: "games" | "matches";
+  canToggleUnit: boolean;
   matchId: string;
   onToggleUnit: () => void;
 }) => {
@@ -75,17 +77,19 @@ const Crosstable = ({
   const nextUnitLabel = unit === "games" ? "matches in this mode" : "games in this match";
   const toolbar = (
     <div className="gameMatchCrosstableToolbar">
-      <button
-        type="button"
-        className="gameMatchCrosstableToggle"
-        aria-label={`Switch to ${nextUnitLabel}`}
-        title={`Switch to ${nextUnitLabel}`}
-        aria-pressed={unit === "matches"}
-        onClick={onToggleUnit}
-      >
-        <FontAwesomeIcon icon={faArrowRightArrowLeft} aria-hidden="true" />
-        <span>{unit === "games" ? "Games" : "Matches"}</span>
-      </button>
+      {canToggleUnit ? (
+        <button
+          type="button"
+          className="gameMatchCrosstableToggle"
+          aria-label={`Switch to ${nextUnitLabel}`}
+          title={`Switch to ${nextUnitLabel}`}
+          aria-pressed={unit === "matches"}
+          onClick={onToggleUnit}
+        >
+          <FontAwesomeIcon icon={faArrowRightArrowLeft} aria-hidden="true" />
+          <span>{unit === "games" ? "Games" : "Matches"}</span>
+        </button>
+      ) : null}
       {matchId ? (
         <Link className="gameMatchCrosstableMatchLink" to="/matches/$matchId" params={{ matchId }}>
           View match
@@ -154,7 +158,13 @@ export const GameMatchCrosstable = ({
     staleTime: 10 * 60 * 1_000,
   });
   const match = matchQuery.data;
-  const unit = unitSelection.gameId === game.game_id ? unitSelection.unit : "games";
+  const unit =
+    match?.games.length === 1
+      ? "matches"
+      : unitSelection.gameId === game.game_id
+        ? unitSelection.unit
+        : "games";
+  const canToggleUnit = match?.games.length !== 1;
   const showMatchHistory = unit === "matches";
   const players: [string, string] = match?.players ?? [game.player_1, game.player_2];
   const historyQuery = useQuery({
@@ -231,6 +241,7 @@ export const GameMatchCrosstable = ({
         label={`${results.length} ${results.length === 1 ? "match" : "matches"} in ${game.mode}`}
         embedded={embedded}
         unit={unit}
+        canToggleUnit={canToggleUnit}
         matchId={game.external_match_id}
         onToggleUnit={toggleUnit}
       />
@@ -267,6 +278,7 @@ export const GameMatchCrosstable = ({
       label={`${results.length} games`}
       embedded={embedded}
       unit={unit}
+      canToggleUnit={canToggleUnit}
       matchId={game.external_match_id}
       onToggleUnit={toggleUnit}
     />
