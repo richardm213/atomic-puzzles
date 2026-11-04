@@ -729,6 +729,58 @@ describe("Chessboard orchestration", () => {
     ]);
   });
 
+  it("keeps puzzle annotations when loading an analysis handoff PGN", () => {
+    const states = renderBoard({
+      solutionNavigation: {
+        type: "loadPgn",
+        pgn: "1. e4? e5 (1... c5? 2. Nf3) 2. Nf3!",
+        fen: STARTING_FEN,
+      },
+    });
+
+    expect(states.at(-1)?.customLines).toEqual([
+      ["e4?", "e5", "Nf3!"],
+      ["e4?", "c5?", "Nf3"],
+    ]);
+  });
+
+  it("updates a move annotation in analysis history", () => {
+    const states: ChessboardState[] = [];
+    const props: ComponentProps<typeof Chessboard> = {
+      puzzleId: "annotated-analysis",
+      fen: STARTING_FEN,
+      orientation: "white",
+      coordinates: true,
+      solution: "",
+      showSolution: false,
+      analysisMode: true,
+      onStateChange: (state) => states.push(state),
+    };
+    const { rerender } = render(
+      <Chessboard
+        {...props}
+        solutionNavigation={{
+          type: "loadPgn",
+          pgn: "1. e4 e5",
+          fen: STARTING_FEN,
+        }}
+      />,
+    );
+    rerender(
+      <Chessboard
+        {...props}
+        solutionNavigation={{
+          type: "annotate",
+          source: "history",
+          ply: 1,
+          annotation: "?",
+        }}
+      />,
+    );
+
+    expect(states.at(-1)?.lineMoves).toEqual(["e4?", "e5"]);
+  });
+
   it("preserves a custom branch while cycling between continuation options", () => {
     const states = renderBoard({ solution: "1. e4 e5 2. Nf3", showSolution: true });
 

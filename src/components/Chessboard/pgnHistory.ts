@@ -5,6 +5,7 @@ import { makeUci } from "chessops/util";
 import type { Atomic } from "chessops/variant";
 
 import {
+  formatSolutionMove,
   moveFromUci,
   parseSolutionUciLines,
   toComparableUci,
@@ -48,7 +49,7 @@ const historyFromUciLine = (initialFen: string, line: UciSolutionLine): BoardHis
     const move = moveFromUci(position, entry.uci);
     if (!move || !position.isLegal(move)) throw new Error(`Invalid PGN move: ${entry.uci}`);
     const uci = makeUci(move).toLowerCase();
-    const san = makeSan(position, move);
+    const san = formatSolutionMove(makeSan(position, move), entry.annotation);
     const key = toComparableUci(position, uci, move);
     position.play(move);
     appendBoardMove(history, {
@@ -69,10 +70,8 @@ export const buildPgnHistory = (initialFen: string, pgn: string): PgnHistoryResu
   const history = createBoardHistory(initialFen);
 
   try {
-    if (/[()]/.test(pgn)) {
-      const lines = parseSolutionUciLines(initialFen, pgn);
-      if (!lines.length) throw new Error("Invalid PGN variation");
-
+    const lines = parseSolutionUciLines(initialFen, pgn);
+    if (lines.length) {
       const histories = lines.map((line) => historyFromUciLine(initialFen, line));
       const mainHistory = histories[0]!;
       const mainPosition = tryCreateAtomicPosition(
@@ -81,6 +80,7 @@ export const buildPgnHistory = (initialFen: string, pgn: string): PgnHistoryResu
       if (!mainPosition) throw new Error("Invalid PGN position");
       return { ok: true, history: mainHistory, histories, position: mainPosition };
     }
+    if (/[()]/.test(pgn)) throw new Error("Invalid PGN variation");
 
     for (const token of mainlineTokens(pgn)) {
       const move = parseSan(position, token) ?? moveFromUci(position, token.toLowerCase());

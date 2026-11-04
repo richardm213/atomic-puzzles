@@ -3,14 +3,21 @@ import "./AnalysisMoveTree.css";
 import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { ReactNode } from "react";
+import { useCallback, useState } from "react";
 
 import {
   buildSolutionMoveTree,
   findMainChild,
   movePrefix,
   orderedChildren,
+  splitSolutionMove,
 } from "../../lib/puzzles/solutionPgn";
 import type { PlaybackCommand } from "../../types/chessboard";
+import {
+  type AnnotationMenuPosition,
+  annotationMenuPosition,
+  MoveAnnotationMenu,
+} from "../MoveAnnotationMenu/MoveAnnotationMenu";
 import {
   activeLineIndex,
   matchingLineIndexes,
@@ -44,6 +51,7 @@ export const AnalysisMoveTree = ({
   inline = true,
   onSelect,
   onCycleOptions,
+  onAnnotate,
 }: {
   lines: string[][];
   moves: string[];
@@ -52,7 +60,16 @@ export const AnalysisMoveTree = ({
   inline?: boolean;
   onSelect: (lineIndex: number, moveIndex: number) => void;
   onCycleOptions: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
+  onAnnotate?: ((lineIndex: number, moveIndex: number, annotation: string) => void) | undefined;
 }) => {
+  const [annotationTarget, setAnnotationTarget] = useState<{
+    lineIndex: number;
+    moveIndex: number;
+    current: string;
+    position: AnnotationMenuPosition;
+  } | null>(null);
+  const closeAnnotationMenu = useCallback(() => setAnnotationTarget(null), []);
+
   if (!lines.length) return null;
 
   const currentMoves = moves.slice(0, currentPly);
@@ -80,6 +97,20 @@ export const AnalysisMoveTree = ({
           node.lineIndexes.has(activeLine) && currentPly === ply + 1 ? "step" : undefined
         }
         onClick={() => onSelect(targetLine, ply)}
+        onContextMenu={
+          onAnnotate
+            ? (event) => {
+                event.preventDefault();
+                setAnnotationTarget({
+                  lineIndex: targetLine,
+                  moveIndex: ply,
+                  current: splitSolutionMove(node.move).annotation,
+                  position: annotationMenuPosition(event),
+                });
+              }
+            : undefined
+        }
+        title={onAnnotate ? "Right-click to annotate" : undefined}
       >
         {movePrefix(ply, forceMoveNumber)}
         {node.move}
@@ -173,6 +204,17 @@ export const AnalysisMoveTree = ({
       >
         {content}
       </div>
+      {annotationTarget && onAnnotate ? (
+        <MoveAnnotationMenu
+          position={annotationTarget.position}
+          current={annotationTarget.current}
+          onClose={closeAnnotationMenu}
+          onSelect={(annotation) => {
+            onAnnotate(annotationTarget.lineIndex, annotationTarget.moveIndex, annotation);
+            closeAnnotationMenu();
+          }}
+        />
+      ) : null}
     </>
   );
 };

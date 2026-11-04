@@ -76,3 +76,25 @@ export const variationMoveKeys = (tree: VariationHistory): string[][] =>
 
 export const variationMoveSans = (tree: VariationHistory): string[][] =>
   tree.leaves.map((leaf) => variationValues(leaf, (ply) => ply.san));
+
+export const annotateVariationMove = (
+  tree: VariationHistory,
+  lineIndex: number,
+  plyIndex: number,
+  san: string,
+): boolean => {
+  let node = tree.leaves[lineIndex];
+  if (!node || plyIndex < 1) return false;
+
+  const line: VariationNode[] = [];
+  while (node) {
+    line.push(node);
+    node = node.parent!;
+  }
+  line.reverse();
+
+  const target = line[plyIndex];
+  if (!target) return false;
+  target.ply.san = san;
+  return true;
+};

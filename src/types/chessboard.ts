@@ -36,6 +36,13 @@ export type SolutionNavigation =
   | { type: "reset"; fen: string }
   | { type: "loadPgn"; pgn: string; fen?: string; line?: number; ply?: number }
   | { type: "history"; ply: number }
+  | {
+      type: "annotate";
+      source: "history" | "custom";
+      line?: number;
+      ply: number;
+      annotation: string;
+    }
   | { type: "solution"; line: number; ply: number }
   | { type: "custom"; line: number; ply: number };
 

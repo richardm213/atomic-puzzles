@@ -33,6 +33,14 @@ describe("buildPgnHistory", () => {
     }
   });
 
+  it("preserves move annotations while loading PGN", () => {
+    const result = buildPgnHistory(STARTING_FEN, "1. e4? e5 2. Nf3!");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.history.plies.slice(1).map((ply) => ply.san)).toEqual(["e4?", "e5", "Nf3!"]);
+    }
+  });
+
   it("loads an atomic line with adjacent pieces removed by captures", () => {
     const result = buildPgnHistory(
       STARTING_FEN,

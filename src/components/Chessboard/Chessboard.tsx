@@ -17,9 +17,11 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppSettings } from "../../context/AppSettings";
 import {
   convertUciLineToSan,
+  formatSolutionMove,
   moveFromUci,
   movePrefix,
   parseSolutionUciLines,
+  splitSolutionMove,
   toComparableUci,
   type UciSolutionEntry,
   type UciSolutionLine,
@@ -60,6 +62,7 @@ import {
 import { useChessground } from "./useChessground";
 import { usePuzzleTraining } from "./usePuzzleTraining";
 import {
+  annotateVariationMove,
   createVariationHistory,
   saveVariation,
   variationHistoryAt,
@@ -1269,6 +1272,47 @@ const ChessboardComponent = ({
       case "history":
         navigateTo(solutionNavigation.ply);
         break;
+      case "annotate": {
+        const annotation = /^[!?]{0,2}$/.test(solutionNavigation.annotation)
+          ? solutionNavigation.annotation
+          : "";
+        if (solutionNavigation.source === "custom" && solutionNavigation.line !== undefined) {
+          const targetHistory = variationHistoryAt(
+            customVariationsRef.current,
+            solutionNavigation.line,
+          );
+          const targetSan = targetHistory?.plies[solutionNavigation.ply]?.san;
+          if (targetSan) {
+            annotateVariationMove(
+              customVariationsRef.current,
+              solutionNavigation.line,
+              solutionNavigation.ply,
+              formatSolutionMove(splitSolutionMove(targetSan).san, annotation),
+            );
+            if (activeLineRef.current.source === "custom") {
+              const refreshed = variationHistoryAt(
+                customVariationsRef.current,
+                activeLineRef.current.index,
+              );
+              if (refreshed) {
+                refreshed.index = Math.min(historyRef.current.index, refreshed.plies.length - 1);
+                historyRef.current = refreshed;
+              }
+            }
+          }
+        } else {
+          const target = historyRef.current.plies[solutionNavigation.ply];
+          if (target?.san) {
+            target.san = formatSolutionMove(splitSolutionMove(target.san).san, annotation);
+          }
+        }
+
+        const position = positionRef.current;
+        if (position) {
+          syncBoard(position, historyRef.current.plies[historyRef.current.index]?.lastMove);
+        }
+        break;
+      }
     }
 
     onNavigateHandledRef.current?.();
@@ -1284,6 +1328,7 @@ const ChessboardComponent = ({
     resetToFen,
     showSolutionLine,
     showCustomLine,
+    syncBoard,
   ]);
 
   useEffect(() => {

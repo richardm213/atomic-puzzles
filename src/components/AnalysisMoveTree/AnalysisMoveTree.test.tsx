@@ -46,4 +46,22 @@ describe("AnalysisMoveTree", () => {
 
     expect(container.querySelector(".analysisTree")).toHaveClass("nonInline");
   });
+
+  it("opens the annotation menu from a move context menu", () => {
+    const onAnnotate = vi.fn();
+    render(
+      <AnalysisMoveTree
+        lines={lines}
+        moves={["Nf3"]}
+        currentPly={1}
+        onSelect={vi.fn()}
+        onCycleOptions={vi.fn()}
+        onAnnotate={onAnnotate}
+      />,
+    );
+
+    fireEvent.contextMenu(screen.getAllByRole("button", { name: "1. Nf3" })[0]!);
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "? Mistake" }));
+    expect(onAnnotate).toHaveBeenCalledWith(0, 0, "?");
+  });
 });

@@ -718,6 +718,19 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
     setNavigation({ type: "custom", line: lineIndex, ply: moveIndex + 1 });
   }, []);
 
+  const annotateMove = useCallback(
+    (lineIndex: number | undefined, moveIndex: number, annotation: string): void => {
+      setNavigation({
+        type: "annotate",
+        source: lineIndex === undefined ? "history" : "custom",
+        ...(lineIndex === undefined ? {} : { line: lineIndex }),
+        ply: moveIndex + 1,
+        annotation,
+      });
+    },
+    [],
+  );
+
   const playExplorerMove = (uci: string): void => {
     setHoveredExplorerMoveUci(null);
     setNavigation({ type: "play", uci });
@@ -1424,6 +1437,7 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
               onNavigate={navigateToPly}
               onSelectVariation={navigateToCustomMove}
               onCycleOptions={requestNavigation}
+              onAnnotate={game ? undefined : annotateMove}
             />
           </div>
         </div>
