@@ -80,6 +80,43 @@ describe("AtomicDB client", () => {
     ).toBe("-#3");
   });
 
+  it("decodes MATE_PV point values as mate distances for either winner", () => {
+    const whiteMate = parseAtomicDbResponse({
+      status: "WHITE_WIN",
+      closure: "MATE_PV",
+      score: -10000,
+      point: -9997,
+      best_move: "a4b5",
+      moves: [],
+    });
+    const blackMate = parseAtomicDbResponse({
+      status: "BLACK_WIN",
+      closure: "MATE_PV",
+      score: 10000,
+      point: 9995,
+      best_move: "a1a2",
+      moves: [
+        {
+          uci: "a1a2",
+          status: "BLACK_WIN",
+          closure: "MATE_PV",
+          score: 10000,
+          point: 9995,
+        },
+      ],
+    });
+
+    expect(formatAtomicDbEvaluation(getAtomicDbPositionEvaluation(whiteMate, BLACK_TO_MOVE))).toBe(
+      "#3",
+    );
+    expect(formatAtomicDbEvaluation(getAtomicDbPositionEvaluation(blackMate, BLACK_TO_MOVE))).toBe(
+      "-#5",
+    );
+    expect(
+      formatAtomicDbEvaluation(getAtomicDbMoveEvaluation(blackMate.moves[0]!, BLACK_TO_MOVE)),
+    ).toBe("-#5");
+  });
+
   it("falls back to a decisive numeric evaluation when no mate distance is supplied", () => {
     const position = parseAtomicDbResponse({
       status: "WHITE_WIN",

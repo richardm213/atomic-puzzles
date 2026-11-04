@@ -61,35 +61,39 @@ describe("AtomicDbEngine", () => {
   });
 
   it("shows an evaluation instead of a game result for a non-terminal solved position", () => {
+    const fen = "nrkn1qrb/ppp1pppp/8/1Q1p4/b7/1N2P3/PPPP1PPP/1RKNB1RB b KQkq - 3 3";
     const position = parseAtomicDbResponse({
       status: "WHITE_WIN",
-      best_move: "g1f3",
-      moves: [{ uci: "g1f3", status: "WHITE_WIN", mate: 4 }],
+      closure: "MATE_PV",
+      score: -10000,
+      point: -9997,
+      best_move: "a4b5",
+      moves: [],
     });
     const analysis: AtomicDbAnalysisState = {
       status: "ready",
       error: "",
       source: "atomicdb",
-      result: { fen: STARTING_FEN, position },
+      result: { fen, position },
       principalVariations: {},
     };
 
     render(
       <>
         <AtomicDbEngineControls
-          fen={STARTING_FEN}
+          fen={fen}
           analysis={analysis}
           settings={{ enabled: true, lineCount: 1, showFollowUpMoves: true }}
           setSettings={vi.fn()}
           onDisable={vi.fn()}
         />
-        <AtomicDbEvalBar fen={STARTING_FEN} analysis={analysis} enabled orientation="white" />
+        <AtomicDbEvalBar fen={fen} analysis={analysis} enabled orientation="white" />
       </>,
     );
 
     expect(screen.queryByText("1–0")).not.toBeInTheDocument();
-    expect(screen.getByText("#4")).toBeVisible();
-    expect(screen.getByRole("meter")).toHaveAttribute("aria-label", "AtomicDB evaluation #4");
+    expect(screen.getByText("#3")).toBeVisible();
+    expect(screen.getByRole("meter")).toHaveAttribute("aria-label", "AtomicDB evaluation #3");
   });
 
   it("keeps the settled evaluation and bar position while the next evaluation loads", () => {

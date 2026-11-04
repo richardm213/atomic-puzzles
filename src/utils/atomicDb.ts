@@ -113,20 +113,46 @@ const turnFromFen = (fen: string): AtomicDbTurn =>
 const fromSideToMovePerspective = (value: number, turn: AtomicDbTurn): number =>
   turn === "white" ? value : -value;
 
+const mateDistanceFromMatePv = ({
+  closure,
+  score,
+  point,
+}: {
+  closure: string | null;
+  score: number | null;
+  point: number | null;
+}): number | null => {
+  if (closure !== "MATE_PV" || score === null || point === null) return null;
+  if (Math.abs(score) !== TERMINAL_SCORE || Math.sign(score) !== Math.sign(point)) return null;
+
+  // AtomicDB encodes a mate bound as +/- (10_000 - plies) in `point` while
+  // `score` remains the terminal +/-10_000 value.
+  const distance = TERMINAL_SCORE - Math.abs(point);
+  if (!Number.isInteger(distance) || distance <= 0 || distance >= TERMINAL_SCORE) return null;
+  return Math.sign(score) * distance;
+};
+
 const evaluationFromValues = ({
   score,
   mate,
+  closure,
+  point,
   outcome,
   turn,
 }: {
   score: number | null;
   mate: number | null;
+  closure: string | null;
+  point: number | null;
   outcome: AtomicDbOutcome;
   turn: AtomicDbTurn;
 }): AtomicDbEvaluation => {
   // AtomicDB follows UCI: scores and mate distances use the side-to-move's perspective.
   // Convert once here so every UI surface consistently uses White's perspective.
-  if (mate !== null) return { type: "mate", value: fromSideToMovePerspective(mate, turn) };
+  const mateDistance = mate ?? mateDistanceFromMatePv({ closure, score, point });
+  if (mateDistance !== null) {
+    return { type: "mate", value: fromSideToMovePerspective(mateDistance, turn) };
+  }
   if (outcome === "DRAW") return { type: "centipawns", value: 0 };
   if (score !== null) {
     return { type: "centipawns", value: fromSideToMovePerspective(score, turn) };
@@ -267,6 +293,8 @@ export const getAtomicDbMoveEvaluation = (move: AtomicDbMove, fen: string): Atom
   evaluationFromValues({
     score: move.score,
     mate: move.mate,
+    closure: move.closure,
+    point: move.point,
     outcome: move.outcome,
     turn: turnFromFen(fen),
   });
@@ -285,6 +313,8 @@ export const getAtomicDbPositionEvaluation = (
   return evaluationFromValues({
     score: position.score,
     mate: null,
+    closure: position.closure,
+    point: position.point,
     outcome: position.outcome,
     turn: turnFromFen(fen),
   });
