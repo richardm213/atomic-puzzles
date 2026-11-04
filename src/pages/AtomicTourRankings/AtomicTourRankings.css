@@ -194,15 +194,10 @@
   width: 70px;
 }
 
-.atomicTourTable :is(th, td):nth-child(6) {
-  width: 124px;
-}
-
 .atomicTourTable :is(th, td):nth-child(1),
 .atomicTourTable :is(th, td):nth-child(2),
 .atomicTourTable :is(th, td):nth-child(4),
-.atomicTourTable :is(th, td):nth-child(5),
-.atomicTourTable :is(th, td):nth-child(6) {
+.atomicTourTable :is(th, td):nth-child(5) {
   white-space: nowrap;
 }
 
@@ -210,8 +205,7 @@
   text-align: right;
 }
 
-.atomicTourTable :is(th, td):nth-child(5),
-.atomicTourTable :is(th, td):nth-child(6) {
+.atomicTourTable :is(th, td):nth-child(5) {
   text-align: right;
 }
 
@@ -282,17 +276,6 @@
   color: var(--color-subtle);
 }
 
-.atomicTourExpiration {
-  color: var(--color-danger);
-  font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 650;
-}
-
-.atomicTourExpirationHeadingShort {
-  display: none;
-}
-
 @media (max-width: 640px) {
   .atomicTourHeader h1 {
     font-size: var(--text-page-title-mobile);
@@ -333,18 +316,6 @@
 
   .atomicTourTable :is(th, td):nth-child(5) {
     width: 58px;
-  }
-
-  .atomicTourTable :is(th, td):nth-child(6) {
-    width: 96px;
-  }
-
-  .atomicTourExpirationHeadingFull {
-    display: none;
-  }
-
-  .atomicTourExpirationHeadingShort {
-    display: inline;
   }
 
   .atomicTourPlayerFlag {
