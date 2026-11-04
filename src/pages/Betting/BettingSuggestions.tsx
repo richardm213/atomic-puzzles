@@ -117,11 +117,11 @@ export const BettingSuggestions = ({
   });
   const voteMutation = useMutation({
     mutationFn: voteOnMarketSuggestion,
-    onMutate: async ({ suggestionId, vote }) => {
-      await queryClient.cancelQueries({ queryKey: bettingQueryKeys.suggestions });
+    onMutate: ({ suggestionId, vote }) => {
       const previousSuggestions = queryClient.getQueryData<MarketSuggestion[]>(
         bettingQueryKeys.suggestions,
       );
+      void queryClient.cancelQueries({ queryKey: bettingQueryKeys.suggestions }, { revert: false });
       queryClient.setQueryData<MarketSuggestion[]>(bettingQueryKeys.suggestions, (current) =>
         current?.map((suggestion) => {
           if (suggestion.id !== suggestionId) return suggestion;

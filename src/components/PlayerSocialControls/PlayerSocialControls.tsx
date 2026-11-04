@@ -34,9 +34,9 @@ export const PlayerFlairPicker = ({ username }: { username: string }) => {
   const socialQueryKey = ["player-social", normalizedUsername] as const;
   const flairMutation = useMutation({
     mutationFn: (flair: PlayerFlair | null) => updatePlayerFlair(flair),
-    onMutate: async (flair) => {
-      await queryClient.cancelQueries({ queryKey: socialQueryKey });
+    onMutate: (flair) => {
       const previousSocial = queryClient.getQueryData<PlayerSocial>(socialQueryKey);
+      void queryClient.cancelQueries({ queryKey: socialQueryKey }, { revert: false });
       queryClient.setQueryData<PlayerSocial | undefined>(socialQueryKey, (current) =>
         current ? { ...current, flair } : current,
       );
@@ -108,9 +108,9 @@ export const PlayerCountryPicker = ({ username }: { username: string }) => {
   const socialQueryKey = ["player-social", normalizedUsername] as const;
   const countryMutation = useMutation({
     mutationFn: (countryCode: string | null) => updatePlayerCountry(countryCode),
-    onMutate: async (countryCode) => {
-      await queryClient.cancelQueries({ queryKey: socialQueryKey });
+    onMutate: (countryCode) => {
       const previousSocial = queryClient.getQueryData<PlayerSocial>(socialQueryKey);
+      void queryClient.cancelQueries({ queryKey: socialQueryKey }, { revert: false });
       queryClient.setQueryData<PlayerSocial | undefined>(socialQueryKey, (current) =>
         current
           ? {

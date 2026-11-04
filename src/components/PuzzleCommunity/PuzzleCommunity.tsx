@@ -164,11 +164,11 @@ export const CommunityDiscussion = ({
   const voteMutation = useMutation({
     mutationFn: ({ puzzleId, vote }: { puzzleId: number; vote: VoteValue }) =>
       savePuzzleVote(puzzleId, vote),
-    onMutate: async ({ vote }) => {
-      await queryClient.cancelQueries({ queryKey: discussionOptions.queryKey });
+    onMutate: ({ vote }) => {
       const previous = queryClient.getQueryData<CommunityDiscussionData>(
         discussionOptions.queryKey,
       );
+      void queryClient.cancelQueries({ queryKey: discussionOptions.queryKey }, { revert: false });
       queryClient.setQueryData<CommunityDiscussionData>(discussionOptions.queryKey, (current) => {
         if (!current?.counts || current.viewerVote === undefined) return current;
         const next = applyVote({ ...current.counts, viewer_vote: current.viewerVote }, vote);
@@ -185,8 +185,9 @@ export const CommunityDiscussion = ({
       });
       return { previous };
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previous) updateDiscussion(context.previous);
+      setActionError(getErrorMessage(error, "Unable to save vote."));
     },
     onSuccess: (result) => {
       updateDiscussion(result);
@@ -203,11 +204,11 @@ export const CommunityDiscussion = ({
       parentId: number | null;
       optimisticId: number;
     }) => postCommunityComment(currentTarget, body, parentId),
-    onMutate: async ({ body, parentId, optimisticId }) => {
-      await queryClient.cancelQueries({ queryKey: discussionOptions.queryKey });
+    onMutate: ({ body, parentId, optimisticId }) => {
       const previous = queryClient.getQueryData<CommunityDiscussionData>(
         discussionOptions.queryKey,
       );
+      void queryClient.cancelQueries({ queryKey: discussionOptions.queryKey }, { revert: false });
       queryClient.setQueryData<CommunityDiscussionData>(discussionOptions.queryKey, (current) => ({
         ...(current ?? emptyCommunity(currentTarget)),
         comments: [
@@ -231,8 +232,16 @@ export const CommunityDiscussion = ({
       }));
       return { previous };
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, variables, context) => {
       if (context?.previous) updateDiscussion(context.previous);
+      setCommentBody((current) => current || variables.body);
+      setReplyingTo((current) => {
+        if (current || variables.parentId === null || !context?.previous) return current;
+        return (
+          context.previous.comments.find((comment) => comment.id === variables.parentId) ?? null
+        );
+      });
+      setActionError(getErrorMessage(error, "Unable to post comment."));
     },
     onSuccess: (result) => {
       updateDiscussion(result);
@@ -243,11 +252,12 @@ export const CommunityDiscussion = ({
   const commentVoteMutation = useMutation({
     mutationFn: ({ commentId, vote }: { commentId: number; vote: VoteValue }) =>
       saveCommunityCommentVote(currentTarget, commentId, vote),
-    onMutate: async ({ commentId, vote }) => {
-      await queryClient.cancelQueries({ queryKey: discussionOptions.queryKey });
+    onMutate: ({ commentId, vote }) => {
       const previous = queryClient.getQueryData<CommunityDiscussionData>(
         discussionOptions.queryKey,
       );
+      void queryClient.cancelQueries({ queryKey: discussionOptions.queryKey }, { revert: false });
+      setPendingCommentVotes((current) => new Set(current).add(commentId));
       queryClient.setQueryData<CommunityDiscussionData>(discussionOptions.queryKey, (current) =>
         current
           ? {
@@ -260,13 +270,21 @@ export const CommunityDiscussion = ({
       );
       return { previous };
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previous) updateDiscussion(context.previous);
+      setActionError(getErrorMessage(error, "Unable to save comment vote."));
     },
     onSuccess: (result) => {
       updateDiscussion(result);
       void queryClient.invalidateQueries({ queryKey: communityQueryKeys.siteComments });
       void queryClient.invalidateQueries({ queryKey: communityQueryKeys.users });
+    },
+    onSettled: (_result, _error, { commentId }) => {
+      setPendingCommentVotes((current) => {
+        const next = new Set(current);
+        next.delete(commentId);
+        return next;
+      });
     },
   });
   const pendingVote = voteMutation.isPending;
@@ -397,19 +415,15 @@ export const CommunityDiscussion = ({
     return false;
   };
 
-  const handleVote = async (vote: -1 | 1) => {
+  const handleVote = (vote: -1 | 1) => {
     if (target.type !== "puzzle" || pendingVote) return;
     if (!requireLogin()) return;
     const nextVote = community?.viewerVote === vote ? 0 : vote;
     setActionError("");
-    try {
-      await voteMutation.mutateAsync({ puzzleId: Number(target.id), vote: nextVote });
-    } catch (voteError) {
-      setActionError(getErrorMessage(voteError, "Unable to save vote."));
-    }
+    voteMutation.mutate({ puzzleId: Number(target.id), vote: nextVote });
   };
 
-  const handlePostComment = async () => {
+  const handlePostComment = () => {
     const body = commentBody.trim();
     if (!target.id || !body || postingComment) return;
     if (!requireLogin()) return;
@@ -419,36 +433,19 @@ export const CommunityDiscussion = ({
     optimisticCommentIdRef.current -= 1;
     setCommentBody("");
     setReplyingTo(null);
-    try {
-      await postCommentMutation.mutateAsync({
-        body,
-        parentId: replyTarget?.id ?? null,
-        optimisticId,
-      });
-    } catch (commentError) {
-      setCommentBody((current) => current || body);
-      setReplyingTo((current) => current ?? replyTarget);
-      setActionError(getErrorMessage(commentError, "Unable to post comment."));
-    }
+    postCommentMutation.mutate({
+      body,
+      parentId: replyTarget?.id ?? null,
+      optimisticId,
+    });
   };
 
-  const handleCommentVote = async (comment: PuzzleComment, vote: -1 | 1) => {
+  const handleCommentVote = (comment: PuzzleComment, vote: -1 | 1) => {
     if (!target.id || pendingCommentVotes.has(comment.id)) return;
     if (!requireLogin()) return;
     const nextVote = comment.viewer_vote === vote ? 0 : vote;
-    setPendingCommentVotes((current) => new Set(current).add(comment.id));
     setActionError("");
-    try {
-      await commentVoteMutation.mutateAsync({ commentId: comment.id, vote: nextVote });
-    } catch (voteError) {
-      setActionError(getErrorMessage(voteError, "Unable to save comment vote."));
-    } finally {
-      setPendingCommentVotes((current) => {
-        const next = new Set(current);
-        next.delete(comment.id);
-        return next;
-      });
-    }
+    commentVoteMutation.mutate({ commentId: comment.id, vote: nextVote });
   };
 
   const toggleCollapsed = (commentId: number) => {

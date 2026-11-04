@@ -109,6 +109,7 @@ describe("PuzzleCommunity", () => {
     expect(
       await screen.findByRole("button", { name: "Upvote this puzzle. 1 upvotes" }),
     ).toHaveAttribute("aria-pressed", "true");
+    expect(mocks.savePuzzleVote).toHaveBeenCalledWith(42, 1);
     finishSave({
       counts: { puzzle_id: 42, upvotes: 1, downvotes: 0, score: 1 },
       comments: [],
@@ -175,6 +176,11 @@ describe("PuzzleCommunity", () => {
     expect(
       await screen.findByRole("button", { name: "Upvote comment. 2 upvotes" }),
     ).toHaveAttribute("aria-pressed", "true");
+    expect(mocks.saveCommunityCommentVote).toHaveBeenCalledWith(
+      { type: "puzzle", id: "42", context: "" },
+      7,
+      1,
+    );
     finishSave({
       counts: { puzzle_id: 42, upvotes: 0, downvotes: 0, score: 0 },
       comments: [
@@ -213,6 +219,11 @@ describe("PuzzleCommunity", () => {
 
     expect(await screen.findByText("Fast feedback")).toBeVisible();
     expect(composer).toHaveValue("");
+    expect(mocks.postCommunityComment).toHaveBeenCalledWith(
+      { type: "puzzle", id: "42", context: "" },
+      "Fast feedback",
+      null,
+    );
     finishSave({
       counts: { puzzle_id: 42, upvotes: 0, downvotes: 0, score: 0 },
       comments: [

@@ -6,8 +6,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "../../context/AuthContext";
-import { coinQueryKeys } from "../../lib/coins/coinQueries";
-import { giveCoins } from "../../lib/coins/coins";
+import { coinQueryKeys, updateCachedCoinBalanceByDelta } from "../../lib/coins/coinQueries";
+import { type CoinSummary, giveCoins } from "../../lib/coins/coins";
 import { getErrorMessage } from "../../utils/errors";
 import { normalizeUsername } from "../../utils/playerNames";
 
@@ -35,12 +35,32 @@ export const CoinProfileActions = ({
   const mutation = useMutation({
     mutationFn: () =>
       giveCoins({ recipientUsername, amount: parsedAmount, message: message.trim() }),
+    onMutate: () => {
+      const summaryKey = coinQueryKeys.summary(viewerUsername);
+      const previousSummary = queryClient.getQueryData<CoinSummary>(summaryKey);
+      void queryClient.cancelQueries({ queryKey: summaryKey }, { revert: false });
+      updateCachedCoinBalanceByDelta(queryClient, viewerUsername, -parsedAmount);
+      return { previousSummary };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousSummary) {
+        queryClient.setQueryData(coinQueryKeys.summary(viewerUsername), context.previousSummary);
+      }
+    },
     onSuccess: (result) => {
       queryClient.setQueryData(coinQueryKeys.summary(viewerUsername), {
         balance: result.balance,
         dailyClaimAvailable: result.dailyClaimAvailable,
       });
       setMessage("");
+    },
+    onSettled: () => {
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: coinQueryKeys.summary(viewerUsername) }),
+        queryClient.invalidateQueries({ queryKey: coinQueryKeys.summary(recipientUsername) }),
+        queryClient.invalidateQueries({ queryKey: coinQueryKeys.rankings }),
+        queryClient.invalidateQueries({ queryKey: ["coins", "transactions"] }),
+      ]);
     },
   });
 

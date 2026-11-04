@@ -178,15 +178,13 @@ export const ShopPage = () => {
       itemKey: ShopItemKey;
       requestedUsername?: string;
     }) => redeemShopItem(itemKey, requested),
-    onMutate: async (variables) => {
+    onMutate: (variables) => {
       const summaryKey = coinQueryKeys.summary(username);
       const historyKey = coinQueryKeys.redemptionHistory(username);
-      await Promise.all([
-        queryClient.cancelQueries({ queryKey: summaryKey }),
-        queryClient.cancelQueries({ queryKey: historyKey }),
-      ]);
       const previousSummary = queryClient.getQueryData<CoinSummary>(summaryKey);
       const previousHistory = queryClient.getQueryData<RedemptionHistoryItem[]>(historyKey);
+      void queryClient.cancelQueries({ queryKey: summaryKey }, { revert: false });
+      void queryClient.cancelQueries({ queryKey: historyKey }, { revert: false });
       const item = shopItems.find((candidate) => candidate.key === variables.itemKey);
       const optimisticId = -Date.now();
       if (previousSummary && item) {
