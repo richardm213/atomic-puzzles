@@ -53,6 +53,17 @@ const isEndgameFen = (fen: string): boolean => {
   return [...board].filter((character) => /[a-z]/i.test(character)).length <= 6;
 };
 
+const engineMove = (candidate: EngineCandidate): AtomicDbPosition["moves"][number] => ({
+  uci: candidate.move,
+  origin: "engine",
+  outcome: "UNKNOWN",
+  closure: null,
+  score: candidate.scoreType === "cp" ? candidate.score : null,
+  point: null,
+  mate: candidate.scoreType === "mate" ? candidate.score : null,
+  backedPlies: candidate.depth ?? 0,
+});
+
 const enginePosition = (candidates: EngineCandidate[]): AtomicDbPosition => {
   const best = candidates[0] ?? null;
   return {
@@ -62,27 +73,9 @@ const enginePosition = (candidates: EngineCandidate[]): AtomicDbPosition => {
     score: best?.scoreType === "cp" ? best.score : null,
     point: null,
     bestMove: best?.move ?? null,
-    moves: candidates.map((candidate) => ({
-      uci: candidate.move,
-      outcome: "UNKNOWN",
-      closure: null,
-      score: candidate.scoreType === "cp" ? candidate.score : null,
-      point: null,
-      mate: candidate.scoreType === "mate" ? candidate.score : null,
-      backedPlies: candidate.depth ?? 0,
-    })),
+    moves: candidates.map(engineMove),
   };
 };
-
-const engineMove = (candidate: EngineCandidate): AtomicDbPosition["moves"][number] => ({
-  uci: candidate.move,
-  outcome: "UNKNOWN",
-  closure: null,
-  score: candidate.scoreType === "cp" ? candidate.score : null,
-  point: null,
-  mate: candidate.scoreType === "mate" ? candidate.score : null,
-  backedPlies: candidate.depth ?? 0,
-});
 
 const fillAtomicDbPosition = (
   position: AtomicDbPosition,

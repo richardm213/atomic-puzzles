@@ -5,6 +5,7 @@ export type AtomicDbOutcome = "WHITE_WIN" | "BLACK_WIN" | "DRAW" | "UNKNOWN";
 
 export type AtomicDbMove = {
   uci: string;
+  origin?: "atomicdb" | "engine";
   outcome: AtomicDbOutcome;
   closure: string | null;
   score: number | null;

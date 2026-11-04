@@ -99,6 +99,61 @@ describe("AtomicDbEngine", () => {
     expect(screen.getByRole("meter")).toHaveAttribute("aria-label", "AtomicDB evaluation #3");
   });
 
+  it("hides Fairy-Stockfish depth for mate moves but keeps it for centipawn moves", () => {
+    const analysis: AtomicDbAnalysisState = {
+      status: "ready",
+      error: "",
+      source: "engine",
+      result: {
+        fen: STARTING_FEN,
+        position: {
+          key: null,
+          outcome: "UNKNOWN",
+          closure: null,
+          score: null,
+          point: null,
+          bestMove: "g1f3",
+          moves: [
+            {
+              uci: "g1f3",
+              origin: "engine",
+              outcome: "UNKNOWN",
+              closure: null,
+              score: null,
+              point: null,
+              mate: 4,
+              backedPlies: 223,
+            },
+            {
+              uci: "e2e4",
+              origin: "engine",
+              outcome: "UNKNOWN",
+              closure: null,
+              score: 125,
+              point: null,
+              mate: null,
+              backedPlies: 223,
+            },
+          ],
+        },
+      },
+      principalVariations: {},
+    };
+
+    render(
+      <AtomicDbEngine
+        fen={STARTING_FEN}
+        settings={{ enabled: true, lineCount: 2, showFollowUpMoves: true }}
+        analysis={analysis}
+        onPlayLine={vi.fn()}
+        onHoverMove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByText("depth 223")).toHaveLength(1);
+    expect(screen.getByText("#4").closest("li")).not.toHaveTextContent("depth");
+  });
+
   it("keeps the settled evaluation and bar position while the next evaluation loads", () => {
     const position = parseAtomicDbResponse({
       status: "UNKNOWN",

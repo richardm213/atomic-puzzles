@@ -321,8 +321,11 @@ export const AtomicDbEngine = ({
                   </li>
                 );
               }
-              const support = move.backedPlies > 0 ? `, backed to depth ${move.backedPlies}` : "";
               const moveEvaluation = getAtomicDbMoveEvaluation(move, view.fen);
+              const showDepth =
+                move.backedPlies > 0 &&
+                !(move.origin === "engine" && moveEvaluation.type === "mate");
+              const support = showDepth ? `, backed to depth ${move.backedPlies}` : "";
               const evaluation = formatAtomicDbEvaluation(moveEvaluation);
               const displayedLine = lineTokens.map((token) => token.value).join(" ");
               return (
@@ -366,9 +369,9 @@ export const AtomicDbEngine = ({
                   </span>
                   <span
                     className="atomicDbEngineDepth"
-                    title={move.backedPlies > 0 ? `Backed to depth ${move.backedPlies}` : undefined}
+                    title={showDepth ? `Backed to depth ${move.backedPlies}` : undefined}
                   >
-                    {move.backedPlies > 0 ? `depth ${move.backedPlies}` : ""}
+                    {showDepth ? `depth ${move.backedPlies}` : ""}
                   </span>
                 </li>
               );
