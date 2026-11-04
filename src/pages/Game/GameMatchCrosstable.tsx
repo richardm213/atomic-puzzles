@@ -5,7 +5,6 @@ import { Link } from "@tanstack/react-router";
 import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 
-import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import type { ArchiveGame } from "../../lib/archive/games";
 import {
@@ -257,15 +256,15 @@ export const GameMatchCrosstable = ({
       playerTwo,
       current: matchGame.id === game.game_id,
       link: (
-        <LichessGameLink
-          gameId={matchGame.id}
-          source={match.source}
+        <Link
+          to="/games/$gameId"
+          params={{ gameId: matchGame.id }}
           className="gameMatchResultLink"
           title={`Game ${index + 1}`}
         >
           <span className={resultClass(playerOne)}>{resultLabel(playerOne)}</span>
           <span className={resultClass(playerTwo)}>{resultLabel(playerTwo)}</span>
-        </LichessGameLink>
+        </Link>
       ),
     };
   });
