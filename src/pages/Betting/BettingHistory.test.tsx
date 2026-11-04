@@ -138,14 +138,20 @@ describe("BettingHistory", () => {
       />,
     );
 
+    expect(screen.getByLabelText("Status")).toHaveValue("open");
+
     await user.type(screen.getByLabelText("Bettor"), "buyer");
     await user.selectOptions(screen.getByLabelText("Market"), "awc-r16-natso-crepuscular");
-    await user.selectOptions(screen.getByLabelText("Status"), "open");
+    await user.selectOptions(screen.getByLabelText("Status"), "won");
 
-    const searchParams = new URLSearchParams(window.location.search);
+    let searchParams = new URLSearchParams(window.location.search);
     expect(searchParams.get("view")).toBe("all");
     expect(searchParams.get("bettor")).toBe("buyer");
     expect(searchParams.get("strike")).toBe("awc-r16-natso-crepuscular");
-    expect(searchParams.get("status")).toBe("open");
+    expect(searchParams.get("status")).toBe("won");
+
+    await user.selectOptions(screen.getByLabelText("Status"), "open");
+    searchParams = new URLSearchParams(window.location.search);
+    expect(searchParams.has("status")).toBe(false);
   });
 });

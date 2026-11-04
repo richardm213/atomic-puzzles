@@ -1781,6 +1781,7 @@ export const BettingPage = () => {
           />
         ) : (
           <BettingHistory
+            key={view}
             view={view}
             isAuthenticated={isAuthenticated}
             authLoading={authLoading}

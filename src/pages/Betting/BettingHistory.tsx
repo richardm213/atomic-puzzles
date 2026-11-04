@@ -194,13 +194,32 @@ type BettingHistoryProps = {
 
 const historyStatusFilters = new Set(["all", "open", "won", "lost", "settled", "refunded"]);
 
-const historyFiltersFromSearch = (search: string, defaultStatus = "all") => {
+type HistoryFilters = {
+  bettor: string;
+  market: string;
+  status: string;
+};
+
+const defaultHistoryFilters = (view: BettingHistoryProps["view"]): HistoryFilters => ({
+  bettor: "",
+  market: "all",
+  status: view === "all" ? "open" : "all",
+});
+
+const historyFiltersFromSearch = (
+  view: BettingHistoryProps["view"],
+  search: string,
+): HistoryFilters => {
+  const defaults = defaultHistoryFilters(view);
   const searchParams = new URLSearchParams(search);
-  const requestedStatus = searchParams.get("status") ?? defaultStatus;
+  const requestedStatus = searchParams.get("status");
   return {
-    bettor: searchParams.get("bettor") ?? "",
-    market: searchParams.get("strike") ?? "all",
-    status: historyStatusFilters.has(requestedStatus) ? requestedStatus : "all",
+    bettor: view === "all" ? (searchParams.get("bettor") ?? defaults.bettor) : "",
+    market: searchParams.get("strike") ?? defaults.market,
+    status:
+      requestedStatus && historyStatusFilters.has(requestedStatus)
+        ? requestedStatus
+        : defaults.status,
   };
 };
 
@@ -220,17 +239,9 @@ export const BettingHistory = ({
   myBetsError,
   allBetsError,
 }: BettingHistoryProps) => {
-  const initialFilters = useMemo(
-    () =>
-      historyFiltersFromSearch(
-        typeof window === "undefined" ? "" : window.location.search,
-        view === "all" ? "open" : "all",
-      ),
-    [view],
+  const [filters, setFilters] = useState(() =>
+    historyFiltersFromSearch(view, typeof window === "undefined" ? "" : window.location.search),
   );
-  const [bettorFilter, setBettorFilter] = useState(initialFilters.bettor);
-  const [statusFilter, setStatusFilter] = useState(initialFilters.status);
-  const [marketFilter, setMarketFilter] = useState(initialFilters.market);
   const marketOptions = useMemo(() => {
     const options = new Map<string, string>();
     const stateByMarketId = new Map(
@@ -259,41 +270,22 @@ export const BettingHistory = ({
     () =>
       filterHistoryBets({
         bets: myBets,
-        status: statusFilter,
-        marketId: marketFilter,
+        status: filters.status,
+        marketId: filters.market,
       }),
-    [marketFilter, myBets, statusFilter],
+    [filters.market, filters.status, myBets],
   );
   const visibleAllBets = useMemo(
     () =>
       filterHistoryBets({
         bets: allBets,
-        status: statusFilter,
-        marketId: marketFilter,
-        bettor: bettorFilter,
+        status: filters.status,
+        marketId: filters.market,
+        bettor: filters.bettor,
       }),
-    [allBets, bettorFilter, marketFilter, statusFilter],
+    [allBets, filters.bettor, filters.market, filters.status],
   );
-  const filtersActive = statusFilter !== "all" || marketFilter !== "all";
-
-  useEffect(() => {
-    const syncFiltersFromLocation = () => {
-      const filters = historyFiltersFromSearch(
-        window.location.search,
-        view === "all" ? "open" : "all",
-      );
-      setBettorFilter(filters.bettor);
-      setMarketFilter(filters.market);
-      setStatusFilter(filters.status);
-    };
-    syncFiltersFromLocation();
-    if (view !== "all") return;
-    const syncFiltersFromHistory = () => {
-      syncFiltersFromLocation();
-    };
-    window.addEventListener("popstate", syncFiltersFromHistory);
-    return () => window.removeEventListener("popstate", syncFiltersFromHistory);
-  }, [view]);
+  const filtersActive = filters.status !== "all" || filters.market !== "all";
 
   useEffect(() => {
     if (view !== "all") return;
@@ -302,11 +294,15 @@ export const BettingHistory = ({
       if (value === defaultValue) nextUrl.searchParams.delete(key);
       else nextUrl.searchParams.set(key, value);
     };
-    setOrDelete("bettor", bettorFilter.trim(), "");
-    setOrDelete("strike", marketFilter, "all");
-    setOrDelete("status", statusFilter, "open");
+    setOrDelete("bettor", filters.bettor.trim(), "");
+    setOrDelete("strike", filters.market, "all");
+    setOrDelete("status", filters.status, "open");
     window.history.replaceState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
-  }, [bettorFilter, marketFilter, statusFilter, view]);
+  }, [filters, view]);
+
+  const setFilter = (name: keyof HistoryFilters, value: string) => {
+    setFilters((current) => ({ ...current, [name]: value }));
+  };
 
   let content;
   if (view === "mine" && !isAuthenticated) {
@@ -352,7 +348,7 @@ export const BettingHistory = ({
         markets={markets}
         countryByPlayer={countryByPlayer}
         emptyMessage={
-          bettorFilter.trim() || filtersActive
+          filters.bettor.trim() || filtersActive
             ? "No bets match these filters."
             : "No bets have been placed yet."
         }
@@ -371,14 +367,14 @@ export const BettingHistory = ({
               <input
                 id="all-bets-bettor"
                 type="text"
-                value={bettorFilter}
-                onChange={(event) => setBettorFilter(event.target.value)}
+                value={filters.bettor}
+                onChange={(event) => setFilter("bettor", event.target.value)}
                 placeholder="username"
                 autoComplete="off"
                 maxLength={100}
               />
-              {bettorFilter ? (
-                <button type="button" onClick={() => setBettorFilter("")}>
+              {filters.bettor ? (
+                <button type="button" onClick={() => setFilter("bettor", "")}>
                   Clear
                 </button>
               ) : null}
@@ -387,7 +383,10 @@ export const BettingHistory = ({
         ) : null}
         <label className="betHistoryMarketFilter">
           <span>Market</span>
-          <select value={marketFilter} onChange={(event) => setMarketFilter(event.target.value)}>
+          <select
+            value={filters.market}
+            onChange={(event) => setFilter("market", event.target.value)}
+          >
             <option value="all">All market strikes</option>
             {marketOptions.map((market) => (
               <option key={market.id} value={market.id}>
@@ -398,7 +397,10 @@ export const BettingHistory = ({
         </label>
         <label>
           <span>Status</span>
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <select
+            value={filters.status}
+            onChange={(event) => setFilter("status", event.target.value)}
+          >
             <option value="all">All statuses</option>
             <option value="open">Open</option>
             <option value="won">Won</option>

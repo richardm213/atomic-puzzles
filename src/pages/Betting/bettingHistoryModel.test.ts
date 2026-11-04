@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { TournamentBet } from "../../lib/betting/betting";
 import type {
   PredictionMarketGroup,
   PredictionMarketState,
@@ -104,6 +105,22 @@ const roundOf16State: PredictionMarketState = {
   ],
 };
 
+const tournamentBet = (id: number, marketId: string): TournamentBet => ({
+  id,
+  marketId,
+  username: "buyer",
+  selection: "player",
+  priceCents: 55,
+  stake: 11,
+  fee: 0,
+  totalCost: 11,
+  potentialPayout: 20,
+  payout: 0,
+  status: "open",
+  placedAt: "2026-10-01T00:00:00Z",
+  settledAt: null,
+});
+
 describe("buildBetHistory", () => {
   it("uses the current position quantity, cost basis, and update date", () => {
     expect(
@@ -173,5 +190,26 @@ describe("buildBetHistory", () => {
         predictionMarketTitle: "AWC 2026 Round of 16",
       }),
     ]);
+  });
+
+  it("uses positions as the single source for migrated markets without hiding unrelated bets", () => {
+    const history = buildBetHistory({
+      tournamentBets: [tournamentBet(1, "awc2026-winner"), tournamentBet(2, "other-market")],
+      predictionPositions: [
+        {
+          marketId: "champion-player",
+          username: "buyer",
+          outcome: "yes",
+          quantity: 20,
+          reservedQuantity: 0,
+          averagePriceCents: 55,
+          updatedAt: "2026-10-05T00:00:00Z",
+        },
+      ],
+      predictionMarketGroups: [group],
+      predictionMarketStates: [state],
+    });
+
+    expect(history.map((bet) => bet.marketId)).toEqual(["champion-player", "other-market"]);
   });
 });
