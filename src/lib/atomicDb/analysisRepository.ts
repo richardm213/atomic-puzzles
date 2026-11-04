@@ -16,6 +16,10 @@ type SharedRequest<T> = {
 };
 
 type CacheLookup<T> = { found: true; value: T } | { found: false };
+export type AtomicDbPositionCacheLookup =
+  | { found: true; value: AtomicDbPosition | null; backed: false }
+  | { found: true; value: AtomicDbPosition; backed: true }
+  | { found: false };
 
 class AtomicDbRequestStore<T> {
   private readonly cache = new Map<string, CacheEntry<T>>();
@@ -127,6 +131,7 @@ class AtomicDbRequestStore<T> {
 }
 
 const positions = new AtomicDbRequestStore<AtomicDbPosition | null>(128);
+const backedPositions = new AtomicDbRequestStore<AtomicDbPosition>(128);
 const variationBatches = new AtomicDbRequestStore<AtomicDbPrincipalVariationResult>(64);
 const variationLines = new AtomicDbRequestStore<string[]>(128);
 
@@ -135,8 +140,12 @@ const variationBatchKey = (fen: string, rootMoves: string[], plyCount: number): 
 const variationLineKey = (fen: string, rootMove: string, plyCount: number): string =>
   `${fen}\n${rootMove}\n${plyCount}`;
 
-export const peekAtomicDbPosition = (fen: string): CacheLookup<AtomicDbPosition | null> =>
-  positions.peek(fen);
+export const peekAtomicDbPosition = (fen: string): AtomicDbPositionCacheLookup => {
+  const complete = positions.peek(fen);
+  if (complete.found) return { ...complete, backed: false };
+  const backed = backedPositions.peek(fen);
+  return backed.found ? { ...backed, backed: true } : backed;
+};
 
 export const loadAtomicDbPosition = (
   fen: string,
@@ -171,7 +180,7 @@ export const loadAtomicDbVariations = async (
     variationLines.prime(variationLineKey(fen, rootMove, plyCount), line);
   }
   for (const [positionFen, position] of Object.entries(result.positions)) {
-    positions.prime(positionFen, position);
+    backedPositions.prime(positionFen, position);
   }
   return { lines, positions: result.positions };
 };

@@ -396,6 +396,88 @@ describe("useAtomicDbAnalysis", () => {
     });
   });
 
+  it("shows a backed child position while refreshing its alternate moves", async () => {
+    const parentFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 21 40";
+    const childFen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 40";
+    let resolveChildRefresh: ((response: Response) => void) | undefined;
+    const jsonResponse = (body: unknown) =>
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    const fetchMock = vi.fn().mockImplementation((input: string | URL | Request) => {
+      const url = new URL(String(input), "https://example.test");
+      const requestedFen = url.searchParams.get("fen");
+      const lineMoves = url.searchParams.get("line_moves");
+      if (requestedFen === parentFen && !lineMoves) {
+        return Promise.resolve(
+          jsonResponse({
+            status: "UNKNOWN",
+            best_move: "e2e4",
+            moves: [{ uci: "e2e4", status: "UNKNOWN", score: 80 }],
+          }),
+        );
+      }
+      if (requestedFen === parentFen && lineMoves === "e2e4") {
+        return Promise.resolve(
+          jsonResponse({
+            lines: { e2e4: ["e2e4", "e7e5"] },
+            positions: {
+              [childFen]: {
+                status: "UNKNOWN",
+                best_move: "e7e5",
+                moves: [{ uci: "e7e5", status: "UNKNOWN", score: 70 }],
+              },
+            },
+          }),
+        );
+      }
+      if (requestedFen === childFen && lineMoves === "e7e5") {
+        return Promise.resolve(jsonResponse({ lines: { e7e5: ["e7e5", "g1f3"] }, positions: {} }));
+      }
+      if (requestedFen === childFen && !lineMoves) {
+        return new Promise<Response>((resolve) => {
+          resolveChildRefresh = resolve;
+        });
+      }
+      throw new Error(`Unexpected AtomicDB request: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result, rerender } = renderHook(
+      ({ fen }) => useAtomicDbAnalysis(fen, { debounceMs: 0, lineCount: 1, plyCount: 2 }),
+      { initialProps: { fen: parentFen } },
+    );
+    await waitFor(() => expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5"]));
+
+    rerender({ fen: childFen });
+    await waitFor(() => expect(resolveChildRefresh).toBeTypeOf("function"));
+    expect(result.current.status).toBe("loading");
+    expect(result.current.result?.fen).toBe(childFen);
+    expect(result.current.result?.position?.moves.map((move) => move.uci)).toEqual(["e7e5"]);
+    await waitFor(() => expect(result.current.principalVariations.e7e5).toEqual(["e7e5", "g1f3"]));
+
+    await act(async () => {
+      resolveChildRefresh?.(
+        jsonResponse({
+          status: "UNKNOWN",
+          best_move: "e7e5",
+          moves: [
+            { uci: "e7e5", status: "UNKNOWN", score: 70 },
+            { uci: "c7c5", status: "UNKNOWN", score: 60 },
+          ],
+        }),
+      );
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.result?.position?.moves.map((move) => move.uci)).toEqual([
+      "e7e5",
+      "c7c5",
+    ]);
+    expect(result.current.principalVariations.e7e5).toEqual(["e7e5", "g1f3"]);
+  });
+
   it("requests only uncached lines when the visible line count increases", async () => {
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 10 20";
     const fetchMock = vi.fn().mockImplementation((input: string | URL | Request) => {

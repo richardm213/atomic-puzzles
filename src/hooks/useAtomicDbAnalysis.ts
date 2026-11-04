@@ -134,11 +134,22 @@ export const useAtomicDbAnalysis = (
       });
     };
 
+    const publishRootMoves = (rootMoves: string[]): void => {
+      startTransition(() => {
+        setState((current) => {
+          if (current.requestedFen !== fen) return current;
+          const principalVariations = { ...current.principalVariations };
+          for (const move of rootMoves) principalVariations[move] ??= [move];
+          return { ...current, principalVariations };
+        });
+      });
+    };
+
     const loadLines = (position: AtomicDbPosition | null): void => {
       const rootMoves = position?.moves.slice(0, lineCount).map((move) => move.uci) ?? [];
       if (rootMoves.length === 0) return;
 
-      publishLines(Object.fromEntries(rootMoves.map((move) => [move, [move]])));
+      publishRootMoves(rootMoves);
       if (plyCount === 1) return;
 
       void loadAtomicDbVariations(fen, rootMoves, plyCount, controller.signal)
@@ -152,15 +163,27 @@ export const useAtomicDbAnalysis = (
 
     const publishPosition = (position: AtomicDbPosition | null): void => {
       startTransition(() => {
-        setState({
+        setState((current) => ({
           result: { fen, position },
           requestedFen: fen,
           status: "ready",
           error: "",
-          principalVariations: {},
+          principalVariations: current.requestedFen === fen ? current.principalVariations : {},
           source: "atomicdb",
-        });
+        }));
       });
+      loadLines(position);
+    };
+
+    const publishBackedPosition = (position: AtomicDbPosition): void => {
+      setState((current) => ({
+        result: { fen, position },
+        requestedFen: fen,
+        status: "loading",
+        error: "",
+        principalVariations: current.requestedFen === fen ? current.principalVariations : {},
+        source: "atomicdb",
+      }));
       loadLines(position);
     };
 
@@ -292,11 +315,16 @@ export const useAtomicDbAnalysis = (
       publishPosition(position);
     };
 
+    let showingBackedPosition = false;
     if (!useEngine) {
       const cached = peekAtomicDbPosition(fen);
       if (cached.found) {
-        publishAtomicDbOrFallback(cached.value);
-        return () => controller.abort();
+        if (!cached.backed) {
+          publishAtomicDbOrFallback(cached.value);
+          return () => controller.abort();
+        }
+        showingBackedPosition = true;
+        publishBackedPosition(cached.value);
       }
     }
 
@@ -304,14 +332,16 @@ export const useAtomicDbAnalysis = (
     const shouldDebounce =
       lastRequestAtRef.current !== null && requestedAt - lastRequestAtRef.current < debounceMs;
     lastRequestAtRef.current = requestedAt;
-    setState((current) => ({
-      ...current,
-      requestedFen: fen,
-      status: "loading",
-      error: "",
-      principalVariations: {},
-      source: useEngine ? "engine" : "atomicdb",
-    }));
+    if (!showingBackedPosition) {
+      setState((current) => ({
+        ...current,
+        requestedFen: fen,
+        status: "loading",
+        error: "",
+        principalVariations: {},
+        source: useEngine ? "engine" : "atomicdb",
+      }));
+    }
 
     const requestPosition = async (): Promise<void> => {
       if (useEngine) {
