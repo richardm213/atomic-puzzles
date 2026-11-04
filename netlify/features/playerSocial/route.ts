@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PLAYER_FLAIRS } from "../../../shared/domain/playerSocial";
+import { PLAYER_FLAIRS, type StoredPlayerRating } from "../../../shared/domain/playerSocial";
 import { resolveCanonicalArchiveUsername } from "../../archive/aliases";
 import { queryArchiveResource } from "../../archive/queries";
 import {
@@ -28,9 +28,26 @@ const mutationSchema = z.discriminatedUnion("action", [
 ]);
 
 type ArchiveSummary = { start_ts: number | null; total_games: number };
-type ArchiveRating = { tc?: unknown; rating?: unknown; rd?: unknown };
-
 const PROFILE_REFRESH_MS = 24 * 60 * 60 * 1_000;
+
+const storedRatings = (value: unknown): StoredPlayerRating[] => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((row) => {
+    if (!row || typeof row !== "object") return [];
+    const candidate = row as Record<string, unknown>;
+    const tc = String(candidate.tc ?? "");
+    if (!tc) return [];
+    const rating = candidate.rating === null ? null : Number(candidate.rating);
+    const rd = candidate.rd === null ? null : Number(candidate.rd);
+    return [
+      {
+        tc,
+        rating: Number.isFinite(rating) ? rating : null,
+        rd: Number.isFinite(rd) ? rd : null,
+      },
+    ];
+  });
+};
 
 const archiveDate = (timestamp: number | null): string | null => {
   if (timestamp === null || !Number.isFinite(timestamp)) return null;
@@ -48,16 +65,13 @@ const getPlayerSocial = async (event: FunctionEvent) => {
     ? await resolveCanonicalArchiveUsername(identity.username)
     : null;
   const supabase = createServerSupabase("Player social service");
-  const [profileResult, ratings, countryResult, tourResult, followerResult, followingResult] =
+  const [profileResult, countryResult, tourResult, followerResult, followingResult] =
     await Promise.all([
       supabase
         .from("player_social_profiles")
-        .select("flair,archive_start_date,total_games,updated_at")
+        .select("flair,archive_start_date,total_games,ratings,ratings_snapshot_date,updated_at")
         .eq("username", username)
         .maybeSingle(),
-      queryArchiveResource(new URLSearchParams({ resource: "ratings", username })) as Promise<
-        ArchiveRating[]
-      >,
       supabase
         .from("player_countries")
         .select("country_code")
@@ -123,11 +137,7 @@ const getPlayerSocial = async (event: FunctionEvent) => {
     flair: profileResult.data?.flair ?? null,
     countryCode: String(countryResult.data?.country_code ?? "").toUpperCase(),
     tourRank: Number(tourResult.data?.rank) || null,
-    ratings: ratings.map((row) => ({
-      tc: String(row.tc ?? ""),
-      rating: row.rating === null || row.rating === undefined ? null : Number(row.rating),
-      rd: row.rd === null || row.rd === undefined ? null : Number(row.rd),
-    })),
+    ratings: storedRatings(profileResult.data?.ratings),
     startDate,
     totalGames,
     followerCount: followerResult.count ?? 0,
