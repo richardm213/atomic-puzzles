@@ -35,7 +35,7 @@ const candidateSchema = z.object({
   score: z.number().nullable(),
   point: z.number().nullable(),
   mate: z.number().nullable(),
-  backedPlies: z.number().int().nonnegative(),
+  nodeBackedPlies: z.number().int().nonnegative().nullable().optional(),
   depth: z.number().int().nonnegative().nullable().optional(),
   pv: z.array(z.string()),
 });

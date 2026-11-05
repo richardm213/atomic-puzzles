@@ -86,7 +86,7 @@ describe("completed game analysis preload", () => {
     const cached = peekAtomicDbPosition(FEN);
     expect(cached.found).toBe(true);
     if (!cached.found) return;
-    expect(cached.value?.moves.map((move) => move.backedPlies)).toEqual([0, 0]);
+    expect(cached.value?.moves.map((move) => move.nodeBackedPlies)).toEqual([null, null]);
     expect(cached.value?.moves.map((move) => move.searchDepth)).toEqual([26, 26]);
 
     preloadCompletedGameAnalysis(analysis, 1);

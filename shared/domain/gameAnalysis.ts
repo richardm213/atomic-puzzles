@@ -32,7 +32,7 @@ export type StoredAtomicDbCandidate = {
   score: number | null;
   point: number | null;
   mate: number | null;
-  backedPlies: number;
+  nodeBackedPlies?: number | null | undefined;
   depth?: number | null | undefined;
   pv: string[];
 };
@@ -102,6 +102,10 @@ export const buildGamePositionFens = (initialFen: string, moves: readonly string
 
 const nullableNumber = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
+const nullableNonnegativeInteger = (value: unknown): number | null => {
+  const number = nullableNumber(value);
+  return number === null ? null : Math.max(0, Math.floor(number));
+};
 const nullableString = (value: unknown): string | null =>
   typeof value === "string" && value ? value : null;
 
@@ -154,7 +158,7 @@ export const parseStoredAtomicDbPosition = (
               score: nullableNumber(candidate.score),
               point: nullableNumber(candidate.point),
               mate: nullableNumber(candidate.mate),
-              backedPlies: Math.max(0, Math.floor(nullableNumber(candidate.backed_plies) ?? 0)),
+              nodeBackedPlies: nullableNonnegativeInteger(candidate.node_backed_plies),
               depth: line?.depth ?? null,
               pv: line?.pv ?? [move],
             },

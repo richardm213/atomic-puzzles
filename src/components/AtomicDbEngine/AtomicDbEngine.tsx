@@ -316,10 +316,34 @@ export const AtomicDbEngine = ({
               }
               const moveEvaluation = getAtomicDbMoveEvaluation(move, view.fen);
               const searchDepth = Math.max(0, Math.floor(move.searchDepth ?? 0));
+              const nodeBackedPlies = move.nodeBackedPlies;
+              const nodeBackingLabel =
+                nodeBackedPlies === null
+                  ? null
+                  : `${nodeBackedPlies} ${nodeBackedPlies === 1 ? "ply" : "plies"}`;
+              const showNodeBacking = nodeBackingLabel !== null && move.origin !== "engine";
               const showDepth =
-                searchDepth > 0 && !(move.origin === "engine" && moveEvaluation.type === "mate");
-              const support = showDepth ? `, search depth ${searchDepth}` : "";
-              const depthTitle = showDepth ? `Search depth ${searchDepth}` : undefined;
+                searchDepth > 0 &&
+                !showNodeBacking &&
+                !(move.origin === "engine" && moveEvaluation.type === "mate");
+              const support = [
+                showNodeBacking ? `move position backed ${nodeBackingLabel}` : "",
+                searchDepth > 0 ? `search depth ${searchDepth}` : "",
+              ]
+                .filter(Boolean)
+                .map((label) => `, ${label}`)
+                .join("");
+              const depthTitle = [
+                showNodeBacking ? `Move position backed ${nodeBackingLabel} in AtomicDB` : "",
+                searchDepth > 0 ? `Search depth ${searchDepth}` : "",
+              ]
+                .filter(Boolean)
+                .join(" · ");
+              const depthLabel = showNodeBacking
+                ? nodeBackingLabel
+                : showDepth
+                  ? `depth ${searchDepth}`
+                  : "";
               const evaluation = formatAtomicDbEvaluation(moveEvaluation);
               const displayedLine = lineTokens.map((token) => token.value).join(" ");
               return (
@@ -361,8 +385,8 @@ export const AtomicDbEngine = ({
                       ),
                     )}
                   </span>
-                  <span className="atomicDbEngineDepth" title={depthTitle}>
-                    {showDepth ? `depth ${searchDepth}` : ""}
+                  <span className="atomicDbEngineDepth" title={depthTitle || undefined}>
+                    {depthLabel}
                   </span>
                 </li>
               );

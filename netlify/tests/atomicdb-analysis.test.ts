@@ -11,9 +11,10 @@ describe("atomicdb-analysis function", () => {
         JSON.stringify({
           key: "position-key",
           status: "UNKNOWN",
-          moves: ["g1f3", "g1h3", "e2e3", "d2d4", "e2e4", "b1c3"].map((uci) => ({
+          moves: ["g1f3", "g1h3", "e2e3", "d2d4", "e2e4", "b1c3"].map((uci, index) => ({
             uci,
             score: 1057,
+            node_backed_plies: index === 0 ? 44 : null,
           })),
           analysis: { lines: [{ move: "g1f3", depth: 26, pv: ["g1f3"] }] },
         }),
@@ -37,7 +38,11 @@ describe("atomicdb-analysis function", () => {
     const body = JSON.parse(response.body);
     expect(body.moves).toHaveLength(5);
     expect(body.key).toBe("position-key");
-    expect(body.moves[0]).toMatchObject({ uci: "g1f3", search_depth: 26 });
+    expect(body.moves[0]).toMatchObject({
+      uci: "g1f3",
+      node_backed_plies: 44,
+      search_depth: 26,
+    });
   });
 
   it("rejects missing FENs without making an upstream request", async () => {

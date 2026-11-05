@@ -54,7 +54,7 @@ describe("useAtomicDbBoardAnalysis", () => {
               score: 320,
               point: 300,
               mate: null,
-              backedPlies: 12,
+              nodeBackedPlies: 12,
             },
           ],
         },

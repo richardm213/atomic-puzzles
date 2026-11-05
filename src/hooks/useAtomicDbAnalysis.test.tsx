@@ -94,7 +94,7 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.result?.position?.moves[0]).toMatchObject({
       uci: "e2e4",
       score: 82,
-      backedPlies: 0,
+      nodeBackedPlies: null,
       searchDepth: 18,
     });
     expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5", "g1f3"]);
@@ -212,7 +212,7 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.source).toBe("engine");
     expect(result.current.result?.position?.moves[0]).toMatchObject({
       uci: "h1h4",
-      backedPlies: 0,
+      nodeBackedPlies: null,
       searchDepth: 7,
     });
 

@@ -25,7 +25,7 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
         score: candidate.score,
         point: candidate.point,
         mate: candidate.mate,
-        backedPlies: candidate.backedPlies,
+        nodeBackedPlies: candidate.nodeBackedPlies ?? null,
         searchDepth: candidate.depth ?? null,
         pv: candidate.pv,
       }))
@@ -37,8 +37,8 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
         point: null,
         mate: line.mate,
         // A stored line's depth is the search depth used to produce the game report. It is not
-        // AtomicDB's `backed_plies`.
-        backedPlies: 0,
+        // AtomicDB's `node_backed_plies`.
+        nodeBackedPlies: null,
         searchDepth: line.depth,
         pv: line.pv,
       }));
@@ -54,7 +54,7 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
       score: candidate.score,
       point: candidate.point,
       mate: candidate.mate,
-      backedPlies: candidate.backedPlies,
+      nodeBackedPlies: candidate.nodeBackedPlies,
       searchDepth: candidate.searchDepth,
     });
   }
@@ -71,7 +71,7 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
       score: stored.score,
       point: stored.point,
       mate: null,
-      backedPlies: 0,
+      nodeBackedPlies: null,
     });
     principalVariations[stored.bestMove] = [stored.bestMove];
   }

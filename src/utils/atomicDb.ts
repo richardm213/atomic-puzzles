@@ -11,7 +11,7 @@ type AtomicDbMove = {
   score: number | null;
   point: number | null;
   mate: number | null;
-  backedPlies: number;
+  nodeBackedPlies: number | null;
   searchDepth?: number | null;
 };
 
@@ -62,7 +62,7 @@ type AtomicDbMoveResponse = {
   score?: unknown;
   point?: unknown;
   mate?: unknown;
-  backed_plies?: unknown;
+  node_backed_plies?: unknown;
   search_depth?: unknown;
 };
 
@@ -92,6 +92,11 @@ export const ATOMIC_DB_HOME_URL = "https://belzedar.duckdns.org/atomicdb/";
 const nullableNumber = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 
+const nullableNonnegativeInteger = (value: unknown): number | null => {
+  const number = nullableNumber(value);
+  return number === null ? null : Math.max(0, Math.floor(number));
+};
+
 const nullableString = (value: unknown): string | null =>
   typeof value === "string" && value ? value : null;
 
@@ -114,7 +119,7 @@ const parseMove = (value: unknown): AtomicDbMove | null => {
     score: nullableNumber(move.score),
     point: nullableNumber(move.point),
     mate: nullableNumber(move.mate),
-    backedPlies: Math.max(0, Math.floor(nullableNumber(move.backed_plies) ?? 0)),
+    nodeBackedPlies: nullableNonnegativeInteger(move.node_backed_plies),
     searchDepth: nullableNumber(move.search_depth),
   };
 };
@@ -230,7 +235,7 @@ export const parseAtomicDbResponse = (value: unknown): AtomicDbPosition => {
       score: nullableNumber(response.score),
       point: nullableNumber(response.point),
       mate: null,
-      backedPlies: 0,
+      nodeBackedPlies: null,
       searchDepth: searchDepthByMove.get(bestMove) ?? null,
     });
   }
@@ -285,7 +290,7 @@ const parseAtomicDbPositionPreview = (value: unknown): AtomicDbPosition => {
             score,
             point,
             mate: null,
-            backedPlies: 0,
+            nodeBackedPlies: null,
             searchDepth: null,
           },
         ]

@@ -26,8 +26,15 @@ describe("AtomicDB client", () => {
           point: 541,
           mate: null,
           backed_plies: 48,
+          node_backed_plies: 44,
         },
-        { uci: "g1h3", status: "UNKNOWN", score: 500, backed_plies: 26 },
+        {
+          uci: "g1h3",
+          status: "UNKNOWN",
+          score: 500,
+          backed_plies: 26,
+          node_backed_plies: 0,
+        },
         { uci: "e2e3", status: "UNKNOWN", score: 500 },
         { uci: "not-a-move", score: 9999 },
       ],
@@ -42,9 +49,9 @@ describe("AtomicDB client", () => {
     expect(result.bestMove).toBe("g1f3");
     expect(result.key).toBe("position-key");
     expect(result.moves.map((move) => move.uci)).toEqual(["g1f3", "g1h3", "e2e3"]);
-    expect(result.moves[0]).toMatchObject({ score: 500, backedPlies: 48, searchDepth: 26 });
-    expect(result.moves[1]).toMatchObject({ searchDepth: 25 });
-    expect(result.moves[2]).toMatchObject({ searchDepth: null });
+    expect(result.moves[0]).toMatchObject({ score: 500, nodeBackedPlies: 44, searchDepth: 26 });
+    expect(result.moves[1]).toMatchObject({ nodeBackedPlies: 0, searchDepth: 25 });
+    expect(result.moves[2]).toMatchObject({ nodeBackedPlies: null, searchDepth: null });
   });
 
   it("restores a solved best move omitted from AtomicDB's move list", () => {

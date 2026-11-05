@@ -31,12 +31,19 @@ describe("AtomicDB game analysis classification", () => {
         lines: [{ move: "a1a2", cp: 10, depth: 26, nodes: 10_000_006_934, pv: ["a1a2"] }],
       },
       moves: [
-        { uci: "a1a2", status: "UNKNOWN", score: 80, point: 10, backed_plies: 4 },
-        { uci: "a1b1", status: "UNKNOWN", score: 70, point: 8, backed_plies: 3 },
-        { uci: "a1b2", status: "UNKNOWN", score: 60, point: 6, backed_plies: 2 },
-        { uci: "a1a3", status: "UNKNOWN", score: 50, point: 4, backed_plies: 1 },
-        { uci: "a1b3", status: "UNKNOWN", score: 40, point: 2, backed_plies: 0 },
-        { uci: "a1a4", status: "UNKNOWN", score: 30, point: 0, backed_plies: 0 },
+        {
+          uci: "a1a2",
+          status: "UNKNOWN",
+          score: 80,
+          point: 10,
+          backed_plies: 0,
+          node_backed_plies: 4,
+        },
+        { uci: "a1b1", status: "UNKNOWN", score: 70, point: 8, node_backed_plies: 3 },
+        { uci: "a1b2", status: "UNKNOWN", score: 60, point: 6, node_backed_plies: 2 },
+        { uci: "a1a3", status: "UNKNOWN", score: 50, point: 4, node_backed_plies: 1 },
+        { uci: "a1b3", status: "UNKNOWN", score: 40, point: 2, node_backed_plies: 0 },
+        { uci: "a1a4", status: "UNKNOWN", score: 30, point: 0 },
       ],
     });
 
@@ -46,7 +53,7 @@ describe("AtomicDB game analysis classification", () => {
       move: "a1a2",
       score: 80,
       point: 10,
-      backedPlies: 4,
+      nodeBackedPlies: 4,
       depth: 26,
       pv: ["a1a2"],
     });

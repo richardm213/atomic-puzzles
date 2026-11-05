@@ -143,7 +143,7 @@ describe("AtomicDbEngine", () => {
               score: null,
               point: null,
               mate: 4,
-              backedPlies: 0,
+              nodeBackedPlies: null,
               searchDepth: 22,
             },
             {
@@ -154,7 +154,7 @@ describe("AtomicDbEngine", () => {
               score: 125,
               point: null,
               mate: null,
-              backedPlies: 0,
+              nodeBackedPlies: null,
               searchDepth: 22,
             },
           ],
@@ -177,12 +177,20 @@ describe("AtomicDbEngine", () => {
     expect(screen.getByText("#4").closest("li")).not.toHaveTextContent("depth");
   });
 
-  it("does not present AtomicDB backed plies as search depth", () => {
+  it("presents the move position's backing separately from search depth", () => {
     const position = parseAtomicDbResponse({
       status: "UNKNOWN",
       score: -320,
       best_move: "g1f3",
-      moves: [{ uci: "g1f3", status: "UNKNOWN", score: -320, backed_plies: 22 }],
+      moves: [
+        {
+          uci: "g1f3",
+          status: "UNKNOWN",
+          score: -320,
+          backed_plies: 22,
+          node_backed_plies: 44,
+        },
+      ],
     });
 
     render(
@@ -201,10 +209,14 @@ describe("AtomicDbEngine", () => {
       />,
     );
 
-    expect(screen.getByRole("listitem")).not.toHaveTextContent("depth");
+    expect(screen.getByText("44 plies")).toHaveAttribute(
+      "title",
+      "Move position backed 44 plies in AtomicDB",
+    );
+    expect(screen.getByRole("listitem")).not.toHaveTextContent("backed");
     expect(screen.getByRole("listitem")).toHaveAttribute(
       "aria-label",
-      "Evaluation -3.2, line 1. Nf3",
+      "Evaluation -3.2, move position backed 44 plies, line 1. Nf3",
     );
   });
 
