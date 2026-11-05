@@ -47,7 +47,7 @@ describe("AnalysisMoveTree", () => {
     expect(container.querySelector(".analysisTree")).toHaveClass("nonInline");
   });
 
-  it("opens the annotation menu from a move context menu", () => {
+  it("opens the annotation menu from a move click", () => {
     const onAnnotate = vi.fn();
     render(
       <AnalysisMoveTree
@@ -60,9 +60,27 @@ describe("AnalysisMoveTree", () => {
       />,
     );
 
-    fireEvent.contextMenu(screen.getAllByRole("button", { name: "1. Nf3" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "1. Nf3" })[0]!);
     fireEvent.click(screen.getByRole("menuitemradio", { name: "? Mistake" }));
     expect(onAnnotate).toHaveBeenCalledWith(0, 0, "?");
+  });
+
+  it("offers deletion when the caller supports it", () => {
+    const onDelete = vi.fn();
+    render(
+      <AnalysisMoveTree
+        lines={lines}
+        moves={["Nf3"]}
+        currentPly={1}
+        onSelect={vi.fn()}
+        onCycleOptions={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "1. Nf3" })[0]!);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete from here" }));
+    expect(onDelete).toHaveBeenCalledWith(0, 0);
   });
 
   it("shows computer annotations only on the game mainline", () => {

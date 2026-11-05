@@ -1,8 +1,14 @@
 import "../PuzzleSubmission/PuzzleSubmission.css";
 
-import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheck,
+  faClockRotateLeft,
+  faRotateLeft,
+  faRotateRight,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
@@ -21,15 +27,11 @@ import {
 import type { PuzzleQueueRow, PuzzleReviewQueueRow } from "../../lib/supabase/types";
 import { getErrorMessage } from "../../utils/errors";
 import { normalizeUsername } from "../../utils/playerNames";
-import { PuzzleAnalysisInstructions } from "../PuzzleSubmission/PuzzleAnalysisInstructions";
 import { PuzzleEditor } from "../PuzzleSubmission/PuzzleEditor";
 
 const REVIEWER = "seaside_tiramisu";
-const REVIEW_STEPS = [
-  "Copy and paste the PGN into the Atomic analysis board",
-  "Verify every solution line is correct and no lines are missing",
-  "Check that decent moves that are not as good as the solution are marked with ? (for example Nf3?)",
-];
+const HISTORY_LIMIT = 5;
+const HISTORY_GROUP_DELAY_MS = 700;
 
 const queueRowValue = (row: PuzzleQueueRow): PuzzleSubmissionValue => ({
   fen: row.fen,
@@ -54,6 +56,14 @@ export const PuzzleReviewPage = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [editorRevision, setEditorRevision] = useState(0);
+  const [valueHistory, setValueHistory] = useState<{
+    past: PuzzleSubmissionValue[];
+    future: PuzzleSubmissionValue[];
+  }>({ past: [], future: [] });
+  const valueRef = useRef(value);
+  const originalValueRef = useRef(value);
+  const historyGroupTimerRef = useRef<number | null>(null);
   const isReviewer = normalizeUsername(user?.username) === REVIEWER;
 
   useEffect(() => {
@@ -67,7 +77,11 @@ export const PuzzleReviewPage = () => {
         setQueue(rows);
         setSelectedId(first?.id ?? null);
         if (first) {
-          setValue(queueRowValue(first));
+          const firstValue = queueRowValue(first);
+          valueRef.current = firstValue;
+          originalValueRef.current = firstValue;
+          setValue(firstValue);
+          setValueHistory({ past: [], future: [] });
           setPuzzleIdInput(String(first.next_puzzle_id));
           setAuthorInput(first.submitted_by);
         }
@@ -83,11 +97,89 @@ export const PuzzleReviewPage = () => {
 
     return () => {
       cancelled = true;
+      if (historyGroupTimerRef.current !== null) {
+        window.clearTimeout(historyGroupTimerRef.current);
+      }
     };
   }, []);
 
+  const clearHistoryGroup = (): void => {
+    if (historyGroupTimerRef.current !== null) {
+      window.clearTimeout(historyGroupTimerRef.current);
+      historyGroupTimerRef.current = null;
+    }
+  };
+
+  const replaceValue = (nextValue: PuzzleSubmissionValue): void => {
+    clearHistoryGroup();
+    valueRef.current = nextValue;
+    setValue(nextValue);
+  };
+
+  const resetValueHistory = (nextValue: PuzzleSubmissionValue): void => {
+    replaceValue(nextValue);
+    originalValueRef.current = nextValue;
+    setValueHistory({ past: [], future: [] });
+  };
+
+  const changeValue = (nextValue: PuzzleSubmissionValue): void => {
+    const currentValue = valueRef.current;
+    if (JSON.stringify(currentValue) === JSON.stringify(nextValue)) return;
+
+    if (historyGroupTimerRef.current === null) {
+      setValueHistory((current) => ({
+        past: [...current.past, currentValue].slice(-HISTORY_LIMIT),
+        future: [],
+      }));
+    }
+    valueRef.current = nextValue;
+    setValue(nextValue);
+    if (historyGroupTimerRef.current !== null) {
+      window.clearTimeout(historyGroupTimerRef.current);
+    }
+    historyGroupTimerRef.current = window.setTimeout(() => {
+      historyGroupTimerRef.current = null;
+    }, HISTORY_GROUP_DELAY_MS);
+  };
+
+  const undoValue = (): void => {
+    const previous = valueHistory.past.at(-1);
+    if (!previous) return;
+    const currentValue = valueRef.current;
+    replaceValue(previous);
+    setEditorRevision((current) => current + 1);
+    setValueHistory({
+      past: valueHistory.past.slice(0, -1),
+      future: [currentValue, ...valueHistory.future].slice(0, HISTORY_LIMIT),
+    });
+  };
+
+  const redoValue = (): void => {
+    const next = valueHistory.future[0];
+    if (!next) return;
+    const currentValue = valueRef.current;
+    replaceValue(next);
+    setEditorRevision((current) => current + 1);
+    setValueHistory({
+      past: [...valueHistory.past, currentValue].slice(-HISTORY_LIMIT),
+      future: valueHistory.future.slice(1),
+    });
+  };
+
+  const resetValue = (): void => {
+    const originalValue = originalValueRef.current;
+    const currentValue = valueRef.current;
+    if (JSON.stringify(currentValue) === JSON.stringify(originalValue)) return;
+    replaceValue(originalValue);
+    setEditorRevision((current) => current + 1);
+    setValueHistory({
+      past: [...valueHistory.past, currentValue].slice(-HISTORY_LIMIT),
+      future: [],
+    });
+  };
+
   const selectQueuedPuzzle = (row: PuzzleReviewQueueRow): void => {
-    setValue(queueRowValue(row));
+    resetValueHistory(queueRowValue(row));
     setAuthorInput(row.submitted_by);
     setComplexityBonus(true);
     setExplanationBonus(false);
@@ -106,7 +198,7 @@ export const PuzzleReviewPage = () => {
         row.id === saved.id ? { ...saved, next_puzzle_id: row.next_puzzle_id } : row,
       ),
     );
-    setValue(queueRowValue(saved));
+    replaceValue(queueRowValue(saved));
     setAuthorInput(saved.submitted_by);
   };
 
@@ -185,13 +277,6 @@ export const PuzzleReviewPage = () => {
   return (
     <section className="puzzleQueuePage">
       <Seo title="Puzzle review queue" description="Review submitted atomic chess puzzles." />
-      <PuzzleAnalysisInstructions
-        aria-label="Review checklist"
-        title="Review each solution on Lichess"
-        review
-        steps={REVIEW_STEPS}
-      />
-
       <div className="puzzleReviewLayout">
         <aside className="puzzleQueueList" aria-label="Pending submissions">
           {queue.map((row) => (
@@ -215,46 +300,99 @@ export const PuzzleReviewPage = () => {
               <div className="puzzleReviewMeta">
                 <span>{new Date(selected.created_at).toLocaleString()}</span>
               </div>
-              {isReviewer ? (
-                <div className="puzzleReviewFields">
-                  <label className="puzzleReviewField">
-                    <span>Author</span>
-                    <input
-                      type="text"
-                      value={authorInput}
-                      disabled={saving}
-                      onChange={(event) => setAuthorInput(event.target.value)}
-                    />
-                  </label>
-                  <label className="puzzleReviewField">
-                    <span>Puzzle ID</span>
-                    <input
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={puzzleIdInput}
-                      disabled={saving}
-                      onChange={(event) => setPuzzleIdInput(event.target.value)}
-                    />
-                  </label>
-                </div>
-              ) : (
-                <div className="puzzleReviewMeta">
-                  <span>Author: {selected.submitted_by}</span>
-                  <span>Puzzle ID: {selected.next_puzzle_id}</span>
-                </div>
-              )}
               <PuzzleEditor
                 value={value}
-                onChange={setValue}
-                resetKey={selected.id}
-                showCopyPgn
+                onChange={changeValue}
+                resetKey={`${selected.id}-${editorRevision}`}
                 allowSolutionEditing
                 readOnly={!isReviewer}
+                showAnalysisEngine
+                showExplanation={false}
+                showSolutionPgnField={false}
+                boardFooter={
+                  <>
+                    <label className="puzzleReviewBoardExplanation">
+                      <span>Explanation</span>
+                      <textarea
+                        value={value.explanation}
+                        rows={5}
+                        spellCheck
+                        readOnly={!isReviewer}
+                        onChange={(event) =>
+                          changeValue({ ...value, explanation: event.target.value })
+                        }
+                      />
+                    </label>
+                    {isReviewer ? (
+                      <div className="puzzleReviewHistory" aria-label="Edit history">
+                        <button
+                          type="button"
+                          aria-label="Undo"
+                          title="Undo"
+                          disabled={valueHistory.past.length === 0}
+                          onClick={undoValue}
+                        >
+                          <FontAwesomeIcon icon={faRotateLeft} aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Redo"
+                          title="Redo"
+                          disabled={valueHistory.future.length === 0}
+                          onClick={redoValue}
+                        >
+                          <FontAwesomeIcon icon={faRotateRight} aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          className="reset"
+                          disabled={
+                            JSON.stringify(value) === JSON.stringify(originalValueRef.current)
+                          }
+                          onClick={resetValue}
+                        >
+                          <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                          Reset
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
+                }
+                fieldsBeforeEvent={
+                  isReviewer ? (
+                    <div className="puzzleReviewFields">
+                      <label className="puzzleReviewField">
+                        <span>Author</span>
+                        <input
+                          type="text"
+                          value={authorInput}
+                          disabled={saving}
+                          onChange={(event) => setAuthorInput(event.target.value)}
+                        />
+                      </label>
+                      <label className="puzzleReviewField">
+                        <span>Puzzle ID</span>
+                        <input
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={puzzleIdInput}
+                          disabled={saving}
+                          onChange={(event) => setPuzzleIdInput(event.target.value)}
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="puzzleReviewMeta puzzleReviewFieldMeta">
+                      <span>Author: {selected.submitted_by}</span>
+                      <span>Puzzle ID: {selected.next_puzzle_id}</span>
+                    </div>
+                  )
+                }
               />
               {error ? <p className="queueMessage error">{error}</p> : null}
               {isReviewer ? (
-                <>
+                <div className="puzzleReviewDecisionRow">
                   <fieldset className="puzzleReviewBonuses" disabled={saving}>
                     <legend>Bonuses beyond the +5 base reward</legend>
                     <div className="puzzleReviewBonusOptions">
@@ -299,7 +437,7 @@ export const PuzzleReviewPage = () => {
                       {saving ? "Working…" : "Approve"}
                     </button>
                   </div>
-                </>
+                </div>
               ) : null}
             </>
           ) : null}

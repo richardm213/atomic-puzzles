@@ -641,9 +641,13 @@
 
 .puzzleReviewLayout {
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
+  grid-template-columns: 168px minmax(0, 1fr);
   align-items: start;
-  gap: 14px;
+  gap: var(--space-4);
+}
+
+.puzzleQueuePage:has(.puzzleReviewLayout) {
+  width: min(1360px, 100%);
 }
 
 .puzzleQueueList {
@@ -685,10 +689,47 @@
 .puzzleReviewEditor .puzzleEditor {
   border: 0;
   padding: 0;
+  grid-template-columns: minmax(320px, 400px) minmax(420px, 1fr);
+  gap: var(--space-5);
   box-shadow: none;
   background: transparent;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+}
+
+.puzzleReviewEditor .puzzleEditorBoard {
+  width: 100%;
+  max-width: 400px;
+}
+
+.puzzleReviewAnalysisPanel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 82%, transparent);
+  container-type: inline-size;
+}
+
+.puzzleReviewAnalysisPanel .analysisEngineBlock {
+  min-height: 116px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.puzzleReviewMovePanel {
+  min-height: 88px;
+  max-height: 240px;
+  overflow: auto;
+  scrollbar-color: color-mix(in srgb, var(--color-muted) 58%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+.puzzleReviewMovePanel > p {
+  min-height: 88px;
+  margin: 0;
+  padding: var(--space-3);
+  color: var(--color-muted);
+  font-size: 12px;
 }
 
 .puzzleReviewMeta {
@@ -699,17 +740,99 @@
 }
 
 .puzzleReviewFields {
-  margin: 0 0 14px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
 .puzzleReviewField {
-  width: min(180px, 100%);
+  min-width: 0;
   display: grid;
   gap: 6px;
+}
+
+.puzzleEditorBoardFooter {
+  margin-top: var(--space-3);
+}
+
+.puzzleReviewBoardExplanation {
+  display: grid;
+  gap: 7px;
+}
+
+.puzzleReviewBoardExplanation > span {
+  color: var(--color-heading);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.puzzleReviewBoardExplanation textarea {
+  width: 100%;
+  min-height: 110px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  font: 13px/1.45 var(--font-mono, monospace);
+  resize: vertical;
+}
+
+.puzzleReviewHistory {
+  margin-top: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.puzzleReviewHistory button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  font-weight: 650;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.puzzleReviewHistory button:hover:not(:disabled) {
+  border-color: var(--color-border);
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+}
+
+.puzzleReviewHistory button:active:not(:disabled) {
+  background: var(--color-surface-inset);
+}
+
+.puzzleReviewHistory button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.puzzleReviewHistory button.reset {
+  width: auto;
+  margin-left: var(--space-1);
+  padding: 0 var(--space-2);
+  border-left-color: var(--color-border);
+  border-radius: 0 6px 6px 0;
+}
+
+.puzzleReviewFieldMeta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
 }
 
 .puzzleReviewField span {
@@ -730,12 +853,22 @@
 }
 
 .puzzleReviewActions {
+  flex: 0 0 auto;
   justify-content: flex-end;
-  margin-top: 14px;
+  margin: 0;
+}
+
+.puzzleReviewDecisionRow {
+  margin-top: var(--space-4);
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  gap: var(--space-4);
 }
 
 .puzzleReviewBonuses {
-  margin: var(--space-4) 0 0;
+  width: min(520px, 100%);
+  margin: 0;
   padding: var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
@@ -822,6 +955,8 @@
 .puzzleAnalysisButton:focus-visible,
 .puzzleEditorFields textarea:focus-visible,
 .puzzleEditorFields input:focus-visible,
+.puzzleReviewBoardExplanation textarea:focus-visible,
+.puzzleReviewHistory button:focus-visible,
 .puzzleReviewField input:focus-visible,
 .puzzleReviewBonusOptions input:focus-visible,
 .puzzleQueueList button:focus-visible {
@@ -840,6 +975,10 @@
     margin: 0 auto;
   }
 
+  .puzzleReviewEditor .puzzleEditorBoard {
+    width: min(100%, 400px);
+  }
+
   .puzzleQueueList {
     grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
   }
@@ -851,6 +990,10 @@
 
   .puzzlePgnInstructions ol {
     flex-direction: column;
+  }
+
+  .puzzleReviewDecisionRow {
+    flex-wrap: wrap;
   }
 }
 
@@ -865,5 +1008,13 @@
 
   .puzzleReviewBonusOptions {
     display: grid;
+  }
+
+  .puzzleReviewFields {
+    grid-template-columns: 1fr;
+  }
+
+  .puzzleReviewBonuses {
+    width: 100%;
   }
 }

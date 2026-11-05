@@ -727,6 +727,19 @@ export const PracticePage = () => {
     [clearAutoMoveState, currentPly, queueNavigation],
   );
 
+  const annotateMove = useCallback(
+    (lineIndex: number | undefined, moveIndex: number, annotation: string): void => {
+      queueNavigation({
+        type: "annotate",
+        source: lineIndex === undefined ? "history" : "custom",
+        ...(lineIndex === undefined ? {} : { line: lineIndex }),
+        ply: moveIndex + 1,
+        annotation,
+      });
+    },
+    [queueNavigation],
+  );
+
   const handleBoardStateChange = useCallback(
     (nextState: ChessboardState): void => {
       if (
@@ -1411,6 +1424,7 @@ export const PracticePage = () => {
                 onNavigate={navigateToPly}
                 onSelectVariation={navigateToCustomMove}
                 onCycleOptions={requestNavigation}
+                onAnnotate={annotateMove}
               />
             </div>
           </section>

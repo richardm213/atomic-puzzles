@@ -53,6 +53,7 @@ export const AnalysisMoveTree = ({
   onSelect,
   onCycleOptions,
   onAnnotate,
+  onDelete,
   assessments = [],
 }: {
   lines: string[][];
@@ -63,6 +64,7 @@ export const AnalysisMoveTree = ({
   onSelect: (lineIndex: number, moveIndex: number) => void;
   onCycleOptions: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
   onAnnotate?: ((lineIndex: number, moveIndex: number, annotation: string) => void) | undefined;
+  onDelete?: ((lineIndex: number, moveIndex: number) => void) | undefined;
   assessments?: GameMoveAssessment[] | undefined;
 }) => {
   const [annotationTarget, setAnnotationTarget] = useState<{
@@ -102,9 +104,19 @@ export const AnalysisMoveTree = ({
         aria-current={
           node.lineIndexes.has(activeLine) && currentPly === ply + 1 ? "step" : undefined
         }
-        onClick={() => onSelect(targetLine, ply)}
+        onClick={(event) => {
+          onSelect(targetLine, ply);
+          if (onAnnotate || onDelete) {
+            setAnnotationTarget({
+              lineIndex: targetLine,
+              moveIndex: ply,
+              current: splitSolutionMove(node.move).annotation,
+              position: annotationMenuPosition(event),
+            });
+          }
+        }}
         onContextMenu={
-          onAnnotate
+          onAnnotate || onDelete
             ? (event) => {
                 event.preventDefault();
                 setAnnotationTarget({
@@ -116,7 +128,7 @@ export const AnalysisMoveTree = ({
               }
             : undefined
         }
-        title={onAnnotate ? "Right-click to annotate" : undefined}
+        title={onAnnotate || onDelete ? "Click to edit move" : undefined}
       >
         {movePrefix(ply, forceMoveNumber)}
         {node.move}
@@ -213,15 +225,23 @@ export const AnalysisMoveTree = ({
       >
         {content}
       </div>
-      {annotationTarget && onAnnotate ? (
+      {annotationTarget && (onAnnotate || onDelete) ? (
         <MoveAnnotationMenu
           position={annotationTarget.position}
           current={annotationTarget.current}
           onClose={closeAnnotationMenu}
           onSelect={(annotation) => {
-            onAnnotate(annotationTarget.lineIndex, annotationTarget.moveIndex, annotation);
+            onAnnotate?.(annotationTarget.lineIndex, annotationTarget.moveIndex, annotation);
             closeAnnotationMenu();
           }}
+          onDelete={
+            onDelete
+              ? () => {
+                  onDelete(annotationTarget.lineIndex, annotationTarget.moveIndex);
+                  closeAnnotationMenu();
+                }
+              : undefined
+          }
         />
       ) : null}
     </>

@@ -1,6 +1,7 @@
 import "./MoveAnnotationMenu.css";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export const MOVE_ANNOTATIONS = ["", "!", "?", "!!", "??", "!?", "?!"] as const;
 
@@ -14,17 +15,16 @@ const ANNOTATION_LABELS: Record<(typeof MOVE_ANNOTATIONS)[number], string> = {
   "?!": "Dubious move",
 };
 
-export type AnnotationMenuPosition = { x: number; y: number };
+export type AnnotationMenuPosition = { left: number; top: number; bottom: number };
 
 export const annotationMenuPosition = (
   event: React.MouseEvent<HTMLButtonElement>,
 ): AnnotationMenuPosition => {
   const rect = event.currentTarget.getBoundingClientRect();
-  const x = event.clientX || rect.left;
-  const y = event.clientY || rect.bottom;
   return {
-    x: Math.max(8, Math.min(x, window.innerWidth - 220)),
-    y: Math.max(8, Math.min(y, window.innerHeight - 176)),
+    left: rect.left,
+    top: rect.top,
+    bottom: rect.bottom,
   };
 };
 
@@ -32,14 +32,35 @@ export const MoveAnnotationMenu = ({
   position,
   current,
   onSelect,
+  onDelete,
   onClose,
 }: {
   position: AnnotationMenuPosition;
   current: string;
   onSelect: (annotation: string) => void;
+  onDelete?: (() => void) | undefined;
   onClose: () => void;
 }) => {
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const [coordinates, setCoordinates] = useState({ left: position.left, top: position.bottom + 6 });
+
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    if (!menu) return;
+    const gutter = 8;
+    const width = menu.offsetWidth;
+    const height = menu.offsetHeight;
+    const fitsBelow = position.bottom + 6 + height <= window.innerHeight - gutter;
+    setCoordinates({
+      left: Math.max(gutter, Math.min(position.left, window.innerWidth - width - gutter)),
+      top: fitsBelow
+        ? position.bottom + 6
+        : Math.max(
+            gutter,
+            Math.min(position.top - height - 6, window.innerHeight - height - gutter),
+          ),
+    });
+  }, [position]);
 
   useEffect(() => {
     menuRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
@@ -57,13 +78,13 @@ export const MoveAnnotationMenu = ({
     };
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
       ref={menuRef}
       className="moveAnnotationMenu"
       role="menu"
       aria-label="Move annotation"
-      style={{ left: position.x, top: position.y }}
+      style={coordinates}
     >
       {MOVE_ANNOTATIONS.map((annotation) => (
         <button
@@ -79,6 +100,13 @@ export const MoveAnnotationMenu = ({
           {ANNOTATION_LABELS[annotation]}
         </button>
       ))}
-    </div>
+      {onDelete ? (
+        <button type="button" role="menuitem" className="danger" onClick={onDelete}>
+          <span aria-hidden="true">×</span>
+          Delete from here
+        </button>
+      ) : null}
+    </div>,
+    document.body,
   );
 };

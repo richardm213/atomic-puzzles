@@ -73,7 +73,16 @@ export const PlayedMoves = ({
                 type="button"
                 className={`${currentPly === pair.whitePly ? "active" : ""} ${visibleAssessment(pair.whitePly)?.classification ?? ""}`}
                 aria-current={currentPly === pair.whitePly ? "step" : undefined}
-                onClick={() => onNavigate(pair.whitePly)}
+                onClick={(event) => {
+                  onNavigate(pair.whitePly);
+                  if (onAnnotate) {
+                    setAnnotationTarget({
+                      moveIndex: pair.whitePly - 1,
+                      current: splitSolutionMove(pair.white).annotation,
+                      position: annotationMenuPosition(event),
+                    });
+                  }
+                }}
                 onContextMenu={
                   onAnnotate
                     ? (event) => {
@@ -86,7 +95,7 @@ export const PlayedMoves = ({
                       }
                     : undefined
                 }
-                title={onAnnotate ? "Right-click to annotate" : undefined}
+                title={onAnnotate ? "Click to edit move" : undefined}
               >
                 <span>{pair.white}</span>
                 {visibleAssessment(pair.whitePly) ? (
@@ -104,7 +113,16 @@ export const PlayedMoves = ({
                 type="button"
                 className={`${currentPly === pair.blackPly ? "active" : ""} ${visibleAssessment(pair.blackPly)?.classification ?? ""}`}
                 aria-current={currentPly === pair.blackPly ? "step" : undefined}
-                onClick={() => onNavigate(pair.blackPly)}
+                onClick={(event) => {
+                  onNavigate(pair.blackPly);
+                  if (onAnnotate) {
+                    setAnnotationTarget({
+                      moveIndex: pair.blackPly - 1,
+                      current: splitSolutionMove(pair.black).annotation,
+                      position: annotationMenuPosition(event),
+                    });
+                  }
+                }}
                 onContextMenu={
                   onAnnotate
                     ? (event) => {
@@ -117,7 +135,7 @@ export const PlayedMoves = ({
                       }
                     : undefined
                 }
-                title={onAnnotate ? "Right-click to annotate" : undefined}
+                title={onAnnotate ? "Click to edit move" : undefined}
               >
                 <span>{pair.black}</span>
                 {visibleAssessment(pair.blackPly) ? (
