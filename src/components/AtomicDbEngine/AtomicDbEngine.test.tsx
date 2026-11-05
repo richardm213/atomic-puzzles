@@ -175,6 +175,33 @@ describe("AtomicDbEngine", () => {
     expect(screen.getByText("#4").closest("li")).not.toHaveTextContent("depth");
   });
 
+  it("keeps an analyzed game's stored search depth visible before a refresh", () => {
+    const position = parseAtomicDbResponse({
+      status: "UNKNOWN",
+      score: 470,
+      best_move: "g1f3",
+      moves: [{ uci: "g1f3", status: "UNKNOWN", score: 450, backed_plies: 0 }],
+      analysis: { lines: [{ move: "g1f3", cp: 450, depth: 26, pv: ["g1f3"] }] },
+    });
+
+    render(
+      <AtomicDbEngine
+        fen={STARTING_FEN}
+        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: false }}
+        analysis={{
+          status: "ready",
+          error: "",
+          result: { fen: STARTING_FEN, position },
+          principalVariations: { g1f3: ["g1f3"] },
+        }}
+        onPlayLine={vi.fn()}
+        onHoverMove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("depth 26")).toHaveAttribute("title", "Search depth 26");
+  });
+
   it("keeps the settled evaluation and bar position while the next evaluation loads", () => {
     const position = parseAtomicDbResponse({
       status: "UNKNOWN",

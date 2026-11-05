@@ -13,15 +13,43 @@ export const isValidAtomicDbFen = (value: unknown): value is string =>
   value.length <= MAX_ATOMIC_DB_FEN_LENGTH &&
   value.trim().split(/\s+/).length >= 4;
 
-export const trimAtomicDbPosition = (position: AtomicDbUpstreamPosition) => ({
-  key: position.key,
-  status: position.status,
-  closure: position.closure,
-  score: position.score,
-  point: position.point,
-  best_move: position.best_move,
-  moves: position.moves.slice(0, 5),
-});
+export const trimAtomicDbPosition = (position: AtomicDbUpstreamPosition) => {
+  const analysis =
+    position.analysis && typeof position.analysis === "object"
+      ? (position.analysis as { lines?: unknown })
+      : null;
+  const depthByMove = new Map<string, number>();
+  if (Array.isArray(analysis?.lines)) {
+    for (const value of analysis.lines) {
+      if (!value || typeof value !== "object") continue;
+      const line = value as { move?: unknown; depth?: unknown; pv?: unknown };
+      const move =
+        typeof line.move === "string"
+          ? line.move
+          : Array.isArray(line.pv) && typeof line.pv[0] === "string"
+            ? line.pv[0]
+            : "";
+      if (ATOMIC_DB_UCI_PATTERN.test(move) && typeof line.depth === "number") {
+        depthByMove.set(move, Math.max(0, Math.floor(line.depth)));
+      }
+    }
+  }
+  return {
+    key: position.key,
+    status: position.status,
+    closure: position.closure,
+    score: position.score,
+    point: position.point,
+    best_move: position.best_move,
+    moves: position.moves.slice(0, 5).map((value) => {
+      if (!value || typeof value !== "object") return value;
+      const move = value as Record<string, unknown>;
+      const uci = typeof move.uci === "string" ? move.uci : "";
+      const existingDepth = typeof move.search_depth === "number" ? move.search_depth : null;
+      return { ...move, search_depth: depthByMove.get(uci) ?? existingDepth };
+    }),
+  };
+};
 
 export const createAtomicDbQuery = (signal: AbortSignal) => {
   const requests = new Map<string, Promise<AtomicDbUpstreamPosition | null>>();

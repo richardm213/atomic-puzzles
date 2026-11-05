@@ -27,7 +27,7 @@ describe("AtomicDB game analysis classification", () => {
       analysis: {
         budget_nodes: null,
         nodes: 12_000_006_934,
-        lines: [{ move: "a1a2", cp: 10, nodes: 10_000_006_934, pv: ["a1a2"] }],
+        lines: [{ move: "a1a2", cp: 10, depth: 26, nodes: 10_000_006_934, pv: ["a1a2"] }],
       },
       moves: [
         { uci: "a1a2", status: "UNKNOWN", score: 80, point: 10, backed_plies: 4 },
@@ -46,6 +46,7 @@ describe("AtomicDB game analysis classification", () => {
       score: 80,
       point: 10,
       backedPlies: 4,
+      depth: 26,
       pv: ["a1a2"],
     });
   });

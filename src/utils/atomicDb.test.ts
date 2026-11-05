@@ -31,12 +31,20 @@ describe("AtomicDB client", () => {
         { uci: "e2e3", status: "UNKNOWN", score: 500 },
         { uci: "not-a-move", score: 9999 },
       ],
+      analysis: {
+        lines: [
+          { move: "g1f3", depth: 26, pv: ["g1f3"] },
+          { move: "g1h3", depth: 25, pv: ["g1h3"] },
+        ],
+      },
     });
 
     expect(result.bestMove).toBe("g1f3");
     expect(result.key).toBe("position-key");
     expect(result.moves.map((move) => move.uci)).toEqual(["g1f3", "g1h3", "e2e3"]);
-    expect(result.moves[0]).toMatchObject({ score: 500, backedPlies: 48 });
+    expect(result.moves[0]).toMatchObject({ score: 500, backedPlies: 48, searchDepth: 26 });
+    expect(result.moves[1]).toMatchObject({ searchDepth: 25 });
+    expect(result.moves[2]).toMatchObject({ searchDepth: null });
   });
 
   it("restores a solved best move omitted from AtomicDB's move list", () => {

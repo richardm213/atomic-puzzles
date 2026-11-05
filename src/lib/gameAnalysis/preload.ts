@@ -26,6 +26,7 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
         point: candidate.point,
         mate: candidate.mate,
         backedPlies: candidate.backedPlies,
+        searchDepth: candidate.depth ?? null,
         pv: candidate.pv,
       }))
     : stored.lines.map((line) => ({
@@ -38,6 +39,7 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
         // A stored line's depth is the search depth used to produce the game report. It is not
         // AtomicDB's `backed_plies`.
         backedPlies: 0,
+        searchDepth: line.depth,
         pv: line.pv,
       }));
   for (const candidate of storedMoves) {
@@ -53,6 +55,7 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
       point: candidate.point,
       mate: candidate.mate,
       backedPlies: candidate.backedPlies,
+      searchDepth: candidate.searchDepth,
     });
   }
 

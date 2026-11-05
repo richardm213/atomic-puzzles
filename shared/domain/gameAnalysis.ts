@@ -33,6 +33,7 @@ export type StoredAtomicDbCandidate = {
   point: number | null;
   mate: number | null;
   backedPlies: number;
+  depth?: number | null | undefined;
   pv: string[];
 };
 
@@ -144,6 +145,7 @@ export const parseStoredAtomicDbPosition = (
           if (!move || !/^[a-h][1-8][a-h][1-8][nbrq]?$/.test(move) || candidate.floor === true) {
             return [];
           }
+          const line = lineByMove.get(move);
           return [
             {
               move,
@@ -153,7 +155,8 @@ export const parseStoredAtomicDbPosition = (
               point: nullableNumber(candidate.point),
               mate: nullableNumber(candidate.mate),
               backedPlies: Math.max(0, Math.floor(nullableNumber(candidate.backed_plies) ?? 0)),
-              pv: lineByMove.get(move)?.pv ?? [move],
+              depth: line?.depth ?? null,
+              pv: line?.pv ?? [move],
             },
           ];
         })

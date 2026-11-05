@@ -35,6 +35,7 @@ const candidateSchema = z.object({
   point: z.number().nullable(),
   mate: z.number().nullable(),
   backedPlies: z.number().int().nonnegative(),
+  depth: z.number().int().nonnegative().nullable().optional(),
   pv: z.array(z.string()),
 });
 
@@ -76,7 +77,21 @@ const summarySchema = z
     blackCounts: countsSchema,
   })
   .transform((summary) => {
-    const evaluations = evaluationsForPositions(summary.positions);
+    const positions = summary.positions.map((position) => {
+      const lineDepths = new Map(
+        position.lines.flatMap((line) =>
+          line.move && line.depth !== null ? ([[line.move, line.depth]] as const) : [],
+        ),
+      );
+      return {
+        ...position,
+        candidates: position.candidates?.map((candidate) => ({
+          ...candidate,
+          depth: candidate.depth ?? lineDepths.get(candidate.move) ?? null,
+        })),
+      };
+    });
+    const evaluations = evaluationsForPositions(positions);
     const normalizeCounts = (counts: typeof summary.whiteCounts) => ({
       ...counts,
       excellent: 0,
@@ -85,6 +100,7 @@ const summarySchema = z
     });
     return {
       ...summary,
+      positions,
       evaluations,
       assessments: summary.assessments.map((assessment) =>
         assessment.classification === "excellent" || assessment.classification === "good"

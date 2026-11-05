@@ -12,6 +12,7 @@ export type AtomicDbMove = {
   point: number | null;
   mate: number | null;
   backedPlies: number;
+  searchDepth?: number | null;
 };
 
 export type AtomicDbPosition = {
@@ -61,6 +62,7 @@ type AtomicDbMoveResponse = {
   point?: unknown;
   mate?: unknown;
   backed_plies?: unknown;
+  search_depth?: unknown;
 };
 
 type AtomicDbResponse = {
@@ -71,6 +73,7 @@ type AtomicDbResponse = {
   point?: unknown;
   best_move?: unknown;
   moves?: unknown;
+  analysis?: unknown;
 };
 
 const UNKNOWN_EVALUATION: AtomicDbEvaluation = { type: "unknown" };
@@ -105,6 +108,7 @@ const parseMove = (value: unknown): AtomicDbMove | null => {
     point: nullableNumber(move.point),
     mate: nullableNumber(move.mate),
     backedPlies: Math.max(0, Math.floor(nullableNumber(move.backed_plies) ?? 0)),
+    searchDepth: nullableNumber(move.search_depth),
   };
 };
 
@@ -176,8 +180,35 @@ export const parseAtomicDbResponse = (value: unknown): AtomicDbPosition => {
     throw new Error("AtomicDB returned an unexpected response.");
   }
 
+  const analysis =
+    response.analysis && typeof response.analysis === "object"
+      ? (response.analysis as { lines?: unknown })
+      : null;
+  const searchDepthByMove = new Map<string, number>();
+  if (Array.isArray(analysis?.lines)) {
+    for (const value of analysis.lines) {
+      if (!value || typeof value !== "object") continue;
+      const line = value as { move?: unknown; depth?: unknown; pv?: unknown };
+      const move =
+        typeof line.move === "string"
+          ? line.move
+          : Array.isArray(line.pv) && typeof line.pv[0] === "string"
+            ? line.pv[0]
+            : "";
+      const depth = nullableNumber(line.depth);
+      if (/^[a-h][1-8][a-h][1-8][nbrq]?$/.test(move) && depth !== null) {
+        searchDepthByMove.set(move, Math.max(0, Math.floor(depth)));
+      }
+    }
+  }
   const bestMove = nullableString(response.best_move);
-  const moves = response.moves.map(parseMove).filter((move): move is AtomicDbMove => move !== null);
+  const moves = response.moves
+    .map(parseMove)
+    .filter((move): move is AtomicDbMove => move !== null)
+    .map((move) => ({
+      ...move,
+      searchDepth: searchDepthByMove.get(move.uci) ?? move.searchDepth ?? null,
+    }));
   // Solved AtomicDB positions can name a forced best move without repeating it in `moves`.
   // Keep the position usable by treating its solved evaluation as that move's evaluation.
   if (
@@ -193,6 +224,7 @@ export const parseAtomicDbResponse = (value: unknown): AtomicDbPosition => {
       point: nullableNumber(response.point),
       mate: null,
       backedPlies: 0,
+      searchDepth: searchDepthByMove.get(bestMove) ?? null,
     });
   }
 

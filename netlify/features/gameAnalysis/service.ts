@@ -306,7 +306,9 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
     const result = buildGameAnalysisSummary(moves, positions);
     await updateJob(supabase, data.game_id, {
       status: "ready",
-      position_states: states,
+      // The completed result contains the full position data. Dropping the progress copy avoids
+      // storing every FEN, candidate, depth and PV twice; Postgres then TOAST-compresses the JSONB.
+      position_states: [],
       queued_positions: preflightCompletedPositions,
       completed_positions: preflightCompletedPositions,
       result,
