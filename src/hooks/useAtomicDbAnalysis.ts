@@ -60,7 +60,8 @@ const engineMove = (candidate: EngineCandidate): AtomicDbPosition["moves"][numbe
   score: candidate.scoreType === "cp" ? candidate.score : null,
   point: null,
   mate: candidate.scoreType === "mate" ? candidate.score : null,
-  backedPlies: candidate.depth ?? 0,
+  backedPlies: 0,
+  searchDepth: candidate.depth ?? null,
 });
 
 const enginePosition = (candidates: EngineCandidate[]): AtomicDbPosition => {

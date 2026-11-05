@@ -316,22 +316,10 @@ export const AtomicDbEngine = ({
               }
               const moveEvaluation = getAtomicDbMoveEvaluation(move, view.fen);
               const searchDepth = Math.max(0, Math.floor(move.searchDepth ?? 0));
-              const displayedDepth = searchDepth || move.backedPlies;
               const showDepth =
-                displayedDepth > 0 && !(move.origin === "engine" && moveEvaluation.type === "mate");
-              const support = showDepth
-                ? `${searchDepth ? `, search depth ${searchDepth}` : ""}${
-                    move.backedPlies > 0 ? `, backed ${move.backedPlies} plies` : ""
-                  }`
-                : "";
-              const depthTitle = showDepth
-                ? [
-                    searchDepth ? `Search depth ${searchDepth}` : "",
-                    move.backedPlies > 0 ? `Backed ${move.backedPlies} plies` : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")
-                : undefined;
+                searchDepth > 0 && !(move.origin === "engine" && moveEvaluation.type === "mate");
+              const support = showDepth ? `, search depth ${searchDepth}` : "";
+              const depthTitle = showDepth ? `Search depth ${searchDepth}` : undefined;
               const evaluation = formatAtomicDbEvaluation(moveEvaluation);
               const displayedLine = lineTokens.map((token) => token.value).join(" ");
               return (
@@ -374,7 +362,7 @@ export const AtomicDbEngine = ({
                     )}
                   </span>
                   <span className="atomicDbEngineDepth" title={depthTitle}>
-                    {showDepth ? `depth ${displayedDepth}` : ""}
+                    {showDepth ? `depth ${searchDepth}` : ""}
                   </span>
                 </li>
               );

@@ -120,7 +120,7 @@ describe("AtomicDbEngine", () => {
     expect(screen.getByRole("meter")).toHaveAttribute("aria-label", "AtomicDB evaluation #3");
   });
 
-  it("hides Fairy-Stockfish depth for mate moves but keeps it for centipawn moves", () => {
+  it("hides local-engine depth for mate moves but keeps it for centipawn moves", () => {
     const analysis: AtomicDbAnalysisState = {
       status: "ready",
       error: "",
@@ -143,7 +143,8 @@ describe("AtomicDbEngine", () => {
               score: null,
               point: null,
               mate: 4,
-              backedPlies: 223,
+              backedPlies: 0,
+              searchDepth: 22,
             },
             {
               uci: "e2e4",
@@ -153,7 +154,8 @@ describe("AtomicDbEngine", () => {
               score: 125,
               point: null,
               mate: null,
-              backedPlies: 223,
+              backedPlies: 0,
+              searchDepth: 22,
             },
           ],
         },
@@ -171,8 +173,39 @@ describe("AtomicDbEngine", () => {
       />,
     );
 
-    expect(screen.getAllByText("depth 223")).toHaveLength(1);
+    expect(screen.getAllByText("depth 22")).toHaveLength(1);
     expect(screen.getByText("#4").closest("li")).not.toHaveTextContent("depth");
+  });
+
+  it("does not present AtomicDB backed plies as search depth", () => {
+    const position = parseAtomicDbResponse({
+      status: "UNKNOWN",
+      score: -320,
+      best_move: "g1f3",
+      moves: [{ uci: "g1f3", status: "UNKNOWN", score: -320, backed_plies: 22 }],
+    });
+
+    render(
+      <AtomicDbEngine
+        fen={STARTING_FEN}
+        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: false }}
+        analysis={{
+          status: "ready",
+          error: "",
+          source: "atomicdb",
+          result: { fen: STARTING_FEN, position },
+          principalVariations: {},
+        }}
+        onPlayLine={vi.fn()}
+        onHoverMove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("listitem")).not.toHaveTextContent("depth");
+    expect(screen.getByRole("listitem")).toHaveAttribute(
+      "aria-label",
+      "Evaluation -3.2, line 1. Nf3",
+    );
   });
 
   it("keeps an analyzed game's stored search depth visible before a refresh", () => {
