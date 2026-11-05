@@ -558,6 +558,17 @@ export const gameAnalysisSweepPositionLimit = (jobCount: number): number =>
 export const gameAnalysisSubmissionLimit = (queueSize: number): number =>
   Math.min(SUBMISSION_POSITION_BUDGET, Math.max(0, ATOMIC_DB_QUEUE_TARGET - queueSize));
 
+export const hasPendingGameAnalyses = async (): Promise<boolean> => {
+  const supabase = createServerSupabase("Game analysis wake check");
+  const { data, error } = await supabase
+    .from("game_analyses")
+    .select("game_id")
+    .in("status", ["queued", "processing"])
+    .limit(1);
+  if (error) throw new Error(`Unable to check for pending game analyses: ${error.message}`);
+  return (data?.length ?? 0) > 0;
+};
+
 export const processPendingGameAnalyses = async (limit = SWEEP_JOB_LIMIT): Promise<void> => {
   const supabase = createServerSupabase("Game analysis sweep");
   const { data, error } = await supabase
