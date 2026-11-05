@@ -47,20 +47,26 @@ describe("AnalysisMoveTree", () => {
     expect(container.querySelector(".analysisTree")).toHaveClass("nonInline");
   });
 
-  it("opens the annotation menu from a move click", () => {
+  it("navigates on click and opens the annotation menu only from the context menu", () => {
     const onAnnotate = vi.fn();
+    const onSelect = vi.fn();
     render(
       <AnalysisMoveTree
         lines={lines}
         moves={["Nf3"]}
         currentPly={1}
-        onSelect={vi.fn()}
+        onSelect={onSelect}
         onCycleOptions={vi.fn()}
         onAnnotate={onAnnotate}
       />,
     );
 
-    fireEvent.click(screen.getAllByRole("button", { name: "1. Nf3" })[0]!);
+    const move = screen.getAllByRole("button", { name: "1. Nf3" })[0]!;
+    fireEvent.click(move);
+    expect(onSelect).toHaveBeenCalledWith(0, 0);
+    expect(screen.queryByRole("menu", { name: "Move annotation" })).not.toBeInTheDocument();
+
+    fireEvent.contextMenu(move);
     fireEvent.click(screen.getByRole("menuitemradio", { name: "? Mistake" }));
     expect(onAnnotate).toHaveBeenCalledWith(0, 0, "?");
   });
@@ -78,7 +84,7 @@ describe("AnalysisMoveTree", () => {
       />,
     );
 
-    fireEvent.click(screen.getAllByRole("button", { name: "1. Nf3" })[0]!);
+    fireEvent.contextMenu(screen.getAllByRole("button", { name: "1. Nf3" })[0]!);
     fireEvent.click(screen.getByRole("menuitem", { name: "Delete from here" }));
     expect(onDelete).toHaveBeenCalledWith(0, 0);
   });

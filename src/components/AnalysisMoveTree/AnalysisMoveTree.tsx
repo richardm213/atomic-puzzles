@@ -104,16 +104,8 @@ export const AnalysisMoveTree = ({
         aria-current={
           node.lineIndexes.has(activeLine) && currentPly === ply + 1 ? "step" : undefined
         }
-        onClick={(event) => {
+        onClick={() => {
           onSelect(targetLine, ply);
-          if (onAnnotate || onDelete) {
-            setAnnotationTarget({
-              lineIndex: targetLine,
-              moveIndex: ply,
-              current: splitSolutionMove(node.move).annotation,
-              position: annotationMenuPosition(event),
-            });
-          }
         }}
         onContextMenu={
           onAnnotate || onDelete
@@ -128,7 +120,7 @@ export const AnalysisMoveTree = ({
               }
             : undefined
         }
-        title={onAnnotate || onDelete ? "Click to edit move" : undefined}
+        title={onAnnotate || onDelete ? "Right-click to edit move" : undefined}
       >
         {movePrefix(ply, forceMoveNumber)}
         {node.move}
