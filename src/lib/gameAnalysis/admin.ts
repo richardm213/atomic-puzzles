@@ -37,6 +37,9 @@ const recordSchema = z.object({
 const responseSchema = z.object({
   pending: z.array(recordSchema),
   pendingTotal: z.number().int().nonnegative(),
+  pendingPage: z.number().int().positive(),
+  pendingPageSize: z.number().int().positive(),
+  pendingTotalPages: z.number().int().positive(),
   completed: z.array(recordSchema),
   failed: z.array(recordSchema),
   finishedLast7Days: z.number().int().nonnegative(),
@@ -52,9 +55,15 @@ const finishedResponseSchema = z.object({
   generatedAt: z.string(),
 });
 
-export const fetchAdminGameAnalyses = async (): Promise<{
+export const fetchAdminGameAnalyses = async (
+  page: number,
+  pageSize: number,
+): Promise<{
   pending: AdminGameAnalysis[];
   pendingTotal: number;
+  pendingPage: number;
+  pendingPageSize: number;
+  pendingTotalPages: number;
   completed: AdminGameAnalysis[];
   failed: AdminGameAnalysis[];
   finishedLast7Days: number;
@@ -62,7 +71,7 @@ export const fetchAdminGameAnalyses = async (): Promise<{
 }> =>
   postApi(
     "/api/game-analysis",
-    { action: "adminList" },
+    { action: "adminList", page, pageSize },
     {
       schema: responseSchema,
       errorMessage: "Unable to load game analyses.",

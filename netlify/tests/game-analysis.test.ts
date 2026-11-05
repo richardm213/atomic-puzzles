@@ -71,7 +71,7 @@ describe("game analysis admin list", () => {
   });
 
   it("returns fresh pending, completed, and failed job state", async () => {
-    const pendingLimit = vi.fn(async () => ({
+    const pendingRange = vi.fn(async () => ({
       data: [
         {
           game_id: "game-pending",
@@ -88,7 +88,7 @@ describe("game analysis admin list", () => {
           next_check_at: "2026-11-04T20:02:00.000Z",
         },
       ],
-      count: 1,
+      count: 101,
       error: null,
     }));
     const completedLimit = vi.fn(async () => ({
@@ -138,7 +138,11 @@ describe("game analysis admin list", () => {
             })),
           }
         : {
-            in: vi.fn(() => ({ order: vi.fn(() => ({ limit: pendingLimit })) })),
+            in: vi.fn(() => ({
+              order: vi.fn(() => ({
+                order: vi.fn(() => ({ range: pendingRange })),
+              })),
+            })),
             eq: vi.fn((_column: string, value: string) => ({
               order: vi.fn(() => ({
                 limit: value === "failed" ? failedLimit : completedLimit,
@@ -152,7 +156,7 @@ describe("game analysis admin list", () => {
     const response = await handler({
       httpMethod: "POST",
       headers: headers("seaside_tiramisu"),
-      body: JSON.stringify({ action: "adminList" }),
+      body: JSON.stringify({ action: "adminList", page: 2, pageSize: 50 }),
     });
 
     expect(response.statusCode).toBe(200);
@@ -173,7 +177,10 @@ describe("game analysis admin list", () => {
           nextCheckAt: "2026-11-04T20:02:00.000Z",
         },
       ],
-      pendingTotal: 1,
+      pendingTotal: 101,
+      pendingPage: 2,
+      pendingPageSize: 50,
+      pendingTotalPages: 3,
       completed: [
         {
           gameId: "game-ready",
@@ -211,6 +218,7 @@ describe("game analysis admin list", () => {
     });
     expect(completedLimit).toHaveBeenCalledWith(25);
     expect(failedLimit).toHaveBeenCalledWith(25);
+    expect(pendingRange).toHaveBeenCalledWith(50, 99);
     expect(from).toHaveBeenCalledTimes(4);
     expect(from).toHaveBeenCalledWith("game_analysis_admin_summaries");
   });

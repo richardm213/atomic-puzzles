@@ -581,6 +581,12 @@ const shopRedemptionsRoute = createRoute({
 const gameAnalysesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/game-analyses",
+  validateSearch: (search: Record<string, unknown>) => ({
+    page:
+      typeof search.page === "number" && Number.isInteger(search.page) && search.page > 1
+        ? search.page
+        : undefined,
+  }),
   component: GameAnalysesPage,
 });
 

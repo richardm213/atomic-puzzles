@@ -1,8 +1,10 @@
 import "./GameAnalyses.css";
 
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useEffect } from "react";
 
+import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
@@ -11,20 +13,42 @@ import { formatLocalDateTime } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 import { GameAnalysisColumnLabels, GameAnalysisRow } from "./GameAnalysisList";
 
+const PENDING_PAGE_SIZE = 50;
+
 export const GameAnalysesPage = () => {
   const { isLoading: authLoading, user } = useAuth();
   const isAdmin = normalizeUsername(user?.username) === GAME_ANALYSIS_ADMIN_USERNAME;
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false });
+  const page = typeof search.page === "number" ? search.page : 1;
   const query = useQuery({
-    queryKey: ["admin-game-analyses"],
-    queryFn: fetchAdminGameAnalyses,
+    queryKey: ["admin-game-analyses", page],
+    queryFn: () => fetchAdminGameAnalyses(page, PENDING_PAGE_SIZE),
     enabled: isAdmin,
+    placeholderData: keepPreviousData,
     refetchInterval: 5_000,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: "always",
     staleTime: 0,
   });
 
+  useEffect(() => {
+    if (!query.data || page <= query.data.pendingTotalPages) return;
+    void navigate({
+      to: "/admin/game-analyses",
+      search: query.data.pendingTotalPages === 1 ? {} : { page: query.data.pendingTotalPages },
+      replace: true,
+    });
+  }, [navigate, page, query.data]);
+
   if (authLoading || (isAdmin && query.isPending)) return <RouteLoadingFallback />;
+
+  const changePage = (nextPage: number): void => {
+    void navigate({
+      to: "/admin/game-analyses",
+      search: nextPage === 1 ? {} : { page: nextPage },
+    });
+  };
 
   return (
     <div className="page gameAnalysesPage">
@@ -65,20 +89,29 @@ export const GameAnalysesPage = () => {
         {isAdmin && query.data ? (
           <>
             <section className="gameAnalysesSection" aria-labelledby="pending-game-analyses">
-              <h2 id="pending-game-analyses">Pending</h2>
+              <div className="gameAnalysesSectionHeader">
+                <h2 id="pending-game-analyses">Pending</h2>
+                {query.data.pending.length ? (
+                  <div className="gameAnalysesPagination gameAnalysesPaginationTop">
+                    <PaginationRow
+                      currentPage={page}
+                      totalPages={query.data.pendingTotalPages}
+                      onPageChange={changePage}
+                      disabled={query.isFetching}
+                      ariaLabel="Pending game analyses pages"
+                      navigationVariant="arrows"
+                    />
+                  </div>
+                ) : null}
+              </div>
               {query.data.pending.length ? (
                 <>
                   <GameAnalysisColumnLabels />
-                  <ol className="gameAnalysesList">
+                  <ol className="gameAnalysesList" start={(page - 1) * PENDING_PAGE_SIZE + 1}>
                     {query.data.pending.map((analysis) => (
                       <GameAnalysisRow key={analysis.gameId} analysis={analysis} kind="pending" />
                     ))}
                   </ol>
-                  {query.data.pendingTotal > query.data.pending.length ? (
-                    <p className="gameAnalysesState">
-                      Showing the {query.data.pending.length} oldest pending analyses.
-                    </p>
-                  ) : null}
                 </>
               ) : (
                 <p className="gameAnalysesState">No pending analyses.</p>

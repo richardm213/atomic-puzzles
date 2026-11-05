@@ -18,7 +18,11 @@ const gameIdSchema = z.string().trim().min(1).max(160);
 const inputSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("status"), gameId: gameIdSchema }),
   z.object({ action: z.literal("statuses"), gameIds: z.array(gameIdSchema).max(5000) }),
-  z.object({ action: z.literal("adminList") }),
+  z.object({
+    action: z.literal("adminList"),
+    page: z.number().int().min(1).max(100_000).default(1),
+    pageSize: z.number().int().min(1).max(100).default(50),
+  }),
   z.object({
     action: z.literal("adminFinished"),
     page: z.number().int().min(1).max(100_000),
@@ -122,11 +126,12 @@ const adminRecord = (row: AdminGameAnalysisRow) => ({
   nextCheckAt: row.status === "processing" ? row.next_check_at : null,
 });
 
-const selectAdminRecords = async () => {
+const selectAdminRecords = async (page: number, pageSize: number) => {
   const supabase = createServerSupabase("Game analysis admin list");
   const columns =
     "game_id,status,requested_by,total_moves,completed_moves,queued_moves,error,created_at,updated_at,completed_at,last_checked_at,next_check_at";
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1_000).toISOString();
+  const pendingFrom = (page - 1) * pageSize;
   const [pendingResult, completedResult, failedResult, finishedLast7DaysResult] = await Promise.all(
     [
       supabase
@@ -134,7 +139,8 @@ const selectAdminRecords = async () => {
         .select(columns, { count: "exact" })
         .in("status", ["queued", "processing"])
         .order("created_at", { ascending: true })
-        .limit(250),
+        .order("game_id", { ascending: true })
+        .range(pendingFrom, pendingFrom + pageSize - 1),
       supabase
         .from("game_analysis_admin_summaries")
         .select(columns)
@@ -168,9 +174,13 @@ const selectAdminRecords = async () => {
       `Unable to count recently completed game analyses: ${finishedLast7DaysResult.error.message}`,
     );
   }
+  const pendingTotal = pendingResult.count ?? pendingResult.data?.length ?? 0;
   return {
     pending: ((pendingResult.data ?? []) as AdminGameAnalysisRow[]).map(adminRecord),
-    pendingTotal: pendingResult.count ?? pendingResult.data?.length ?? 0,
+    pendingTotal,
+    pendingPage: page,
+    pendingPageSize: pageSize,
+    pendingTotalPages: Math.max(1, Math.ceil(pendingTotal / pageSize)),
     completed: ((completedResult.data ?? []) as AdminGameAnalysisRow[]).map(adminRecord),
     failed: ((failedResult.data ?? []) as AdminGameAnalysisRow[]).map(adminRecord),
     finishedLast7Days: finishedLast7DaysResult.count ?? 0,
@@ -241,7 +251,7 @@ export const gameAnalysisRoute = async (event: FunctionEvent) => {
       identity,
       200,
       input.action === "adminList"
-        ? await selectAdminRecords()
+        ? await selectAdminRecords(input.page, input.pageSize)
         : await selectFinishedAdminRecords(input.page, input.pageSize),
     );
   }
