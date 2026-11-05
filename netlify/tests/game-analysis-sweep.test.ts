@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   gameAnalysisPollIndexes,
+  gameAnalysisPollSchedule,
   gameAnalysisPositionKey,
   gameAnalysisSubmissionLimit,
   gameAnalysisSweepPositionLimit,
@@ -27,6 +28,14 @@ describe("game analysis sweep", () => {
     expect(gameAnalysisPollIndexes([1, 2, 4], 1, 1)).toEqual([2]);
     expect(gameAnalysisPollIndexes([1, 2, 4], 1, 2)).toEqual([4]);
     expect(gameAnalysisPollIndexes([1, 2, 4], 1, 3)).toEqual([1]);
+  });
+
+  it("does not let submission-only passes postpone the next progress poll", () => {
+    expect(gameAnalysisPollSchedule(false, 4, 120_000, 1_000)).toEqual({});
+    expect(gameAnalysisPollSchedule(true, 5, 120_000, 1_000)).toEqual({
+      retry_count: 5,
+      next_check_at: new Date(121_000).toISOString(),
+    });
   });
 
   it("deduplicates positions whose FEN clocks differ", () => {

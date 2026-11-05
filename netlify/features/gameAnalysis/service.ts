@@ -391,6 +391,19 @@ const refundAndFail = async (
 
 type ProcessGameAnalysisOptions = { poll?: boolean; submit?: boolean };
 
+export const gameAnalysisPollSchedule = (
+  poll: boolean,
+  retryCount: number,
+  delayMs: number,
+  now = Date.now(),
+): { retry_count?: number; next_check_at?: string } =>
+  poll
+    ? {
+        retry_count: retryCount,
+        next_check_at: new Date(now + delayMs).toISOString(),
+      }
+    : {};
+
 export const gameAnalysisPollIndexes = (
   indexes: number[],
   maxPositions: number,
@@ -475,7 +488,11 @@ export const processGameAnalysisJob = async (
       queued_positions: states.filter((state) => state.completed || Boolean(state.requestStatus))
         .length,
       completed_positions: preflightCompletedPositions,
-      next_check_at: new Date(Date.now() + FOLLOW_UP_POLL_DELAY_MS).toISOString(),
+      ...gameAnalysisPollSchedule(
+        options.poll !== false,
+        data.retry_count,
+        FOLLOW_UP_POLL_DELAY_MS,
+      ),
     });
   }
 
@@ -568,9 +585,8 @@ export const processGameAnalysisJob = async (
     position_states: states,
     queued_positions: queuedPositions,
     completed_positions: completedPositions,
-    retry_count: retryCount,
     error: null,
-    next_check_at: new Date(Date.now() + nextPollDelay).toISOString(),
+    ...gameAnalysisPollSchedule(options.poll !== false, retryCount, nextPollDelay),
   });
   return newlySubmitted;
 };
