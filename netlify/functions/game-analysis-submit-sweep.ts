@@ -1,17 +1,13 @@
-import process from "node:process";
+import {
+  hasPendingGameAnalyses,
+  submitPendingGameAnalysisPositions,
+} from "../features/gameAnalysis/service";
 
-import { hasPendingGameAnalyses } from "../features/gameAnalysis/service";
-
-export default async (request: Request): Promise<void> => {
-  const secret = process.env.GAME_ANALYSIS_WORKER_SECRET?.trim() ?? "";
-  if (!secret) return;
+export default async (): Promise<void> => {
   if (!(await hasPendingGameAnalyses())) return;
-  const origin = new URL(request.url).origin;
-  await fetch(`${origin}/api/game-analysis-submit-worker`, {
-    method: "POST",
-    headers: { "X-Game-Analysis-Worker": secret },
-    signal: AbortSignal.timeout(5_000),
-  });
+  // Scheduled functions have 30 seconds. A 100-position slice fits that window even after
+  // AtomicDB's first 50-request burst and its sustained five-request-per-second rate limit.
+  await submitPendingGameAnalysisPositions(100);
 };
 
-export const config = { schedule: "*/15 * * * *" } as const;
+export const config = { schedule: "* * * * *" } as const;

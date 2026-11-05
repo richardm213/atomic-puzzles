@@ -589,10 +589,12 @@ export const processPendingGameAnalyses = async (limit = SWEEP_JOB_LIMIT): Promi
   });
 };
 
-export const submitPendingGameAnalysisPositions = async (): Promise<void> => {
+export const submitPendingGameAnalysisPositions = async (
+  positionBudget = SUBMISSION_POSITION_BUDGET,
+): Promise<void> => {
   const account = credentials();
   const queueSize = (await atomicDbQueueSize(account).catch(() => null)) ?? 0;
-  let remaining = gameAnalysisSubmissionLimit(queueSize);
+  let remaining = Math.min(positionBudget, gameAnalysisSubmissionLimit(queueSize));
   if (remaining === 0) return;
 
   const supabase = createServerSupabase("Game analysis submission sweep");
