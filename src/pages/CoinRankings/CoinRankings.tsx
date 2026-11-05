@@ -21,7 +21,8 @@ import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 type CoinView = "rankings" | "transactions";
-type TransactionCategory = "gifts" | "solves" | "submissions" | "purchases" | "bonuses" | "bets";
+type TransactionCategory =
+  "gifts" | "solves" | "submissions" | "purchases" | "game-analysis" | "bonuses" | "bets";
 
 const filterStorageKey = "atomic-puzzles.coin-transaction-filters";
 const transactionFilters: { key: TransactionCategory; label: string }[] = [
@@ -29,6 +30,7 @@ const transactionFilters: { key: TransactionCategory; label: string }[] = [
   { key: "solves", label: "Puzzle solves" },
   { key: "submissions", label: "Puzzle submissions" },
   { key: "purchases", label: "Shop purchases" },
+  { key: "game-analysis", label: "Game analysis" },
   { key: "bonuses", label: "Daily bonuses" },
   { key: "bets", label: "Tournament bets" },
 ];
@@ -50,7 +52,7 @@ const reasonCategory: Record<CoinTransactionReason, TransactionCategory> = {
   prediction_trade_fee: "bets",
   prediction_market_payout: "bets",
   prediction_liquidity_funding: "bets",
-  game_analysis: "purchases",
+  game_analysis: "game-analysis",
 };
 
 const selectedReasonsFor = (categories: TransactionCategory[]) =>
@@ -147,7 +149,8 @@ const transactionDescription = (transaction: CoinTransaction) => {
 const readSavedFilters = (): TransactionCategory[] => {
   const saved = getBrowserStorageJson<unknown>("local", filterStorageKey, null);
   if (!Array.isArray(saved)) return allTransactionCategories;
-  return allTransactionCategories.filter((category) => saved.includes(category));
+  const migrated = saved.includes("purchases") ? [...saved, "game-analysis"] : saved;
+  return allTransactionCategories.filter((category) => migrated.includes(category));
 };
 
 export const CoinRankingsPage = () => {
