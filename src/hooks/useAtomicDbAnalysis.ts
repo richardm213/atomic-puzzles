@@ -286,7 +286,12 @@ export const useAtomicDbAnalysis = (
         );
         const engineLines = Object.fromEntries(
           candidates
-            .filter((candidate) => !retainedMoveUcis.has(candidate.move))
+            .filter((candidate) => {
+              if (!retainedMoveUcis.has(candidate.move)) return true;
+              if (!replaceUnevaluatedMoves) return false;
+              const atomicDbLineLength = atomicDbLines[candidate.move]?.length ?? 1;
+              return (candidate.principalVariation?.length ?? 1) > atomicDbLineLength;
+            })
             .map((candidate) => [
               candidate.move,
               candidate.principalVariation?.slice(0, plyCount) ?? [candidate.move],

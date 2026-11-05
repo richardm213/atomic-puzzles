@@ -210,7 +210,7 @@ describe("useAtomicDbAnalysis", () => {
         scoreType: "mate",
         score: -4,
         depth: 20,
-        principalVariation: ["e2e4"],
+        principalVariation: ["e2e4", "e7e5"],
       },
       {
         move: "d2d4",
@@ -245,6 +245,7 @@ describe("useAtomicDbAnalysis", () => {
       expect.objectContaining({ uci: "e2e4", score: -10_000 }),
       expect.objectContaining({ uci: "d2d4", origin: "engine", score: -850 }),
     ]);
+    expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5"]);
   });
 
   it("does not replace unknown AtomicDB rows when the sole evaluation is not a forced loss", async () => {
