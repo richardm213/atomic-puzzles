@@ -551,46 +551,6 @@
   scrollbar-width: thin;
 }
 
-.practiceMoveTable {
-  width: 100%;
-  min-width: 300px;
-  border-collapse: collapse;
-  color: var(--color-text);
-  font-size: 13px;
-}
-
-.practiceMoveTable th,
-.practiceMoveTable td {
-  height: 34px;
-  padding: 0 8px;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 64%, transparent);
-  text-align: left;
-  vertical-align: middle;
-}
-
-.practiceMoveTable th {
-  color: var(--color-subtle);
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.practiceMoveTable td:nth-child(2) {
-  color: var(--color-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.practiceMoveTable tr[role="button"] {
-  cursor: pointer;
-}
-
-.practiceMoveTable tr[role="button"]:hover,
-.practiceMoveTable tr[role="button"]:focus-visible {
-  background: color-mix(in srgb, var(--color-panel-strong) 66%, var(--color-primary) 12%);
-  outline: none;
-}
-
 .practiceToolbar {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-self: end;
@@ -703,8 +663,7 @@
 .practiceCopyPgnButton:focus-visible,
 .practiceClockActions button:focus-visible,
 .practiceErrorToast button:focus-visible,
-.practiceCheckbox input:focus-visible,
-.practiceMoveTable tr[role="button"]:focus-visible {
+.practiceCheckbox input:focus-visible {
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;
 }

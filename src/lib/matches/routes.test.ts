@@ -6,12 +6,21 @@ import {
   buildMatchRouteParams,
   buildPyChessGameUrl,
   buildSingleGameMatchUrl,
+  decodeRouteParam,
   hasMatchRouteParams,
   inferExternalGameSource,
   isSingleGameMatch,
   normalizeMatchMode,
   shouldUseInternalMatchPage,
 } from "./routes";
+
+describe("decodeRouteParam", () => {
+  it("decodes valid values and preserves malformed values", () => {
+    expect(decodeRouteParam("match%3A123")).toBe("match:123");
+    expect(decodeRouteParam("bad%encoding")).toBe("bad%encoding");
+    expect(decodeRouteParam(undefined)).toBe("");
+  });
+});
 
 describe("normalizeMatchMode", () => {
   it("returns the mode unchanged when valid", () => {

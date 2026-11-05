@@ -1,7 +1,7 @@
 const STORAGE_PREFIX = "atomic-puzzles:analysis-handoff:";
 const HANDOFF_MAX_AGE_MS = 10 * 60 * 1000;
 
-export type AnalysisHandoff = {
+type AnalysisHandoff = {
   fen: string;
   pgn: string;
   line: number;

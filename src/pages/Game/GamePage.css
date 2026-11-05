@@ -1418,8 +1418,7 @@
   margin: 0 auto;
 }
 
-.gameComputerRequest > button,
-.gameComputerReview {
+.gameComputerRequest > button {
   min-height: 36px;
   display: inline-flex;
   align-items: center;
@@ -1439,13 +1438,11 @@
     transform 160ms ease;
 }
 
-.gameComputerRequest > button:hover,
-.gameComputerReview:hover {
+.gameComputerRequest > button:hover {
   background: var(--color-primary-hover);
 }
 
-.gameComputerRequest > button:active,
-.gameComputerReview:active {
+.gameComputerRequest > button:active {
   transform: translateY(1px);
 }
 
@@ -1455,7 +1452,6 @@
 }
 
 .gameComputerRequest > button:focus-visible,
-.gameComputerReview:focus-visible,
 .gameComputerGraphHits button:focus-visible {
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;

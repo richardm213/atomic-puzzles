@@ -5,7 +5,7 @@ import { usePersistedState } from "../../hooks/usePersistedState";
 
 const PRACTICE_SETTINGS_STORAGE_KEY = "atomic-puzzles.practice.settings";
 export const MAX_PRACTICE_PLAYERS = 8;
-export const DEFAULT_CLOCK_MINUTES = 3;
+const DEFAULT_CLOCK_MINUTES = 3;
 const DEFAULT_CLOCK_INCREMENT_SECONDS = 0;
 
 export type PracticeSide = "white" | "black";
@@ -13,7 +13,7 @@ export type OpponentMode = "frequency" | "random" | "popular";
 export type OpponentSource = "general" | "player";
 export type PlayerContinuation = "general" | "stockfish" | "manual";
 
-export type StoredPracticeSettings = {
+type StoredPracticeSettings = {
   side: PracticeSide;
   opponentMode: OpponentMode;
   opponentSource: OpponentSource;

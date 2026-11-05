@@ -1,9 +1,9 @@
 import { ApiError, apiRequest, postApi } from "../lib/api/postApi";
 
-export type AtomicDbTurn = "white" | "black";
+type AtomicDbTurn = "white" | "black";
 export type AtomicDbOutcome = "WHITE_WIN" | "BLACK_WIN" | "DRAW" | "UNKNOWN";
 
-export type AtomicDbMove = {
+type AtomicDbMove = {
   uci: string;
   origin?: "atomicdb" | "engine";
   outcome: AtomicDbOutcome;
@@ -36,7 +36,7 @@ export type AtomicDbAnalysisBundle = {
   positions: Record<string, AtomicDbPosition>;
 };
 
-export type AtomicDbRequestResult = {
+type AtomicDbRequestResult = {
   task: string | number | null;
   taskState: string;
   budgetNodes: number | null;
@@ -247,11 +247,6 @@ export const parseAtomicDbResponse = (value: unknown): AtomicDbPosition => {
   };
 };
 
-const atomicDbRequestPath = (fen: string): string => {
-  const params = new URLSearchParams({ fen });
-  return `/api/atomicdb-analysis?${params.toString()}`;
-};
-
 const atomicDbPrincipalVariationsRequestPath = (
   fen: string,
   lineCount: number,
@@ -272,9 +267,13 @@ const parseAtomicDbPositionPreview = (value: unknown): AtomicDbPosition => {
 
   const response = value as AtomicDbResponse;
   const bestMove = nullableString(response.best_move);
-  const outcome = parseOutcome(response.status);
   const closure = nullableString(response.closure);
-  const score = nullableNumber(response.score);
+  const isMatePreview = closure === "MATE_PV";
+  // Continuation previews omit the `point`/`mate` fields needed to calculate an exact mate
+  // distance. Keep that evaluation unknown until the position's complete bundle arrives instead
+  // of briefly presenting it as a centipawn score or generic decisive result.
+  const outcome = isMatePreview ? "UNKNOWN" : parseOutcome(response.status);
+  const score = isMatePreview ? null : nullableNumber(response.score);
   const point = nullableNumber(response.point);
   const moves =
     bestMove && /^[a-h][1-8][a-h][1-8][nbrq]?$/.test(bestMove)
@@ -301,23 +300,6 @@ const parseAtomicDbPositionPreview = (value: unknown): AtomicDbPosition => {
     bestMove,
     moves,
   };
-};
-
-export const fetchAtomicDbPosition = async (
-  fen: string,
-  signal?: AbortSignal,
-): Promise<AtomicDbPosition | null> => {
-  try {
-    const body = await apiRequest<unknown>(atomicDbRequestPath(fen), {
-      errorMessage: "AtomicDB analysis is unavailable.",
-      invalidMessage: "AtomicDB returned an unexpected response.",
-      ...(signal ? { signal } : {}),
-    });
-    return parseAtomicDbResponse(body);
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return null;
-    throw error;
-  }
 };
 
 export const requestAtomicDbAnalysis = (fen: string): Promise<AtomicDbRequestResult> =>

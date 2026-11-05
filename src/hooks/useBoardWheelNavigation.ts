@@ -4,7 +4,7 @@ const BOARD_WHEEL_DISCRETE_STEP_PX = 10;
 const BOARD_WHEEL_TRACKPAD_STEP_PX = 24;
 const BOARD_WHEEL_GESTURE_RESET_MS = 120;
 
-export type BoardWheelNavigationCommand = "next" | "previous";
+type BoardWheelNavigationCommand = "next" | "previous";
 
 export const useBoardWheelNavigation = ({
   boardPanelRef,

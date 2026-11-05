@@ -21,22 +21,18 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
-import { AnalysisMoveTree } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
-import {
-  AtomicDbEngine,
-  AtomicDbEngineControls,
-  AtomicDbEvalBar,
-} from "../../components/AtomicDbEngine/AtomicDbEngine";
+import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
 import {
   isTextEntryTarget,
   shortcutIndexFromKeyboardEvent,
 } from "../../components/Chessboard/boardShortcuts";
+import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import type { OpeningDatabaseMove } from "../../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
-import { PlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
 import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
+import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
 import {
   AnalysisWorkspaceLayout,
   AnalysisWorkspacePanel,
@@ -50,6 +46,8 @@ import { useCopyFeedback } from "../../hooks/useCopyFeedback";
 import { type OpeningExplorerRequest, useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
+import { buildBoardLoadNavigation } from "../../lib/analysis/boardLoading";
+import { getBoardMoveState } from "../../lib/analysis/boardState";
 import { apiRequest } from "../../lib/api/postApi";
 import { findFairyStockfishMove, warmFairyStockfish } from "../../lib/practice/fairyStockfish";
 import { movePrefix } from "../../lib/puzzles/solutionPgn";
@@ -253,8 +251,15 @@ export const PracticePage = () => {
   const [gamePaused, setGamePaused] = useState(true);
   const [sessionStarted, setSessionStarted] = useState(false);
 
-  const currentFen = boardState?.fen || STARTING_FEN;
-  const terminalOutcome = boardState?.winner ?? (boardState?.status === "Draw" ? "draw" : null);
+  const {
+    canStepBack,
+    canStepForward,
+    currentFen,
+    currentPly,
+    customLines,
+    moveList,
+    terminalOutcome,
+  } = getBoardMoveState(boardState, practiceRootFen);
   const {
     analysis: atomicDbAnalysis,
     beginVariationPlayback,
@@ -266,6 +271,7 @@ export const PracticePage = () => {
     enabled: atomicDbEngineSettings.enabled,
     navigation,
     lineCount: atomicDbEngineSettings.lineCount,
+    showFollowUpMoves: atomicDbEngineSettings.showFollowUpMoves,
     terminalOutcome,
   });
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
@@ -360,12 +366,6 @@ export const PracticePage = () => {
     opponentUsernames.length > 1
       ? `${opponentUsernames.length} players · as ${opponentSide}`
       : `as ${opponentSide}`;
-  const moveList = useMemo(
-    () => (boardState?.lineMoves ? [...boardState.lineMoves] : []),
-    [boardState],
-  );
-  const currentPly = boardState?.lineIndex ?? 0;
-  const customLines = useMemo(() => boardState?.customLines ?? [], [boardState?.customLines]);
   const currentMoveText = useMemo(
     () =>
       moveList
@@ -378,8 +378,6 @@ export const PracticePage = () => {
     () => buildPracticePgn(practiceRootFen, currentMoveText),
     [currentMoveText, practiceRootFen],
   );
-  const canStepBack = currentPly > 0;
-  const canStepForward = currentPly < moveList.length;
   const totalGames = practiceMoves.reduce((total, move) => total + move.games, 0);
   const canRunPractice = canUsePlayerSource && !gameFinished && !(clockEnabled && clockExpired);
   const maxPracticePlayers = allowMultiplePlayers ? MAX_PRACTICE_PLAYERS : 1;
@@ -781,7 +779,7 @@ export const PracticePage = () => {
     resetPracticeClock();
     setSessionStarted(false);
     setPracticeRootFen(STARTING_FEN);
-    queueNavigation({ type: "reset", fen: STARTING_FEN });
+    queueNavigation(buildBoardLoadNavigation({ fen: STARTING_FEN }));
   }, [queueNavigation, resetOpponentMoveChoices, resetPracticeClock]);
 
   useEffect(() => {
@@ -833,7 +831,7 @@ export const PracticePage = () => {
     setHoveredMoveUci(null);
     resetPracticeClock();
     setSessionStarted(false);
-    queueNavigation({ type: "reset", fen: practiceRootFen });
+    queueNavigation(buildBoardLoadNavigation({ fen: practiceRootFen }));
   }, [practiceRootFen, queueNavigation, resetOpponentMoveChoices, resetPracticeClock]);
 
   const boardDocument = useBoardDocument({
@@ -847,7 +845,7 @@ export const PracticePage = () => {
       resetPracticeClock();
       setSessionStarted(false);
       setPracticeRootFen(nextFen);
-      queueNavigation({ type: "reset", fen: nextFen });
+      queueNavigation(buildBoardLoadNavigation({ fen: nextFen }));
     },
     onCommitPgn: (draft, initialFen) => {
       resetOpponentMoveChoices();
@@ -856,7 +854,7 @@ export const PracticePage = () => {
       setSessionStarted(false);
       const nextRootFen = initialFen ?? practiceRootFen;
       if (initialFen) setPracticeRootFen(initialFen);
-      queueNavigation({ type: "loadPgn", pgn: draft, fen: nextRootFen });
+      queueNavigation(buildBoardLoadNavigation({ fen: nextRootFen, pgn: draft }));
     },
   });
 
@@ -1400,34 +1398,27 @@ export const PracticePage = () => {
 
         {movesOpen && !settingsOpen ? (
           <section className="analysisMovePanel practicePlayedMovesPanel" aria-label="Played moves">
-            <AtomicDbEngineControls
+            <AtomicDbAnalysisBlock
               fen={atomicDbFen}
               analysis={atomicDbAnalysis}
               settings={atomicDbEngineSettings}
               setSettings={setAtomicDbEngineSettings}
               onDisable={() => setHoveredMoveUci(null)}
+              onPlayLine={playAtomicDbLine}
+              onHoverMove={setHoveredMoveUci}
+              disabled={atomicDbLinePlaying}
             />
             <div className="analysisMoveContent">
-              <AtomicDbEngine
-                fen={atomicDbFen}
-                settings={atomicDbEngineSettings}
-                analysis={atomicDbAnalysis}
-                onPlayLine={playAtomicDbLine}
-                onHoverMove={setHoveredMoveUci}
-                disabled={atomicDbLinePlaying}
+              <MoveNotation
+                lines={customLines}
+                moves={moveList}
+                currentPly={currentPly}
+                pinnedLineIndex={boardState?.customLineIndex}
+                inline
+                onNavigate={navigateToPly}
+                onSelectVariation={navigateToCustomMove}
+                onCycleOptions={requestNavigation}
               />
-              {customLines.length ? (
-                <AnalysisMoveTree
-                  lines={customLines}
-                  moves={moveList}
-                  currentPly={currentPly}
-                  pinnedLineIndex={boardState?.customLineIndex}
-                  onSelect={navigateToCustomMove}
-                  onCycleOptions={requestNavigation}
-                />
-              ) : (
-                <PlayedMoves moves={moveList} currentPly={currentPly} onNavigate={navigateToPly} />
-              )}
             </div>
           </section>
         ) : null}

@@ -2,7 +2,6 @@ import "./MatchPage.css";
 
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
-import { useMemo } from "react";
 
 import { BannedPlayerMark } from "../../components/BannedPlayerMark/BannedPlayerMark";
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
@@ -14,22 +13,14 @@ import { modeLabels } from "../../constants/matches";
 import { toMatchCardData } from "../../lib/matches/data";
 import { matchupToSlug } from "../../lib/matches/h2hRoutes";
 import { matchDetailQueryOptions } from "../../lib/matches/queries";
-import { normalizeMatchMode } from "../../lib/matches/routes";
+import { decodeRouteParam, normalizeMatchMode } from "../../lib/matches/routes";
 import { getTournamentRouteId } from "../../lib/matches/tournaments";
 import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 
-const decodeParam = (value: unknown): string => {
-  try {
-    return decodeURIComponent(String(value || ""));
-  } catch {
-    return String(value || "");
-  }
-};
-
 export const MatchPage = () => {
   const { matchId: matchIdParam } = useParams({ strict: false });
-  const decodedMatchId = decodeParam(matchIdParam);
+  const decodedMatchId = decodeRouteParam(matchIdParam);
   const hasValidMatchKey = Boolean(decodedMatchId);
   const matchQuery = useQuery({
     ...matchDetailQueryOptions(decodedMatchId),
@@ -37,6 +28,7 @@ export const MatchPage = () => {
   });
   const mode = normalizeMatchMode(matchQuery.data?.match?.mode);
   const match = matchQuery.data?.match ? toMatchCardData(matchQuery.data.match, mode) : null;
+  const modeLabel = match ? (match.mode && modeLabels[match.mode]) || match.mode : "";
   const tournamentLocation = matchQuery.data?.tournamentLocation ?? null;
   const loading = hasValidMatchKey && matchQuery.isPending;
   const error = !hasValidMatchKey
@@ -45,15 +37,10 @@ export const MatchPage = () => {
       ? getErrorMessage(matchQuery.error, "Unable to load this match.")
       : "";
 
-  const title = useMemo(() => {
-    if (!match) return "Match";
-    return `${match.playerA} vs ${match.playerB}`;
-  }, [match]);
-
-  const description = useMemo(() => {
-    if (!match) return "View a full atomic chess match breakdown.";
-    return `View the full ${(match.mode && modeLabels[match.mode]) || match.mode} atomic chess match between ${match.playerA} and ${match.playerB}.`;
-  }, [match]);
+  const title = match ? `${match.playerA} vs ${match.playerB}` : "Match";
+  const description = match
+    ? `View the full ${modeLabel ? `${modeLabel} ` : ""}atomic chess match between ${match.playerA} and ${match.playerB}.`
+    : "View a full atomic chess match breakdown.";
 
   if (loading && !match) return <RouteLoadingFallback />;
 
@@ -66,9 +53,6 @@ export const MatchPage = () => {
           {!loading && !error && match ? (
             <>
               <section className="matchPageHeader" aria-label="Match result">
-                <p className="matchPageHeaderLabel">
-                  {(match.mode && modeLabels[match.mode]) || match.mode} match
-                </p>
                 <div className="matchPageHeaderRow">
                   <PlayerLink
                     className="matchPageHeaderPlayer"
@@ -96,6 +80,7 @@ export const MatchPage = () => {
                   </PlayerLink>
                 </div>
                 <div className="matchPageHeaderMeta">
+                  {modeLabel ? <span className="matchPageMetaPill">{modeLabel}</span> : null}
                   <span className="matchPageMetaPill">{formatLocalDateTime(match.startTs)}</span>
                   <span className="matchPageMetaPill timeControlValue">{match.timeControl}</span>
                   <span className="matchPageMetaPill">{match.sourceValue}</span>

@@ -11,11 +11,7 @@ import type {
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
-import {
-  AtomicDbEngine,
-  AtomicDbEngineControls,
-  AtomicDbEvalBar,
-} from "../../components/AtomicDbEngine/AtomicDbEngine";
+import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
 import {
   isTextEntryTarget,
@@ -28,6 +24,7 @@ import { UsernamePickerModal } from "../../components/UsernamePickerModal/Userna
 import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
+import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
 import {
   AnalysisWorkspaceLayout,
   AnalysisWorkspacePanel,
@@ -45,6 +42,8 @@ import { useGameAnalysis } from "../../hooks/useGameAnalysis";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
+import { buildBoardLoadNavigation, gamePlyFromHash } from "../../lib/analysis/boardLoading";
+import { getBoardMoveState } from "../../lib/analysis/boardState";
 import { readAnalysisHandoff } from "../../lib/analysis/handoff";
 import { type ArchiveGame, decodeGameResult } from "../../lib/archive/games";
 import { warmFairyStockfish } from "../../lib/practice/fairyStockfish";
@@ -115,13 +114,6 @@ const fenFromRoute = (value: string | undefined): string => {
 };
 
 const analysisPathFromFen = (fen: string): string => `/analysis/${fen.replaceAll(" ", "_")}`;
-
-const gamePlyFromHash = (moveCount: number): number | null => {
-  if (typeof window === "undefined" || window.location.hash === "") return 0;
-  const match = /^#(\d+)$/.exec(window.location.hash);
-  if (!match) return null;
-  return Math.min(moveCount, Number(match[1]) * 2);
-};
 
 const DEFAULT_EXPLORER_SETTINGS = {
   speedFilterVersion: EXPLORER_SPEED_FILTER_VERSION,
@@ -346,10 +338,10 @@ const SpeedFilterIcon = ({ speed }: { speed: ExplorerSpeed }) => {
 type AnalysisPageProps = {
   game?: ArchiveGame;
   initialFen?: string;
-  initialPgn?: string;
+  initialMoves?: string[];
 };
 
-export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPageProps = {}) => {
+export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPageProps = {}) => {
   const navigate = useNavigate();
   const auth = useAuth();
   const { gameExplorerOnLeft } = useAppSettings();
@@ -361,11 +353,34 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
   );
   const routeFen =
     game && initialFen ? initialFen : (analysisHandoff?.fen ?? fenFromRoute(fenPath));
+  const initialBoardNavigation = useMemo(() => {
+    if (game) {
+      const moves = initialMoves ?? [];
+      return buildBoardLoadNavigation({
+        fen: routeFen,
+        moves,
+        ply:
+          gamePlyFromHash(
+            typeof window === "undefined" ? "" : window.location.hash,
+            moves.length,
+          ) ?? 0,
+      });
+    }
+    return buildBoardLoadNavigation({
+      fen: routeFen,
+      ...(analysisHandoff
+        ? {
+            pgn: analysisHandoff.pgn,
+            line: analysisHandoff.line,
+            ply: analysisHandoff.ply,
+          }
+        : {}),
+    });
+  }, [analysisHandoff, game, initialMoves, routeFen]);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const rightPanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
   const moveContentRef = useRef<HTMLDivElement | null>(null);
-  const gamePlyInitializedRef = useRef(!game);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
   const [atomicDbEngineSettings, setAtomicDbEngineSettings] = useAtomicDbEngineSettings();
   const [boardSize, setBoardSize] = usePersistedState(
@@ -465,9 +480,15 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
   const currentFenRef = useRef(STARTING_FEN);
   const requestedAtomicDbFensRef = useRef(new Set<string>());
 
-  const moveList = useMemo(() => boardState?.lineMoves ?? [], [boardState?.lineMoves]);
-  const currentFen = boardState?.fen || STARTING_FEN;
-  const currentPly = boardState?.lineIndex ?? 0;
+  const {
+    canStepBack,
+    canStepForward,
+    currentFen,
+    currentPly,
+    customLines,
+    moveList,
+    terminalOutcome,
+  } = getBoardMoveState(boardState, rootFen);
   const gameAnalysis = useGameAnalysis(game, rootFen, auth.user?.username ?? "");
   const wolfrandomRandomizedOpening = game?.mode === "wolfrandom" && currentPly <= 6;
   const positionAnalysisEnabled =
@@ -479,7 +500,6 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
   const currentVisibleAssessment =
     currentAssessment?.classification === "best" ? null : currentAssessment;
   currentFenRef.current = currentFen;
-  const terminalOutcome = boardState?.winner ?? (boardState?.status === "Draw" ? "draw" : null);
   const {
     analysis: atomicDbAnalysis,
     beginVariationPlayback,
@@ -554,7 +574,16 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
       }
     }
   };
-  const customLines = useMemo(() => boardState?.customLines ?? [], [boardState?.customLines]);
+  const atomicDbHref = atomicDbPositionKey ? atomicDbPositionUrl(atomicDbPositionKey) : null;
+  const atomicDbRequest = canRequestAtomicDbAnalysis
+    ? {
+        state: atomicDbRequestStatus.state,
+        ...(atomicDbRequestStatus.state === "error"
+          ? { message: atomicDbRequestStatus.message }
+          : {}),
+        onRequest: () => void handleAtomicDbRequest(),
+      }
+    : null;
   const responsiveBoardFloor = getResponsiveAnalysisBoardFloor(viewportWidth, Boolean(game));
   const displayedBoardSize = Math.min(
     Math.max(boardSize, responsiveBoardFloor),
@@ -565,8 +594,6 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
       ? `min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 88px))`
       : `min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 44px))`,
   } as CSSProperties;
-  const canStepBack = currentPly > 0;
-  const canStepForward = currentPly < moveList.length;
   const showExplorerResults = !filtersOpen;
   const playerRatingValue = clampRating(minRating);
   const activeStartDate = explorerScope === "player" ? playerStartDate : generalStartDate;
@@ -635,32 +662,21 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
     pgnAfterFenCommit: () => "",
     onCommitFen: (nextFen) => {
       setRootFen(nextFen);
-      setNavigation({ type: "reset", fen: nextFen });
+      setNavigation(buildBoardLoadNavigation({ fen: nextFen }));
       void navigate({ to: analysisPathFromFen(nextFen) });
     },
     onCommitPgn: (nextPgn, initialFen) => {
       const nextRootFen = initialFen ?? rootFen;
       if (initialFen) setRootFen(initialFen);
-      setNavigation({ type: "loadPgn", pgn: nextPgn, fen: nextRootFen });
+      setNavigation(buildBoardLoadNavigation({ fen: nextRootFen, pgn: nextPgn }));
     },
   });
 
   useEffect(() => {
-    gamePlyInitializedRef.current = !game;
     setRootFen(routeFen);
     if (!game) setOrientation(analysisHandoff?.orientation ?? "white");
-    const startupPgn = initialPgn || analysisHandoff?.pgn || "";
-    setNavigation(
-      startupPgn
-        ? {
-            type: "loadPgn",
-            pgn: startupPgn,
-            fen: routeFen,
-            ...(analysisHandoff ? { line: analysisHandoff.line, ply: analysisHandoff.ply } : {}),
-          }
-        : { type: "reset", fen: routeFen },
-    );
-  }, [analysisHandoff, game, initialPgn, routeFen]);
+    setNavigation(initialBoardNavigation);
+  }, [analysisHandoff?.orientation, game, initialBoardNavigation, routeFen]);
 
   const requestNavigation = useCallback((command: PlaybackCommand): void => {
     setNavigation({ type: "command", command });
@@ -742,7 +758,7 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
   useEffect(() => {
     if (!game) return;
     const handleHashChange = (): void => {
-      const hashPly = gamePlyFromHash(game.moves?.length ?? 0);
+      const hashPly = gamePlyFromHash(window.location.hash, game.moves?.length ?? 0);
       if (hashPly !== null && hashPly !== currentPly) navigateToPly(hashPly);
     };
     window.addEventListener("hashchange", handleHashChange);
@@ -779,19 +795,11 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
 
   const handleNavigationHandled = useCallback((): void => {
     finishVariationPlayback();
-    if (game && !gamePlyInitializedRef.current) {
-      gamePlyInitializedRef.current = true;
-      setNavigation({
-        type: "history",
-        ply: gamePlyFromHash(game.moves?.length ?? 0) ?? 0,
-      });
-      return;
-    }
     setNavigation(null);
-  }, [finishVariationPlayback, game]);
+  }, [finishVariationPlayback]);
 
   useEffect(() => {
-    if (!game || !gamePlyInitializedRef.current || navigation !== null) return;
+    if (!game || navigation !== null) return;
     const moveNumber = Math.ceil(currentPly / 2);
     const hash = moveNumber > 0 ? `#${moveNumber}` : "";
     const nextUrl = `${window.location.pathname}${window.location.search}${hash}`;
@@ -1443,35 +1451,27 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
         >
           <div className="analysisMovePanel" ref={movePanelRef}>
             {(!game || gameComputerAnalysisEnabled) && !wolfrandomRandomizedOpening ? (
-              <div className="analysisEngineBlock">
-                <AtomicDbEngineControls
-                  fen={displayedAnalysisFen}
-                  analysis={displayedAnalysis}
-                  settings={atomicDbEngineSettings}
-                  setSettings={setAtomicDbEngineSettings}
-                  onDisable={() => {
-                    setHoveredExplorerMoveUci(null);
-                    setThreatMode(false);
-                  }}
-                  onFlipBoard={flipBoard}
-                  onThreatModeChange={setThreatMode}
-                  threatAvailable={threatFen !== null}
-                  threatMode={effectiveThreatMode}
-                  notationInline={notationLayout === "inline"}
-                  onToggleNotation={() =>
-                    setNotationLayout((current) => (current === "inline" ? "non-inline" : "inline"))
-                  }
-                />
-                <AtomicDbEngine
-                  fen={displayedAnalysisFen}
-                  settings={atomicDbEngineSettings}
-                  analysis={displayedAnalysis}
-                  onPlayLine={playAtomicDbLine}
-                  onHoverMove={setHoveredExplorerMoveUci}
-                  disabled={atomicDbLinePlaying || effectiveThreatMode}
-                  threatMode={effectiveThreatMode}
-                />
-              </div>
+              <AtomicDbAnalysisBlock
+                fen={displayedAnalysisFen}
+                analysis={displayedAnalysis}
+                settings={atomicDbEngineSettings}
+                setSettings={setAtomicDbEngineSettings}
+                onDisable={() => {
+                  setHoveredExplorerMoveUci(null);
+                  setThreatMode(false);
+                }}
+                onFlipBoard={flipBoard}
+                onThreatModeChange={setThreatMode}
+                threatAvailable={threatFen !== null}
+                threatMode={effectiveThreatMode}
+                notationInline={notationLayout === "inline"}
+                onToggleNotation={() =>
+                  setNotationLayout((current) => (current === "inline" ? "non-inline" : "inline"))
+                }
+                onPlayLine={playAtomicDbLine}
+                onHoverMove={setHoveredExplorerMoveUci}
+                disabled={atomicDbLinePlaying || effectiveThreatMode}
+              />
             ) : null}
             <div className="analysisMoveContent" ref={moveContentRef}>
               <MoveNotation
@@ -1620,18 +1620,8 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
         }
         lichessHref={currentLichessAnalysisUrl}
         showActions={!game}
-        atomicDbHref={atomicDbPositionKey ? atomicDbPositionUrl(atomicDbPositionKey) : null}
-        {...(!game && canRequestAtomicDbAnalysis
-          ? {
-              atomicDbRequest: {
-                state: atomicDbRequestStatus.state,
-                ...(atomicDbRequestStatus.state === "error"
-                  ? { message: atomicDbRequestStatus.message }
-                  : {}),
-                onRequest: () => void handleAtomicDbRequest(),
-              },
-            }
-          : {})}
+        atomicDbHref={atomicDbHref}
+        {...(!game && atomicDbRequest ? { atomicDbRequest } : {})}
         document={boardDocument}
         showDocument={!game}
       />
@@ -1642,7 +1632,7 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
           moves={moveList}
           document={boardDocument}
           onNavigatePly={navigateToPly}
-          atomicDbHref={atomicDbPositionKey ? atomicDbPositionUrl(atomicDbPositionKey) : null}
+          atomicDbHref={atomicDbHref}
           computerAnalysis={
             <GameComputerAnalysis
               analysis={gameAnalysis.analysis}
@@ -1660,17 +1650,7 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
           }
           computerAnalysisEnabled={gameComputerAnalysisEnabled}
           onActiveTabChange={setGameUnderboardTab}
-          {...(canRequestAtomicDbAnalysis
-            ? {
-                atomicDbRequest: {
-                  state: atomicDbRequestStatus.state,
-                  ...(atomicDbRequestStatus.state === "error"
-                    ? { message: atomicDbRequestStatus.message }
-                    : {}),
-                  onRequest: () => void handleAtomicDbRequest(),
-                },
-              }
-            : {})}
+          {...(atomicDbRequest ? { atomicDbRequest } : {})}
         />
       ) : null}
     </AnalysisWorkspaceLayout>

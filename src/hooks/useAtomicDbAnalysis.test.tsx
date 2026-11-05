@@ -2,10 +2,6 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  clearPreloadedAtomicDbGamePositions,
-  replacePreloadedAtomicDbGamePositions,
-} from "../lib/atomicDb/analysisRepository";
 import { analyzeFairyStockfishPosition } from "../lib/practice/fairyStockfish";
 import { useAtomicDbAnalysis } from "./useAtomicDbAnalysis";
 
@@ -36,113 +32,8 @@ const responseFor = (score: number) =>
 
 describe("useAtomicDbAnalysis", () => {
   afterEach(() => {
-    clearPreloadedAtomicDbGamePositions();
     vi.unstubAllGlobals();
     analyzeWithEngineMock.mockReset();
-  });
-
-  it("shows a completed game analysis immediately while refreshing it from AtomicDB", async () => {
-    let resolveAtomicDbRequest: ((response: Response) => void) | undefined;
-    const fetchMock = vi.fn(
-      () =>
-        new Promise<Response>((resolve) => {
-          resolveAtomicDbRequest = resolve;
-        }),
-    );
-    vi.stubGlobal("fetch", fetchMock);
-    replacePreloadedAtomicDbGamePositions([
-      {
-        fen: FIRST_FEN,
-        position: {
-          key: "saved-game-position",
-          outcome: "UNKNOWN",
-          closure: null,
-          score: 420,
-          point: null,
-          bestMove: "a1a2",
-          moves: [
-            {
-              uci: "a1a2",
-              outcome: "UNKNOWN",
-              closure: null,
-              score: 420,
-              point: null,
-              mate: null,
-              backedPlies: 24,
-            },
-          ],
-        },
-        principalVariations: { a1a2: ["a1a2", "h1h2"] },
-      },
-    ]);
-
-    const { result } = renderHook(() =>
-      useAtomicDbAnalysis(FIRST_FEN, { debounceMs: 0, lineCount: 1, plyCount: 2 }),
-    );
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
-    expect(result.current.status).toBe("loading");
-    expect(result.current.result?.position?.key).toBe("saved-game-position");
-    expect(result.current.principalVariations.a1a2).toEqual(["a1a2", "h1h2"]);
-
-    act(() => {
-      resolveAtomicDbRequest?.(
-        bundleResponse({
-          key: "fresh-atomicdb-position",
-          status: "UNKNOWN",
-          score: 460,
-          best_move: "a1a2",
-          moves: [{ uci: "a1a2", status: "UNKNOWN", score: 460 }],
-        }),
-      );
-    });
-
-    await waitFor(() => expect(result.current.status).toBe("ready"));
-    expect(result.current.result?.position?.key).toBe("fresh-atomicdb-position");
-  });
-
-  it("uses a preloaded game position without an AtomicDB call when continuations are hidden", async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-    replacePreloadedAtomicDbGamePositions([
-      {
-        fen: FIRST_FEN,
-        position: {
-          key: "saved-game-position",
-          outcome: "UNKNOWN",
-          closure: null,
-          score: 420,
-          point: 400,
-          bestMove: "a1a2",
-          moves: [
-            {
-              uci: "a1a2",
-              outcome: "UNKNOWN",
-              closure: null,
-              score: 420,
-              point: 400,
-              mate: null,
-              backedPlies: 8,
-            },
-          ],
-        },
-        principalVariations: { a1a2: ["a1a2"] },
-        complete: true,
-      },
-    ]);
-
-    const { result } = renderHook(() =>
-      useAtomicDbAnalysis(FIRST_FEN, {
-        debounceMs: 0,
-        lineCount: 1,
-        plyCount: 1,
-        refreshPreloaded: false,
-      }),
-    );
-
-    await waitFor(() => expect(result.current.status).toBe("ready"));
-    expect(result.current.result?.position?.key).toBe("saved-game-position");
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("checks AtomicDB before using Fairy-Stockfish for six-piece endgames", async () => {
@@ -279,37 +170,12 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5"]);
   });
 
-  it("can analyze an engine-only position without requesting AtomicDB", async () => {
-    const fen = "8/8/8/8/8/8/1K6/7k b - - 1 71";
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-    analyzeWithEngineMock.mockResolvedValue([
-      {
-        move: "h1g2",
-        multipv: 1,
-        scoreType: "cp",
-        score: 340,
-        depth: 17,
-        principalVariation: ["h1g2"],
-      },
-    ]);
-
-    const { result } = renderHook(() =>
-      useAtomicDbAnalysis(fen, { debounceMs: 0, engineOnly: true, lineCount: 1 }),
-    );
-
-    await waitFor(() => expect(result.current.status).toBe("ready"));
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(result.current.source).toBe("engine");
-    expect(result.current.result?.position?.moves[0]?.uci).toBe("h1g2");
-  });
-
   it("publishes live Fairy-Stockfish lines before the timed search finishes", async () => {
     const fen = "8/8/8/8/3k4/8/1K6/7R w - - 3 71";
     let publishProgress: Parameters<typeof analyzeFairyStockfishPosition>[3];
     let finishAnalysis:
       ((value: Awaited<ReturnType<typeof analyzeFairyStockfishPosition>>) => void) | undefined;
-    vi.stubGlobal("fetch", vi.fn());
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(responseFor(0)));
     analyzeWithEngineMock.mockImplementation((_fen, _lineCount, _signal, onProgress) => {
       publishProgress = onProgress;
       return new Promise((resolve) => {
@@ -318,7 +184,12 @@ describe("useAtomicDbAnalysis", () => {
     });
 
     const { result } = renderHook(() =>
-      useAtomicDbAnalysis(fen, { debounceMs: 0, engineOnly: true, lineCount: 1, plyCount: 3 }),
+      useAtomicDbAnalysis(fen, {
+        debounceMs: 0,
+        fallbackToEngine: true,
+        lineCount: 1,
+        plyCount: 3,
+      }),
     );
     await waitFor(() => expect(analyzeWithEngineMock).toHaveBeenCalledOnce());
 
@@ -507,7 +378,7 @@ describe("useAtomicDbAnalysis", () => {
     expect(requestedUrl.searchParams.get("ply_count")).toBe("3");
   });
 
-  it("shows a backed child position while refreshing its alternate moves", async () => {
+  it("keeps bundled follow-up moves visible while refreshing a child position", async () => {
     const parentFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 21 40";
     const childFen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 40";
     let resolveChildRefresh: ((response: Response) => void) | undefined;
@@ -527,12 +398,13 @@ describe("useAtomicDbAnalysis", () => {
               best_move: "e2e4",
               moves: [{ uci: "e2e4", status: "UNKNOWN", score: 80 }],
             },
-            lines: { e2e4: ["e2e4", "e7e5"] },
+            lines: { e2e4: ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4"] },
             positions: {
               [childFen]: {
-                status: "UNKNOWN",
+                status: "WHITE_WIN",
+                closure: "MATE_PV",
                 best_move: "e7e5",
-                score: 70,
+                score: -10_000,
               },
             },
           }),
@@ -548,17 +420,26 @@ describe("useAtomicDbAnalysis", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { result, rerender } = renderHook(
-      ({ fen }) => useAtomicDbAnalysis(fen, { debounceMs: 0, lineCount: 1, plyCount: 2 }),
+      ({ fen }) => useAtomicDbAnalysis(fen, { debounceMs: 0, lineCount: 1, plyCount: 5 }),
       { initialProps: { fen: parentFen } },
     );
-    await waitFor(() => expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5"]));
+    await waitFor(() =>
+      expect(result.current.principalVariations.e2e4).toEqual([
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1c4",
+      ]),
+    );
 
     rerender({ fen: childFen });
     await waitFor(() => expect(resolveChildRefresh).toBeTypeOf("function"));
     expect(result.current.status).toBe("loading");
     expect(result.current.result?.fen).toBe(childFen);
     expect(result.current.result?.position?.moves.map((move) => move.uci)).toEqual(["e7e5"]);
-    expect(result.current.principalVariations.e7e5).toEqual(["e7e5"]);
+    expect(result.current.result?.position).toMatchObject({ outcome: "UNKNOWN", score: null });
+    expect(result.current.principalVariations.e7e5).toEqual(["e7e5", "g1f3", "b8c6", "f1c4"]);
 
     await act(async () => {
       resolveChildRefresh?.(
@@ -656,26 +537,7 @@ describe("useAtomicDbAnalysis", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
   });
 
-  it("does not request continuations when zero lines are displayed", async () => {
-    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 6 12";
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          status: "UNKNOWN",
-          best_move: "g1f3",
-          moves: [{ uci: "g1f3", status: "UNKNOWN", score: 500 }],
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      ),
-    );
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { result } = renderHook(() => useAtomicDbAnalysis(fen, { debounceMs: 0, lineCount: 0 }));
-    await waitFor(() => expect(result.current.status).toBe("ready"));
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("deduplicates the development StrictMode root request", async () => {
+  it("deduplicates the development StrictMode analysis request", async () => {
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 8 14";
     let resolveRequest: ((response: Response) => void) | undefined;
     const fetchMock = vi.fn(
@@ -686,16 +548,13 @@ describe("useAtomicDbAnalysis", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const { result } = renderHook(() => useAtomicDbAnalysis(fen, { debounceMs: 0, lineCount: 0 }), {
+    const { result } = renderHook(() => useAtomicDbAnalysis(fen, { debounceMs: 0, lineCount: 1 }), {
       wrapper: StrictMode,
     });
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     await act(async () =>
       resolveRequest?.(
-        new Response(
-          JSON.stringify({ status: "UNKNOWN", score: 500, best_move: null, moves: [] }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
+        bundleResponse({ status: "UNKNOWN", score: 500, best_move: null, moves: [] }),
       ),
     );
     await waitFor(() => expect(result.current.status).toBe("ready"));

@@ -28,15 +28,13 @@ export const useAtomicDbBoardAnalysis = ({
   const navigationPending = navigation !== null;
   const fen = variationPlaying ? (variationStartFenRef.current ?? currentFen) : currentFen;
   const analysis = useAtomicDbAnalysis(fen, {
-    // Keep loading the root position for the external AtomicDB link, but do not spend requests on
-    // invisible continuations while the engine panel is disabled. Any board navigation preempts
-    // the current request so the move is applied before analysis resumes on its destination.
-    lineCount: enabled ? lineCount : 0,
+    // A disabled panel is fully dormant. Any board navigation preempts the current request so the
+    // move is applied before analysis resumes on its destination.
+    lineCount,
     plyCount: showFollowUpMoves ? PRINCIPAL_VARIATION_PLIES : 1,
-    refreshPreloaded: showFollowUpMoves,
     suspended: navigationPending || suspended,
     fallbackToEngine: enabled,
-    enabled: terminalOutcome === null,
+    enabled: enabled && terminalOutcome === null,
   });
   const terminalAnalysis = useMemo<AtomicDbAnalysisState | null>(() => {
     if (!terminalOutcome) return null;

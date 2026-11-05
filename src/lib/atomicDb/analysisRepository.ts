@@ -1,8 +1,8 @@
+import { fenAfterAtomicMove } from "../../../shared/domain/puzzles/solutionPgn";
 import {
   type AtomicDbAnalysisBundle,
   type AtomicDbPosition,
   fetchAtomicDbAnalysisBundle,
-  fetchAtomicDbPosition,
 } from "../../utils/atomicDb";
 
 const CACHE_TTL_MS = 5 * 60_000;
@@ -16,20 +16,11 @@ type SharedRequest<T> = {
 };
 
 type CacheLookup<T> = { found: true; value: T } | { found: false };
-export type AtomicDbPositionCacheLookup =
+type AtomicDbPositionCacheLookup =
   | {
       found: true;
       value: AtomicDbPosition | null;
-      backed: false;
-      preloaded: boolean;
-      complete: boolean;
-    }
-  | {
-      found: true;
-      value: AtomicDbPosition;
-      backed: true;
-      preloaded: boolean;
-      complete: boolean;
+      completePreload: boolean;
     }
   | { found: false };
 
@@ -143,7 +134,7 @@ class AtomicDbRequestStore<T> {
 }
 
 const positions = new AtomicDbRequestStore<AtomicDbPosition | null>(128);
-const backedPositions = new AtomicDbRequestStore<AtomicDbPosition>(128);
+const previewPositions = new AtomicDbRequestStore<AtomicDbPosition>(128);
 const analysisBundles = new AtomicDbRequestStore<AtomicDbAnalysisBundle>(64);
 const variationLines = new AtomicDbRequestStore<string[]>(128);
 const preloadedGamePositions = new Map<
@@ -195,29 +186,19 @@ export const peekAtomicDbPosition = (fen: string): AtomicDbPositionCacheLookup =
       ? {
           found: true,
           value: preloaded.position,
-          backed: true,
-          preloaded: true,
-          complete: preloaded.complete,
+          completePreload: preloaded.complete,
         }
       : {
           found: true,
           value: null,
-          backed: false,
-          preloaded: true,
-          complete: preloaded.complete,
+          completePreload: preloaded.complete,
         };
   }
   const complete = positions.peek(fen);
-  if (complete.found) return { ...complete, backed: false, preloaded: false, complete: true };
-  const backed = backedPositions.peek(fen);
-  return backed.found ? { ...backed, backed: true, preloaded: false, complete: false } : backed;
+  if (complete.found) return { ...complete, completePreload: false };
+  const preview = previewPositions.peek(fen);
+  return preview.found ? { ...preview, completePreload: false } : preview;
 };
-
-export const loadAtomicDbPosition = (
-  fen: string,
-  signal: AbortSignal,
-): Promise<AtomicDbPosition | null> =>
-  positions.load(fen, (sharedSignal) => fetchAtomicDbPosition(fen, sharedSignal), signal);
 
 export const peekAtomicDbVariationLines = (
   fen: string,
@@ -237,17 +218,34 @@ export const peekAtomicDbVariationLines = (
   return lines;
 };
 
+const primeContinuationVariationLines = (
+  rootFen: string,
+  lines: Record<string, string[]>,
+  bundledPositions: Record<string, AtomicDbPosition>,
+  plyCount: number,
+): void => {
+  for (const line of Object.values(lines)) {
+    let currentFen = rootFen;
+    for (let moveIndex = 0; moveIndex < line.length; moveIndex += 1) {
+      const nextFen = fenAfterAtomicMove(currentFen, line[moveIndex]!);
+      if (!nextFen) break;
+
+      const continuation = line.slice(moveIndex + 1, moveIndex + 1 + plyCount);
+      const nextMove = continuation[0];
+      if (nextMove && bundledPositions[nextFen]) {
+        variationLines.prime(variationLineKey(nextFen, nextMove, plyCount), continuation);
+      }
+      currentFen = nextFen;
+    }
+  }
+};
+
 export const loadAtomicDbAnalysisBundle = async (
   fen: string,
   lineCount: number,
   plyCount: number,
   signal: AbortSignal,
 ): Promise<AtomicDbAnalysisBundle> => {
-  if (lineCount === 0) {
-    const position = await loadAtomicDbPosition(fen, signal);
-    return { position, lines: {}, positions: {} };
-  }
-
   const batchKey = analysisBundleKey(fen, lineCount, plyCount);
   const result = await analysisBundles.load(
     batchKey,
@@ -259,8 +257,9 @@ export const loadAtomicDbAnalysisBundle = async (
     const line = result.lines[rootMove] ?? [rootMove];
     variationLines.prime(variationLineKey(fen, rootMove, plyCount), line);
   }
+  primeContinuationVariationLines(fen, result.lines, result.positions, plyCount);
   for (const [positionFen, position] of Object.entries(result.positions)) {
-    backedPositions.prime(positionFen, position);
+    previewPositions.prime(positionFen, position);
   }
   return result;
 };

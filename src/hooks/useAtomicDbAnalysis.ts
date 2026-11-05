@@ -12,7 +12,7 @@ import {
 import type { AtomicDbPosition, AtomicDbResult } from "../utils/atomicDb";
 import { getErrorMessage } from "../utils/errors";
 
-export type AtomicDbAnalysisStatus = "idle" | "loading" | "ready" | "error";
+type AtomicDbAnalysisStatus = "idle" | "loading" | "ready" | "error";
 
 export type AtomicDbAnalysisState = {
   result: AtomicDbResult | null;
@@ -22,15 +22,13 @@ export type AtomicDbAnalysisState = {
   source?: "atomicdb" | "engine" | "mixed" | "terminal" | undefined;
 };
 
-export type AtomicDbAnalysisOptions = {
+type AtomicDbAnalysisOptions = {
   enabled?: boolean;
   debounceMs?: number;
-  engineOnly?: boolean;
   lineCount?: number;
   plyCount?: number;
   suspended?: boolean;
   fallbackToEngine?: boolean;
-  refreshPreloaded?: boolean;
 };
 
 type RequestState = AtomicDbAnalysisState & { requestedFen: string | null };
@@ -92,12 +90,10 @@ export const useAtomicDbAnalysis = (
   {
     enabled = true,
     debounceMs = 220,
-    engineOnly = false,
     lineCount: requestedLineCount = 3,
     plyCount: requestedPlyCount = 5,
     suspended = false,
     fallbackToEngine = false,
-    refreshPreloaded = true,
   }: AtomicDbAnalysisOptions = {},
 ): AtomicDbAnalysisState => {
   const [state, setState] = useState<RequestState>(INITIAL_STATE);
@@ -114,10 +110,8 @@ export const useAtomicDbAnalysis = (
     if (suspended) return;
 
     const controller = new AbortController();
-    const lineCount = clampInteger(requestedLineCount, 0, MAX_LINE_COUNT);
+    const lineCount = clampInteger(requestedLineCount, 1, MAX_LINE_COUNT);
     const plyCount = clampInteger(requestedPlyCount, 1, MAX_PLY_COUNT);
-    const useEngine = engineOnly;
-
     const cachedLinesFor = (position: AtomicDbPosition | null): Record<string, string[]> => {
       const rootMoves = position?.moves.slice(0, lineCount).map((move) => move.uci) ?? [];
       const lines = peekAtomicDbVariationLines(fen, rootMoves, plyCount);
@@ -130,32 +124,26 @@ export const useAtomicDbAnalysis = (
       lines: Record<string, string[]> = cachedLinesFor(position),
     ): void => {
       startTransition(() => {
-        setState((current) => ({
+        setState({
           result: { fen, position },
           requestedFen: fen,
           status: "ready",
           error: "",
-          principalVariations: {
-            ...(current.requestedFen === fen ? current.principalVariations : {}),
-            ...lines,
-          },
+          principalVariations: lines,
           source: "atomicdb",
-        }));
+        });
       });
     };
 
-    const publishBackedPosition = (position: AtomicDbPosition): void => {
-      setState((current) => ({
+    const publishCachedPosition = (position: AtomicDbPosition): void => {
+      setState({
         result: { fen, position },
         requestedFen: fen,
         status: "loading",
         error: "",
-        principalVariations: {
-          ...(current.requestedFen === fen ? current.principalVariations : {}),
-          ...cachedLinesFor(position),
-        },
+        principalVariations: cachedLinesFor(position),
         source: "atomicdb",
-      }));
+      });
     };
 
     const publishEngineFallback = async (): Promise<void> => {
@@ -278,9 +266,9 @@ export const useAtomicDbAnalysis = (
 
     const publishAtomicDbOrFallback = (
       position: AtomicDbPosition | null,
-      lines: Record<string, string[]> = {},
+      lines: Record<string, string[]>,
     ): void => {
-      if (fallbackToEngine && lineCount > 0 && (!position || position.moves.length === 0)) {
+      if (fallbackToEngine && (!position || position.moves.length === 0)) {
         void publishEngineFallback();
         return;
       }
@@ -291,22 +279,16 @@ export const useAtomicDbAnalysis = (
       publishPosition(position, lines);
     };
 
-    let showingBackedPosition = false;
-    if (!useEngine) {
-      const cached = peekAtomicDbPosition(fen);
-      if (cached.found) {
-        if (!cached.backed && lineCount === 0) {
-          publishAtomicDbOrFallback(cached.value);
-          return () => controller.abort();
-        }
-        if (cached.preloaded && cached.complete && !refreshPreloaded) {
-          publishPosition(cached.value);
-          return () => controller.abort();
-        }
-        if (cached.value) {
-          showingBackedPosition = true;
-          publishBackedPosition(cached.value);
-        }
+    let showingCachedPosition = false;
+    const cached = peekAtomicDbPosition(fen);
+    if (cached.found) {
+      if (cached.completePreload) {
+        publishPosition(cached.value);
+        return () => controller.abort();
+      }
+      if (cached.value) {
+        showingCachedPosition = true;
+        publishCachedPosition(cached.value);
       }
     }
 
@@ -314,22 +296,18 @@ export const useAtomicDbAnalysis = (
     const shouldDebounce =
       lastRequestAtRef.current !== null && requestedAt - lastRequestAtRef.current < debounceMs;
     lastRequestAtRef.current = requestedAt;
-    if (!showingBackedPosition) {
+    if (!showingCachedPosition) {
       setState((current) => ({
         ...current,
         requestedFen: fen,
         status: "loading",
         error: "",
         principalVariations: {},
-        source: useEngine ? "engine" : "atomicdb",
+        source: "atomicdb",
       }));
     }
 
     const requestPosition = async (): Promise<void> => {
-      if (useEngine) {
-        await publishEngineFallback();
-        return;
-      }
       try {
         const bundle = await loadAtomicDbAnalysisBundle(
           fen,
@@ -365,12 +343,10 @@ export const useAtomicDbAnalysis = (
   }, [
     debounceMs,
     enabled,
-    engineOnly,
     fallbackToEngine,
     fen,
     requestedLineCount,
     requestedPlyCount,
-    refreshPreloaded,
     suspended,
   ]);
 
@@ -384,6 +360,6 @@ export const useAtomicDbAnalysis = (
     status: state.result?.fen === fen ? "ready" : "loading",
     error: "",
     principalVariations: state.principalVariations,
-    source: engineOnly ? "engine" : "atomicdb",
+    source: "atomicdb",
   };
 };

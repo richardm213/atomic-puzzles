@@ -9,7 +9,7 @@ export const ATOMIC_DB_UCI_PATTERN = /^[a-h][1-8][a-h][1-8][nbrq]?$/;
 
 export type AtomicDbUpstreamPosition = Record<string, unknown> & { moves: unknown[] };
 
-export type AtomicDbPrincipalVariations = {
+type AtomicDbPrincipalVariations = {
   position: AtomicDbUpstreamPosition;
   lines: Record<string, unknown>;
   positions: Record<string, unknown>;

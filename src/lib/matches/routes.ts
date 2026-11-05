@@ -11,6 +11,14 @@ type MatchRouteInput = {
 
 export type LichessLinkTarget = "atomic-puzzles" | "lichess";
 
+export const decodeRouteParam = (value: unknown): string => {
+  try {
+    return decodeURIComponent(String(value ?? ""));
+  } catch {
+    return String(value ?? "");
+  }
+};
+
 export const normalizeMatchMode = (mode: unknown): Mode | "" => {
   const value = String(mode ?? "").toLowerCase();
   if (

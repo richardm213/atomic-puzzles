@@ -10,27 +10,20 @@ import { inferAtomic960InitialFen } from "../../lib/games/initialFen";
 import { gameDetailQueryOptions } from "../../lib/games/queries";
 import {
   buildExternalGameUrl,
+  decodeRouteParam,
   inferExternalGameSource,
   isChessComSource,
   isPyChessSource,
 } from "../../lib/matches/routes";
-import { serializeUciLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import { getErrorMessage } from "../../utils/errors";
 import { AnalysisPage } from "../Analysis/Analysis";
 
-const decodeParam = (value: unknown): string => {
-  try {
-    return decodeURIComponent(String(value ?? ""));
-  } catch {
-    return String(value ?? "");
-  }
-};
-
 export const GamePage = () => {
   const { gameId: gameIdParam } = useParams({ strict: false });
-  const decodedGameId = decodeParam(gameIdParam);
+  const decodedGameId = decodeRouteParam(gameIdParam);
   const gameId = decodedGameId.replace(/^(?:chesscom|pychess):/i, "").trim();
-  const gameQuery = useQuery({ ...gameDetailQueryOptions(gameId), enabled: Boolean(gameId) });
+  const hasValidGameId = Boolean(gameId);
+  const gameQuery = useQuery({ ...gameDetailQueryOptions(gameId), enabled: hasValidGameId });
   const game = gameQuery.data;
   const initialFen = useMemo(() => {
     const storedFen = game?.initial_fen?.trim();
@@ -38,19 +31,9 @@ export const GamePage = () => {
     if (game?.mode === "atomic960") return inferAtomic960InitialFen(game.moves);
     return INITIAL_FEN;
   }, [game?.initial_fen, game?.mode, game?.moves]);
-  const pgn = useMemo(
-    () =>
-      game?.moves?.length && initialFen
-        ? serializeUciLinesToPgn(initialFen, [
-            game.moves.map((uci) => ({ uci, key: uci, annotation: "", retry: false })),
-          ])
-        : "",
-    [game?.moves, initialFen],
-  );
+  if (hasValidGameId && gameQuery.isPending) return <RouteLoadingFallback />;
 
-  if (gameQuery.isPending) return <RouteLoadingFallback />;
-
-  if (!game || !initialFen || !pgn) {
+  if (!game || !initialFen || !game.moves?.length) {
     const externalSource =
       game?.source ??
       (isPyChessSource(decodedGameId) ? "pychess" : inferExternalGameSource(decodedGameId));
@@ -60,9 +43,11 @@ export const GamePage = () => {
       : isPyChessSource(externalSource)
         ? "View on PyChess"
         : "View on Lichess";
-    const message = gameQuery.error
-      ? getErrorMessage(gameQuery.error, "Unable to load this game.")
-      : "Move-by-move analysis is not available for this archived game.";
+    const message = !hasValidGameId
+      ? "This game link is missing a valid game id."
+      : gameQuery.error
+        ? getErrorMessage(gameQuery.error, "Unable to load this game.")
+        : "Move-by-move analysis is not available for this archived game.";
     return (
       <div className="rankingsPage">
         <div className="panel gameUnavailablePanel">
@@ -78,5 +63,5 @@ export const GamePage = () => {
     );
   }
 
-  return <AnalysisPage game={game} initialFen={initialFen} initialPgn={pgn} />;
+  return <AnalysisPage game={game} initialFen={initialFen} initialMoves={game.moves} />;
 };

@@ -8,7 +8,7 @@ import { getErrorMessage } from "../utils/errors";
 import { toOpeningDatabaseGame, toOpeningDatabaseMove } from "../utils/openingDatabaseDisplay";
 import type { ExplorerApiResponse, ExplorerRequestNavigation } from "../utils/openingExplorer";
 
-export type OpeningExplorerStatus = "idle" | "loading" | "ready" | "error";
+type OpeningExplorerStatus = "idle" | "loading" | "ready" | "error";
 
 export type OpeningExplorerRequest = {
   response: ExplorerApiResponse;
