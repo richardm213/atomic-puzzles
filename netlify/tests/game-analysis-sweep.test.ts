@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  gameAnalysisNeedsSubmission,
   gameAnalysisPollIndexes,
   gameAnalysisPollSchedule,
   gameAnalysisPositionKey,
   gameAnalysisSubmissionLimit,
   gameAnalysisSweepPositionLimit,
+  parseAtomicDbQueueSize,
   uniqueGameAnalysisPositionIndexes,
 } from "../features/gameAnalysis/service";
 
@@ -21,6 +23,24 @@ describe("game analysis sweep", () => {
     expect(gameAnalysisSubmissionLimit(0)).toBe(4250);
     expect(gameAnalysisSubmissionLimit(1000)).toBe(3800);
     expect(gameAnalysisSubmissionLimit(4800)).toBe(0);
+  });
+
+  it("reads both current and legacy AtomicDB queue counters", () => {
+    expect(
+      parseAtomicDbQueueSize(
+        '<p class="queue-counts"><span><strong>67</strong> waiting</span> <span><strong>3</strong> running</span></p>',
+      ),
+    ).toBe(70);
+    expect(
+      parseAtomicDbQueueSize(
+        '<div class="v">4,700</div><div class="l">waiting</div><div class="v">3</div><div class="l">running</div>',
+      ),
+    ).toBe(4703);
+  });
+
+  it("skips jobs whose positions have all been submitted", () => {
+    expect(gameAnalysisNeedsSubmission({ queued_positions: 54, total_positions: 54 })).toBe(false);
+    expect(gameAnalysisNeedsSubmission({ queued_positions: 5, total_positions: 91 })).toBe(true);
   });
 
   it("rotates the polled position when a large queue gives each job one lookup", () => {

@@ -301,6 +301,22 @@ const isCompletedAtomicDbPosition = (position: StoredAtomicDbPosition | null): b
     (position.status !== "UNKNOWN" || (position.budgetNodes ?? 0) >= GAME_ANALYSIS_BUDGET_NODES),
   );
 
+export const parseAtomicDbQueueSize = (html: string): number | null => {
+  const metric = (label: "waiting" | "running"): number | null => {
+    const current = html.match(
+      new RegExp(`<strong>\\s*([\\d,]+)\\s*</strong>\\s*${label}\\b`, "i"),
+    );
+    const legacy = html.match(
+      new RegExp(`<div class="v">([\\d,]+)</div><div class="l">${label}</div>`, "i"),
+    );
+    const value = Number.parseInt((current?.[1] ?? legacy?.[1] ?? "").replaceAll(",", ""), 10);
+    return Number.isFinite(value) ? value : null;
+  };
+  const waiting = metric("waiting");
+  const running = metric("running");
+  return waiting === null || running === null ? null : waiting + running;
+};
+
 const atomicDbQueueSize = async (account: AtomicDbCredentials): Promise<number | null> => {
   const response = await fetch(
     `${ATOMIC_DB_BASE_URL}/queue/${encodeURIComponent(account.username)}/`,
@@ -310,18 +326,7 @@ const atomicDbQueueSize = async (account: AtomicDbCredentials): Promise<number |
     },
   );
   if (!response.ok) return null;
-  const html = await response.text();
-  const metric = (label: "waiting" | "running"): number | null => {
-    const match = html.match(
-      new RegExp(`<div class="v">([\\d,]+)</div><div class="l">${label}</div>`, "i"),
-    );
-    if (!match?.[1]) return null;
-    const value = Number.parseInt(match[1].replaceAll(",", ""), 10);
-    return Number.isFinite(value) ? value : null;
-  };
-  const waiting = metric("waiting");
-  const running = metric("running");
-  return waiting === null || running === null ? null : waiting + running;
+  return parseAtomicDbQueueSize(await response.text());
 };
 
 const initialPollDelayMs = (queueSize: number): number => {
@@ -597,6 +602,11 @@ export const gameAnalysisSweepPositionLimit = (jobCount: number): number =>
 export const gameAnalysisSubmissionLimit = (queueSize: number): number =>
   Math.min(SUBMISSION_POSITION_BUDGET, Math.max(0, ATOMIC_DB_QUEUE_TARGET - queueSize));
 
+export const gameAnalysisNeedsSubmission = (row: {
+  queued_positions: number;
+  total_positions: number;
+}): boolean => row.queued_positions < row.total_positions;
+
 export const hasPendingGameAnalyses = async (): Promise<boolean> => {
   const supabase = createServerSupabase("Game analysis wake check");
   const { data, error } = await supabase
@@ -639,13 +649,17 @@ export const submitPendingGameAnalysisPositions = async (
   const supabase = createServerSupabase("Game analysis submission sweep");
   const { data, error } = await supabase
     .from("game_analyses")
-    .select("game_id")
+    .select("game_id,queued_positions,total_positions")
     .in("status", ["queued", "processing"])
+    // Fully submitted jobs used to occupy the front of this scan. Walking them loaded every
+    // position state until the function timed out, so it never reached the unsubmitted backlog.
+    .order("queued_positions", { ascending: true })
     .order("created_at", { ascending: true })
     .limit(1000);
   if (error) throw new Error(`Unable to load game analyses for submission: ${error.message}`);
 
   for (const row of data ?? []) {
+    if (!gameAnalysisNeedsSubmission(row)) continue;
     const submitted = await processGameAnalysisJob(String(row.game_id), remaining, {
       poll: false,
     });
