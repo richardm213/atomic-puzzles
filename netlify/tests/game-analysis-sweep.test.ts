@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  gameAnalysisPollIndexes,
   gameAnalysisPositionKey,
   gameAnalysisSubmissionLimit,
   gameAnalysisSweepPositionLimit,
@@ -18,6 +19,13 @@ describe("game analysis sweep", () => {
     expect(gameAnalysisSubmissionLimit(0)).toBe(4250);
     expect(gameAnalysisSubmissionLimit(1000)).toBe(3800);
     expect(gameAnalysisSubmissionLimit(4800)).toBe(0);
+  });
+
+  it("rotates the polled position when a large queue gives each job one lookup", () => {
+    expect(gameAnalysisPollIndexes([1, 2, 4], 1, 0)).toEqual([1]);
+    expect(gameAnalysisPollIndexes([1, 2, 4], 1, 1)).toEqual([2]);
+    expect(gameAnalysisPollIndexes([1, 2, 4], 1, 2)).toEqual([4]);
+    expect(gameAnalysisPollIndexes([1, 2, 4], 1, 3)).toEqual([1]);
   });
 
   it("deduplicates positions whose FEN clocks differ", () => {

@@ -384,6 +384,17 @@ const refundAndFail = async (
 
 type ProcessGameAnalysisOptions = { poll?: boolean; submit?: boolean };
 
+export const gameAnalysisPollIndexes = (
+  indexes: number[],
+  maxPositions: number,
+  retryCount: number,
+): number[] => {
+  if (indexes.length === 0 || maxPositions <= 0) return [];
+  const start = Math.max(0, Math.floor(retryCount)) % indexes.length;
+  const count = Math.min(Math.floor(maxPositions), indexes.length);
+  return Array.from({ length: count }, (_, offset) => indexes[(start + offset) % indexes.length]!);
+};
+
 export const processGameAnalysisJob = async (
   gameId: string,
   maxPositions = 160,
@@ -429,9 +440,11 @@ export const processGameAnalysisJob = async (
   const submittedIndexes =
     options.poll === false
       ? []
-      : orderedIndexes
-          .filter((index) => Boolean(states[index]?.requestStatus))
-          .slice(0, maxPositions);
+      : gameAnalysisPollIndexes(
+          orderedIndexes.filter((index) => Boolean(states[index]?.requestStatus)),
+          maxPositions,
+          data.retry_count,
+        );
   await mapConcurrent(submittedIndexes, 5, async (index) => {
     const state = states[index]!;
     try {
