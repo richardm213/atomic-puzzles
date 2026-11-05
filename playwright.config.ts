@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const isCi = Boolean(process.env.CI);
+const firefoxOnly = process.env.PLAYWRIGHT_BROWSER === "firefox";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -20,18 +21,26 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
-  projects: [
-    {
-      name: "chromium",
-      testIgnore: /responsive\.spec\.ts/,
-      use: { ...devices["Desktop Chrome"] },
-    },
-    {
-      name: "mobile-chromium",
-      testMatch: /responsive\.spec\.ts/,
-      use: { ...devices["Pixel 7"] },
-    },
-  ],
+  projects: firefoxOnly
+    ? [
+        {
+          name: "firefox",
+          testIgnore: /responsive\.spec\.ts/,
+          use: { ...devices["Desktop Firefox"] },
+        },
+      ]
+    : [
+        {
+          name: "chromium",
+          testIgnore: /responsive\.spec\.ts/,
+          use: { ...devices["Desktop Chrome"] },
+        },
+        {
+          name: "mobile-chromium",
+          testMatch: /responsive\.spec\.ts/,
+          use: { ...devices["Pixel 7"] },
+        },
+      ],
   webServer: {
     command:
       "npm run build -- --mode e2e && npm run preview -- --host 127.0.0.1 --port 4173 --strictPort",

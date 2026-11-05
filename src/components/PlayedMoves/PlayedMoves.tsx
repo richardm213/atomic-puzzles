@@ -37,12 +37,14 @@ export const PlayedMoves = ({
   currentPly,
   onNavigate,
   onAnnotate,
+  onDelete,
   assessments = [],
 }: {
   moves: string[];
   currentPly: number;
   onNavigate: (ply: number) => void;
   onAnnotate?: ((moveIndex: number, annotation: string) => void) | undefined;
+  onDelete?: ((moveIndex: number) => void) | undefined;
   assessments?: GameMoveAssessment[] | undefined;
 }) => {
   const activeMoveRef = useRef<HTMLButtonElement | null>(null);
@@ -77,7 +79,7 @@ export const PlayedMoves = ({
                   onNavigate(pair.whitePly);
                 }}
                 onContextMenu={
-                  onAnnotate
+                  onAnnotate || onDelete
                     ? (event) => {
                         event.preventDefault();
                         setAnnotationTarget({
@@ -88,7 +90,7 @@ export const PlayedMoves = ({
                       }
                     : undefined
                 }
-                title={onAnnotate ? "Right-click to edit move" : undefined}
+                title={onAnnotate || onDelete ? "Right-click to edit move" : undefined}
               >
                 <span>{pair.white}</span>
                 {visibleAssessment(pair.whitePly) ? (
@@ -110,7 +112,7 @@ export const PlayedMoves = ({
                   onNavigate(pair.blackPly);
                 }}
                 onContextMenu={
-                  onAnnotate
+                  onAnnotate || onDelete
                     ? (event) => {
                         event.preventDefault();
                         setAnnotationTarget({
@@ -121,7 +123,7 @@ export const PlayedMoves = ({
                       }
                     : undefined
                 }
-                title={onAnnotate ? "Right-click to edit move" : undefined}
+                title={onAnnotate || onDelete ? "Right-click to edit move" : undefined}
               >
                 <span>{pair.black}</span>
                 {visibleAssessment(pair.blackPly) ? (
@@ -136,15 +138,23 @@ export const PlayedMoves = ({
           </li>
         ))}
       </ol>
-      {annotationTarget && onAnnotate ? (
+      {annotationTarget && (onAnnotate || onDelete) ? (
         <MoveAnnotationMenu
           position={annotationTarget.position}
           current={annotationTarget.current}
           onClose={closeAnnotationMenu}
           onSelect={(annotation) => {
-            onAnnotate(annotationTarget.moveIndex, annotation);
+            onAnnotate?.(annotationTarget.moveIndex, annotation);
             closeAnnotationMenu();
           }}
+          onDelete={
+            onDelete
+              ? () => {
+                  onDelete(annotationTarget.moveIndex);
+                  closeAnnotationMenu();
+                }
+              : undefined
+          }
         />
       ) : null}
     </>

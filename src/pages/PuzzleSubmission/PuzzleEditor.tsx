@@ -12,8 +12,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 
-import { AnalysisMoveTree } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
+import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import {
   continuationOptionsAt,
   SolutionMoveTree,
@@ -397,6 +397,7 @@ export const PuzzleEditor = ({
     if (
       !canEditSolution ||
       engineLinePlayingRef.current ||
+      navigation !== null ||
       state.viewingSolution ||
       state.customLineIndex === undefined
     ) {
@@ -520,15 +521,25 @@ export const PuzzleEditor = ({
   const reviewMovePanel = (
     <section className="puzzleReviewMovePanel" aria-label="Solution moves">
       {solutionLines.length ? (
-        <AnalysisMoveTree
+        <MoveNotation
           lines={solutionLines}
           moves={boardState?.lineMoves ?? solutionLines[activeLineIndex] ?? []}
           currentPly={currentPly}
           pinnedLineIndex={activeLineIndex}
           inline
-          onSelect={navigateToMove}
+          alwaysUseTree
+          onNavigate={(ply) => navigateToMove(activeLineIndex, Math.max(0, ply - 1))}
+          onSelectVariation={navigateToMove}
           onCycleOptions={navigate}
-          onAnnotate={canEditSolution ? annotateSolutionMove : undefined}
+          onAnnotate={
+            canEditSolution
+              ? (lineIndex, moveIndex, annotation) => {
+                  if (lineIndex !== undefined) {
+                    annotateSolutionMove(lineIndex, moveIndex, annotation);
+                  }
+                }
+              : undefined
+          }
           onDelete={canEditSolution ? deleteSolutionFromMove : undefined}
         />
       ) : (

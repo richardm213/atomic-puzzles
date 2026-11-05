@@ -17,6 +17,7 @@ import { PuzzleSubmissionPage } from "./PuzzleSubmission";
 
 const chessboardMocks = vi.hoisted(() => ({
   navigations: [] as SolutionNavigation[],
+  stateOnCommand: null as ChessboardState | null,
 }));
 const authMocks = vi.hoisted(() => ({ username: "submitter" }));
 
@@ -53,9 +54,12 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
       React.useEffect(() => {
         if (solutionNavigation) {
           chessboardMocks.navigations.push(solutionNavigation);
+          if (solutionNavigation.type === "command" && chessboardMocks.stateOnCommand) {
+            onStateChange?.(chessboardMocks.stateOnCommand);
+          }
           onNavigateHandled?.();
         }
-      }, [onNavigateHandled, solutionNavigation]);
+      }, [onNavigateHandled, onStateChange, solutionNavigation]);
 
       return (
         <>
@@ -267,6 +271,7 @@ describe("PuzzleSubmissionPage fields", () => {
 describe("PuzzleEditor move tree", () => {
   beforeEach(() => {
     chessboardMocks.navigations.length = 0;
+    chessboardMocks.stateOnCommand = null;
   });
 
   it("supports a submission-only batch navigator without an explanation field", () => {
@@ -310,6 +315,31 @@ describe("PuzzleEditor move tree", () => {
 
     expect(writeText).toHaveBeenCalledWith((solution as HTMLTextAreaElement).value);
     expect(screen.getByRole("button", { name: "Copied" })).toBeVisible();
+  });
+
+  it("does not save playback state as a puzzle edit while returning to the main line", async () => {
+    const user = userEvent.setup();
+    chessboardMocks.stateOnCommand = {
+      ...c5NavigationState,
+      lineMoves: ["e4", "e5", "Nf3"],
+      customLines: [["e4", "e5", "Nf3"]],
+      lineIndex: 1,
+      customLineIndex: 0,
+      viewingSolution: false,
+    };
+    render(<EditorHarness allowSolutionEditing />);
+
+    const initialSolution = screen.getByTestId("stored-solution").textContent;
+    await user.click(screen.getByRole("button", { name: "Navigate c5 line" }));
+    await user.click(screen.getByRole("button", { name: "Go to previous move" }));
+
+    await waitFor(() =>
+      expect(chessboardMocks.navigations.at(-1)).toEqual({
+        type: "command",
+        command: "previous",
+      }),
+    );
+    expect(screen.getByTestId("stored-solution")).toHaveTextContent(initialSolution ?? "");
   });
 
   it("accepts the initial PGN paste and keeps single-puzzle editing enabled", async () => {
