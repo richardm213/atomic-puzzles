@@ -335,7 +335,7 @@
   width: 100%;
   min-width: calc(var(--game-count) * var(--result-column-width) + 194px);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px 54px;
+  grid-template-columns: minmax(0, 1fr) fit-content(140px) 54px;
   overflow: clip;
   border: 1px solid var(--color-border);
   border-radius: 6px;
@@ -1368,7 +1368,7 @@
     --result-column-width: 18px;
 
     min-width: calc(var(--game-count) * var(--result-column-width) + 144px);
-    grid-template-columns: minmax(0, 1fr) 100px 44px;
+    grid-template-columns: minmax(0, 1fr) fit-content(100px) 44px;
   }
 
   .gameMatchCrosstableStrip.matches {
