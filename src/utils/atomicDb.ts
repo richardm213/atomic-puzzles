@@ -30,7 +30,8 @@ export type AtomicDbResult = {
   position: AtomicDbPosition | null;
 };
 
-export type AtomicDbPrincipalVariationResult = {
+export type AtomicDbAnalysisBundle = {
+  position: AtomicDbPosition | null;
   lines: Record<string, string[]>;
   positions: Record<string, AtomicDbPosition>;
 };
@@ -74,6 +75,12 @@ type AtomicDbResponse = {
   best_move?: unknown;
   moves?: unknown;
   analysis?: unknown;
+};
+
+type AtomicDbPrincipalVariationsResponse = {
+  position?: unknown;
+  lines?: unknown;
+  positions?: unknown;
 };
 
 const UNKNOWN_EVALUATION: AtomicDbEvaluation = { type: "unknown" };
@@ -245,13 +252,55 @@ const atomicDbRequestPath = (fen: string): string => {
   return `/api/atomicdb-analysis?${params.toString()}`;
 };
 
-const atomicDbLinesRequestPath = (fen: string, rootMoves: string[], plyCount: number): string => {
+const atomicDbPrincipalVariationsRequestPath = (
+  fen: string,
+  lineCount: number,
+  plyCount: number,
+): string => {
   const params = new URLSearchParams({
     fen,
-    line_moves: rootMoves.join(","),
-    plies: String(plyCount),
+    line_count: String(lineCount),
+    ply_count: String(plyCount),
   });
   return `/api/atomicdb-analysis?${params.toString()}`;
+};
+
+const parseAtomicDbPositionPreview = (value: unknown): AtomicDbPosition => {
+  if (!value || typeof value !== "object") {
+    throw new Error("AtomicDB returned an unexpected response.");
+  }
+
+  const response = value as AtomicDbResponse;
+  const bestMove = nullableString(response.best_move);
+  const outcome = parseOutcome(response.status);
+  const closure = nullableString(response.closure);
+  const score = nullableNumber(response.score);
+  const point = nullableNumber(response.point);
+  const moves =
+    bestMove && /^[a-h][1-8][a-h][1-8][nbrq]?$/.test(bestMove)
+      ? [
+          {
+            uci: bestMove,
+            outcome,
+            closure,
+            score,
+            point,
+            mate: null,
+            backedPlies: 0,
+            searchDepth: null,
+          },
+        ]
+      : [];
+
+  return {
+    key: nullableString(response.key),
+    outcome,
+    closure,
+    score,
+    point,
+    bestMove,
+    moves,
+  };
 };
 
 export const fetchAtomicDbPosition = async (
@@ -308,20 +357,35 @@ export const fetchAtomicDbPositions = async (
   return positions;
 };
 
-export const fetchAtomicDbPrincipalVariations = async (
+export const fetchAtomicDbAnalysisBundle = async (
   fen: string,
-  rootMoves: string[],
+  lineCount: number,
   plyCount: number,
   signal?: AbortSignal,
-): Promise<AtomicDbPrincipalVariationResult> => {
-  const body = await apiRequest<unknown>(atomicDbLinesRequestPath(fen, rootMoves, plyCount), {
-    errorMessage: "AtomicDB lines are unavailable.",
-    invalidMessage: "AtomicDB returned an unexpected response.",
-    ...(signal ? { signal } : {}),
-  });
+): Promise<AtomicDbAnalysisBundle> => {
+  let body: unknown;
+  try {
+    body = await apiRequest<unknown>(
+      atomicDbPrincipalVariationsRequestPath(fen, lineCount, plyCount),
+      {
+        errorMessage: "AtomicDB analysis is unavailable.",
+        invalidMessage: "AtomicDB returned an unexpected response.",
+        ...(signal ? { signal } : {}),
+      },
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return { position: null, lines: {}, positions: {} };
+    }
+    throw error;
+  }
 
   const payload =
-    body && typeof body === "object" ? (body as { lines?: unknown; positions?: unknown }) : {};
+    body && typeof body === "object" ? (body as AtomicDbPrincipalVariationsResponse) : {};
+  if (!payload.position || typeof payload.position !== "object") {
+    throw new Error("AtomicDB returned an unexpected response.");
+  }
+  const position = parseAtomicDbResponse(payload.position);
   const lines: Record<string, string[]> = {};
   if (payload.lines && typeof payload.lines === "object") {
     for (const [rootMove, moves] of Object.entries(payload.lines)) {
@@ -336,10 +400,10 @@ export const fetchAtomicDbPrincipalVariations = async (
   const positions: Record<string, AtomicDbPosition> = {};
   if (payload.positions && typeof payload.positions === "object") {
     for (const [positionFen, value] of Object.entries(payload.positions)) {
-      positions[positionFen] = parseAtomicDbResponse(value);
+      positions[positionFen] = parseAtomicDbPositionPreview(value);
     }
   }
-  return { lines, positions };
+  return { position, lines, positions };
 };
 
 export const getAtomicDbMoveEvaluation = (move: AtomicDbMove, fen: string): AtomicDbEvaluation =>

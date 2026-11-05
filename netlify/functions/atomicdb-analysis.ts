@@ -3,6 +3,7 @@ import {
   createAtomicDbQuery,
   fenAfterAtomicDbMove,
   isValidAtomicDbFen,
+  queryAtomicDbPrincipalVariations,
   trimAtomicDbPosition,
 } from "../lib/atomicDb";
 import { requireSameOrigin } from "../platform/authentication";
@@ -93,6 +94,48 @@ const atomicDbAnalysisRoute = async (event: FunctionEvent) => {
       return json(200, { positions: Object.fromEntries(entries) });
     }
 
+    const requestedLineCount = event.queryStringParameters?.line_count;
+    if (requestedLineCount !== undefined) {
+      const lineCount = Number(requestedLineCount);
+      const plyCount = Number(event.queryStringParameters?.ply_count ?? MAX_PLIES);
+      if (
+        !Number.isInteger(lineCount) ||
+        lineCount < 1 ||
+        lineCount > MAX_LINES ||
+        !Number.isInteger(plyCount) ||
+        plyCount < 1 ||
+        plyCount > MAX_PLIES
+      ) {
+        return json(400, {
+          error: "Valid line and ply counts are required.",
+          code: "validation_failed",
+        });
+      }
+
+      const bundle = await queryAtomicDbPrincipalVariations(
+        fen,
+        lineCount,
+        plyCount,
+        controller.signal,
+      );
+      if (!bundle) {
+        return json(
+          404,
+          { error: "Position not found in AtomicDB.", code: "position_not_found" },
+          true,
+        );
+      }
+      return json(
+        200,
+        {
+          position: trimAtomicDbPosition(bundle.position),
+          lines: bundle.lines,
+          positions: bundle.positions,
+        },
+        true,
+      );
+    }
+
     const rootMoves = (event.queryStringParameters?.line_moves ?? "").split(",").filter(Boolean);
     if (rootMoves.length > 0) {
       const plyCount = Number(event.queryStringParameters?.plies ?? MAX_PLIES);
@@ -173,7 +216,7 @@ export const handler = defineFunction(atomicDbAnalysisRoute, {
         }
       }
       const lines = event.queryStringParameters?.line_moves?.split(",").filter(Boolean).length ?? 0;
-      return Math.max(1, lines);
+      return event.queryStringParameters?.line_count ? 1 : Math.max(1, lines);
     },
     message: "Too many AtomicDB requests. Please wait and try again.",
   },

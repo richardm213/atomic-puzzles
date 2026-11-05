@@ -1,8 +1,8 @@
 import {
+  type AtomicDbAnalysisBundle,
   type AtomicDbPosition,
-  type AtomicDbPrincipalVariationResult,
+  fetchAtomicDbAnalysisBundle,
   fetchAtomicDbPosition,
-  fetchAtomicDbPrincipalVariations,
 } from "../../utils/atomicDb";
 
 const CACHE_TTL_MS = 5 * 60_000;
@@ -144,7 +144,7 @@ class AtomicDbRequestStore<T> {
 
 const positions = new AtomicDbRequestStore<AtomicDbPosition | null>(128);
 const backedPositions = new AtomicDbRequestStore<AtomicDbPosition>(128);
-const variationBatches = new AtomicDbRequestStore<AtomicDbPrincipalVariationResult>(64);
+const analysisBundles = new AtomicDbRequestStore<AtomicDbAnalysisBundle>(64);
 const variationLines = new AtomicDbRequestStore<string[]>(128);
 const preloadedGamePositions = new Map<
   string,
@@ -152,8 +152,8 @@ const preloadedGamePositions = new Map<
 >();
 const preloadedGameVariationLines = new Map<string, string[]>();
 
-const variationBatchKey = (fen: string, rootMoves: string[], plyCount: number): string =>
-  `${fen}\n${rootMoves.join(",")}\n${plyCount}`;
+const analysisBundleKey = (fen: string, lineCount: number, plyCount: number): string =>
+  `${fen}\n${lineCount}\n${plyCount}`;
 const variationLineKey = (fen: string, rootMove: string, plyCount: number): string =>
   `${fen}\n${rootMove}\n${plyCount}`;
 
@@ -219,39 +219,48 @@ export const loadAtomicDbPosition = (
 ): Promise<AtomicDbPosition | null> =>
   positions.load(fen, (sharedSignal) => fetchAtomicDbPosition(fen, sharedSignal), signal);
 
-export const loadAtomicDbVariations = async (
+export const peekAtomicDbVariationLines = (
   fen: string,
   rootMoves: string[],
   plyCount: number,
-  signal: AbortSignal,
-): Promise<AtomicDbPrincipalVariationResult> => {
+): Record<string, string[]> => {
   const lines: Record<string, string[]> = {};
-  const missingMoves = rootMoves.filter((rootMove) => {
+  for (const rootMove of rootMoves) {
     const preloaded = preloadedGameVariationLines.get(variationLineKey(fen, rootMove, plyCount));
     if (preloaded) {
       lines[rootMove] = preloaded;
-      return false;
+      continue;
     }
     const cached = variationLines.peek(variationLineKey(fen, rootMove, plyCount));
-    if (!cached.found) return true;
-    lines[rootMove] = cached.value;
-    return false;
-  });
-  if (missingMoves.length === 0) return { lines, positions: {} };
+    if (cached.found) lines[rootMove] = cached.value;
+  }
+  return lines;
+};
 
-  const batchKey = variationBatchKey(fen, missingMoves, plyCount);
-  const result = await variationBatches.load(
+export const loadAtomicDbAnalysisBundle = async (
+  fen: string,
+  lineCount: number,
+  plyCount: number,
+  signal: AbortSignal,
+): Promise<AtomicDbAnalysisBundle> => {
+  if (lineCount === 0) {
+    const position = await loadAtomicDbPosition(fen, signal);
+    return { position, lines: {}, positions: {} };
+  }
+
+  const batchKey = analysisBundleKey(fen, lineCount, plyCount);
+  const result = await analysisBundles.load(
     batchKey,
-    (sharedSignal) => fetchAtomicDbPrincipalVariations(fen, missingMoves, plyCount, sharedSignal),
+    (sharedSignal) => fetchAtomicDbAnalysisBundle(fen, lineCount, plyCount, sharedSignal),
     signal,
   );
-  for (const rootMove of missingMoves) {
+  positions.prime(fen, result.position);
+  for (const rootMove of Object.keys(result.lines)) {
     const line = result.lines[rootMove] ?? [rootMove];
-    lines[rootMove] = line;
     variationLines.prime(variationLineKey(fen, rootMove, plyCount), line);
   }
   for (const [positionFen, position] of Object.entries(result.positions)) {
     backedPositions.prime(positionFen, position);
   }
-  return { lines, positions: result.positions };
+  return result;
 };

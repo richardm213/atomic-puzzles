@@ -372,9 +372,30 @@
             }
           },
           {
+            "name": "line_count",
+            "in": "query",
+            "description": "Return a bundled root position and this many principal variations.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            }
+          },
+          {
+            "name": "ply_count",
+            "in": "query",
+            "description": "Maximum moves returned in each bundled principal variation.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5,
+              "default": 5
+            }
+          },
+          {
             "name": "line_moves",
             "in": "query",
-            "description": "Up to five comma-separated root moves for principal variations.",
+            "description": "Legacy option: up to five comma-separated root moves for principal variations.",
             "schema": {
               "type": "string"
             }

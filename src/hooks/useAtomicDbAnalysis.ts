@@ -1,9 +1,9 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 
 import {
-  loadAtomicDbPosition,
-  loadAtomicDbVariations,
+  loadAtomicDbAnalysisBundle,
   peekAtomicDbPosition,
+  peekAtomicDbVariationLines,
 } from "../lib/atomicDb/analysisRepository";
 import {
   analyzeFairyStockfishPosition,
@@ -118,58 +118,30 @@ export const useAtomicDbAnalysis = (
     const plyCount = clampInteger(requestedPlyCount, 1, MAX_PLY_COUNT);
     const useEngine = engineOnly;
 
-    const publishLines = (lines: Record<string, string[]>): void => {
-      startTransition(() => {
-        setState((current) =>
-          current.requestedFen === fen
-            ? {
-                ...current,
-                principalVariations: { ...current.principalVariations, ...lines },
-              }
-            : current,
-        );
-      });
-    };
-
-    const publishRootMoves = (rootMoves: string[]): void => {
-      startTransition(() => {
-        setState((current) => {
-          if (current.requestedFen !== fen) return current;
-          const principalVariations = { ...current.principalVariations };
-          for (const move of rootMoves) principalVariations[move] ??= [move];
-          return { ...current, principalVariations };
-        });
-      });
-    };
-
-    const loadLines = (position: AtomicDbPosition | null): void => {
+    const cachedLinesFor = (position: AtomicDbPosition | null): Record<string, string[]> => {
       const rootMoves = position?.moves.slice(0, lineCount).map((move) => move.uci) ?? [];
-      if (rootMoves.length === 0) return;
-
-      publishRootMoves(rootMoves);
-      if (plyCount === 1) return;
-
-      void loadAtomicDbVariations(fen, rootMoves, plyCount, controller.signal)
-        .then((result) => {
-          if (!controller.signal.aborted) publishLines(result.lines);
-        })
-        .catch(() => {
-          // A root move remains playable when its optional continuation is unavailable.
-        });
+      const lines = peekAtomicDbVariationLines(fen, rootMoves, plyCount);
+      for (const rootMove of rootMoves) lines[rootMove] ??= [rootMove];
+      return lines;
     };
 
-    const publishPosition = (position: AtomicDbPosition | null): void => {
+    const publishPosition = (
+      position: AtomicDbPosition | null,
+      lines: Record<string, string[]> = cachedLinesFor(position),
+    ): void => {
       startTransition(() => {
         setState((current) => ({
           result: { fen, position },
           requestedFen: fen,
           status: "ready",
           error: "",
-          principalVariations: current.requestedFen === fen ? current.principalVariations : {},
+          principalVariations: {
+            ...(current.requestedFen === fen ? current.principalVariations : {}),
+            ...lines,
+          },
           source: "atomicdb",
         }));
       });
-      loadLines(position);
     };
 
     const publishBackedPosition = (position: AtomicDbPosition): void => {
@@ -178,10 +150,12 @@ export const useAtomicDbAnalysis = (
         requestedFen: fen,
         status: "loading",
         error: "",
-        principalVariations: current.requestedFen === fen ? current.principalVariations : {},
+        principalVariations: {
+          ...(current.requestedFen === fen ? current.principalVariations : {}),
+          ...cachedLinesFor(position),
+        },
         source: "atomicdb",
       }));
-      loadLines(position);
     };
 
     const publishEngineFallback = async (): Promise<void> => {
@@ -238,16 +212,18 @@ export const useAtomicDbAnalysis = (
       }
     };
 
-    const publishAtomicDbWithEngineFill = async (position: AtomicDbPosition): Promise<void> => {
+    const publishAtomicDbWithEngineFill = async (
+      position: AtomicDbPosition,
+      atomicDbLines: Record<string, string[]>,
+    ): Promise<void> => {
       setState({
         result: { fen, position },
         requestedFen: fen,
         status: "loading",
         error: "",
-        principalVariations: {},
+        principalVariations: atomicDbLines,
         source: "mixed",
       });
-      loadLines(position);
 
       const publishMixedCandidates = (
         candidates: EngineCandidate[],
@@ -300,23 +276,26 @@ export const useAtomicDbAnalysis = (
       }
     };
 
-    const publishAtomicDbOrFallback = (position: AtomicDbPosition | null): void => {
+    const publishAtomicDbOrFallback = (
+      position: AtomicDbPosition | null,
+      lines: Record<string, string[]> = {},
+    ): void => {
       if (fallbackToEngine && lineCount > 0 && (!position || position.moves.length === 0)) {
         void publishEngineFallback();
         return;
       }
       if (fallbackToEngine && position && position.moves.length < lineCount) {
-        void publishAtomicDbWithEngineFill(position);
+        void publishAtomicDbWithEngineFill(position, lines);
         return;
       }
-      publishPosition(position);
+      publishPosition(position, lines);
     };
 
     let showingBackedPosition = false;
     if (!useEngine) {
       const cached = peekAtomicDbPosition(fen);
       if (cached.found) {
-        if (!cached.backed) {
+        if (!cached.backed && lineCount === 0) {
           publishAtomicDbOrFallback(cached.value);
           return () => controller.abort();
         }
@@ -324,8 +303,10 @@ export const useAtomicDbAnalysis = (
           publishPosition(cached.value);
           return () => controller.abort();
         }
-        showingBackedPosition = true;
-        publishBackedPosition(cached.value);
+        if (cached.value) {
+          showingBackedPosition = true;
+          publishBackedPosition(cached.value);
+        }
       }
     }
 
@@ -350,8 +331,15 @@ export const useAtomicDbAnalysis = (
         return;
       }
       try {
-        const position = await loadAtomicDbPosition(fen, controller.signal);
-        if (!controller.signal.aborted) publishAtomicDbOrFallback(position);
+        const bundle = await loadAtomicDbAnalysisBundle(
+          fen,
+          lineCount,
+          plyCount,
+          controller.signal,
+        );
+        if (!controller.signal.aborted) {
+          publishAtomicDbOrFallback(bundle.position, bundle.lines);
+        }
       } catch (error: unknown) {
         if (controller.signal.aborted) return;
         startTransition(() => {

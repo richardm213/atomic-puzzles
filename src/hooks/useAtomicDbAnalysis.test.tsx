@@ -17,16 +17,22 @@ const analyzeWithEngineMock = vi.mocked(analyzeFairyStockfishPosition);
 const FIRST_FEN = "8/8/8/8/8/8/8/K6k w - - 0 101";
 const SECOND_FEN = "8/8/8/8/8/8/8/K6k b - - 0 102";
 
-const responseFor = (score: number) =>
+const bundleResponse = (
+  position: Record<string, unknown>,
+  lines: Record<string, string[]> = {},
+  positions: Record<string, unknown> = {},
+) =>
   new Response(
     JSON.stringify({
-      status: "UNKNOWN",
-      score,
-      best_move: null,
-      moves: [],
+      position,
+      lines,
+      positions,
     }),
     { status: 200, headers: { "Content-Type": "application/json" } },
   );
+
+const responseFor = (score: number) =>
+  bundleResponse({ status: "UNKNOWN", score, best_move: null, moves: [] });
 
 describe("useAtomicDbAnalysis", () => {
   afterEach(() => {
@@ -81,16 +87,13 @@ describe("useAtomicDbAnalysis", () => {
 
     act(() => {
       resolveAtomicDbRequest?.(
-        new Response(
-          JSON.stringify({
-            key: "fresh-atomicdb-position",
-            status: "UNKNOWN",
-            score: 460,
-            best_move: "a1a2",
-            moves: [{ uci: "a1a2", status: "UNKNOWN", score: 460 }],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
+        bundleResponse({
+          key: "fresh-atomicdb-position",
+          status: "UNKNOWN",
+          score: 460,
+          best_move: "a1a2",
+          moves: [{ uci: "a1a2", status: "UNKNOWN", score: 460 }],
+        }),
       );
     });
 
@@ -145,16 +148,13 @@ describe("useAtomicDbAnalysis", () => {
   it("checks AtomicDB before using Fairy-Stockfish for six-piece endgames", async () => {
     const fen = "8/8/8/8/3k4/8/1K3P1P/6NR w - - 3 71";
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          key: "atomicdb-endgame",
-          status: "UNKNOWN",
-          score: 85,
-          best_move: "h1h4",
-          moves: [{ uci: "h1h4", status: "UNKNOWN", score: 85 }],
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      ),
+      bundleResponse({
+        key: "atomicdb-endgame",
+        status: "UNKNOWN",
+        score: 85,
+        best_move: "h1h4",
+        moves: [{ uci: "h1h4", status: "UNKNOWN", score: 85 }],
+      }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -212,25 +212,18 @@ describe("useAtomicDbAnalysis", () => {
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 12 30";
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockImplementation((input: string | URL | Request) => {
-        const url = new URL(String(input), "https://example.test");
-        return Promise.resolve(
-          new Response(
-            JSON.stringify(
-              url.searchParams.has("line_moves")
-                ? { lines: { g1f3: ["g1f3", "g8f6"] }, positions: {} }
-                : {
-                    key: "partial-position",
-                    status: "UNKNOWN",
-                    score: 90,
-                    best_move: "g1f3",
-                    moves: [{ uci: "g1f3", status: "UNKNOWN", score: 90 }],
-                  },
-            ),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          ),
-        );
-      }),
+      vi.fn().mockResolvedValue(
+        bundleResponse(
+          {
+            key: "partial-position",
+            status: "UNKNOWN",
+            score: 90,
+            best_move: "g1f3",
+            moves: [{ uci: "g1f3", status: "UNKNOWN", score: 90 }],
+          },
+          { g1f3: ["g1f3", "g8f6"] },
+        ),
+      ),
     );
     analyzeWithEngineMock.mockResolvedValue([
       {
@@ -482,39 +475,22 @@ describe("useAtomicDbAnalysis", () => {
 
   it("builds the top line from each child position's current best move", async () => {
     const startingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    const fetchMock = vi.fn().mockImplementation((input: string | URL | Request) => {
-      const url = new URL(String(input), "https://example.test");
-      if (!url.searchParams.has("line_moves")) {
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              status: "UNKNOWN",
-              best_move: "g1f3",
-              moves: [
-                { uci: "g1f3", status: "UNKNOWN", score: 1100 },
-                { uci: "g1h3", status: "UNKNOWN", score: 786 },
-              ],
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          ),
-        );
-      }
-      return Promise.resolve(
-        new Response(
-          JSON.stringify({
-            lines: {
-              g1f3: ["g1f3", "f7f6", "b1c3"],
-              g1h3: ["g1h3", "e7e6", "e2e4"],
-            },
-            positions: {},
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
-      );
-    });
+    const fetchMock = vi.fn().mockResolvedValue(
+      bundleResponse(
+        {
+          status: "UNKNOWN",
+          best_move: "g1f3",
+          moves: [
+            { uci: "g1f3", status: "UNKNOWN", score: 1100 },
+            { uci: "g1h3", status: "UNKNOWN", score: 786 },
+          ],
+        },
+        {
+          g1f3: ["g1f3", "f7f6", "b1c3"],
+          g1h3: ["g1h3", "e7e6", "e2e4"],
+        },
+      ),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     const { result } = renderHook(() =>
@@ -525,6 +501,10 @@ describe("useAtomicDbAnalysis", () => {
       expect(result.current.principalVariations.g1f3).toEqual(["g1f3", "f7f6", "b1c3"]);
       expect(result.current.principalVariations.g1h3).toEqual(["g1h3", "e7e6", "e2e4"]);
     });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const requestedUrl = new URL(String(fetchMock.mock.calls[0]![0]), "https://example.test");
+    expect(requestedUrl.searchParams.get("line_count")).toBe("2");
+    expect(requestedUrl.searchParams.get("ply_count")).toBe("3");
   });
 
   it("shows a backed child position while refreshing its alternate moves", async () => {
@@ -539,34 +519,26 @@ describe("useAtomicDbAnalysis", () => {
     const fetchMock = vi.fn().mockImplementation((input: string | URL | Request) => {
       const url = new URL(String(input), "https://example.test");
       const requestedFen = url.searchParams.get("fen");
-      const lineMoves = url.searchParams.get("line_moves");
-      if (requestedFen === parentFen && !lineMoves) {
+      if (requestedFen === parentFen) {
         return Promise.resolve(
           jsonResponse({
-            status: "UNKNOWN",
-            best_move: "e2e4",
-            moves: [{ uci: "e2e4", status: "UNKNOWN", score: 80 }],
-          }),
-        );
-      }
-      if (requestedFen === parentFen && lineMoves === "e2e4") {
-        return Promise.resolve(
-          jsonResponse({
+            position: {
+              status: "UNKNOWN",
+              best_move: "e2e4",
+              moves: [{ uci: "e2e4", status: "UNKNOWN", score: 80 }],
+            },
             lines: { e2e4: ["e2e4", "e7e5"] },
             positions: {
               [childFen]: {
                 status: "UNKNOWN",
                 best_move: "e7e5",
-                moves: [{ uci: "e7e5", status: "UNKNOWN", score: 70 }],
+                score: 70,
               },
             },
           }),
         );
       }
-      if (requestedFen === childFen && lineMoves === "e7e5") {
-        return Promise.resolve(jsonResponse({ lines: { e7e5: ["e7e5", "g1f3"] }, positions: {} }));
-      }
-      if (requestedFen === childFen && !lineMoves) {
+      if (requestedFen === childFen) {
         return new Promise<Response>((resolve) => {
           resolveChildRefresh = resolve;
         });
@@ -586,17 +558,21 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.status).toBe("loading");
     expect(result.current.result?.fen).toBe(childFen);
     expect(result.current.result?.position?.moves.map((move) => move.uci)).toEqual(["e7e5"]);
-    await waitFor(() => expect(result.current.principalVariations.e7e5).toEqual(["e7e5", "g1f3"]));
+    expect(result.current.principalVariations.e7e5).toEqual(["e7e5"]);
 
     await act(async () => {
       resolveChildRefresh?.(
         jsonResponse({
-          status: "UNKNOWN",
-          best_move: "e7e5",
-          moves: [
-            { uci: "e7e5", status: "UNKNOWN", score: 70 },
-            { uci: "c7c5", status: "UNKNOWN", score: 60 },
-          ],
+          position: {
+            status: "UNKNOWN",
+            best_move: "e7e5",
+            moves: [
+              { uci: "e7e5", status: "UNKNOWN", score: 70 },
+              { uci: "c7c5", status: "UNKNOWN", score: 60 },
+            ],
+          },
+          lines: { e7e5: ["e7e5", "g1f3"] },
+          positions: {},
         }),
       );
     });
@@ -609,34 +585,24 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.principalVariations.e7e5).toEqual(["e7e5", "g1f3"]);
   });
 
-  it("requests only uncached lines when the visible line count increases", async () => {
+  it("refreshes the bundled analysis when the visible line count increases", async () => {
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 10 20";
     const fetchMock = vi.fn().mockImplementation((input: string | URL | Request) => {
       const url = new URL(String(input), "https://example.test");
-      const requestedMoves = url.searchParams.get("line_moves")?.split(",") ?? [];
-      if (requestedMoves.length === 0) {
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              status: "UNKNOWN",
-              best_move: "g1f3",
-              moves: ["g1f3", "g1h3", "e2e3"].map((uci) => ({
-                uci,
-                status: "UNKNOWN",
-                score: 500,
-              })),
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          ),
-        );
-      }
+      const lineCount = Number(url.searchParams.get("line_count"));
+      const moves = ["g1f3", "g1h3", "e2e3"].slice(0, lineCount);
       return Promise.resolve(
-        new Response(
-          JSON.stringify({
-            lines: Object.fromEntries(requestedMoves.map((move) => [move, [move, "f7f6"]])),
-            positions: {},
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
+        bundleResponse(
+          {
+            status: "UNKNOWN",
+            best_move: "g1f3",
+            moves: ["g1f3", "g1h3", "e2e3"].map((uci) => ({
+              uci,
+              status: "UNKNOWN",
+              score: 500,
+            })),
+          },
+          Object.fromEntries(moves.map((move) => [move, [move, "f7f6"]])),
         ),
       );
     });
@@ -651,31 +617,25 @@ describe("useAtomicDbAnalysis", () => {
     rerender({ lineCount: 3 });
     await waitFor(() => expect(result.current.principalVariations.e2e3).toEqual(["e2e3", "f7f6"]));
 
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    const expandedUrl = new URL(String(fetchMock.mock.calls[2]![0]), "https://example.test");
-    expect(expandedUrl.searchParams.get("line_moves")).toBe("e2e3");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const expandedUrl = new URL(String(fetchMock.mock.calls[1]![0]), "https://example.test");
+    expect(expandedUrl.searchParams.get("line_count")).toBe("3");
   });
 
   it("makes no position or continuation requests while playback is suspended", async () => {
     const sourceFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 4 9";
     const destinationFen = "rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq - 5 9";
-    const rootResponse = new Response(
-      JSON.stringify({
+    const rootResponse = bundleResponse(
+      {
         status: "UNKNOWN",
         best_move: "g1f3",
         moves: [{ uci: "g1f3", status: "UNKNOWN", score: 500 }],
-      }),
-      { status: 200, headers: { "Content-Type": "application/json" } },
+      },
+      { g1f3: ["g1f3"] },
     );
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(rootResponse)
-      .mockImplementationOnce(
-        (_input: string | URL | Request, init?: RequestInit) =>
-          new Promise<Response>((_resolve, reject) => {
-            init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted")));
-          }),
-      )
       .mockResolvedValueOnce(responseFor(300));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -685,15 +645,15 @@ describe("useAtomicDbAnalysis", () => {
     );
 
     await waitFor(() => expect(result.current.status).toBe("ready"));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
 
     rerender({ fen: sourceFen, suspended: true });
     rerender({ fen: destinationFen, suspended: true });
     await act(async () => Promise.resolve());
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
 
     rerender({ fen: destinationFen, suspended: false });
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
   });
 
   it("does not request continuations when zero lines are displayed", async () => {
@@ -730,7 +690,14 @@ describe("useAtomicDbAnalysis", () => {
       wrapper: StrictMode,
     });
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    await act(async () => resolveRequest?.(responseFor(500)));
+    await act(async () =>
+      resolveRequest?.(
+        new Response(
+          JSON.stringify({ status: "UNKNOWN", score: 500, best_move: null, moves: [] }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
     await waitFor(() => expect(result.current.status).toBe("ready"));
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });

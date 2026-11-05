@@ -129,6 +129,18 @@ curl --get 'https://atomicpuzzles.org/api/atomicdb-analysis' \
   --data-urlencode 'fen=4k3/8/8/8/8/8/8/4K3 w - - 0 1'
 ```
 
+Fetch the position and up to five principal variations in one request:
+
+```bash
+curl --get 'https://atomicpuzzles.org/api/atomicdb-analysis' \
+  --data-urlencode 'fen=rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' \
+  --data 'line_count=5' \
+  --data 'ply_count=5'
+```
+
+This returns the complete root `position`, UCI `lines`, and lightweight continuation `positions`
+keyed by FEN. Both counts are capped at five.
+
 Within the web client, prefer `apiRequest` (any method) or its `postApi` convenience wrapper from
 `src/lib/api/postApi.ts`. They add a 30-second timeout, forward cancellation, validate optional
 response schemas, distinguish network/time-out/server errors, and preserve the response status,

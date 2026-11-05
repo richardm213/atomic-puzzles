@@ -147,41 +147,58 @@ describe("atomicdb-analysis function", () => {
     expect(peakInFlight).toBe(6);
   });
 
-  it("loads multiple principal variations in one cached batch response", async () => {
-    const fetchMock = vi.fn().mockImplementation((input: string | URL | Request) => {
-      const fen = (input as URL).searchParams.get("fen") ?? "";
-      const bestMove = fen.includes("/5N2/")
-        ? fen.includes(" b ")
-          ? "f7f6"
-          : "b1c3"
-        : fen.includes(" b ")
-          ? "e7e6"
-          : "e2e4";
-      return Promise.resolve(
-        new Response(
-          JSON.stringify({
+  it("proxies the complete principal-variation bundle with one upstream request", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          position: {
+            key: "root-key",
             status: "UNKNOWN",
-            best_move: bestMove,
-            moves: [{ uci: bestMove, score: 500 }],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      );
-    });
+            best_move: "g1f3",
+            moves: [
+              { uci: "g1f3", score: 1100 },
+              { uci: "g1h3", score: 786 },
+            ],
+          },
+          lines: {
+            g1f3: ["g1f3", "f7f6", "b1c3"],
+            g1h3: ["g1h3", "e7e6", "e2e4"],
+          },
+          positions: {
+            "child fen": {
+              key: "child-key",
+              status: "UNKNOWN",
+              score: -1100,
+              best_move: "f7f6",
+            },
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
     vi.stubGlobal("fetch", fetchMock);
     const { handler } = await import("../functions/atomicdb-analysis");
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     const response = await handler({
       httpMethod: "GET",
-      queryStringParameters: { fen, line_moves: "g1f3,g1h3", plies: "3" },
+      queryStringParameters: { fen, line_count: "2", ply_count: "3" },
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.headers["Cache-Control"]).toContain("public");
-    expect(fetchMock).toHaveBeenCalledTimes(4);
-    expect(JSON.parse(response.body).lines).toEqual({
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const requestedUrl = fetchMock.mock.calls[0]![0] as URL;
+    expect(requestedUrl.origin + requestedUrl.pathname).toBe(
+      "https://belzedar.duckdns.org/atomicdb/api/principal-variations",
+    );
+    expect(requestedUrl.searchParams.get("line_count")).toBe("2");
+    expect(requestedUrl.searchParams.get("ply_count")).toBe("3");
+    const body = JSON.parse(response.body);
+    expect(body.position.key).toBe("root-key");
+    expect(body.lines).toEqual({
       g1f3: ["g1f3", "f7f6", "b1c3"],
       g1h3: ["g1h3", "e7e6", "e2e4"],
     });
+    expect(body.positions["child fen"].best_move).toBe("f7f6");
   });
 });
