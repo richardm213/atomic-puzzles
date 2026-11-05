@@ -85,6 +85,82 @@ describe("useAtomicDbBoardAnalysis", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("fills missing evaluations in complete stored game analysis with Atomic-Stockfish", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    analyzeWithEngineMock.mockResolvedValue([
+      {
+        move: "a1a2",
+        multipv: 1,
+        scoreType: "cp",
+        score: 315,
+        depth: 18,
+        principalVariation: ["a1a2", "d4e5"],
+      },
+      {
+        move: "b2b3",
+        multipv: 2,
+        scoreType: "cp",
+        score: 180,
+        depth: 18,
+        principalVariation: ["b2b3", "d4e5"],
+      },
+    ]);
+    replacePreloadedAtomicDbGamePositions([
+      {
+        fen: FEN,
+        complete: true,
+        position: {
+          key: "stored-position",
+          outcome: "UNKNOWN",
+          closure: null,
+          score: 320,
+          point: 300,
+          bestMove: "a1a2",
+          moves: [
+            {
+              uci: "a1a2",
+              outcome: "UNKNOWN",
+              closure: null,
+              score: 320,
+              point: 300,
+              mate: null,
+              nodeBackedPlies: 12,
+            },
+            {
+              uci: "b2b3",
+              outcome: "UNKNOWN",
+              closure: null,
+              score: null,
+              point: null,
+              mate: null,
+              nodeBackedPlies: null,
+            },
+          ],
+        },
+        principalVariations: { a1a2: ["a1a2", "d4e5"], b2b3: ["b2b3"] },
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      useAtomicDbBoardAnalysis({
+        currentFen: FEN,
+        enabled: true,
+        navigation: null,
+        lineCount: 2,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.analysis.status).toBe("ready"));
+    expect(result.current.analysis.source).toBe("mixed");
+    expect(result.current.analysis.engine).toBe("atomic-stockfish");
+    expect(result.current.analysis.result?.position?.moves).toEqual([
+      expect.objectContaining({ uci: "a1a2", score: 320 }),
+      expect.objectContaining({ uci: "b2b3", origin: "engine", score: 180 }),
+    ]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("uses Atomic-Stockfish instead of stored game analysis for tablebase positions", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

@@ -71,7 +71,7 @@ describe("useAtomicDbAnalysis", () => {
     });
   });
 
-  it("falls back to Fairy-Stockfish only after AtomicDB returns no analyzed moves", async () => {
+  it("falls back to Atomic-Stockfish when AtomicDB returns no analyzed moves", async () => {
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 13 31";
     const fetchMock = vi.fn().mockResolvedValue(responseFor(0));
     vi.stubGlobal("fetch", fetchMock);
@@ -97,7 +97,13 @@ describe("useAtomicDbAnalysis", () => {
 
     await waitFor(() => expect(result.current.status).toBe("ready"));
     expect(fetchMock).toHaveBeenCalledOnce();
-    expect(analyzeWithEngineMock).toHaveBeenCalledOnce();
+    expect(analyzeWithEngineMock).toHaveBeenCalledWith(
+      fen,
+      1,
+      expect.any(AbortSignal),
+      expect.any(Function),
+      "atomic-stockfish",
+    );
     expect(result.current.source).toBe("engine");
     expect(result.current.result?.position?.moves[0]).toMatchObject({
       uci: "e2e4",
@@ -108,7 +114,7 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5", "g1f3"]);
   });
 
-  it("fills missing requested AtomicDB lines with distinct Fairy-Stockfish moves", async () => {
+  it("fills missing requested AtomicDB lines with distinct Atomic-Stockfish moves", async () => {
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 12 30";
     vi.stubGlobal(
       "fetch",
@@ -180,7 +186,7 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5"]);
   });
 
-  it("uses Atomic-Stockfish when AtomicDB's sole evaluation is a forced mate loss", async () => {
+  it("fills and extends an AtomicDB mate row that has missing evaluations", async () => {
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     vi.stubGlobal(
       "fetch",
@@ -248,7 +254,7 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5"]);
   });
 
-  it("does not replace unknown AtomicDB rows when the sole evaluation is not a forced loss", async () => {
+  it("replaces unknown non-mating AtomicDB rows with Atomic-Stockfish evaluations", async () => {
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     vi.stubGlobal(
       "fetch",
@@ -265,6 +271,24 @@ describe("useAtomicDbAnalysis", () => {
         }),
       ),
     );
+    analyzeWithEngineMock.mockResolvedValue([
+      {
+        move: "e2e4",
+        multipv: 1,
+        scoreType: "cp",
+        score: 75,
+        depth: 18,
+        principalVariation: ["e2e4", "e7e5"],
+      },
+      {
+        move: "d2d4",
+        multipv: 2,
+        scoreType: "cp",
+        score: 60,
+        depth: 18,
+        principalVariation: ["d2d4", "d7d5"],
+      },
+    ]);
 
     const { result } = renderHook(() =>
       useAtomicDbAnalysis(fen, {
@@ -275,15 +299,21 @@ describe("useAtomicDbAnalysis", () => {
     );
 
     await waitFor(() => expect(result.current.status).toBe("ready"));
-    expect(analyzeWithEngineMock).not.toHaveBeenCalled();
-    expect(result.current.source).toBe("atomicdb");
-    expect(result.current.result?.position?.moves.map((move) => move.uci)).toEqual([
-      "e2e4",
-      "d2d4",
+    expect(analyzeWithEngineMock).toHaveBeenCalledWith(
+      fen,
+      2,
+      expect.any(AbortSignal),
+      expect.any(Function),
+      "atomic-stockfish",
+    );
+    expect(result.current.source).toBe("mixed");
+    expect(result.current.result?.position?.moves).toEqual([
+      expect.objectContaining({ uci: "e2e4", score: 80 }),
+      expect.objectContaining({ uci: "d2d4", origin: "engine", score: 60 }),
     ]);
   });
 
-  it("publishes live Fairy-Stockfish lines before the timed search finishes", async () => {
+  it("publishes live Atomic-Stockfish lines before the timed search finishes", async () => {
     const fen = "8/8/8/8/3k4/8/1K6/7R w - - 3 71";
     let publishProgress: Parameters<typeof analyzeFairyStockfishPosition>[3];
     let finishAnalysis:
