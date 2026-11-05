@@ -1553,6 +1553,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           showSolution: false,
           analysisMode: true,
           captureNavigationShortcuts: true,
+          preferMainLineAfterBacktrack: Boolean(game),
           solutionNavigation: navigation,
           previewMove: threatMoveUci ?? hoveredExplorerMoveUci,
           previewMoveBrush: threatMoveUci ? "red" : "paleBlue",

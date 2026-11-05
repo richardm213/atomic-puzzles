@@ -98,6 +98,7 @@ export type ChessboardProps = {
   analysisMarker?: { uci: string; symbol: string; fill: string } | null | undefined;
   captureNavigationShortcuts?: boolean;
   preserveAnalysisHistoryOnSolutionChange?: boolean;
+  preferMainLineAfterBacktrack?: boolean;
   restrictMovesToSolution?: boolean;
   disabled?: boolean;
   premoveColor?: Color;
@@ -171,6 +172,7 @@ const ChessboardComponent = ({
   analysisMarker,
   captureNavigationShortcuts = false,
   preserveAnalysisHistoryOnSolutionChange = false,
+  preferMainLineAfterBacktrack = false,
   restrictMovesToSolution = false,
   disabled = false,
   premoveColor,
@@ -775,11 +777,28 @@ const ChessboardComponent = ({
         return;
       }
 
+      if (
+        preferMainLineAfterBacktrack &&
+        resolvedCommand === "previous" &&
+        activeLineRef.current.source === "custom" &&
+        activeLineRef.current.index !== 0
+      ) {
+        const targetIndex = history.index - 1;
+        const mainLine = variationHistoryAt(customVariationsRef.current, 0);
+        const targetStep = history.plies[targetIndex];
+        const mainLineStep = mainLine?.plies[targetIndex];
+        if (targetStep && mainLineStep?.fen === targetStep.fen) {
+          showCustomLine(0, targetIndex);
+          return;
+        }
+      }
+
       navigateTo(history.index + (resolvedCommand === "next" ? 1 : -1));
     },
     [
       analysisModeRef,
       navigateTo,
+      preferMainLineAfterBacktrack,
       preserveAnalysisHistoryOnSolutionChange,
       showCustomLine,
       showSolutionLine,

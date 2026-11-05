@@ -645,6 +645,29 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)?.customLineIndex).toBe(1);
   });
 
+  it("returns to the main line after backtracking from a game analysis variation", () => {
+    const states = renderBoard({
+      preferMainLineAfterBacktrack: true,
+      solutionNavigation: {
+        type: "loadPgn",
+        pgn: "1. e4 e5 2. Nf3",
+        fen: STARTING_FEN,
+      },
+    });
+
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    play("c7", "c5");
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    expect(states.at(-1)).toMatchObject({
+      lineMoves: ["e4", "e5", "Nf3"],
+      lineIndex: 2,
+      customLineIndex: 0,
+    });
+  });
+
   it("preserves the current variation when an analysis line shares its next move before branching", () => {
     vi.useFakeTimers();
     const states: ChessboardState[] = [];
