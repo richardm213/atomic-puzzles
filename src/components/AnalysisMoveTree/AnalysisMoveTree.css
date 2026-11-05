@@ -94,10 +94,32 @@
 .analysisTreeMove {
   display: inline-flex;
   align-items: center;
+  gap: 1px;
   min-height: 28px;
   margin: 1px 2px;
   padding: 1px 5px;
   vertical-align: middle;
+}
+
+.analysisTreeMove > b {
+  color: inherit;
+  font-size: 11px;
+}
+
+.analysisTreeMove.inaccuracy {
+  color: var(--analysis-inaccuracy);
+}
+
+.analysisTreeMove.mistake {
+  color: var(--analysis-mistake);
+}
+
+.analysisTreeMove.blunder {
+  color: var(--analysis-blunder);
+}
+
+.analysisTreeMove.active {
+  color: var(--color-accent-soft-text);
 }
 
 .analysisTreeVariation {

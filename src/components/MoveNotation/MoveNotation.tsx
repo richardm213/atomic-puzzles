@@ -54,6 +54,7 @@ export const MoveNotation = ({
       inline={inline}
       onSelect={onSelectVariation}
       onCycleOptions={onCycleOptions}
+      assessments={assessments}
       onAnnotate={
         onAnnotate
           ? (lineIndex, moveIndex, annotation) => onAnnotate(lineIndex, moveIndex, annotation)

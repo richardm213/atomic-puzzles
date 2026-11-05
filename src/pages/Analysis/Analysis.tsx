@@ -1565,7 +1565,9 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
           previewMove: threatMoveUci ?? hoveredExplorerMoveUci,
           previewMoveBrush: threatMoveUci ? "red" : "paleBlue",
           analysisMarker:
-            gameComputerAnalysisEnabled && currentVisibleAssessment
+            gameComputerAnalysisEnabled &&
+            boardState?.customLineIndex === undefined &&
+            currentVisibleAssessment
               ? {
                   uci: currentVisibleAssessment.uci,
                   symbol: currentVisibleAssessment.symbol,

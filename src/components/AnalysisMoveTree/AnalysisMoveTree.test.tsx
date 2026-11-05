@@ -64,4 +64,42 @@ describe("AnalysisMoveTree", () => {
     fireEvent.click(screen.getByRole("menuitemradio", { name: "? Mistake" }));
     expect(onAnnotate).toHaveBeenCalledWith(0, 0, "?");
   });
+
+  it("shows computer annotations only on the game mainline", () => {
+    render(
+      <AnalysisMoveTree
+        lines={lines}
+        moves={["Nf3", "h6"]}
+        currentPly={2}
+        pinnedLineIndex={1}
+        onSelect={vi.fn()}
+        onCycleOptions={vi.fn()}
+        assessments={[
+          {
+            ply: 1,
+            uci: "g1f3",
+            classification: "best",
+            symbol: "✓",
+            winPercentBefore: 50,
+            winPercentAfter: 50,
+            winPercentLoss: 0,
+            bestMove: "g1f3",
+          },
+          {
+            ply: 2,
+            uci: "f7f6",
+            classification: "mistake",
+            symbol: "?",
+            winPercentBefore: 50,
+            winPercentAfter: 40,
+            winPercentLoss: 10,
+            bestMove: "e7e5",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "f6mistake" })).toHaveClass("mistake");
+    expect(screen.getByRole("button", { name: "1... h6" })).not.toHaveTextContent("?");
+  });
 });

@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 
+import type { GameMoveAssessment } from "../../lib/gameAnalysis/gameAnalysis";
 import {
   buildSolutionMoveTree,
   findMainChild,
@@ -52,6 +53,7 @@ export const AnalysisMoveTree = ({
   onSelect,
   onCycleOptions,
   onAnnotate,
+  assessments = [],
 }: {
   lines: string[][];
   moves: string[];
@@ -61,6 +63,7 @@ export const AnalysisMoveTree = ({
   onSelect: (lineIndex: number, moveIndex: number) => void;
   onCycleOptions: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
   onAnnotate?: ((lineIndex: number, moveIndex: number, annotation: string) => void) | undefined;
+  assessments?: GameMoveAssessment[] | undefined;
 }) => {
   const [annotationTarget, setAnnotationTarget] = useState<{
     lineIndex: number;
@@ -88,11 +91,14 @@ export const AnalysisMoveTree = ({
   ): ReactNode[] => {
     const indexes = [...node.lineIndexes].sort((left, right) => left - right);
     const targetLine = node.lineIndexes.has(activeLine) ? activeLine : (indexes[0] ?? 0);
+    const mainlineAssessment = node.lineIndexes.has(0) ? assessments[ply] : undefined;
+    const visibleAssessment =
+      mainlineAssessment?.classification === "best" ? undefined : mainlineAssessment;
     const content: ReactNode[] = [
       <button
         key={`${keyPrefix}-move-${ply}-${node.move}`}
         type="button"
-        className={`analysisTreeMove ${node.lineIndexes.has(activeLine) && currentPly === ply + 1 ? "active" : ""}`}
+        className={`analysisTreeMove ${visibleAssessment?.classification ?? ""} ${node.lineIndexes.has(activeLine) && currentPly === ply + 1 ? "active" : ""}`}
         aria-current={
           node.lineIndexes.has(activeLine) && currentPly === ply + 1 ? "step" : undefined
         }
@@ -114,6 +120,9 @@ export const AnalysisMoveTree = ({
       >
         {movePrefix(ply, forceMoveNumber)}
         {node.move}
+        {visibleAssessment ? (
+          <b aria-label={visibleAssessment.classification}>{visibleAssessment.symbol}</b>
+        ) : null}
       </button>,
     ];
     const children = orderedChildren(node);
