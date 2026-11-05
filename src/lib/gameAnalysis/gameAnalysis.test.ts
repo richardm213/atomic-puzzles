@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildGameAnalysisSummary,
   evaluationsForPositions,
+  GAME_ANALYSIS_INITIAL_REVIEW_PLIES,
   ignoreInitialGameAnalysisPlies,
   parseStoredAtomicDbPosition,
   type StoredAtomicDbPosition,
@@ -67,22 +68,31 @@ describe("AtomicDB game analysis classification", () => {
     expect(evaluationsForPositions([stored])).toEqual([1_238]);
   });
 
-  it("classifies loss from the mover's perspective and lowers only that player's accuracy", () => {
-    const summary = buildGameAnalysisSummary(
-      ["e2e4", "e7e5"],
-      [
-        position("8/8/8/8/8/8/4P3/4K2k w - - 0 1", 400, "e2e3"),
-        position("8/8/8/8/4P3/8/8/4K2k b - - 0 1", 400, "h1g1"),
-        position("8/8/8/4p3/4P3/8/8/4K2k w - - 0 2", -400, "e1d1"),
-      ],
+  it("ignores each player's first move and scores later losses from the mover's perspective", () => {
+    const summary = ignoreInitialGameAnalysisPlies(
+      buildGameAnalysisSummary(
+        ["e2e4", "e7e5", "e1e2", "h1g1"],
+        [
+          position("8/8/8/8/8/8/4P3/4K2k w - - 0 1", 0, "e2e3"),
+          position("8/8/8/8/4P3/8/8/4K2k b - - 0 1", 1, "h1g1"),
+          position("8/8/8/4p3/4P3/8/8/4K2k w - - 0 2", 400, "e1d1"),
+          position("8/8/8/4p3/4P3/4K3/8/7k b - - 1 2", 400, "h1h2"),
+          position("8/8/8/4p3/4P3/4K3/7k/8 w - - 2 3", -400, "e2d3"),
+        ],
+      ),
+      GAME_ANALYSIS_INITIAL_REVIEW_PLIES,
     );
 
-    expect(summary.assessments[0]?.classification).toBe("blunder");
-    expect(summary.assessments[1]?.classification).toBe("best");
+    expect(summary.assessments.map(({ classification }) => classification)).toEqual([
+      "best",
+      "best",
+      "blunder",
+      "best",
+    ]);
     expect(summary.whiteAccuracy).toBeLessThan(summary.blackAccuracy);
     expect(summary.whiteAverageCentipawnLoss).toBe(800);
     expect(summary.blackAverageCentipawnLoss).toBe(0);
-    expect(summary.evaluations).toEqual([400, -400, -400]);
+    expect(summary.evaluations).toEqual([0, -1, 400, -400, -400]);
   });
 
   it("does not create excellent or good move categories", () => {
@@ -123,8 +133,9 @@ describe("AtomicDB game analysis classification", () => {
     };
     const wolfrandom = ignoreInitialGameAnalysisPlies(summary, 6);
 
-    expect(wolfrandom.assessments.slice(0, 6).every(({ classification }) => classification === "best"))
-      .toBe(true);
+    expect(
+      wolfrandom.assessments.slice(0, 6).every(({ classification }) => classification === "best"),
+    ).toBe(true);
     expect(wolfrandom.assessments[6]?.classification).toBe("blunder");
     expect(wolfrandom.whiteCounts.blunder).toBe(1);
     expect(wolfrandom.blackCounts.blunder).toBe(1);

@@ -7,6 +7,7 @@ import { INITIAL_FEN } from "chessops/fen";
 import {
   buildGameAnalysisSummary,
   GAME_ANALYSIS_BUDGET_NODES,
+  GAME_ANALYSIS_INITIAL_REVIEW_PLIES,
   ignoreInitialGameAnalysisPlies,
   parseStoredAtomicDbPosition,
   type StoredAtomicDbPosition,
@@ -477,10 +478,11 @@ const processClaimedGameAnalysisJob = async (
     return 0;
   }
 
-  const ignoredInitialPlies = await randomizedOpeningPlies(data);
+  const randomizedOpeningPlyCount = await randomizedOpeningPlies(data);
+  const ignoredInitialPlies = randomizedOpeningPlyCount || GAME_ANALYSIS_INITIAL_REVIEW_PLIES;
   // Position 6 is retained as the baseline needed to assess White's fourth move. Positions before
   // it are neither queried nor stored because they belong to Wolfrandom's randomized opening.
-  const states = readStates(data, fens, ignoredInitialPlies);
+  const states = readStates(data, fens, randomizedOpeningPlyCount);
   await loadSharedPositions(supabase, states);
   const pendingIndexes = states
     .map((state, index) => ({ state, index }))

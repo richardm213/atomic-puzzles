@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 
-import { ignoreInitialGameAnalysisPlies } from "../../shared/domain/gameAnalysis";
+import {
+  GAME_ANALYSIS_INITIAL_REVIEW_PLIES,
+  ignoreInitialGameAnalysisPlies,
+} from "../../shared/domain/gameAnalysis";
 import type { ArchiveGame } from "../lib/archive/games";
 import { coinQueryKeys, updateCachedCoinBalance } from "../lib/coins/coinQueries";
 import { fetchGameAnalysis, requestGameAnalysis } from "../lib/gameAnalysis/gameAnalysis";
@@ -31,10 +34,14 @@ export const useGameAnalysis = (
   });
   const analysis = useMemo(() => {
     const record = query.data ?? null;
-    if (game?.mode !== "wolfrandom" || !record?.result) return record;
+    if (!record?.result) return record;
+    const ignoredInitialPlies =
+      game?.mode === "wolfrandom"
+        ? WOLFRANDOM_RANDOMIZED_PLIES
+        : GAME_ANALYSIS_INITIAL_REVIEW_PLIES;
     return {
       ...record,
-      result: ignoreInitialGameAnalysisPlies(record.result, WOLFRANDOM_RANDOMIZED_PLIES),
+      result: ignoreInitialGameAnalysisPlies(record.result, ignoredInitialPlies),
     };
   }, [game?.mode, query.data]);
   useEffect(() => {
