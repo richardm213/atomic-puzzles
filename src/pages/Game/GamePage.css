@@ -1223,7 +1223,7 @@
     grid-template-columns:
       clamp(250px, 18vw, 300px) minmax(0, var(--analysis-board-size))
       clamp(340px, 28vw, 400px);
-    column-gap: clamp(12px, 1vw, 18px);
+    column-gap: 26px;
   }
 
   .gameAnalysisPage .gameAnalysisSidebar {
@@ -1255,7 +1255,7 @@
         360px,
         400px
       );
-    column-gap: 20px;
+    column-gap: 26px;
   }
 }
 
@@ -1266,7 +1266,7 @@
         360px,
         400px
       );
-    column-gap: 22px;
+    column-gap: 26px;
   }
 }
 
@@ -1276,7 +1276,7 @@
     grid-template-columns:
       minmax(0, var(--analysis-board-size))
       clamp(340px, 28vw, 400px);
-    column-gap: clamp(14px, 1.8vw, 20px);
+    column-gap: 26px;
   }
 
   .gameAnalysisPage .analysisBoardColumn {
@@ -1305,7 +1305,7 @@
     grid-template-columns:
       minmax(0, min(55vmin, var(--analysis-board-size)))
       minmax(200px, 240px);
-    column-gap: 12px;
+    column-gap: 26px;
   }
 }
 

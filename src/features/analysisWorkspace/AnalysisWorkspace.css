@@ -23,23 +23,23 @@
     clamp(340px, 28vw, 400px);
   align-items: start;
   justify-content: center;
-  column-gap: 25px;
+  column-gap: 26px;
   row-gap: clamp(8px, 1.2vw, 12px);
 }
 
 @media (min-width: 1600px) {
   .analysisPage:not(.gameAnalysisPage) {
-    width: min(100%, calc(var(--analysis-board-size, 640px) + 430px));
+    width: min(100%, calc(var(--analysis-board-size, 640px) + 426px));
     grid-template-columns: minmax(0, var(--analysis-board-size, 640px)) minmax(360px, 400px);
-    column-gap: 30px;
+    column-gap: 26px;
   }
 }
 
 @media (min-width: 2400px) {
   .analysisPage:not(.gameAnalysisPage) {
-    width: min(100%, calc(var(--analysis-board-size, 760px) + 456px));
+    width: min(100%, calc(var(--analysis-board-size, 760px) + 446px));
     grid-template-columns: minmax(0, var(--analysis-board-size, 760px)) minmax(380px, 420px);
-    column-gap: 36px;
+    column-gap: 26px;
   }
 }
 
@@ -1403,7 +1403,7 @@ button.analysisLichessLink {
   }
 
   .analysisBoardPanel {
-    --analysis-eval-bar-gutter: 18px;
+    --analysis-eval-bar-gutter: 20px;
     grid-column: 1;
     grid-row: auto;
     order: -1;
@@ -1486,7 +1486,8 @@ button.analysisLichessLink {
     grid-template-columns:
       minmax(0, min(55vmin, var(--analysis-board-size, 516px)))
       minmax(200px, 240px);
-    gap: 12px;
+    column-gap: 26px;
+    row-gap: 12px;
   }
 
   .analysisRightPanel,
