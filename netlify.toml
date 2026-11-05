@@ -1,0 +1,2 @@
+[functions."game-analysis-sweep"]
+schedule = "*/2 * * * *"
