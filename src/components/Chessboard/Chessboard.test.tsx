@@ -616,7 +616,7 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)).toMatchObject({ lineIndex: 0, solutionLineIndex: 1 });
   });
 
-  it("keeps forward navigation on a custom branch after Backspace", () => {
+  it("returns to the main solution after backtracking from a custom branch", () => {
     const states = renderBoard({ solution: "1. e4 e5 2. Nf3", showSolution: true });
 
     fireEvent.keyDown(window, { key: "ArrowRight" });
@@ -626,8 +626,26 @@ describe("Chessboard orchestration", () => {
     fireEvent.keyDown(window, { key: "ArrowRight" });
 
     expect(states.at(-1)?.lineIndex).toBe(3);
-    expect(states.at(-1)?.lineMoves?.[2]).toBe("Bc4");
-    expect(states.at(-1)?.viewingSolution).toBe(false);
+    expect(states.at(-1)?.lineMoves?.[2]).toBe("Nf3");
+    expect(states.at(-1)?.viewingSolution).toBe(true);
+  });
+
+  it("returns to the main solution after backtracking from a predefined variation", () => {
+    const states = renderBoard({
+      solution: "1. e4 e5 (1... c5 2. Nf3) 2. Nf3",
+      showSolution: true,
+      solutionNavigation: { type: "solution", line: 1, ply: 2 },
+    });
+
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    expect(states.at(-1)).toMatchObject({
+      lineMoves: ["e4", "e5", "Nf3"],
+      lineIndex: 2,
+      solutionLineIndex: 0,
+      viewingSolution: true,
+    });
   });
 
   it("preserves both lines when a move branches from custom analysis history", () => {
@@ -647,7 +665,6 @@ describe("Chessboard orchestration", () => {
 
   it("returns to the main line after backtracking from a game analysis variation", () => {
     const states = renderBoard({
-      preferMainLineAfterBacktrack: true,
       solutionNavigation: {
         type: "loadPgn",
         pgn: "1. e4 e5 2. Nf3",
@@ -858,21 +875,22 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)?.lineMoves).toEqual(["e4?", "e5"]);
   });
 
-  it("preserves a custom branch while cycling between continuation options", () => {
+  it("preserves a custom branch for explicit continuation selection after backtracking", () => {
     const states = renderBoard({ solution: "1. e4 e5 2. Nf3", showSolution: true });
 
     fireEvent.keyDown(window, { key: "ArrowRight" });
     fireEvent.keyDown(window, { key: "ArrowRight" });
     play("f1", "c4");
     fireEvent.keyDown(window, { key: "Backspace" });
-    fireEvent.keyDown(window, { key: "ArrowUp" });
 
     expect(states.at(-1)?.viewingSolution).toBe(true);
     expect(states.at(-1)?.lineIndex).toBe(2);
     expect(states.at(-1)?.solutionLines?.[0]?.[2]).toBe("Nf3");
     expect(states.at(-1)?.customLines?.[0]?.[2]).toBe("Bc4");
 
-    fireEvent.keyDown(window, { key: "ArrowDown" });
+    fireEvent.keyDown(window, { key: "ArrowUp" });
+    expect(states.at(-1)?.viewingSolution).toBe(false);
+
     fireEvent.keyDown(window, { key: "ArrowRight" });
 
     expect(states.at(-1)?.lineIndex).toBe(3);
