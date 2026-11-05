@@ -2,7 +2,7 @@ import process from "node:process";
 
 import { z } from "zod";
 
-import { buildGamePositionFens } from "../../../shared/domain/gameAnalysis";
+import { buildGamePositionFens, GAME_ANALYSIS_COST } from "../../../shared/domain/gameAnalysis";
 import {
   authenticateRequest,
   identityResponse,
@@ -17,6 +17,7 @@ import { parseJsonBody } from "../../platform/validation";
 const gameIdSchema = z.string().trim().min(1).max(160);
 const inputSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("status"), gameId: gameIdSchema }),
+  z.object({ action: z.literal("statuses"), gameIds: z.array(gameIdSchema).max(5000) }),
   z.object({ action: z.literal("adminList") }),
   z.object({
     action: z.literal("request"),
@@ -81,6 +82,21 @@ const selectRecord = async (gameId: string): Promise<GameAnalysisRow | null> => 
     .maybeSingle<GameAnalysisRow>();
   if (error) throw new Error(`Unable to load game analysis: ${error.message}`);
   return data;
+};
+
+const selectStatuses = async (gameIds: string[]) => {
+  const supabase = createServerSupabase("Game analysis status list");
+  const uniqueIds = [...new Set(gameIds)];
+  const rows: Array<{ game_id: string; status: GameAnalysisRow["status"] }> = [];
+  for (let index = 0; index < uniqueIds.length; index += 200) {
+    const { data, error } = await supabase
+      .from("game_analyses")
+      .select("game_id,status")
+      .in("game_id", uniqueIds.slice(index, index + 200));
+    if (error) throw new Error(`Unable to load game analysis statuses: ${error.message}`);
+    rows.push(...((data ?? []) as typeof rows));
+  }
+  return rows.map((row) => ({ gameId: row.game_id, status: row.status }));
 };
 
 const completedMoveCount = (row: AdminGameAnalysisRow): number => {
@@ -151,11 +167,18 @@ const dispatchWorker = async (event: FunctionEvent, gameId: string): Promise<voi
 
 export const gameAnalysisRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, inputSchema, "Invalid game analysis request.");
-  const identity = await authenticateRequest(event.headers, input.action === "status");
+  const identity = await authenticateRequest(
+    event.headers,
+    input.action === "status" || input.action === "statuses",
+  );
 
   if (input.action === "status") {
     const record = await selectRecord(input.gameId);
     return identityResponse(identity, 200, { analysis: record ? publicRecord(record) : null });
+  }
+
+  if (input.action === "statuses") {
+    return identityResponse(identity, 200, { analyses: await selectStatuses(input.gameIds) });
   }
 
   if (input.action === "adminList") {
@@ -187,7 +210,7 @@ export const gameAnalysisRoute = async (event: FunctionEvent) => {
     if (/not enough coins/i.test(error.message)) {
       throw new HttpError(
         409,
-        "You need 2 Atomic Coins to analyze this game.",
+        `You need ${GAME_ANALYSIS_COST} Atomic Coin to analyze this game.`,
         {},
         "insufficient_coins",
       );

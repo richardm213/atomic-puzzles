@@ -272,6 +272,25 @@
   margin-top: 2px;
 }
 
+.h2hBreakdownActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+@media (max-width: 560px) {
+  .h2hBreakdownActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .h2hAnalyzeControl,
+  .h2hAnalyzeControl .gameAnalysisBatchTrigger {
+    width: 100%;
+  }
+}
+
 .h2hPlayerPanel {
   display: grid;
   gap: 18px;

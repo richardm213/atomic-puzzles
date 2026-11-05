@@ -14,13 +14,14 @@ set search_path = public
 as $$
 declare
   charge_source text := 'game-analysis:' || btrim(p_game_id) || ':' || p_charge_attempt::text;
+  charged_amount numeric(18, 6);
   current_balance numeric(18, 6);
 begin
-  if not exists (
-    select 1
+  select abs(amount) into charged_amount
     from public.coin_transactions
     where source_key = charge_source and amount < 0
-  ) then
+    limit 1;
+  if charged_amount is null then
     select balance into current_balance
     from public.coin_accounts
     where username = lower(btrim(p_username));
@@ -29,7 +30,7 @@ begin
 
   return public.apply_coin_transaction(
     lower(btrim(p_username)),
-    2::numeric,
+    charged_amount,
     'game_analysis',
     'game-analysis-refund:' || btrim(p_game_id) || ':' || p_charge_attempt::text,
     jsonb_build_object('gameId', btrim(p_game_id), 'refund', true, 'reason', p_message),

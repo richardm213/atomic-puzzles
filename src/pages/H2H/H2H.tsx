@@ -6,6 +6,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import { BannedPlayerMark } from "../../components/BannedPlayerMark/BannedPlayerMark";
+import { GameAnalysisBatchControl } from "../../components/GameAnalysisBatchControl/GameAnalysisBatchControl";
 import {
   isMode,
   type Mode,
@@ -343,6 +344,18 @@ export const H2HPage = () => {
       }),
     [endDateTs, filters, matches, modeFilters, startDateTs, visibleModeOptions],
   );
+  const allGameIds = useMemo(
+    () => matches.flatMap((match) => match.games.map((game) => game.id)).filter((id) => id !== "—"),
+    [matches],
+  );
+  const filteredGameIds = useMemo(
+    () =>
+      filteredMatches
+        .flatMap((match) => match.games.map((game) => game.id))
+        .filter((id) => id !== "—"),
+    [filteredMatches],
+  );
+  const filtersLimitGames = filteredGameIds.length !== allGameIds.length;
 
   const { initialOptions, incrementOptions } = useMemo(
     () => getTimeControlOptions(matches),
@@ -722,8 +735,15 @@ export const H2HPage = () => {
                   <SourceFilterChecks values={filters.sources} onChange={setSourceFilter} />
                 </form>
 
-                <div className="h2hSectionHeading h2hBreakdownHeading">
+                <div className="h2hSectionHeading h2hBreakdownHeading h2hBreakdownActions">
                   <h2>Match Breakdown</h2>
+                  <GameAnalysisBatchControl
+                    games={filteredGameIds.map((id, index) => ({ id, number: index + 1 }))}
+                    triggerLabel={
+                      filtersLimitGames ? "Analyze filtered games" : "Analyze H2H games"
+                    }
+                    className="h2hAnalyzeControl"
+                  />
                 </div>
 
                 <div className="h2hMatchesTableWrap">

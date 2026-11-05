@@ -199,9 +199,23 @@
 }
 
 .matchPageSectionHeading {
-  display: grid;
-  gap: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
   margin-bottom: 16px;
+}
+
+@media (max-width: 520px) {
+  .matchPageSectionHeading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .matchPageAnalyzeControl,
+  .matchPageAnalyzeControl .gameAnalysisBatchTrigger {
+    width: 100%;
+  }
 }
 
 .matchPageDetailsCard .matchCardPlayerStats > div {

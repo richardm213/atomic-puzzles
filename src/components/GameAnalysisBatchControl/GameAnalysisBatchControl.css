@@ -1,0 +1,183 @@
+.gameAnalysisBatchControl {
+  display: inline-flex;
+}
+
+.gameAnalysisBatchTrigger {
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-ui);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.gameAnalysisBatchTrigger:hover:not(:disabled) {
+  border-color: var(--color-primary-hover);
+  background: var(--color-primary-hover);
+}
+
+.gameAnalysisBatchTrigger:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.gameAnalysisBatchTrigger:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.gameAnalysisBatchTrigger:focus-visible,
+.gameAnalysisPurchaseActions button:focus-visible,
+.gameAnalysisSelectionInput:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.gameAnalysisPurchaseDialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+  color: var(--color-heading);
+  box-shadow: var(--shadow-strong);
+}
+
+.gameAnalysisPurchaseDialog::backdrop {
+  background: color-mix(in srgb, var(--color-panel-deep) 76%, transparent);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.gameAnalysisPurchaseDialog form {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.gameAnalysisPurchaseDialog h2,
+.gameAnalysisPurchaseDialog p {
+  margin: 0;
+}
+
+.gameAnalysisPurchaseDialog h2 {
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.gameAnalysisPurchaseDialog p {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  color: var(--color-muted);
+}
+
+.gameAnalysisCoinIcon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.gameAnalysisSelectionField {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 650;
+  text-align: left;
+}
+
+.gameAnalysisSelectionInput {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.gameAnalysisSelectionHint,
+.gameAnalysisBatchStatus {
+  color: var(--color-subtle);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.gameAnalysisBatchError {
+  color: var(--color-danger) !important;
+  font-size: 13px;
+}
+
+.gameAnalysisBatchFailures {
+  color: var(--color-danger);
+  font-size: 13px;
+  text-align: left;
+}
+
+.gameAnalysisBatchFailures p {
+  justify-content: flex-start;
+  margin: 0;
+  color: inherit;
+}
+
+.gameAnalysisBatchFailures ul {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding-left: 20px;
+}
+
+.gameAnalysisPurchaseActions {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: var(--space-3);
+}
+
+.gameAnalysisPurchaseActions button {
+  min-height: 46px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gameAnalysisPurchaseActions button:last-child {
+  border-color: color-mix(in srgb, var(--color-gold) 64%, var(--color-border));
+  background: var(--color-gold);
+  color: color-mix(in srgb, var(--color-panel-strong) 88%, black);
+}
+
+.gameAnalysisPurchaseActions button:hover:not(:disabled) {
+  border-color: var(--color-primary-soft);
+}
+
+.gameAnalysisPurchaseActions button:last-child:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-gold) 90%, black);
+}
+
+.gameAnalysisPurchaseActions button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+@media (max-width: 520px) {
+  .gameAnalysisBatchTrigger {
+    min-height: 44px;
+  }
+}

@@ -1,4 +1,4 @@
--- Durable, shared AtomicDB game analysis jobs with an idempotent two-coin charge.
+-- Durable, shared AtomicDB game analysis jobs with an idempotent one-coin charge.
 begin;
 
 alter table public.coin_transactions
@@ -25,7 +25,7 @@ create table if not exists public.game_analyses (
   total_positions integer not null check (total_positions > 0),
   queued_positions integer not null default 0 check (queued_positions >= 0),
   completed_positions integer not null default 0 check (completed_positions >= 0),
-  cost numeric(18, 6) not null default 2 check (cost = 2),
+  cost numeric(18, 6) not null default 1 check (cost = 1),
   charge_attempt integer not null default 1 check (charge_attempt > 0),
   result jsonb,
   error text,
@@ -84,10 +84,10 @@ begin
   if inserted_count = 1 then
     current_balance := public.apply_coin_transaction(
       normalized_username,
-      -2::numeric,
+      -1::numeric,
       'game_analysis',
       'game-analysis:' || normalized_game_id || ':1',
-      jsonb_build_object('gameId', normalized_game_id, 'cost', 2),
+      jsonb_build_object('gameId', normalized_game_id, 'cost', 1),
       now()
     );
   else
@@ -99,10 +99,10 @@ begin
     if existing.status = 'failed' then
       current_balance := public.apply_coin_transaction(
         normalized_username,
-        -2::numeric,
+        -1::numeric,
         'game_analysis',
         'game-analysis:' || normalized_game_id || ':' || (existing.charge_attempt + 1)::text,
-        jsonb_build_object('gameId', normalized_game_id, 'cost', 2, 'retry', true),
+        jsonb_build_object('gameId', normalized_game_id, 'cost', 1, 'retry', true),
         now()
       );
     end if;

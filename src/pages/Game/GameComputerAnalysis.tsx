@@ -2,6 +2,7 @@ import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { type CSSProperties, type FormEvent, useRef, useState } from "react";
 
+import { GAME_ANALYSIS_COST } from "../../../shared/domain/gameAnalysis";
 import type { ArchiveGame } from "../../lib/archive/games";
 import { decodeGameResult } from "../../lib/archive/games";
 import type {
@@ -44,9 +45,7 @@ const EvaluationGraph = ({
     evaluation,
     ply,
     x: (index / Math.max(1, visibleEvaluations.length - 1)) * width,
-    y:
-      height / 2 -
-      (Math.max(-900, Math.min(900, evaluation)) / 900) * (height / 2 - 8),
+    y: height / 2 - (Math.max(-900, Math.min(900, evaluation)) / 900) * (height / 2 - 8),
   }));
   const path = points.map((point, index) => `${index ? "L" : "M"}${point.x},${point.y}`).join(" ");
   const fill = `${path} L${width},${height / 2} L0,${height / 2} Z`;
@@ -214,7 +213,6 @@ export const GameComputerAnalysis = ({
   requestError,
   authenticated,
   onRequest,
-  onLogin,
   moves,
   currentPly,
   onNavigate,
@@ -235,10 +233,6 @@ export const GameComputerAnalysis = ({
   const purchaseDialogRef = useRef<HTMLDialogElement>(null);
   const closePurchaseDialog = () => purchaseDialogRef.current?.close();
   const openPurchaseDialog = () => {
-    if (!authenticated) {
-      onLogin();
-      return;
-    }
     purchaseDialogRef.current?.showModal();
   };
   const confirmPurchase = (event: FormEvent<HTMLFormElement>) => {
@@ -250,6 +244,7 @@ export const GameComputerAnalysis = ({
   if (isLoading) {
     return <p className="gameUnderboardState">Loading computer analysis…</p>;
   }
+  if ((!analysis || analysis.status === "failed") && !authenticated) return null;
   if (!analysis || analysis.status === "failed") {
     return (
       <div className="gameComputerRequest">
@@ -275,7 +270,7 @@ export const GameComputerAnalysis = ({
                   alt=""
                   aria-hidden="true"
                 />
-                2 Atomic Coins
+                {GAME_ANALYSIS_COST} Atomic Coin
               </p>
             </div>
             <div className="gameAnalysisPurchaseActions">
@@ -290,7 +285,7 @@ export const GameComputerAnalysis = ({
         </dialog>
         <button type="button" disabled={isRequesting} onClick={openPurchaseDialog}>
           {isRequesting ? <FontAwesomeIcon icon={faSpinner} spin /> : null}
-          {authenticated ? "Request analysis" : "Sign in to request"}
+          Request analysis
         </button>
         {analysis?.error || requestError ? (
           <p className="gameComputerError" role="alert">

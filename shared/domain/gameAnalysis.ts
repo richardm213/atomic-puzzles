@@ -1,6 +1,6 @@
 import { fenAfterAtomicMove } from "./puzzles/solutionPgn";
 
-export const GAME_ANALYSIS_COST = 2;
+export const GAME_ANALYSIS_COST = 1;
 export const GAME_ANALYSIS_BUDGET_NODES = 128_000_000;
 
 export const GAME_ANALYSIS_STATUSES = ["queued", "processing", "ready", "failed"] as const;

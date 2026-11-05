@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 
 import { BannedPlayerMark } from "../../components/BannedPlayerMark/BannedPlayerMark";
+import { GameAnalysisBatchControl } from "../../components/GameAnalysisBatchControl/GameAnalysisBatchControl";
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
@@ -114,6 +115,14 @@ export const MatchPage = () => {
                 <div className="matchPageDetailsCard">
                   <div className="matchPageSectionHeading">
                     <h2>Game Breakdown</h2>
+                    <GameAnalysisBatchControl
+                      games={match.games
+                        .filter((game) => game.id && game.id !== "—")
+                        .map((game) => ({ id: game.id, number: game.index + 1 }))}
+                      triggerLabel="Analyze match"
+                      allowGameSelection
+                      className="matchPageAnalyzeControl"
+                    />
                   </div>
                   <MatchDetails
                     match={match}

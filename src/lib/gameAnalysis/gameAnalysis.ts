@@ -13,6 +13,7 @@ import { postApi } from "../api/postApi";
 
 export type {
   GameAnalysisRecord,
+  GameAnalysisStatus,
   GameAnalysisSummary,
   GameMoveAssessment,
   MoveClassification,
@@ -139,6 +140,15 @@ const responseSchema = z.object({
   balance: z.number().nullable().optional(),
 });
 
+const statusResponseSchema = z.object({
+  analyses: z.array(
+    z.object({
+      gameId: z.string(),
+      status: z.enum(GAME_ANALYSIS_STATUSES),
+    }),
+  ),
+});
+
 export const fetchGameAnalysis = async (gameId: string): Promise<GameAnalysisRecord | null> => {
   const response = await postApi(
     "/api/game-analysis",
@@ -150,6 +160,22 @@ export const fetchGameAnalysis = async (gameId: string): Promise<GameAnalysisRec
     },
   );
   return response.analysis;
+};
+
+export const fetchGameAnalysisStatuses = async (
+  gameIds: string[],
+): Promise<Array<{ gameId: string; status: GameAnalysisRecord["status"] }>> => {
+  if (gameIds.length === 0) return [];
+  const response = await postApi(
+    "/api/game-analysis",
+    { action: "statuses", gameIds },
+    {
+      schema: statusResponseSchema,
+      errorMessage: "Unable to check existing game analyses.",
+      invalidMessage: "The game analysis service returned invalid data.",
+    },
+  );
+  return response.analyses;
 };
 
 export const requestGameAnalysis = async (

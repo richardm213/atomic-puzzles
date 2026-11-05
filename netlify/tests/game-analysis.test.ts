@@ -40,6 +40,36 @@ describe("game analysis admin list", () => {
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
+  it("returns existing analysis states for a batch of games", async () => {
+    const inGames = vi.fn(async () => ({
+      data: [
+        { game_id: "game-ready", status: "ready" },
+        { game_id: "game-pending", status: "processing" },
+      ],
+      error: null,
+    }));
+    const select = vi.fn(() => ({ in: inGames }));
+    mocks.createClient.mockReturnValue({ from: vi.fn(() => ({ select })) });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { host: "atomic.example" },
+      body: JSON.stringify({
+        action: "statuses",
+        gameIds: ["game-ready", "game-pending", "game-missing"],
+      }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({
+      analyses: [
+        { gameId: "game-ready", status: "ready" },
+        { gameId: "game-pending", status: "processing" },
+      ],
+    });
+    expect(inGames).toHaveBeenCalledWith("game_id", ["game-ready", "game-pending", "game-missing"]);
+  });
+
   it("returns pending jobs and the last ten completed jobs", async () => {
     const pendingLimit = vi.fn(async () => ({
       data: [
