@@ -160,7 +160,7 @@ export const GameAnalysisBatchControl = ({
           </div>
           {allowGameSelection ? (
             <label className="gameAnalysisSelectionField" htmlFor="game-analysis-selection">
-              Games
+              Games <span>(optional)</span>
               <input
                 id="game-analysis-selection"
                 className="gameAnalysisSelectionInput"
@@ -174,7 +174,9 @@ export const GameAnalysisBatchControl = ({
                   setSelectionError("");
                 }}
               />
-              <span className="gameAnalysisSelectionHint">Example: 1-3,6,8,10-15</span>
+              <span className="gameAnalysisSelectionHint">
+                Leave blank for all. Example: 1-3,6,8,10-15
+              </span>
             </label>
           ) : null}
           <span className="gameAnalysisBatchStatus">

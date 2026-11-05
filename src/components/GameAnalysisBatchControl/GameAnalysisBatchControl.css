@@ -97,6 +97,10 @@
   text-align: left;
 }
 
+.gameAnalysisSelectionField > span:first-child {
+  font-weight: 500;
+}
+
 .gameAnalysisSelectionInput {
   width: 100%;
   min-height: 44px;
@@ -106,6 +110,11 @@
   background: var(--color-input-bg);
   color: var(--color-text);
   font: inherit;
+}
+
+.gameAnalysisSelectionInput:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
 }
 
 .gameAnalysisSelectionHint,
