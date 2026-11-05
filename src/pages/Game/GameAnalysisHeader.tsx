@@ -1,3 +1,5 @@
+import { faArrowLeft, faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
@@ -7,6 +9,7 @@ import { modeLabels } from "../../constants/matches";
 import type { ArchiveGame } from "../../lib/archive/games";
 import { decodeGameResult } from "../../lib/archive/games";
 import { gameTerminationLabel } from "../../lib/games/termination";
+import { loadRawMatchById } from "../../lib/matches/data";
 import { getTournamentMatchLocation, getTournamentRouteId } from "../../lib/matches/tournaments";
 import { formatLocalDateTime } from "../../utils/formatters";
 
@@ -165,5 +168,70 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
       </div>
       <p className="gameAnalysisResult">{gameTerminationLabel(game)}</p>
     </header>
+  );
+};
+
+export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
+  const matchQuery = useQuery({
+    queryKey: ["games", "match-crosstable", game.external_match_id],
+    queryFn: () => loadRawMatchById(game.external_match_id),
+    enabled: Boolean(game.external_match_id),
+    staleTime: 10 * 60 * 1_000,
+  });
+  const games = matchQuery.data?.games ?? [];
+  const currentIndex = games.findIndex((matchGame) => matchGame.id === game.game_id);
+  if (games.length <= 1 || currentIndex < 0) return null;
+
+  const previousGame = games[currentIndex - 1] ?? null;
+  const nextGame = games[currentIndex + 1] ?? null;
+
+  return (
+    <nav className="gameAnalysisGameNavigation" aria-label="Games in this match">
+      <span className="gameAnalysisGameNumber">
+        Game {currentIndex + 1}/{games.length}
+      </span>
+      <div className="gameAnalysisGameNavigationButtons">
+        {previousGame ? (
+          <Link
+            className="gameAnalysisGameNavigationButton"
+            to="/game/$gameId"
+            params={{ gameId: previousGame.id }}
+            aria-label={`Previous game, game ${currentIndex}`}
+            title={`Game ${currentIndex}`}
+          >
+            <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className="gameAnalysisGameNavigationButton"
+            aria-label="No previous game"
+            disabled
+          >
+            <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
+          </button>
+        )}
+        {nextGame ? (
+          <Link
+            className="gameAnalysisGameNavigationButton"
+            to="/game/$gameId"
+            params={{ gameId: nextGame.id }}
+            aria-label={`Next game, game ${currentIndex + 2}`}
+            title={`Game ${currentIndex + 2}`}
+          >
+            <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className="gameAnalysisGameNavigationButton"
+            aria-label="No next game"
+            disabled
+          >
+            <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
+          </button>
+        )}
+      </div>
+    </nav>
   );
 };

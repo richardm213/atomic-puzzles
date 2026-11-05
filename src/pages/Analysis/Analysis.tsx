@@ -59,7 +59,11 @@ import {
   type ExplorerRequestNavigation,
   fetchExplorerApiResponse,
 } from "../../utils/openingExplorer";
-import { GameAnalysisHeader, GameBoardClock } from "../Game/GameAnalysisHeader";
+import {
+  GameAnalysisHeader,
+  GameBoardClock,
+  GameMatchNavigation,
+} from "../Game/GameAnalysisHeader";
 import { GameComputerAnalysis, GameComputerAnalysisPlayers } from "../Game/GameComputerAnalysis";
 import { GameUnderboard, type GameUnderboardTab } from "../Game/GameUnderboard";
 
@@ -1516,13 +1520,16 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
       </div>
 
       {game ? (
-        <aside
-          className={`gameAnalysisSidebar ${moveGameExplorerLeft ? "withExplorer" : ""}`}
-          aria-label="Game details"
-        >
-          <GameAnalysisHeader game={game} />
-          {moveGameExplorerLeft ? openingExplorerPanel : null}
-        </aside>
+        <div className="gameAnalysisSidebarRail">
+          <aside
+            className={`gameAnalysisSidebar ${moveGameExplorerLeft ? "withExplorer" : ""}`}
+            aria-label="Game details"
+          >
+            <GameAnalysisHeader game={game} />
+            {moveGameExplorerLeft ? openingExplorerPanel : null}
+          </aside>
+          <GameMatchNavigation game={game} />
+        </div>
       ) : null}
 
       {usernamePickerOpen ? (

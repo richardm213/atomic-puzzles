@@ -12,6 +12,11 @@
   box-shadow: var(--shadow-soft);
 }
 
+.gameAnalysisSidebarRail {
+  min-width: 0;
+  align-self: start;
+}
+
 .gameAnalysisSidebar.withExplorer {
   height: var(--game-analysis-panel-height, calc(var(--analysis-board-size, 516px) + 48px));
   display: grid;
@@ -105,6 +110,65 @@
   display: grid;
   gap: 10px;
   padding: 14px 12px;
+}
+
+.gameAnalysisGameNavigation {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.gameAnalysisGameNumber {
+  color: var(--color-heading);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.gameAnalysisGameNavigationButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gameAnalysisGameNavigationButton {
+  width: 38px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel);
+  color: var(--color-heading);
+  text-decoration: none;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.gameAnalysisGameNavigationButton:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-primary) 42%, var(--color-border));
+  background: var(--color-surface-inset);
+  color: var(--color-primary-soft);
+}
+
+.gameAnalysisGameNavigationButton:active:not(:disabled) {
+  background: var(--color-surface-inset-strong);
+}
+
+.gameAnalysisGameNavigationButton:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.gameAnalysisGameNavigationButton:disabled {
+  color: var(--color-subtle);
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .gameAnalysisMetaRow {
@@ -1226,7 +1290,7 @@
     column-gap: 26px;
   }
 
-  .gameAnalysisPage .gameAnalysisSidebar {
+  .gameAnalysisPage .gameAnalysisSidebarRail {
     grid-column: 1;
     grid-row: 1;
     align-self: start;
@@ -1289,7 +1353,7 @@
     grid-row: 1 / 4;
   }
 
-  .gameAnalysisPage .gameAnalysisSidebar {
+  .gameAnalysisPage .gameAnalysisSidebarRail {
     grid-column: 1;
     grid-row: 2;
   }
@@ -1318,7 +1382,7 @@
     order: -2;
   }
 
-  .gameAnalysisPage .gameAnalysisSidebar {
+  .gameAnalysisPage .gameAnalysisSidebarRail {
     order: -1;
   }
 }
@@ -1336,10 +1400,15 @@
     min-height: 44px;
   }
 
-  .gameAnalysisSidebar {
+  .gameAnalysisSidebarRail {
     grid-column: 1;
     grid-row: auto;
     order: -2;
+  }
+
+  .gameAnalysisGameNavigationButton {
+    width: 44px;
+    height: 44px;
   }
 
   .gameAnalysisPage .analysisBoardPanel {
