@@ -114,6 +114,47 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5", "g1f3"]);
   });
 
+  it("requests only the number of legal moves when fewer than the line setting exist", async () => {
+    const fen = "rn1r4/pp2kR1p/2p5/5P1P/1P6/4P3/P1P5/2K5 b - - 8 27";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(responseFor(0)));
+    analyzeWithEngineMock.mockResolvedValue([
+      {
+        move: "e7d6",
+        multipv: 1,
+        scoreType: "cp",
+        score: 0,
+        depth: 18,
+        principalVariation: ["e7d6", "f7f6"],
+      },
+      {
+        move: "e7e8",
+        multipv: 2,
+        scoreType: "mate",
+        score: -2,
+        depth: 18,
+        principalVariation: ["e7e8", "f7f8"],
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(fen, {
+        debounceMs: 0,
+        fallbackToEngine: true,
+        lineCount: 5,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(analyzeWithEngineMock).toHaveBeenCalledWith(
+      fen,
+      2,
+      expect.any(AbortSignal),
+      expect.any(Function),
+      "atomic-stockfish",
+    );
+    expect(result.current.result?.position?.moves).toHaveLength(2);
+  });
+
   it("fills missing requested AtomicDB lines with distinct Atomic-Stockfish moves", async () => {
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 12 30";
     vi.stubGlobal(

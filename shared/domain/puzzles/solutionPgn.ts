@@ -82,6 +82,17 @@ export const fenAfterAtomicMove = (fen: string, uci: string): string | null => {
   }
 };
 
+export const atomicLegalMoveCount = (fen: string): number => {
+  try {
+    const position = createAtomicPosition(fen);
+    let count = 0;
+    for (const destinations of position.allDests().values()) count += destinations.size();
+    return count;
+  } catch {
+    return 0;
+  }
+};
+
 export const toComparableUci = (position: Position, uci: string, move?: Move | null): string => {
   const normalized = uci.toLowerCase();
   const activeMove = move ?? moveFromUci(position, normalized);

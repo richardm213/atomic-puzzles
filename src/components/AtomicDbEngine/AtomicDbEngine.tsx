@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AtomicDbAnalysisState } from "../../hooks/useAtomicDbAnalysis";
 import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { localAnalysisEngineLabel } from "../../lib/practice/localAnalysisEngine";
+import { atomicLegalMoveCount } from "../../lib/puzzles/solutionPgn";
 import {
   atomicDbPositionUrl,
   type AtomicDbView,
@@ -273,7 +274,9 @@ export const AtomicDbEngine = ({
     () => position?.moves.slice(0, lineCount) ?? [],
     [lineCount, position],
   );
-  const missingLineCount = Math.max(0, lineCount - visibleMoves.length);
+  const legalMoveCount = useMemo(() => atomicLegalMoveCount(view.fen), [view.fen]);
+  const targetLineCount = legalMoveCount > 0 ? Math.min(lineCount, legalMoveCount) : lineCount;
+  const missingLineCount = Math.max(0, targetLineCount - visibleMoves.length);
   const showingPreviousPosition = status === "loading" && !view.isCurrent;
 
   if (!enabled) return null;

@@ -220,6 +220,39 @@ describe("AtomicDbEngine", () => {
     );
   });
 
+  it("does not show empty line placeholders beyond the legal move count", () => {
+    const fen = "rn1r4/pp2kR1p/2p5/5P1P/1P6/4P3/P1P5/2K5 b - - 8 27";
+    const position = parseAtomicDbResponse({
+      status: "UNKNOWN",
+      score: 0,
+      best_move: "e7d6",
+      moves: [
+        { uci: "e7d6", status: "DRAW", score: 0 },
+        { uci: "e7e8", status: "WHITE_WIN", mate: 2 },
+      ],
+    });
+
+    render(
+      <AtomicDbEngine
+        fen={fen}
+        settings={{ enabled: true, lineCount: 5, showFollowUpMoves: false }}
+        analysis={{
+          status: "ready",
+          error: "",
+          source: "mixed",
+          engine: "atomic-stockfish",
+          result: { fen, position },
+          principalVariations: {},
+        }}
+        onPlayLine={vi.fn()}
+        onHoverMove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(screen.queryByText("No analyzed line")).not.toBeInTheDocument();
+  });
+
   it("keeps an analyzed game's stored search depth visible before a refresh", () => {
     const position = parseAtomicDbResponse({
       status: "UNKNOWN",

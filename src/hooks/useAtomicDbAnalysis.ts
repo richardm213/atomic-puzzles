@@ -11,6 +11,7 @@ import {
   type EngineCandidate,
 } from "../lib/practice/fairyStockfish";
 import type { LocalAnalysisEngine } from "../lib/practice/localAnalysisEngine";
+import { atomicLegalMoveCount } from "../lib/puzzles/solutionPgn";
 import {
   type AtomicDbPosition,
   type AtomicDbResult,
@@ -132,7 +133,9 @@ export const useAtomicDbAnalysis = (
 
     const controller = new AbortController();
     const assistanceEngine: LocalAnalysisEngine = "atomic-stockfish";
-    const lineCount = clampInteger(requestedLineCount, 1, MAX_LINE_COUNT);
+    const requestedLines = clampInteger(requestedLineCount, 1, MAX_LINE_COUNT);
+    const legalMoveCount = atomicLegalMoveCount(fen);
+    const lineCount = legalMoveCount > 0 ? Math.min(requestedLines, legalMoveCount) : requestedLines;
     const plyCount = clampInteger(requestedPlyCount, 1, MAX_PLY_COUNT);
     const cachedLinesFor = (position: AtomicDbPosition | null): Record<string, string[]> => {
       const rootMoves = position?.moves.slice(0, lineCount).map((move) => move.uci) ?? [];
