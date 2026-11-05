@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "target": "browser-worker",
-  "sourceCommit": "fff2ba21a3ca5061c6890fbd065ff842157b6a6a",
+  "sourceCommit": "01cc6f44f52709d3f4a0b0994d68f9226cc311fa",
   "sourceTreeDirty": false,
   "sourceDateEpoch": 0,
   "debug": false,
@@ -33,7 +33,7 @@
     "-DNDEBUG",
     "-include",
     "tests/wasm-engine/uci_only.h",
-    "-DGIT_SHA=fff2ba21",
+    "-DGIT_SHA=01cc6f44",
     "-DGIT_DATE=20261105"
   ],
   "linkFlags": [
@@ -135,17 +135,17 @@
   "artifacts": [
     {
       "name": "atomic-stockfish.mjs",
-      "bytes": 76278,
-      "gzipBytes": 21212,
+      "bytes": 76295,
+      "gzipBytes": 21221,
       "brotliBytes": null,
-      "sha256": "c1b36a74d1c8548b1f2f7fcc8afa4053fd34e8591da77772f8ce0649dfe9cbb9"
+      "sha256": "5298e1b38e7f08c9b09a2ff1c05feb3a576ddf9580036b1ede2b151efbd52f5a"
     },
     {
       "name": "atomic-stockfish.wasm",
       "bytes": 625941,
-      "gzipBytes": 227698,
+      "gzipBytes": 227692,
       "brotliBytes": null,
-      "sha256": "c77e911f378d73e5b1404443e8b7e73b86353ea84bba744bf1d168bbd3991c68"
+      "sha256": "95a07819d96f3630b62d3836e026ab92b7f6d3b21a6909e5827162cae055ddf5"
     },
     {
       "name": "atomic-stockfish.worker.js",

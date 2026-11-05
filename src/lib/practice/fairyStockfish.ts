@@ -357,7 +357,7 @@ type AtomicWorkerResponse =
   | { type: "search" };
 
 const ATOMIC_STOCKFISH_WORKER_URL =
-  "/engines/atomic-stockfish/fff2ba21a3ca5061c6890fbd065ff842157b6a6a/atomic-stockfish.worker.js";
+  "/engines/atomic-stockfish/01cc6f44f52709d3f4a0b0994d68f9226cc311fa/atomic-stockfish.worker.js";
 const ATOMIC_STOCKFISH_NNUE_SHA256 =
   "99dc67eabf26a64faeeca3a88b4c38597a840b8d4a874b9f2cf658c6f92a04a6";
 
