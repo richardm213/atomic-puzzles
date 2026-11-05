@@ -22,6 +22,9 @@ const FOLLOW_UP_POLL_DELAY_MS = 2 * 60_000;
 const EXPECTED_ATOMIC_DB_WORKERS = 4;
 const ESTIMATED_WORKER_NODES_PER_SECOND = 14_000_000;
 const WOLFRANDOM_RANDOMIZED_PLIES = 6;
+const SWEEP_POSITION_BUDGET = 72;
+const SWEEP_JOB_LIMIT = 12;
+const SWEEP_JOB_CONCURRENCY = 2;
 
 type PositionState = {
   fen: string;
@@ -424,7 +427,10 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
   });
 };
 
-export const processPendingGameAnalyses = async (limit = 3): Promise<void> => {
+export const gameAnalysisSweepPositionLimit = (jobCount: number): number =>
+  Math.max(1, Math.floor(SWEEP_POSITION_BUDGET / Math.max(1, jobCount)));
+
+export const processPendingGameAnalyses = async (limit = SWEEP_JOB_LIMIT): Promise<void> => {
   const supabase = createServerSupabase("Game analysis sweep");
   const { data, error } = await supabase
     .from("game_analyses")
@@ -434,5 +440,11 @@ export const processPendingGameAnalyses = async (limit = 3): Promise<void> => {
     .order("next_check_at", { ascending: true })
     .limit(limit);
   if (error) throw new Error(`Unable to load pending game analyses: ${error.message}`);
-  for (const row of data ?? []) await processGameAnalysisJob(String(row.game_id), 24);
+  const jobs = data ?? [];
+  const positionsPerJob = gameAnalysisSweepPositionLimit(jobs.length);
+  // Keep the same 72-position sweep budget, but spread it across more games. Two jobs at a time
+  // overlap network waits without materially increasing total AtomicDB or database work.
+  await mapConcurrent(jobs, SWEEP_JOB_CONCURRENCY, async (row) => {
+    await processGameAnalysisJob(String(row.game_id), positionsPerJob);
+  });
 };
