@@ -256,6 +256,7 @@ const ChessboardComponent = ({
   const solutionEntriesRef = useRef(solutionEntries);
   solutionEntriesRef.current = solutionEntries;
   const activeLineRef = useRef<ActiveLine>({ source: "history" });
+  const alternativeContinuationSelectedRef = useRef(false);
   const customVariationsRef = useRef(createVariationHistory());
   const pieceStyle = useMemo(() => buildPieceStyle(pieceSet), [pieceSet]);
   const boardStyle = useMemo(
@@ -371,6 +372,7 @@ const ChessboardComponent = ({
     }): void => {
       historyRef.current = history;
       activeLineRef.current = { source: "history" };
+      alternativeContinuationSelectedRef.current = false;
       customVariationsRef.current = createVariationHistory();
       resetTraining({ mode: locked ? "solution" : "training", locked, candidates, solved });
     },
@@ -734,6 +736,7 @@ const ChessboardComponent = ({
           } else {
             showCustomLine(nextOption.lineIndex, history.index);
           }
+          alternativeContinuationSelectedRef.current = true;
           return;
         }
 
@@ -741,6 +744,7 @@ const ChessboardComponent = ({
       }
 
       if (resolvedCommand === "previous") {
+        alternativeContinuationSelectedRef.current = false;
         const targetIndex = history.index - 1;
         const targetStep = history.plies[targetIndex];
         const mainSolution = solutionEntriesRef.current[0]?.history;
@@ -762,6 +766,25 @@ const ChessboardComponent = ({
           !(activeLineRef.current.source === "custom" && activeLineRef.current.index === 0)
         ) {
           showCustomLine(0, targetIndex);
+          return;
+        }
+      }
+
+      if (resolvedCommand === "next" && !alternativeContinuationSelectedRef.current) {
+        const currentIndex = history.index;
+        const nextIndex = currentIndex + 1;
+        const currentStep = history.plies[currentIndex];
+        const mainSolution = solutionEntriesRef.current[0]?.history;
+        const mainSolutionCurrentStep = mainSolution?.plies[currentIndex];
+        if (currentStep && mainSolutionCurrentStep?.fen === currentStep.fen) {
+          if (mainSolution?.plies[nextIndex]) showSolutionLine(0, nextIndex);
+          return;
+        }
+
+        const mainCustom = variationHistoryAt(customVariationsRef.current, 0);
+        const mainCustomCurrentStep = mainCustom?.plies[currentIndex];
+        if (currentStep && mainCustomCurrentStep?.fen === currentStep.fen) {
+          if (mainCustom?.plies[nextIndex]) showCustomLine(0, nextIndex);
           return;
         }
       }
@@ -1276,6 +1299,9 @@ const ChessboardComponent = ({
     if (!solutionNavigation) return;
 
     if (solutionNavigation.type !== "play") cgRef.current?.cancelPremove?.();
+    if (solutionNavigation.type !== "command") {
+      alternativeContinuationSelectedRef.current = false;
+    }
 
     switch (solutionNavigation.type) {
       case "reset":

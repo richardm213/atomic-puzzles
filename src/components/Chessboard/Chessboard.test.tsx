@@ -628,6 +628,12 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)?.lineIndex).toBe(3);
     expect(states.at(-1)?.lineMoves?.[2]).toBe("Nf3");
     expect(states.at(-1)?.viewingSolution).toBe(true);
+
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    expect(states.at(-1)?.lineMoves?.[2]).toBe("Nf3");
+    expect(states.at(-1)?.viewingSolution).toBe(true);
   });
 
   it("returns to the main solution after backtracking from a predefined variation", () => {
@@ -675,6 +681,15 @@ describe("Chessboard orchestration", () => {
     fireEvent.keyDown(window, { key: "ArrowLeft" });
     fireEvent.keyDown(window, { key: "ArrowLeft" });
     play("c7", "c5");
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    expect(states.at(-1)).toMatchObject({
+      lineMoves: ["e4", "e5", "Nf3"],
+      lineIndex: 2,
+      customLineIndex: 0,
+    });
+
     fireEvent.keyDown(window, { key: "ArrowLeft" });
     fireEvent.keyDown(window, { key: "ArrowRight" });
 
