@@ -57,7 +57,7 @@ export const rankingEligibilityByMode: Record<Mode, RankingEligibility> = {
   },
   rapid: {
     minGames: 10,
-    maxRd: 60,
+    maxRd: 90,
   },
   wolfrandom: {
     minGames: 10,
