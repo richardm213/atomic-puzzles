@@ -167,6 +167,7 @@ describe("useAtomicDbAnalysis", () => {
       3,
       expect.any(AbortSignal),
       expect.any(Function),
+      "atomic-stockfish",
     );
     expect(result.current.source).toBe("mixed");
     expect(result.current.result?.position?.key).toBe("partial-position");
@@ -177,6 +178,108 @@ describe("useAtomicDbAnalysis", () => {
     ]);
     expect(result.current.principalVariations.g1f3).toEqual(["g1f3", "g8f6"]);
     expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5"]);
+  });
+
+  it("uses Atomic-Stockfish when AtomicDB's sole evaluation is a forced mate loss", async () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        bundleResponse({
+          key: "partially-analyzed-position",
+          status: "BLACK_WIN",
+          score: -10_000,
+          best_move: "e2e4",
+          moves: [
+            {
+              uci: "e2e4",
+              status: "BLACK_WIN",
+              closure: "MATE_PV",
+              score: -10_000,
+              point: -9_993,
+            },
+            { uci: "d2d4", status: "UNKNOWN" },
+          ],
+        }),
+      ),
+    );
+    analyzeWithEngineMock.mockResolvedValue([
+      {
+        move: "e2e4",
+        multipv: 1,
+        scoreType: "mate",
+        score: -4,
+        depth: 20,
+        principalVariation: ["e2e4"],
+      },
+      {
+        move: "d2d4",
+        multipv: 2,
+        scoreType: "cp",
+        score: -850,
+        depth: 20,
+        principalVariation: ["d2d4", "d7d5"],
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(fen, {
+        debounceMs: 0,
+        fallbackToEngine: true,
+        lineCount: 2,
+        plyCount: 2,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(analyzeWithEngineMock).toHaveBeenCalledWith(
+      fen,
+      2,
+      expect.any(AbortSignal),
+      expect.any(Function),
+      "atomic-stockfish",
+    );
+    expect(result.current.source).toBe("mixed");
+    expect(result.current.engine).toBe("atomic-stockfish");
+    expect(result.current.result?.position?.moves).toEqual([
+      expect.objectContaining({ uci: "e2e4", score: -10_000 }),
+      expect.objectContaining({ uci: "d2d4", origin: "engine", score: -850 }),
+    ]);
+  });
+
+  it("does not replace unknown AtomicDB rows when the sole evaluation is not a forced loss", async () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        bundleResponse({
+          key: "partially-analyzed-position",
+          status: "UNKNOWN",
+          score: 80,
+          best_move: "e2e4",
+          moves: [
+            { uci: "e2e4", status: "UNKNOWN", score: 80 },
+            { uci: "d2d4", status: "UNKNOWN" },
+          ],
+        }),
+      ),
+    );
+
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(fen, {
+        debounceMs: 0,
+        fallbackToEngine: true,
+        lineCount: 2,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(analyzeWithEngineMock).not.toHaveBeenCalled();
+    expect(result.current.source).toBe("atomicdb");
+    expect(result.current.result?.position?.moves.map((move) => move.uci)).toEqual([
+      "e2e4",
+      "d2d4",
+    ]);
   });
 
   it("publishes live Fairy-Stockfish lines before the timed search finishes", async () => {
