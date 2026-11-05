@@ -11,6 +11,7 @@ describe("game analysis sweep", () => {
     expect(gameAnalysisSweepPositionLimit(1)).toBe(600);
     expect(gameAnalysisSweepPositionLimit(3)).toBe(200);
     expect(gameAnalysisSweepPositionLimit(12)).toBe(50);
+    expect(gameAnalysisSweepPositionLimit(600)).toBe(1);
   });
 
   it("fills Gannet's queue without crossing its safety target", () => {

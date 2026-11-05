@@ -23,7 +23,10 @@ const EXPECTED_ATOMIC_DB_WORKERS = 4;
 const ESTIMATED_WORKER_NODES_PER_SECOND = 14_000_000;
 const WOLFRANDOM_RANDOMIZED_PLIES = 6;
 const SWEEP_POSITION_BUDGET = 600;
-const SWEEP_JOB_LIMIT = 12;
+// A large queue still needs every job's progress refreshed on each sweep. The position budget
+// already reduces each job to one poll when hundreds are pending, so limiting the query to a
+// handful of jobs only leaves the rest of the admin queue stale for hours.
+const SWEEP_JOB_LIMIT = SWEEP_POSITION_BUDGET;
 const SWEEP_JOB_CONCURRENCY = 1;
 const SUBMISSION_POSITION_BUDGET = 4_250;
 const ATOMIC_DB_QUEUE_TARGET = 4_800;
