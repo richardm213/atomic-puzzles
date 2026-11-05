@@ -209,14 +209,14 @@ describe("AtomicDbEngine", () => {
       />,
     );
 
-    expect(screen.getByText("44 plies")).toHaveAttribute(
+    expect(screen.getByText("depth 44")).toHaveAttribute(
       "title",
-      "Move position backed 44 plies in AtomicDB",
+      "AtomicDB move position backing depth 44",
     );
     expect(screen.getByRole("listitem")).not.toHaveTextContent("backed");
     expect(screen.getByRole("listitem")).toHaveAttribute(
       "aria-label",
-      "Evaluation -3.2, move position backed 44 plies, line 1. Nf3",
+      "Evaluation -3.2, move position backing depth 44, line 1. Nf3",
     );
   });
 

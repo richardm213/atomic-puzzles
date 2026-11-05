@@ -317,30 +317,28 @@ export const AtomicDbEngine = ({
               const moveEvaluation = getAtomicDbMoveEvaluation(move, view.fen);
               const searchDepth = Math.max(0, Math.floor(move.searchDepth ?? 0));
               const nodeBackedPlies = move.nodeBackedPlies;
-              const nodeBackingLabel =
-                nodeBackedPlies === null
-                  ? null
-                  : `${nodeBackedPlies} ${nodeBackedPlies === 1 ? "ply" : "plies"}`;
-              const showNodeBacking = nodeBackingLabel !== null && move.origin !== "engine";
+              const nodeBackingDepth =
+                nodeBackedPlies === null ? null : `depth ${nodeBackedPlies}`;
+              const showNodeBacking = nodeBackingDepth !== null && move.origin !== "engine";
               const showDepth =
                 searchDepth > 0 &&
                 !showNodeBacking &&
                 !(move.origin === "engine" && moveEvaluation.type === "mate");
               const support = [
-                showNodeBacking ? `move position backed ${nodeBackingLabel}` : "",
+                showNodeBacking ? `move position backing ${nodeBackingDepth}` : "",
                 searchDepth > 0 ? `search depth ${searchDepth}` : "",
               ]
                 .filter(Boolean)
                 .map((label) => `, ${label}`)
                 .join("");
               const depthTitle = [
-                showNodeBacking ? `Move position backed ${nodeBackingLabel} in AtomicDB` : "",
+                showNodeBacking ? `AtomicDB move position backing ${nodeBackingDepth}` : "",
                 searchDepth > 0 ? `Search depth ${searchDepth}` : "",
               ]
                 .filter(Boolean)
                 .join(" · ");
               const depthLabel = showNodeBacking
-                ? nodeBackingLabel
+                ? nodeBackingDepth
                 : showDepth
                   ? `depth ${searchDepth}`
                   : "";
