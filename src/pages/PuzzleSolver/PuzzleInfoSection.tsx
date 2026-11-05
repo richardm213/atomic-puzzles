@@ -11,7 +11,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
-import type { FormEvent } from "react";
+import { type FormEvent, useState } from "react";
 
 import { CommunityCommentsLink } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
 import {
@@ -124,81 +124,97 @@ const AttemptsPanel = ({
   status: PuzzleInfoSectionProps["attempts"]["status"];
   rows: PuzzleProgressWithUsernameRow[];
   onRetry: () => void;
-}) => (
-  <div className="puzzleOtherAttemptsPanel" aria-live="polite">
-    {status === "loading" ? (
-      <div className="puzzleOtherAttemptsState">Loading attempts...</div>
-    ) : status === "error" ? (
-      <div className="puzzleOtherAttemptsState">
-        <span>Could not load attempts.</span>
-        <button type="button" onClick={onRetry}>
-          Try again
-        </button>
-      </div>
-    ) : rows.length > 0 ? (
-      <ul className="puzzleOtherAttemptsList" aria-label="Other puzzle attempts">
-        {rows.map((attempt) => (
-          <li
-            key={`${attempt.username}-${attempt.first_attempt_at}`}
-            className={`puzzleOtherAttemptRow ${attempt.puzzle_correct ? "correct" : "incorrect"}`}
-          >
-            <Link
-              className="puzzleOtherAttemptUser"
-              to="/@/$username/puzzles"
-              params={{ username: attempt.username }}
-            >
-              {attempt.username}
-            </Link>
-            <span
-              className={`puzzleOtherAttemptResult ${
-                attempt.puzzle_correct ? "correct" : "incorrect"
-              }`}
-            >
-              <FontAwesomeIcon
-                icon={attempt.puzzle_correct ? faCheck : faXmark}
-                aria-hidden="true"
+}) => {
+  const [hideAnswers, setHideAnswers] = useState(false);
+
+  return (
+    <div className="puzzleOtherAttemptsPanel" aria-live="polite">
+      {status === "loading" ? (
+        <div className="puzzleOtherAttemptsState">Loading attempts...</div>
+      ) : status === "error" ? (
+        <div className="puzzleOtherAttemptsState">
+          <span>Could not load attempts.</span>
+          <button type="button" onClick={onRetry}>
+            Try again
+          </button>
+        </div>
+      ) : rows.length > 0 ? (
+        <>
+          <div className="puzzleOtherAttemptsControls">
+            <label>
+              <input
+                type="checkbox"
+                checked={hideAnswers}
+                onChange={(event) => setHideAnswers(event.target.checked)}
               />
-              <span>{attempt.puzzle_correct ? "Correct" : "Incorrect"}</span>
-              {attempt.rated === false ? (
-                <span className="puzzleOtherAttemptRated">Unrated</span>
-              ) : null}
-              {attempt.puzzle_correct && attempt.correct_move ? (
-                <span
-                  className="puzzleOtherAttemptMove"
-                  aria-label={`Played ${attempt.correct_move}`}
-                >
-                  {attempt.correct_move}
-                </span>
-              ) : null}
-              {!attempt.puzzle_correct && attempt.incorrect_move ? (
-                <span
-                  className="puzzleOtherAttemptMove"
-                  aria-label={`Played ${attempt.incorrect_move}`}
-                >
-                  {attempt.incorrect_move}
-                </span>
-              ) : null}
-            </span>
-            <time className="puzzleOtherAttemptTime" dateTime={attempt.first_attempt_at}>
-              {formatLocalDateTime(attempt.first_attempt_at)}
-            </time>
-            {typeof attempt.first_attempt_duration_ms === "number" ? (
-              <span
-                className="puzzleOtherAttemptDuration"
-                aria-label={`Attempt time ${formatElapsedDuration(attempt.first_attempt_duration_ms)}`}
+              Hide answers
+            </label>
+          </div>
+          <ul className="puzzleOtherAttemptsList" aria-label="Other puzzle attempts">
+            {rows.map((attempt) => (
+              <li
+                key={`${attempt.username}-${attempt.first_attempt_at}`}
+                className={`puzzleOtherAttemptRow ${attempt.puzzle_correct ? "correct" : "incorrect"}`}
               >
-                <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-                {formatElapsedDuration(attempt.first_attempt_duration_ms)}
-              </span>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-    ) : (
-      <div className="puzzleOtherAttemptsState">No other attempts yet.</div>
-    )}
-  </div>
-);
+                <Link
+                  className="puzzleOtherAttemptUser"
+                  to="/@/$username/puzzles"
+                  params={{ username: attempt.username }}
+                >
+                  {attempt.username}
+                </Link>
+                <span
+                  className={`puzzleOtherAttemptResult ${
+                    attempt.puzzle_correct ? "correct" : "incorrect"
+                  }`}
+                >
+                  <FontAwesomeIcon
+                    icon={attempt.puzzle_correct ? faCheck : faXmark}
+                    aria-hidden="true"
+                  />
+                  <span>{attempt.puzzle_correct ? "Correct" : "Incorrect"}</span>
+                  {attempt.rated === false ? (
+                    <span className="puzzleOtherAttemptRated">Unrated</span>
+                  ) : null}
+                  {!hideAnswers && attempt.puzzle_correct && attempt.correct_move ? (
+                    <span
+                      className="puzzleOtherAttemptMove"
+                      aria-label={`Played ${attempt.correct_move}`}
+                    >
+                      {attempt.correct_move}
+                    </span>
+                  ) : null}
+                  {!hideAnswers && !attempt.puzzle_correct && attempt.incorrect_move ? (
+                    <span
+                      className="puzzleOtherAttemptMove"
+                      aria-label={`Played ${attempt.incorrect_move}`}
+                    >
+                      {attempt.incorrect_move}
+                    </span>
+                  ) : null}
+                </span>
+                <time className="puzzleOtherAttemptTime" dateTime={attempt.first_attempt_at}>
+                  {formatLocalDateTime(attempt.first_attempt_at)}
+                </time>
+                {typeof attempt.first_attempt_duration_ms === "number" ? (
+                  <span
+                    className="puzzleOtherAttemptDuration"
+                    aria-label={`Attempt time ${formatElapsedDuration(attempt.first_attempt_duration_ms)}`}
+                  >
+                    <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                    {formatElapsedDuration(attempt.first_attempt_duration_ms)}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <div className="puzzleOtherAttemptsState">No other attempts yet.</div>
+      )}
+    </div>
+  );
+};
 
 export const PuzzleInfoSection = ({
   mobile = false,

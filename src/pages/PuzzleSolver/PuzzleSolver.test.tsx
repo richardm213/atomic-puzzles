@@ -844,6 +844,20 @@ describe("PuzzleSolverPage solution options", () => {
     expect(await screen.findByLabelText("Attempt time 1:05")).toHaveTextContent("1:05");
   });
 
+  it("can hide attempt answers for sharing", async () => {
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
+    expect(await screen.findByText("1. Rf8")).toBeInTheDocument();
+    expect(screen.getByText("2. Nf3+")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("checkbox", { name: "Hide answers" }));
+
+    expect(screen.queryByText("1. Rf8")).not.toBeInTheDocument();
+    expect(screen.queryByText("2. Nf3+")).not.toBeInTheDocument();
+  });
+
   it("opens the complete puzzle analysis at the current branch and ply", async () => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);

@@ -1688,6 +1688,36 @@ button.puzzleRatingBadge.editable:focus-visible {
   outline-offset: 2px;
 }
 
+.puzzleOtherAttemptsControls {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+}
+
+.puzzleOtherAttemptsControls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.puzzleOtherAttemptsControls input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
+.puzzleOtherAttemptsControls input:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
 .puzzleOtherAttemptsList {
   gap: 0;
 }
