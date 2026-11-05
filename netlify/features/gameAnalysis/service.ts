@@ -103,6 +103,13 @@ const atomicDbFetch = async (
 export const gameAnalysisPositionKey = (fen: string): string =>
   fen.trim().split(/\s+/).slice(0, 4).join(" ");
 
+export const uniqueGameAnalysisPositionIndexes = (
+  states: { fen: string }[],
+  indexes: number[],
+): number[] => [
+  ...new Map(indexes.map((index) => [gameAnalysisPositionKey(states[index]!.fen), index])).values(),
+];
+
 const loadSharedPositions = async (
   supabase: SupabaseClient,
   states: PositionState[],
@@ -143,7 +150,7 @@ const saveSharedPositions = async (
   indexes: number[],
 ): Promise<void> => {
   const now = new Date().toISOString();
-  const rows = indexes
+  const rows = uniqueGameAnalysisPositionIndexes(states, indexes)
     .map((index) => states[index]!)
     .map((state) => ({
       fen_key: gameAnalysisPositionKey(state.fen),

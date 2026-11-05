@@ -5,6 +5,7 @@ import {
   gameAnalysisPositionKey,
   gameAnalysisSubmissionLimit,
   gameAnalysisSweepPositionLimit,
+  uniqueGameAnalysisPositionIndexes,
 } from "../features/gameAnalysis/service";
 
 describe("game analysis sweep", () => {
@@ -32,5 +33,15 @@ describe("game analysis sweep", () => {
     expect(gameAnalysisPositionKey("8/8/8/8/8/8/8/K6k w - - 0 1")).toBe(
       gameAnalysisPositionKey("8/8/8/8/8/8/8/K6k w - - 42 99"),
     );
+  });
+
+  it("writes each normalized position only once per shared-position upsert", () => {
+    const states = [
+      { fen: "8/8/8/8/8/8/8/K6k w - - 0 1" },
+      { fen: "8/8/8/8/8/8/8/K6k w - - 42 99" },
+      { fen: "8/8/8/8/8/8/8/K5Qk b - - 0 1" },
+    ];
+
+    expect(uniqueGameAnalysisPositionIndexes(states, [0, 1, 2])).toEqual([1, 2]);
   });
 });
