@@ -249,7 +249,8 @@ export const UsernamePickerModal = ({
                     if (!isDisabled) onSelectUsername(username);
                   }}
                 >
-                  {username}
+                  <span className={`playerColorMarker ${color}`} aria-hidden="true" />
+                  <span className="analysisGameUsernameLabel">{username}</span>
                 </button>
               );
             })}

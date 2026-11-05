@@ -1704,7 +1704,7 @@ export const PuzzleSolverPage = () => {
               }`}
               key={side}
             >
-              <span className={`puzzlePlayerColor ${side}`} aria-hidden="true" />
+              <span className={`playerColorMarker ${side}`} aria-hidden="true" />
               {player ? (
                 <Link
                   className="puzzlePlayerLink"

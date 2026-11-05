@@ -15,6 +15,7 @@ import type { Atomic } from "chessops/variant";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAppSettings } from "../../context/AppSettings";
+import { lichessAnalysisGlyphSvg } from "../../lib/gameAnalysis/lichessAnalysisGlyph";
 import {
   convertUciLineToSan,
   formatSolutionMove,
@@ -93,6 +94,7 @@ export type ChessboardProps = {
   solutionNavigation?: SolutionNavigation | null | undefined;
   previewMove?: string | null | undefined;
   previewMoveBrush?: "paleBlue" | "red";
+  analysisMarker?: { uci: string; symbol: string; fill: string } | null | undefined;
   captureNavigationShortcuts?: boolean;
   preserveAnalysisHistoryOnSolutionChange?: boolean;
   restrictMovesToSolution?: boolean;
@@ -165,6 +167,7 @@ const ChessboardComponent = ({
   solutionNavigation,
   previewMove,
   previewMoveBrush = "paleBlue",
+  analysisMarker,
   captureNavigationShortcuts = false,
   preserveAnalysisHistoryOnSolutionChange = false,
   restrictMovesToSolution = false,
@@ -184,7 +187,9 @@ const ChessboardComponent = ({
     boardOverrideLightSquare,
     boardOverrideDarkSquare,
     showBoardCoordinates,
+    enableBoardPremoves,
   } = useAppSettings();
+  const effectivePremovesEnabled = premovesEnabled && enableBoardPremoves;
   const elementRef = useRef<HTMLDivElement | null>(null);
   const lastAutomaticResetFenRef = useRef<string | null>(null);
   const cgRef = useRef<Api | null>(null);
@@ -207,7 +212,7 @@ const ChessboardComponent = ({
   const restrictMovesToSolutionRef = useLatestRef(restrictMovesToSolution);
   const disabledRef = useLatestRef(disabled);
   const premoveColorRef = useLatestRef(premoveColor);
-  const premovesEnabledRef = useLatestRef(premovesEnabled);
+  const premovesEnabledRef = useLatestRef(effectivePremovesEnabled);
   const fenRef = useLatestRef(fen);
   const solutionNavigationRef = useLatestRef(solutionNavigation);
   const puzzleIdRef = useLatestRef(puzzleId);
@@ -1177,19 +1182,32 @@ const ChessboardComponent = ({
     orientation,
     coordinates,
     movableColor: premoveColor,
-    premovesEnabled,
+    premovesEnabled: effectivePremovesEnabled,
     onAfterMove: handleBoardMove,
     onCleanup: cleanupBoard,
   });
 
   useEffect(() => {
-    if (!premovesEnabled || disabled) cgRef.current?.cancelPremove?.();
-    cgRef.current?.set({ premovable: { enabled: premovesEnabled } });
-  }, [disabled, premovesEnabled]);
+    if (!effectivePremovesEnabled || disabled) cgRef.current?.cancelPremove?.();
+    cgRef.current?.set({ premovable: { enabled: effectivePremovesEnabled } });
+  }, [disabled, effectivePremovesEnabled]);
 
   useEffect(() => {
-    cgRef.current?.setAutoShapes(previewMoveShape(previewMove, previewMoveBrush));
-  }, [previewMove, previewMoveBrush]);
+    const markerUci = analysisMarker?.uci.trim().toLowerCase() ?? "";
+    const markerSvg = analysisMarker
+      ? lichessAnalysisGlyphSvg(analysisMarker.symbol, analysisMarker.fill)
+      : null;
+    const marker =
+      /^[a-h][1-8][a-h][1-8]/.test(markerUci) && markerSvg
+        ? [
+            {
+              orig: markerUci.slice(2, 4) as Key,
+              customSvg: { html: markerSvg },
+            } satisfies DrawShape,
+          ]
+        : [];
+    cgRef.current?.setAutoShapes([...previewMoveShape(previewMove, previewMoveBrush), ...marker]);
+  }, [analysisMarker, previewMove, previewMoveBrush]);
 
   useEffect(() => {
     if (!showSolution) return;
@@ -1461,7 +1479,7 @@ const ChessboardComponent = ({
     fenRef,
     getDisplayTurn,
     getMovableConfig,
-    premovesEnabled,
+    effectivePremovesEnabled,
   ]);
 
   return (

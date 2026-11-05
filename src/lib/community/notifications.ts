@@ -76,6 +76,10 @@ export const isPredictionPayoutNotification = (notification: UserNotification): 
   notification.notification_type === "feature" &&
   notification.feature_key?.startsWith("prediction-market-payout:") === true;
 
+export const isGameAnalysisReadyNotification = (notification: UserNotification): boolean =>
+  notification.notification_type === "feature" &&
+  notification.feature_key?.startsWith("game-analysis-ready:") === true;
+
 export const isCommentMentionNotification = (notification: UserNotification): boolean =>
   notification.notification_type === "comment_mention";
 
@@ -87,6 +91,7 @@ export const notificationCategory = (notification: UserNotification): string => 
   )
     return "Prediction order";
   if (isPredictionPayoutNotification(notification)) return "Prediction payout";
+  if (isGameAnalysisReadyNotification(notification)) return "Game analysis";
   if (
     notification.notification_type === "coin_gift" ||
     notification.notification_type === "coin_request"

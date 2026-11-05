@@ -39,6 +39,15 @@ const BoardCoordinatesSetting = () => {
   );
 };
 
+const BoardPremovesSetting = () => {
+  const { enableBoardPremoves, setEnableBoardPremoves } = useAppSettings();
+  return (
+    <button type="button" onClick={() => setEnableBoardPremoves((enabled) => !enabled)}>
+      {enableBoardPremoves ? "Premoves enabled" : "Premoves disabled"}
+    </button>
+  );
+};
+
 const PuzzleAnalysisTargetSetting = () => {
   const { puzzleAnalysisTarget, setPuzzleAnalysisTarget } = useAppSettings();
   return (
@@ -196,6 +205,25 @@ describe("board coordinate preference", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Coordinates shown" })).toBeInTheDocument();
       expect(window.localStorage.getItem("atomic-puzzles.board.show-coordinates")).toBe("true");
+    });
+  });
+});
+
+describe("board premove preference", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("enables premoves by default and persists the disabled setting", async () => {
+    render(
+      <AppSettingsProvider>
+        <BoardPremovesSetting />
+      </AppSettingsProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Premoves enabled" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Premoves disabled" })).toBeInTheDocument();
+      expect(window.localStorage.getItem("atomic-puzzles.board.enable-premoves")).toBe("false");
     });
   });
 });

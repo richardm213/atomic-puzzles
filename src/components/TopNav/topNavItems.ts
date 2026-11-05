@@ -104,6 +104,7 @@ export const navItems: NavItem[] = [
   {
     to: "/recent",
     label: "Games",
+    hideInCompactNav: true,
     isActive: (pathname) =>
       pathname === "/recent" ||
       pathname === "/matches" ||
@@ -131,6 +132,7 @@ export const navItems: NavItem[] = [
   {
     to: "/tournaments",
     label: "Tournaments",
+    hideInCompactNav: true,
     isActive: (pathname) =>
       pathname === "/tournaments" ||
       pathname.startsWith("/tournaments/") ||

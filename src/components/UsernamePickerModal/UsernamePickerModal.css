@@ -145,33 +145,32 @@
 .analysisGameUsernameGrid button {
   max-width: min(200px, 62vw);
   min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 0 18px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
   font-size: 15px;
   font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   transition:
-    filter 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease,
     transform 140ms ease;
 }
 
-.analysisGameUsernameGrid button.white {
-  border-color: color-mix(in srgb, var(--color-player-black) 18%, var(--color-player-white));
-  background: var(--color-player-white);
-  color: var(--color-player-black);
-}
-
-.analysisGameUsernameGrid button.black {
-  border-color: color-mix(in srgb, var(--color-player-white) 24%, var(--color-player-black));
-  background: var(--color-player-black);
-  color: var(--color-player-white);
+.analysisGameUsernameLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .analysisGameUsernameGrid button:hover:not(:disabled) {
-  filter: brightness(1.1);
+  border-color: var(--color-accent-soft-border);
+  background: var(--color-surface-elevated-strong);
 }
 
 .analysisGameUsernameGrid button:active:not(:disabled) {

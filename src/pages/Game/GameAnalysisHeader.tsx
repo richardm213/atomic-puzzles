@@ -110,7 +110,7 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
 
   const player = (username: string, color: "white" | "black") => (
     <div className="gameAnalysisPlayer">
-      <span className={`gameAnalysisColor ${color}`} aria-label={`${color} pieces`} />
+      <span className={`playerColorMarker ${color}`} aria-label={`${color} pieces`} />
       <PlayerLink username={username} className="gameAnalysisPlayerName">
         {username}
       </PlayerLink>

@@ -64,11 +64,7 @@ import {
   fetchExplorerApiResponse,
   mergeExplorerApiResponses,
 } from "../../utils/openingExplorer";
-import {
-  practicePath,
-  practiceRouteParam,
-  practiceUsernamesFromRoute,
-} from "./practiceRoutes";
+import { practicePath, practiceRouteParam, practiceUsernamesFromRoute } from "./practiceRoutes";
 import {
   MAX_PRACTICE_PLAYERS,
   normalizeClockValue,
@@ -1073,7 +1069,7 @@ export const PracticePage = () => {
   ]);
 
   const pageStyle = {
-    "--analysis-board-size": "min(516px, calc(100dvh - var(--nav-height) - 40px))",
+    "--analysis-board-size": "min(516px, calc(100dvh - var(--nav-height) - 44px))",
   } as CSSProperties;
 
   return (

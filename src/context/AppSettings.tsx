@@ -26,6 +26,7 @@ const STORAGE_KEYS = {
   boardOverrideLightSquare: "atomic-puzzles.board-override-light-square",
   boardOverrideDarkSquare: "atomic-puzzles.board-override-dark-square",
   showBoardCoordinates: "atomic-puzzles.board.show-coordinates",
+  enableBoardPremoves: "atomic-puzzles.board.enable-premoves",
   hideRankingsOpenings: "atomic-puzzles.rankings.hide-openings",
   showChessComRankings: "atomic-puzzles.rankings.show-chesscom-users",
   profileRatingSlots: "atomic-puzzles.profile.rating-slots",
@@ -173,6 +174,8 @@ export type AppSettingsContextValue = {
   setBoardOverrideDarkSquare: Dispatch<SetStateAction<string>>;
   showBoardCoordinates: boolean;
   setShowBoardCoordinates: Dispatch<SetStateAction<boolean>>;
+  enableBoardPremoves: boolean;
+  setEnableBoardPremoves: Dispatch<SetStateAction<boolean>>;
   resetDisplaySettings: () => void;
   hideRankingsOpenings: boolean;
   setHideRankingsOpenings: Dispatch<SetStateAction<boolean>>;
@@ -302,6 +305,11 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.boolean(),
     false,
   );
+  const [enableBoardPremoves, setEnableBoardPremoves] = usePersistedState(
+    STORAGE_KEYS.enableBoardPremoves,
+    z.boolean(),
+    true,
+  );
   const [hideRankingsOpenings, setHideRankingsOpenings] = usePersistedState(
     STORAGE_KEYS.hideRankingsOpenings,
     z.boolean(),
@@ -386,6 +394,7 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     setBoardOverrideLightSquare(DEFAULT_CUSTOM_LIGHT_SQUARE);
     setBoardOverrideDarkSquare(DEFAULT_CUSTOM_DARK_SQUARE);
     setShowBoardCoordinates(false);
+    setEnableBoardPremoves(true);
   }, [
     setTheme,
     setPieceSet,
@@ -396,6 +405,7 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     setBoardOverrideLightSquare,
     setBoardOverrideDarkSquare,
     setShowBoardCoordinates,
+    setEnableBoardPremoves,
   ]);
 
   useEffect(() => {
@@ -425,6 +435,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setBoardOverrideDarkSquare,
       showBoardCoordinates,
       setShowBoardCoordinates,
+      enableBoardPremoves,
+      setEnableBoardPremoves,
       resetDisplaySettings,
       hideRankingsOpenings,
       setHideRankingsOpenings,
@@ -474,6 +486,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setBoardOverrideDarkSquare,
       showBoardCoordinates,
       setShowBoardCoordinates,
+      enableBoardPremoves,
+      setEnableBoardPremoves,
       resetDisplaySettings,
       hideRankingsOpenings,
       setHideRankingsOpenings,

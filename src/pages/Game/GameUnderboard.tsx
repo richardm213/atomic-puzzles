@@ -1,8 +1,8 @@
 import { faCheck, faClipboard } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
-import type { CSSProperties } from "react";
-import { useMemo, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import {
@@ -17,9 +17,9 @@ import { buildChessComGameUrl, buildLichessGameUrl } from "../../lib/matches/rou
 import { copyTextToClipboard } from "../../utils/clipboard";
 import { GameMatchCrosstable } from "./GameMatchCrosstable";
 
-type GameUnderboardTab = "move-times" | "crosstable" | "share";
+export type GameUnderboardTab = "analysis" | "move-times" | "crosstable" | "share";
 const TAB_STORAGE_KEY = "atomic-puzzles.game.underboard-tab";
-const tabSchema = z.enum(["move-times", "crosstable", "share"]);
+const tabSchema = z.enum(["analysis", "move-times", "crosstable", "share"]);
 
 const formatDuration = (milliseconds: number): string => {
   const seconds = milliseconds / 1_000;
@@ -159,6 +159,9 @@ export const GameUnderboard = ({
   onNavigatePly,
   atomicDbHref,
   atomicDbRequest,
+  computerAnalysis,
+  computerAnalysisEnabled,
+  onActiveTabChange,
 }: {
   game: ArchiveGame;
   currentPly: number;
@@ -171,14 +174,18 @@ export const GameUnderboard = ({
     message?: string;
     onRequest: () => void;
   };
+  computerAnalysis: ReactNode;
+  computerAnalysisEnabled: boolean;
+  onActiveTabChange?: (tab: GameUnderboardTab) => void;
 }) => {
   const [activeTab, setActiveTab] = usePersistedState<GameUnderboardTab>(
     TAB_STORAGE_KEY,
     tabSchema,
-    "move-times",
+    "analysis",
   );
   const [hoveredPly, setHoveredPly] = useState<number | null>(null);
   const [hoveredTooltipX, setHoveredTooltipX] = useState<number | null>(null);
+  const previousComputerAnalysisEnabled = useRef(computerAnalysisEnabled);
   const durations = useMemo(() => moveDurationsMilliseconds(game), [game]);
   const availableDurations = durations.filter((duration): duration is number => duration !== null);
   const longestDuration = Math.max(1, ...availableDurations);
@@ -219,6 +226,16 @@ export const GameUnderboard = ({
         : 96 - (1 - Math.max(0, hoveredClock) / maximumClock) * 42;
   const pgn = String(document.pgn.value ?? "");
 
+  useEffect(() => {
+    onActiveTabChange?.(activeTab);
+  }, [activeTab, onActiveTabChange]);
+
+  useEffect(() => {
+    if (previousComputerAnalysisEnabled.current === computerAnalysisEnabled) return;
+    previousComputerAnalysisEnabled.current = computerAnalysisEnabled;
+    setActiveTab(computerAnalysisEnabled ? "analysis" : "move-times");
+  }, [computerAnalysisEnabled, setActiveTab]);
+
   const showClockTooltip = (ply: number, target: HTMLElement): void => {
     const timeline = target.closest<HTMLElement>(".gameClockTimeline");
     const viewport = target.closest<HTMLElement>(".gameMoveTimesViewport");
@@ -249,6 +266,7 @@ export const GameUnderboard = ({
   };
 
   const tabs: Array<{ id: GameUnderboardTab; label: string }> = [
+    { id: "analysis", label: "Computer analysis" },
     { id: "move-times", label: "Move times" },
     { id: "crosstable", label: "Crosstable" },
     { id: "share", label: "Share & export" },
@@ -265,6 +283,13 @@ export const GameUnderboard = ({
             id={`game-tab-${tab.id}`}
             aria-controls="game-underboard-panel"
             aria-selected={activeTab === tab.id}
+            aria-keyshortcuts={tab.id === "analysis" ? "Z" : undefined}
+            disabled={tab.id === "analysis" && !computerAnalysisEnabled}
+            title={
+              tab.id === "analysis" && !computerAnalysisEnabled
+                ? "Press Z to enable computer analysis"
+                : undefined
+            }
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.label}
@@ -278,6 +303,7 @@ export const GameUnderboard = ({
         role="tabpanel"
         aria-labelledby={`game-tab-${activeTab}`}
       >
+        {activeTab === "analysis" ? computerAnalysis : null}
         {activeTab === "move-times" ? (
           availableDurations.length ? (
             <figure className="gameMoveTimesFigure" aria-label="Move time chart">

@@ -1,6 +1,6 @@
 import "./AtomicDbEngine.css";
 
-import { faAlignLeft, faArrowsRotate, faGear, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faAlignLeft, faArrowsRotate, faGear } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -165,13 +165,6 @@ export const AtomicDbEngineControls = ({
         ) : (
           sourceLabel
         )}
-        {analysis.status === "loading" && settings.enabled ? (
-          <FontAwesomeIcon
-            icon={faSpinner}
-            spin
-            aria-label={`Loading new ${sourceLabel} evaluation`}
-          />
-        ) : null}
       </span>
       <div className="atomicDbSettings" ref={settingsRef}>
         <button
@@ -287,10 +280,7 @@ export const AtomicDbEngine = ({
     <section className="atomicDbEngine" aria-label="Position analysis lines">
       <div className="atomicDbEngineBody" aria-live="polite" aria-busy={status === "loading"}>
         {status === "loading" && !position ? (
-          <div className="atomicDbEngineState">
-            <FontAwesomeIcon icon={faSpinner} spin aria-hidden="true" />
-            <span>Loading analysis…</span>
-          </div>
+          <div className="atomicDbEngineState">Loading analysis…</div>
         ) : null}
         {status === "error" ? <div className="atomicDbEngineState error">{error}</div> : null}
         {status === "ready" && !position ? (

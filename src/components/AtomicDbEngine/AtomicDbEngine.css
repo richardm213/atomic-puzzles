@@ -435,6 +435,39 @@
   opacity: 0.68;
 }
 
+@container (max-width: 279px) {
+  .atomicDbEngineLine,
+  .atomicDbEngineLineUnavailable {
+    grid-template-columns: 40px minmax(0, 1fr) 42px;
+    gap: 5px;
+    padding: 4px 3px;
+  }
+
+  .atomicDbEngineMove {
+    overflow: visible;
+    flex-wrap: wrap;
+    column-gap: 4px;
+    row-gap: 2px;
+    font-size: 11px;
+    line-height: 1.15;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .atomicDbEngineMoveButton {
+    min-height: 18px;
+    padding-inline: 0;
+  }
+
+  .atomicDbEngineMoveNumber:not(:first-child) {
+    margin-left: 2px;
+  }
+
+  .atomicDbEngineDepth {
+    font-size: 8px;
+  }
+}
+
 .atomicDbEngineToggle:focus-visible,
 .atomicDbSettingsButton:focus-visible,
 .atomicDbSettingsAction:focus-visible,

@@ -1,4 +1,11 @@
 .analysisPage {
+  --analysis-inaccuracy: color-mix(
+    in oklch,
+    var(--color-rating-hyper) 65%,
+    var(--color-cyan-bright) 35%
+  );
+  --analysis-mistake: var(--color-warning);
+  --analysis-blunder: var(--color-rating-blitz);
   --analysis-board-column-height: calc(var(--analysis-board-size, 516px) + 170px);
   --analysis-side-panel-max-height: calc(100dvh - clamp(72px, 10vh, 96px));
   --analysis-side-panel-height: min(
@@ -11,7 +18,9 @@
   margin: 0 auto;
   padding: clamp(8px, 1.2vw, 14px) var(--page-gutter);
   display: grid;
-  grid-template-columns: minmax(0, var(--analysis-board-size, 516px)) minmax(310px, 380px);
+  grid-template-columns:
+    minmax(0, var(--analysis-board-size, 516px))
+    clamp(340px, 28vw, 400px);
   align-items: start;
   justify-content: center;
   column-gap: 25px;
@@ -183,6 +192,7 @@ body:has(.analysisPage),
 
 .analysisRightPanel {
   position: relative;
+  container-type: inline-size;
   grid-column: 2;
   grid-row: 1;
   align-self: start;
@@ -296,6 +306,46 @@ body:has(.analysisPage),
   font-size: 13px;
   font-weight: 650;
   text-align: left;
+}
+
+.analysisMoveList button:has(> b) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1px;
+}
+
+.analysisMoveList button > b {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.analysisMoveList button.best > span,
+.analysisMoveList button.best > b {
+  color: var(--color-success);
+}
+.analysisMoveList button.excellent > span,
+.analysisMoveList button.excellent > b,
+.analysisMoveList button.good > span,
+.analysisMoveList button.good > b {
+  color: var(--color-cyan-bright);
+}
+.analysisMoveList button.inaccuracy > span,
+.analysisMoveList button.inaccuracy > b {
+  color: var(--analysis-inaccuracy);
+}
+.analysisMoveList button.mistake > span,
+.analysisMoveList button.mistake > b {
+  color: var(--analysis-mistake);
+}
+.analysisMoveList button.blunder > span,
+.analysisMoveList button.blunder > b {
+  color: var(--analysis-blunder);
+}
+
+.analysisMoveList button.active > span,
+.analysisMoveList button.active > b {
+  color: inherit;
 }
 
 .analysisMoveList button:hover {
@@ -1301,7 +1351,7 @@ button.analysisLichessLink {
   font-size: 12px;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 799px) and (orientation: portrait) {
   .analysisPage {
     --analysis-side-panel-height: min(
       max(520px, calc(var(--analysis-board-size, 516px) * 0.92)),
@@ -1330,7 +1380,7 @@ button.analysisLichessLink {
   }
 }
 
-@media (max-width: 780px) {
+@media (max-width: 799px) and (orientation: portrait) {
   .analysisPage {
     --analysis-side-panel-height: auto;
     padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right));
@@ -1425,6 +1475,30 @@ button.analysisLichessLink {
 
   .analysisToolbarButton {
     height: 44px;
+  }
+}
+
+@media (max-width: 799px) and (orientation: landscape) {
+  .analysisPage {
+    --analysis-side-panel-height: min(78dvh, 620px);
+    width: 100%;
+    padding: 8px max(10px, env(safe-area-inset-right)) 12px max(10px, env(safe-area-inset-left));
+    grid-template-columns:
+      minmax(0, min(55vmin, var(--analysis-board-size, 516px)))
+      minmax(200px, 240px);
+    gap: 12px;
+  }
+
+  .analysisRightPanel,
+  .practicePanel {
+    height: var(--analysis-side-panel-height);
+    min-height: 0;
+    max-height: var(--analysis-side-panel-height);
+  }
+
+  .analysisBoardResizeHandle,
+  .gameAnalysisPanelResizeHandle {
+    display: none;
   }
 }
 

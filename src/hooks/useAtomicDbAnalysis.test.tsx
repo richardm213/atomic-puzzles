@@ -2,6 +2,10 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import {
+  clearPreloadedAtomicDbGamePositions,
+  replacePreloadedAtomicDbGamePositions,
+} from "../lib/atomicDb/analysisRepository";
 import { analyzeFairyStockfishPosition } from "../lib/practice/fairyStockfish";
 import { useAtomicDbAnalysis } from "./useAtomicDbAnalysis";
 
@@ -26,23 +30,88 @@ const responseFor = (score: number) =>
 
 describe("useAtomicDbAnalysis", () => {
   afterEach(() => {
+    clearPreloadedAtomicDbGamePositions();
     vi.unstubAllGlobals();
     analyzeWithEngineMock.mockReset();
   });
 
-  it("uses Fairy-Stockfish directly for six-piece endgames without querying AtomicDB", async () => {
-    const fen = "8/8/8/8/3k4/8/1K3P1P/6NR w - - 3 71";
-    analyzeWithEngineMock.mockResolvedValue([
+  it("shows a completed game analysis immediately while refreshing it from AtomicDB", async () => {
+    let resolveAtomicDbRequest: ((response: Response) => void) | undefined;
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveAtomicDbRequest = resolve;
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    replacePreloadedAtomicDbGamePositions([
       {
-        move: "h1h4",
-        multipv: 1,
-        scoreType: "mate",
-        score: 9,
-        depth: 18,
-        principalVariation: ["h1h4", "d4e5"],
+        fen: FIRST_FEN,
+        position: {
+          key: "saved-game-position",
+          outcome: "UNKNOWN",
+          closure: null,
+          score: 420,
+          point: null,
+          bestMove: "a1a2",
+          moves: [
+            {
+              uci: "a1a2",
+              outcome: "UNKNOWN",
+              closure: null,
+              score: 420,
+              point: null,
+              mate: null,
+              backedPlies: 24,
+            },
+          ],
+        },
+        principalVariations: { a1a2: ["a1a2", "h1h2"] },
       },
     ]);
-    const fetchMock = vi.fn();
+
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(FIRST_FEN, { debounceMs: 0, lineCount: 1, plyCount: 2 }),
+    );
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(result.current.status).toBe("loading");
+    expect(result.current.result?.position?.key).toBe("saved-game-position");
+    expect(result.current.principalVariations.a1a2).toEqual(["a1a2", "h1h2"]);
+
+    act(() => {
+      resolveAtomicDbRequest?.(
+        new Response(
+          JSON.stringify({
+            key: "fresh-atomicdb-position",
+            status: "UNKNOWN",
+            score: 460,
+            best_move: "a1a2",
+            moves: [{ uci: "a1a2", status: "UNKNOWN", score: 460 }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.result?.position?.key).toBe("fresh-atomicdb-position");
+  });
+
+  it("checks AtomicDB before using Fairy-Stockfish for six-piece endgames", async () => {
+    const fen = "8/8/8/8/3k4/8/1K3P1P/6NR w - - 3 71";
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          key: "atomicdb-endgame",
+          status: "UNKNOWN",
+          score: 85,
+          best_move: "h1h4",
+          moves: [{ uci: "h1h4", status: "UNKNOWN", score: 85 }],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     const { result } = renderHook(() =>
@@ -50,12 +119,12 @@ describe("useAtomicDbAnalysis", () => {
     );
 
     await waitFor(() => expect(result.current.status).toBe("ready"));
-    expect(analyzeWithEngineMock).toHaveBeenCalledOnce();
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(result.current.source).toBe("engine");
+    expect(fetchMock).toHaveBeenCalled();
+    expect(analyzeWithEngineMock).not.toHaveBeenCalled();
+    expect(result.current.source).toBe("atomicdb");
     expect(result.current.result?.position?.moves[0]).toMatchObject({
       uci: "h1h4",
-      mate: 9,
+      score: 85,
     });
   });
 
@@ -287,11 +356,22 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.result?.fen).toBe(SECOND_FEN);
   });
 
-  it("retains the settled engine evaluation while Fairy-Stockfish analyzes the next FEN", async () => {
+  it("keeps the next position labeled AtomicDB until an engine fallback is needed", async () => {
     const firstFen = "8/8/8/8/8/8/1K6/7k w - - 4 71";
     const secondFen = "8/8/8/8/8/8/1K6/7k b - - 5 71";
+    let resolveSecondAtomicDbRequest: ((response: Response) => void) | undefined;
     let resolveSecondAnalysis:
       ((value: Awaited<ReturnType<typeof analyzeFairyStockfishPosition>>) => void) | undefined;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(responseFor(0))
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveSecondAtomicDbRequest = resolve;
+          }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
     analyzeWithEngineMock
       .mockResolvedValueOnce([
         {
@@ -325,11 +405,18 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.result?.position?.score).toBe(510);
 
     rerender({ fen: secondFen });
-    await waitFor(() => expect(analyzeWithEngineMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(result.current.status).toBe("loading");
-    expect(result.current.source).toBe("engine");
+    expect(result.current.source).toBe("atomicdb");
     expect(result.current.result?.fen).toBe(firstFen);
     expect(result.current.result?.position?.score).toBe(510);
+    expect(analyzeWithEngineMock).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      resolveSecondAtomicDbRequest?.(responseFor(0));
+    });
+    await waitFor(() => expect(analyzeWithEngineMock).toHaveBeenCalledTimes(2));
+    expect(result.current.source).toBe("engine");
 
     await act(async () => {
       resolveSecondAnalysis?.([

@@ -22,4 +22,6 @@
 /api/endgame-practice    /.netlify/functions/endgame-practice    200
 /api/archive-data    /.netlify/functions/archive-data    200
 /api/player-social    /.netlify/functions/player-social    200
+/api/game-analysis    /.netlify/functions/game-analysis    200
+/api/game-analysis-worker    /.netlify/functions/game-analysis-worker    200
 /*    /index.html   200

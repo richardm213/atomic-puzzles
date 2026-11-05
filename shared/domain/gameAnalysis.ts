@@ -1,0 +1,329 @@
+import { fenAfterAtomicMove } from "./puzzles/solutionPgn";
+
+export const GAME_ANALYSIS_COST = 2;
+export const GAME_ANALYSIS_BUDGET_NODES = 128_000_000;
+
+export const GAME_ANALYSIS_STATUSES = ["queued", "processing", "ready", "failed"] as const;
+export type GameAnalysisStatus = (typeof GAME_ANALYSIS_STATUSES)[number];
+
+export const MOVE_CLASSIFICATIONS = [
+  "best",
+  "excellent",
+  "good",
+  "inaccuracy",
+  "mistake",
+  "blunder",
+] as const;
+export type MoveClassification = (typeof MOVE_CLASSIFICATIONS)[number];
+
+export type AtomicDbAnalysisLine = {
+  move: string | null;
+  cp: number | null;
+  mate: number | null;
+  depth: number | null;
+  nodes: number | null;
+  pv: string[];
+};
+
+export type StoredAtomicDbPosition = {
+  fen: string;
+  key: string | null;
+  status: string;
+  closure: string | null;
+  score: number | null;
+  point: number | null;
+  bestMove: string | null;
+  budgetNodes: number | null;
+  lines: AtomicDbAnalysisLine[];
+};
+
+export type GameMoveAssessment = {
+  ply: number;
+  uci: string;
+  classification: MoveClassification;
+  symbol: string;
+  winPercentBefore: number;
+  winPercentAfter: number;
+  winPercentLoss: number;
+  bestMove: string | null;
+};
+
+export type GameAnalysisSummary = {
+  positions: StoredAtomicDbPosition[];
+  assessments: GameMoveAssessment[];
+  evaluations: number[];
+  whiteAccuracy: number;
+  blackAccuracy: number;
+  whiteAverageCentipawnLoss: number;
+  blackAverageCentipawnLoss: number;
+  whiteCounts: Record<MoveClassification, number>;
+  blackCounts: Record<MoveClassification, number>;
+};
+
+export type GameAnalysisRecord = {
+  gameId: string;
+  status: GameAnalysisStatus;
+  requestedBy: string;
+  totalPositions: number;
+  completedPositions: number;
+  queuedPositions: number;
+  cost: number;
+  error: string | null;
+  result: GameAnalysisSummary | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+};
+
+export const buildGamePositionFens = (initialFen: string, moves: readonly string[]): string[] => {
+  const positions = [initialFen.trim()];
+  let currentFen = initialFen.trim();
+  for (const uci of moves) {
+    const nextFen = fenAfterAtomicMove(currentFen, uci);
+    if (!nextFen) throw new Error(`Illegal game move: ${uci}`);
+    positions.push(nextFen);
+    currentFen = nextFen;
+  }
+  return positions;
+};
+
+const nullableNumber = (value: unknown): number | null =>
+  typeof value === "number" && Number.isFinite(value) ? value : null;
+const nullableString = (value: unknown): string | null =>
+  typeof value === "string" && value ? value : null;
+
+export const parseStoredAtomicDbPosition = (
+  fen: string,
+  value: unknown,
+): StoredAtomicDbPosition | null => {
+  if (!value || typeof value !== "object") return null;
+  const response = value as Record<string, unknown>;
+  const analysis =
+    response.analysis && typeof response.analysis === "object"
+      ? (response.analysis as Record<string, unknown>)
+      : null;
+  const lines = Array.isArray(analysis?.lines)
+    ? analysis.lines.flatMap((entry): AtomicDbAnalysisLine[] => {
+        if (!entry || typeof entry !== "object") return [];
+        const line = entry as Record<string, unknown>;
+        return [
+          {
+            move: nullableString(line.move),
+            cp: nullableNumber(line.cp),
+            mate: nullableNumber(line.mate),
+            depth: nullableNumber(line.depth),
+            nodes: nullableNumber(line.nodes),
+            pv: Array.isArray(line.pv)
+              ? line.pv.filter((move): move is string => typeof move === "string").slice(0, 16)
+              : [],
+          },
+        ];
+      })
+    : [];
+  const nodeCounts = [
+    nullableNumber(analysis?.budget_nodes),
+    nullableNumber(analysis?.nodes),
+    nullableNumber(response.nodes),
+    ...lines.map((line) => line.nodes),
+  ].filter((value): value is number => value !== null);
+
+  return {
+    fen,
+    key: nullableString(response.key),
+    status: typeof response.status === "string" ? response.status : "UNKNOWN",
+    closure: nullableString(response.closure),
+    score: nullableNumber(response.score),
+    point: nullableNumber(response.point),
+    bestMove: nullableString(response.best_move),
+    budgetNodes: nodeCounts.length > 0 ? Math.max(...nodeCounts) : null,
+    lines,
+  };
+};
+
+const terminalCentipawns = (status: string, fen: string): number | null => {
+  if (status === "DRAW") return 0;
+  const whiteToMove = fen.trim().split(/\s+/)[1] !== "b";
+  if (status === "WHITE_WIN") return whiteToMove ? 10_000 : -10_000;
+  if (status === "BLACK_WIN") return whiteToMove ? -10_000 : 10_000;
+  return null;
+};
+
+const positionCentipawns = (position: StoredAtomicDbPosition): number =>
+  terminalCentipawns(position.status, position.fen) ??
+  position.lines[0]?.cp ??
+  position.point ??
+  position.score ??
+  0;
+
+const ceiledCentipawns = (centipawns: number): number =>
+  Math.max(-1_000, Math.min(1_000, centipawns));
+
+const winPercent = (centipawns: number): number =>
+  50 + 50 * (2 / (1 + Math.exp(-0.00368208 * ceiledCentipawns(centipawns))) - 1);
+
+const classificationFor = (
+  loss: number,
+  playedMove: string,
+  bestMove: string | null,
+): MoveClassification => {
+  if (bestMove === playedMove || loss < 12) return "best";
+  if (loss < 20) return "inaccuracy";
+  if (loss < 35) return "mistake";
+  return "blunder";
+};
+
+export const CLASSIFICATION_SYMBOLS: Record<MoveClassification, string> = {
+  best: "✓",
+  excellent: "★",
+  good: "!",
+  inaccuracy: "?!",
+  mistake: "?",
+  blunder: "??",
+};
+
+const emptyCounts = (): Record<MoveClassification, number> => ({
+  best: 0,
+  excellent: 0,
+  good: 0,
+  inaccuracy: 0,
+  mistake: 0,
+  blunder: 0,
+});
+
+const clamp = (value: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, value));
+
+const standardDeviation = (values: number[]): number => {
+  if (!values.length) return 0;
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
+  return Math.sqrt(variance);
+};
+
+const moveAccuracy = (before: number, after: number): number => {
+  if (after >= before) return 100;
+  const winDiff = before - after;
+  return clamp(
+    103.1668100711649 * Math.exp(-0.04354415386753951 * winDiff) - 3.166924740191411 + 1,
+    0,
+    100,
+  );
+};
+
+const colorAccuracy = (
+  moveAccuracies: Array<{ accuracy: number; color: "white" | "black"; weight: number }>,
+  color: "white" | "black",
+): number => {
+  const moves = moveAccuracies.filter((move) => move.color === color);
+  if (!moves.length) return 100;
+  const weightTotal = moves.reduce((sum, move) => sum + move.weight, 0);
+  const weightedMean =
+    moves.reduce((sum, move) => sum + move.accuracy * move.weight, 0) / weightTotal;
+  const harmonicMean = moves.some((move) => move.accuracy === 0)
+    ? 0
+    : moves.length / moves.reduce((sum, move) => sum + 1 / move.accuracy, 0);
+  return Math.round((weightedMean + harmonicMean) / 2);
+};
+
+export const gameAccuracyForEvaluations = (
+  evaluations: readonly number[],
+): { whiteAccuracy: number; blackAccuracy: number } => {
+  if (evaluations.length <= 1) return { whiteAccuracy: 100, blackAccuracy: 100 };
+  const winPercents = evaluations.map(winPercent);
+  const moveCount = evaluations.length - 1;
+  const windowSize = clamp(Math.floor(moveCount / 10), 2, 8);
+  const firstWindow = winPercents.slice(0, windowSize);
+  const windows: number[][] = Array.from(
+    { length: Math.max(0, Math.min(windowSize, winPercents.length) - 2) },
+    () => firstWindow,
+  );
+  for (let index = 0; index + windowSize <= winPercents.length; index += 1) {
+    windows.push(winPercents.slice(index, index + windowSize));
+  }
+  const moves = Array.from({ length: moveCount }, (_, index) => {
+    const color: "white" | "black" = index % 2 === 0 ? "white" : "black";
+    const previous = winPercents[index]!;
+    const next = winPercents[index + 1]!;
+    return {
+      color,
+      accuracy: moveAccuracy(
+        color === "white" ? previous : next,
+        color === "white" ? next : previous,
+      ),
+      weight: clamp(standardDeviation(windows[index] ?? firstWindow), 0.5, 12),
+    };
+  });
+  return {
+    whiteAccuracy: colorAccuracy(moves, "white"),
+    blackAccuracy: colorAccuracy(moves, "black"),
+  };
+};
+
+export const averageCentipawnLossForEvaluations = (
+  evaluations: readonly number[],
+): { whiteAverageCentipawnLoss: number; blackAverageCentipawnLoss: number } => {
+  const losses = { white: [] as number[], black: [] as number[] };
+  for (let index = 0; index + 1 < evaluations.length; index += 1) {
+    const before = ceiledCentipawns(evaluations[index]!);
+    const after = ceiledCentipawns(evaluations[index + 1]!);
+    const color = index % 2 === 0 ? "white" : "black";
+    losses[color].push(Math.max(0, color === "white" ? before - after : after - before));
+  }
+  const mean = (values: number[]): number =>
+    values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
+  return {
+    whiteAverageCentipawnLoss: mean(losses.white),
+    blackAverageCentipawnLoss: mean(losses.black),
+  };
+};
+
+export const buildGameAnalysisSummary = (
+  moves: readonly string[],
+  positions: StoredAtomicDbPosition[],
+): GameAnalysisSummary => {
+  if (positions.length !== moves.length + 1) {
+    throw new Error("Game analysis positions do not match the move list.");
+  }
+
+  const evaluations = positions.map((position) =>
+    position.fen.trim().split(/\s+/)[1] === "b"
+      ? -positionCentipawns(position)
+      : positionCentipawns(position),
+  );
+  const assessments = moves.map((uci, index): GameMoveAssessment => {
+    const before = positions[index]!;
+    const after = positions[index + 1]!;
+    const beforeChance = winPercent(positionCentipawns(before));
+    const afterChance = 100 - winPercent(positionCentipawns(after));
+    const loss = Math.max(0, beforeChance - afterChance);
+    const classification = classificationFor(loss, uci, before.bestMove);
+    return {
+      ply: index + 1,
+      uci,
+      classification,
+      symbol: CLASSIFICATION_SYMBOLS[classification],
+      winPercentBefore: Math.round(beforeChance * 10) / 10,
+      winPercentAfter: Math.round(afterChance * 10) / 10,
+      winPercentLoss: Math.round(loss * 10) / 10,
+      bestMove: before.bestMove,
+    };
+  });
+  const whiteAssessments = assessments.filter((assessment) => assessment.ply % 2 === 1);
+  const blackAssessments = assessments.filter((assessment) => assessment.ply % 2 === 0);
+  const whiteCounts = emptyCounts();
+  const blackCounts = emptyCounts();
+  for (const assessment of whiteAssessments) whiteCounts[assessment.classification] += 1;
+  for (const assessment of blackAssessments) blackCounts[assessment.classification] += 1;
+  const accuracies = gameAccuracyForEvaluations(evaluations);
+  const averageCentipawnLosses = averageCentipawnLossForEvaluations(evaluations);
+
+  return {
+    positions,
+    assessments,
+    evaluations,
+    ...accuracies,
+    ...averageCentipawnLosses,
+    whiteCounts,
+    blackCounts,
+  };
+};

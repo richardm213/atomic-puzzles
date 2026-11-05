@@ -48,11 +48,6 @@ const INITIAL_STATE: RequestState = { ...EMPTY_ANALYSIS, requestedFen: null };
 const clampInteger = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, Math.floor(value)));
 
-const isEndgameFen = (fen: string): boolean => {
-  const board = fen.trim().split(/\s+/)[0] ?? "";
-  return [...board].filter((character) => /[a-z]/i.test(character)).length <= 6;
-};
-
 const engineMove = (candidate: EngineCandidate): AtomicDbPosition["moves"][number] => ({
   uci: candidate.move,
   origin: "engine",
@@ -119,7 +114,7 @@ export const useAtomicDbAnalysis = (
     const controller = new AbortController();
     const lineCount = clampInteger(requestedLineCount, 0, MAX_LINE_COUNT);
     const plyCount = clampInteger(requestedPlyCount, 1, MAX_PLY_COUNT);
-    const useEngine = engineOnly || (fallbackToEngine && lineCount > 0 && isEndgameFen(fen));
+    const useEngine = engineOnly;
 
     const publishLines = (lines: Record<string, string[]>): void => {
       startTransition(() => {
@@ -394,6 +389,6 @@ export const useAtomicDbAnalysis = (
     status: state.result?.fen === fen ? "ready" : "loading",
     error: "",
     principalVariations: state.principalVariations,
-    source: state.source,
+    source: engineOnly ? "engine" : "atomicdb",
   };
 };

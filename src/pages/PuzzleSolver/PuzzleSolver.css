@@ -656,22 +656,6 @@ button.puzzleRatingBadge.editable:focus-visible {
   min-width: 0;
 }
 
-.puzzlePlayerColor {
-  width: 16px;
-  height: 16px;
-  border: 2px solid color-mix(in srgb, var(--color-muted) 78%, var(--color-border));
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-panel-deep) 34%, transparent);
-}
-
-.puzzlePlayerColor.white {
-  background: var(--color-player-white);
-}
-
-.puzzlePlayerColor.black {
-  background: var(--color-player-black);
-}
-
 .puzzlePlayer strong,
 .puzzlePlayerLink {
   min-width: 0;
@@ -2662,11 +2646,6 @@ button.puzzleRatingBadge.editable:focus-visible {
 
   .mobilePuzzlePlayers .puzzlePlayer.hasCastlingData.hasMaterialData:not(.hasPlayerName) {
     grid-template-columns: 18px minmax(54px, auto) minmax(18px, 1fr);
-  }
-
-  .mobilePuzzlePlayers .puzzlePlayerColor {
-    width: 16px;
-    height: 16px;
   }
 
   .mobilePuzzlePlayers .puzzlePlayer strong,

@@ -57,6 +57,7 @@ export const COIN_TRANSACTION_REASONS = [
   "prediction_trade_fee",
   "prediction_market_payout",
   "prediction_liquidity_funding",
+  "game_analysis",
 ] as const;
 
 export type CoinTransactionReason = (typeof COIN_TRANSACTION_REASONS)[number];

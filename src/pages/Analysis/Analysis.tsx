@@ -26,6 +26,7 @@ import { pairPlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
 import { useAppSettings } from "../../context/AppSettings";
+import { useAuth } from "../../context/AuthContext";
 import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
 import {
   AnalysisWorkspaceLayout,
@@ -40,6 +41,7 @@ import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
+import { useGameAnalysis } from "../../hooks/useGameAnalysis";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
@@ -59,7 +61,8 @@ import {
   fetchExplorerApiResponse,
 } from "../../utils/openingExplorer";
 import { GameAnalysisHeader, GameBoardClock } from "../Game/GameAnalysisHeader";
-import { GameUnderboard } from "../Game/GameUnderboard";
+import { GameComputerAnalysis, GameComputerAnalysisPlayers } from "../Game/GameComputerAnalysis";
+import { GameUnderboard, type GameUnderboardTab } from "../Game/GameUnderboard";
 
 const MIN_MOVE_PANEL_HEIGHT = 0;
 const MIN_EXPLORER_PANEL_HEIGHT = 12;
@@ -82,7 +85,10 @@ const DEFAULT_ANALYSIS_BOARD_SIZE = 516;
 const MIN_ANALYSIS_BOARD_SIZE = 320;
 const MAX_ANALYSIS_BOARD_SIZE = 920;
 const ANALYSIS_DESKTOP_RESERVED_WIDTH = 430;
-const GAME_DESKTOP_RESERVED_WIDTH = 700;
+// The game layout compresses its side columns before stacking them. Reserving the old 700px
+// made the board collapse while there was still ample horizontal room for all three columns.
+const GAME_THREE_COLUMN_RESERVED_WIDTH = 620;
+const GAME_TWO_COLUMN_RESERVED_WIDTH = 360;
 const DEFAULT_PLAYER_START_DATE = "2025-01";
 const SPEED_FILTERS: Array<{ key: ExplorerSpeed; label: string; value: ExplorerSpeedValue }> = [
   { key: "hyperbullet", label: "Hyper", value: 2 },
@@ -164,8 +170,18 @@ const getMaxAnalysisBoardSize = (isGame = false): number => {
   if (typeof window === "undefined") return MAX_ANALYSIS_BOARD_SIZE;
 
   const viewportWidth = window.innerWidth;
-  if (viewportWidth <= 780) {
+  const singleColumn = window.matchMedia("(max-width: 799px) and (orientation: portrait)").matches;
+  if (singleColumn) {
     return Math.max(MIN_ANALYSIS_BOARD_SIZE, Math.min(MAX_ANALYSIS_BOARD_SIZE, viewportWidth - 20));
+  }
+
+  if (isGame) {
+    const reservedWidth =
+      viewportWidth < 1260 ? GAME_TWO_COLUMN_RESERVED_WIDTH : GAME_THREE_COLUMN_RESERVED_WIDTH;
+    return Math.max(
+      MIN_ANALYSIS_BOARD_SIZE,
+      Math.min(MAX_ANALYSIS_BOARD_SIZE, viewportWidth - reservedWidth),
+    );
   }
 
   if (viewportWidth <= 980) {
@@ -174,24 +190,32 @@ const getMaxAnalysisBoardSize = (isGame = false): number => {
 
   return Math.max(
     MIN_ANALYSIS_BOARD_SIZE,
-    Math.min(
-      MAX_ANALYSIS_BOARD_SIZE,
-      viewportWidth - (isGame ? GAME_DESKTOP_RESERVED_WIDTH : ANALYSIS_DESKTOP_RESERVED_WIDTH),
-    ),
+    Math.min(MAX_ANALYSIS_BOARD_SIZE, viewportWidth - ANALYSIS_DESKTOP_RESERVED_WIDTH),
   );
 };
 
-const getResponsiveAnalysisBoardFloor = (viewportWidth: number): number => {
+const getResponsiveAnalysisBoardFloor = (viewportWidth: number, isGame = false): number => {
+  const singleColumn =
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 799px) and (orientation: portrait)").matches;
+  if (singleColumn) return Math.max(MIN_ANALYSIS_BOARD_SIZE, viewportWidth - 20);
   if (viewportWidth >= 3000) return 820;
   if (viewportWidth >= 2400) return 760;
   if (viewportWidth >= 1800) return 680;
   if (viewportWidth >= 1600) return 640;
-  if (viewportWidth >= 981) return 600;
+  if (viewportWidth >= 1080) return 600;
+  if (!isGame && viewportWidth >= 800) {
+    return Math.round(Math.max(380, Math.min(600, viewportWidth * 0.52)));
+  }
+  if (isGame && viewportWidth >= 781) {
+    return Math.round(Math.max(380, viewportWidth * 0.48));
+  }
   return MIN_ANALYSIS_BOARD_SIZE;
 };
 
 const defaultExplorerOpen = (): boolean =>
-  typeof window === "undefined" || !window.matchMedia("(max-width: 780px)").matches;
+  typeof window === "undefined" ||
+  !window.matchMedia("(max-width: 799px) and (orientation: portrait)").matches;
 
 const boardSizeSchema = z.coerce
   .number()
@@ -327,6 +351,7 @@ type AnalysisPageProps = {
 
 export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPageProps = {}) => {
   const navigate = useNavigate();
+  const auth = useAuth();
   const { gameExplorerOnLeft } = useAppSettings();
   const { _splat: fenPath } = useParams({ strict: false });
   const locationSearch = typeof window === "undefined" ? "" : window.location.search;
@@ -370,6 +395,8 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
   const [gamePanelHeight, setGamePanelHeight] = useState<number | null>(null);
   const [defaultGamePanelHeight, setDefaultGamePanelHeight] = useState<number | null>(null);
   const [gamePanelResizing, setGamePanelResizing] = useState(false);
+  const [gameUnderboardTab, setGameUnderboardTab] = useState<GameUnderboardTab>("analysis");
+  const [gameComputerAnalysisEnabled, setGameComputerAnalysisEnabled] = useState(true);
   const [persistedExplorerSettings, setPersistedExplorerSettings] =
     usePersistedState<StoredExplorerSettings>(
       EXPLORER_SETTINGS_STORAGE_KEY,
@@ -440,6 +467,14 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
 
   const moveList = useMemo(() => boardState?.lineMoves ?? [], [boardState?.lineMoves]);
   const currentFen = boardState?.fen || STARTING_FEN;
+  const currentPly = boardState?.lineIndex ?? 0;
+  const gameAnalysis = useGameAnalysis(game, rootFen, auth.user?.username ?? "");
+  const positionAnalysisEnabled =
+    atomicDbEngineSettings.enabled && (!game || gameComputerAnalysisEnabled);
+  const gameAssessments = gameAnalysis.analysis?.result?.assessments ?? [];
+  const currentAssessment = currentPly > 0 ? (gameAssessments[currentPly - 1] ?? null) : null;
+  const currentVisibleAssessment =
+    currentAssessment?.classification === "best" ? null : currentAssessment;
   currentFenRef.current = currentFen;
   const terminalOutcome = boardState?.winner ?? (boardState?.status === "Draw" ? "draw" : null);
   const {
@@ -450,10 +485,11 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
     variationPlaying: atomicDbLinePlaying,
   } = useAtomicDbBoardAnalysis({
     currentFen,
-    enabled: atomicDbEngineSettings.enabled,
+    enabled: positionAnalysisEnabled,
     navigation,
     lineCount: atomicDbEngineSettings.lineCount,
     terminalOutcome,
+    suspended: Boolean(game && gameAnalysis.isLoading),
   });
   const threatFen = useMemo(
     () => (terminalOutcome ? null : threatFenFromFen(currentFen)),
@@ -461,8 +497,7 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
   );
   const threatAnalysis = useAtomicDbAnalysis(threatFen ?? currentFen, {
     debounceMs: 0,
-    enabled:
-      atomicDbEngineSettings.enabled && threatMode && threatFen !== null && !atomicDbLinePlaying,
+    enabled: positionAnalysisEnabled && threatMode && threatFen !== null && !atomicDbLinePlaying,
     fallbackToEngine: true,
     lineCount: atomicDbEngineSettings.lineCount,
     plyCount: 5,
@@ -515,24 +550,23 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
       }
     }
   };
-  const currentPly = boardState?.lineIndex ?? 0;
   const customLines = useMemo(() => boardState?.customLines ?? [], [boardState?.customLines]);
-  const responsiveBoardFloor = getResponsiveAnalysisBoardFloor(viewportWidth);
+  const responsiveBoardFloor = getResponsiveAnalysisBoardFloor(viewportWidth, Boolean(game));
   const displayedBoardSize = Math.min(
     Math.max(boardSize, responsiveBoardFloor),
     getMaxAnalysisBoardSize(Boolean(game)),
   );
   const analysisPageStyle = {
     "--analysis-board-size": game
-      ? `min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 48px))`
-      : `min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 40px))`,
+      ? `min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 88px))`
+      : `min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 44px))`,
   } as CSSProperties;
   const canStepBack = currentPly > 0;
   const canStepForward = currentPly < moveList.length;
   const showExplorerResults = !filtersOpen;
   const playerRatingValue = clampRating(minRating);
   const activeStartDate = explorerScope === "player" ? playerStartDate : generalStartDate;
-  const moveGameExplorerLeft = Boolean(game && gameExplorerOnLeft && viewportWidth > 1200);
+  const moveGameExplorerLeft = Boolean(game && gameExplorerOnLeft && viewportWidth >= 1260);
   const explorerInAnalysisPanel = explorerOpen && !moveGameExplorerLeft;
   const resolvedGamePanelHeight = gamePanelHeight ?? defaultGamePanelHeight;
   const rightPanelStyle = {
@@ -647,15 +681,12 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
   useEffect(() => {
     const handleWindowResize = (): void => {
       setViewportWidth(window.innerWidth);
-      setBoardSize((currentSize) =>
-        clampAnalysisBoardSize(currentSize, getMaxAnalysisBoardSize(Boolean(game))),
-      );
     };
 
     handleWindowResize();
     window.addEventListener("resize", handleWindowResize);
     return () => window.removeEventListener("resize", handleWindowResize);
-  }, [game, setBoardSize]);
+  }, []);
 
   const handleBoardResizePointerDown = (event: ReactPointerEvent<HTMLButtonElement>): void => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
@@ -1061,15 +1092,15 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
   }, [currentFen, explorerOpen, explorerStatus, filtersOpen]);
 
   useEffect(() => {
-    if (!atomicDbEngineSettings.enabled || threatFen === null) setThreatMode(false);
-  }, [atomicDbEngineSettings.enabled, threatFen]);
+    if (!positionAnalysisEnabled || threatFen === null) setThreatMode(false);
+  }, [positionAnalysisEnabled, threatFen]);
 
   useEffect(() => {
-    if (!atomicDbEngineSettings.enabled) return;
+    if (!positionAnalysisEnabled) return;
     // Boot alongside the position request. Fresh positions fall back to the local
     // engine, so waiting for an idle callback adds avoidable cold-start latency.
     void warmFairyStockfish();
-  }, [atomicDbEngineSettings.enabled]);
+  }, [positionAnalysisEnabled]);
 
   useEffect(() => {
     const handleAnalysisShortcut = (event: KeyboardEvent): void => {
@@ -1084,6 +1115,7 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
           key !== "k" &&
           key !== "l" &&
           key !== "x" &&
+          key !== "z" &&
           !isSpacebarShortcut &&
           !isExplorerMoveShortcut) ||
         event.metaKey ||
@@ -1101,7 +1133,7 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
         if (usernamePickerOpen || filtersOpen) return;
 
         const move = selectSpacebarMove({
-          engineEnabled: atomicDbEngineSettings.enabled,
+          engineEnabled: positionAnalysisEnabled,
           engineResult: atomicDbAnalysis.result,
           engineStatus: atomicDbAnalysis.status,
           databaseMoves: explorerMoves,
@@ -1129,6 +1161,9 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
 
       if (key === "e") {
         setExplorerOpen((open) => !open);
+      } else if (key === "z" && game) {
+        event.preventDefault();
+        setGameComputerAnalysisEnabled((enabled) => !enabled);
       } else if (key === "k") {
         setAtomicDbEngineSettings((current) => ({
           ...current,
@@ -1137,7 +1172,7 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
       } else if (key === "l") {
         setAtomicDbEngineSettings((current) => ({ ...current, enabled: !current.enabled }));
       } else if (key === "x") {
-        if (atomicDbEngineSettings.enabled && threatFen !== null) {
+        if (positionAnalysisEnabled && threatFen !== null) {
           setThreatMode((enabled) => !enabled);
         }
       } else {
@@ -1157,6 +1192,8 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
     explorerStatus,
     filtersOpen,
     flipBoard,
+    game,
+    positionAnalysisEnabled,
     setAtomicDbEngineSettings,
     setExplorerOpen,
     threatFen,
@@ -1385,87 +1422,100 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
         path={game ? `/game/${game.game_id}` : "/analysis"}
       />
 
-      <AnalysisWorkspacePanel
-        ref={rightPanelRef}
-        className={`analysisRightPanel ${game ? "gameAnalysisPanel" : ""} ${explorerInAnalysisPanel ? "explorerOpen" : "explorerCollapsed"} ${
-          explorerInAnalysisPanel && movePanelHeight === MIN_MOVE_PANEL_HEIGHT
-            ? "movesCollapsed"
-            : ""
-        } ${explorerInAnalysisPanel && movePanelHeight !== null ? "customExplorerSplit" : ""} ${
-          explorerResizing ? "explorerResizing" : ""
-        } ${gamePanelResizing ? "gamePanelResizing" : ""}`}
-        style={rightPanelStyle}
-        aria-label="Analysis controls"
-      >
-        <div className="analysisMovePanel" ref={movePanelRef}>
-          <div className="analysisEngineBlock">
-            <AtomicDbEngineControls
-              fen={displayedAnalysisFen}
-              analysis={displayedAnalysis}
-              settings={atomicDbEngineSettings}
-              setSettings={setAtomicDbEngineSettings}
-              onDisable={() => {
-                setHoveredExplorerMoveUci(null);
-                setThreatMode(false);
-              }}
-              onFlipBoard={flipBoard}
-              onThreatModeChange={setThreatMode}
-              threatAvailable={threatFen !== null}
-              threatMode={effectiveThreatMode}
-              notationInline={notationLayout === "inline"}
-              onToggleNotation={() =>
-                setNotationLayout((current) => (current === "inline" ? "non-inline" : "inline"))
-              }
-            />
-            <AtomicDbEngine
-              fen={displayedAnalysisFen}
-              settings={atomicDbEngineSettings}
-              analysis={displayedAnalysis}
-              onPlayLine={playAtomicDbLine}
-              onHoverMove={setHoveredExplorerMoveUci}
-              disabled={atomicDbLinePlaying || effectiveThreatMode}
-              threatMode={effectiveThreatMode}
-            />
+      <div className={game ? "gameAnalysisRightRail" : "analysisRightRail"}>
+        <AnalysisWorkspacePanel
+          ref={rightPanelRef}
+          className={`analysisRightPanel ${game ? "gameAnalysisPanel" : ""} ${explorerInAnalysisPanel ? "explorerOpen" : "explorerCollapsed"} ${
+            explorerInAnalysisPanel && movePanelHeight === MIN_MOVE_PANEL_HEIGHT
+              ? "movesCollapsed"
+              : ""
+          } ${explorerInAnalysisPanel && movePanelHeight !== null ? "customExplorerSplit" : ""} ${
+            explorerResizing ? "explorerResizing" : ""
+          } ${gamePanelResizing ? "gamePanelResizing" : ""} ${
+            game && !gameComputerAnalysisEnabled ? "computerAnalysisDisabled" : ""
+          }`}
+          style={rightPanelStyle}
+          aria-label="Analysis controls"
+        >
+          <div className="analysisMovePanel" ref={movePanelRef}>
+            {!game || gameComputerAnalysisEnabled ? (
+              <div className="analysisEngineBlock">
+                <AtomicDbEngineControls
+                  fen={displayedAnalysisFen}
+                  analysis={displayedAnalysis}
+                  settings={atomicDbEngineSettings}
+                  setSettings={setAtomicDbEngineSettings}
+                  onDisable={() => {
+                    setHoveredExplorerMoveUci(null);
+                    setThreatMode(false);
+                  }}
+                  onFlipBoard={flipBoard}
+                  onThreatModeChange={setThreatMode}
+                  threatAvailable={threatFen !== null}
+                  threatMode={effectiveThreatMode}
+                  notationInline={notationLayout === "inline"}
+                  onToggleNotation={() =>
+                    setNotationLayout((current) => (current === "inline" ? "non-inline" : "inline"))
+                  }
+                />
+                <AtomicDbEngine
+                  fen={displayedAnalysisFen}
+                  settings={atomicDbEngineSettings}
+                  analysis={displayedAnalysis}
+                  onPlayLine={playAtomicDbLine}
+                  onHoverMove={setHoveredExplorerMoveUci}
+                  disabled={atomicDbLinePlaying || effectiveThreatMode}
+                  threatMode={effectiveThreatMode}
+                />
+              </div>
+            ) : null}
+            <div className="analysisMoveContent" ref={moveContentRef}>
+              <MoveNotation
+                lines={customLines}
+                moves={moveList}
+                currentPly={currentPly}
+                pinnedLineIndex={boardState?.customLineIndex}
+                inline={notationLayout === "inline"}
+                onNavigate={navigateToPly}
+                onSelectVariation={navigateToCustomMove}
+                onCycleOptions={requestNavigation}
+                onAnnotate={game ? undefined : annotateMove}
+                assessments={game && gameComputerAnalysisEnabled ? gameAssessments : undefined}
+              />
+            </div>
           </div>
-          <div className="analysisMoveContent" ref={moveContentRef}>
-            <MoveNotation
-              lines={customLines}
-              moves={moveList}
-              currentPly={currentPly}
-              pinnedLineIndex={boardState?.customLineIndex}
-              inline={notationLayout === "inline"}
-              onNavigate={navigateToPly}
-              onSelectVariation={navigateToCustomMove}
-              onCycleOptions={requestNavigation}
-              onAnnotate={game ? undefined : annotateMove}
-            />
-          </div>
-        </div>
 
-        {moveGameExplorerLeft ? null : openingExplorerPanel}
+          {moveGameExplorerLeft ? null : openingExplorerPanel}
 
-        <AnalysisToolbar
-          active={explorerOpen}
-          ariaLabel="Analysis menu"
-          canStepBack={canStepBack}
-          canStepForward={canStepForward}
-          onNavigate={requestNavigation}
-          onToggle={() => setExplorerOpen((open) => !open)}
-          toggleAriaLabel={explorerOpen ? "Hide opening explorer" : "Show opening explorer"}
-          toggleClassName="explorer"
-          toggleTitle="Opening explorer"
-        />
-        {game ? (
-          <button
-            type="button"
-            className="gameAnalysisPanelResizeHandle"
-            aria-label="Resize analysis panel height"
-            title="Resize analysis panel height"
-            onPointerDown={handleGamePanelResizePointerDown}
-            onKeyDown={handleGamePanelResizeKeyDown}
+          <AnalysisToolbar
+            active={explorerOpen}
+            ariaLabel="Analysis menu"
+            canStepBack={canStepBack}
+            canStepForward={canStepForward}
+            onNavigate={requestNavigation}
+            onToggle={() => setExplorerOpen((open) => !open)}
+            toggleAriaLabel={explorerOpen ? "Hide opening explorer" : "Show opening explorer"}
+            toggleClassName="explorer"
+            toggleTitle="Opening explorer"
           />
+          {game ? (
+            <button
+              type="button"
+              className="gameAnalysisPanelResizeHandle"
+              aria-label="Resize analysis panel height"
+              title="Resize analysis panel height"
+              onPointerDown={handleGamePanelResizePointerDown}
+              onKeyDown={handleGamePanelResizeKeyDown}
+            />
+          ) : null}
+        </AnalysisWorkspacePanel>
+
+        {game && gameComputerAnalysisEnabled && gameUnderboardTab === "analysis" ? (
+          <div className="gameComputerSummaryDock">
+            <GameComputerAnalysisPlayers game={game} analysis={gameAnalysis.analysis} />
+          </div>
         ) : null}
-      </AnalysisWorkspacePanel>
+      </div>
 
       {game ? (
         <aside
@@ -1510,6 +1560,19 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
           solutionNavigation: navigation,
           previewMove: threatMoveUci ?? hoveredExplorerMoveUci,
           previewMoveBrush: threatMoveUci ? "red" : "paleBlue",
+          analysisMarker:
+            gameComputerAnalysisEnabled && currentVisibleAssessment
+              ? {
+                  uci: currentVisibleAssessment.uci,
+                  symbol: currentVisibleAssessment.symbol,
+                  fill:
+                    currentVisibleAssessment.classification === "blunder"
+                      ? "var(--analysis-blunder)"
+                      : currentVisibleAssessment.classification === "mistake"
+                        ? "var(--analysis-mistake)"
+                        : "var(--analysis-inaccuracy)",
+                }
+              : null,
           onNavigateHandled: handleNavigationHandled,
           onStateChange: setBoardState,
         }}
@@ -1536,7 +1599,7 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
             <AtomicDbEvalBar
               fen={displayedAnalysisFen}
               analysis={displayedAnalysis}
-              enabled={atomicDbEngineSettings.enabled}
+              enabled={positionAnalysisEnabled}
               orientation={orientation}
               threatMode={effectiveThreatMode}
             />
@@ -1574,6 +1637,22 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
           document={boardDocument}
           onNavigatePly={navigateToPly}
           atomicDbHref={atomicDbPositionKey ? atomicDbPositionUrl(atomicDbPositionKey) : null}
+          computerAnalysis={
+            <GameComputerAnalysis
+              analysis={gameAnalysis.analysis}
+              isLoading={gameAnalysis.isLoading}
+              isRequesting={gameAnalysis.isRequesting}
+              requestError={gameAnalysis.requestError ?? gameAnalysis.loadError}
+              authenticated={auth.isAuthenticated}
+              onRequest={gameAnalysis.request}
+              onLogin={() => void auth.login(`/game/${encodeURIComponent(game.game_id)}`)}
+              moves={moveList}
+              currentPly={currentPly}
+              onNavigate={navigateToPly}
+            />
+          }
+          computerAnalysisEnabled={gameComputerAnalysisEnabled}
+          onActiveTabChange={setGameUnderboardTab}
           {...(canRequestAtomicDbAnalysis
             ? {
                 atomicDbRequest: {

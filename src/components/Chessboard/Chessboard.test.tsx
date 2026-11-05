@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   playPremove: vi.fn(),
   cancelPremove: vi.fn(),
   showBoardCoordinates: true,
+  enableBoardPremoves: true,
 }));
 
 vi.mock("@lichess-org/chessground", () => ({
@@ -43,6 +44,7 @@ vi.mock("../../context/AppSettings", async (importOriginal) => {
       boardOverrideLightSquare: "",
       boardOverrideDarkSquare: "",
       showBoardCoordinates: mocks.showBoardCoordinates,
+      enableBoardPremoves: mocks.enableBoardPremoves,
     }),
   };
 });
@@ -79,6 +81,7 @@ describe("Chessboard orchestration", () => {
     mocks.playPremove.mockClear();
     mocks.cancelPremove.mockClear();
     mocks.showBoardCoordinates = true;
+    mocks.enableBoardPremoves = true;
   });
 
   it("does not mutate previously emitted move arrays", () => {
@@ -137,6 +140,24 @@ describe("Chessboard orchestration", () => {
     ]);
   });
 
+  it("renders analysis glyphs with Lichess's official SVG geometry", () => {
+    renderBoard({
+      analysisMarker: { uci: "g3f5", symbol: "??", fill: "#d85050" },
+    });
+
+    expect(mocks.setAutoShapes).toHaveBeenLastCalledWith([
+      {
+        orig: "f5",
+        customSvg: { html: expect.any(String) },
+      },
+    ]);
+    const [shape] = mocks.setAutoShapes.mock.calls.at(-1)?.[0] ?? [];
+    expect(shape).not.toHaveProperty("brush");
+    expect(shape).not.toHaveProperty("label");
+    expect(shape?.customSvg?.html).toContain('transform="matrix(.4 0 0 .4 71 -12)"');
+    expect(shape?.customSvg?.html).toContain('r="50" fill="#d85050"');
+  });
+
   it("keeps the player color movable and plays a premove after the opponent replies", () => {
     const boardProps: ComponentProps<typeof Chessboard> = {
       puzzleId: "practice",
@@ -159,6 +180,13 @@ describe("Chessboard orchestration", () => {
 
     rerender(<Chessboard {...boardProps} solutionNavigation={{ type: "play", uci: "e7e5" }} />);
     expect(mocks.playPremove).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables premoves when the board preference is off", () => {
+    mocks.enableBoardPremoves = false;
+    renderBoard({ premoveColor: "white", premovesEnabled: true });
+
+    expect(mocks.config?.premovable?.enabled).toBe(false);
   });
 
   it("only accepts continuations contained in the solution when restricted", () => {

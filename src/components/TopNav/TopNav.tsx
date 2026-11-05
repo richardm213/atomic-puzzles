@@ -6,6 +6,8 @@ import {
   faBell,
   faChartLine,
   faChevronDown,
+  faChevronLeft,
+  faChevronRight,
   faClipboardCheck,
   faGear,
   faRightFromBracket,
@@ -81,6 +83,7 @@ const setStoredProfileUsername = (username: string, profileUsername: string): vo
 
 export const TopNav = () => {
   const [openPanel, setOpenPanel] = useState<OpenPanel | null>(null);
+  const [settingsPage, setSettingsPage] = useState<"main" | "board">("main");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const topNavRef = useRef<HTMLElement | null>(null);
   const navDropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -148,6 +151,8 @@ export const TopNav = () => {
     setBoardOverrideDarkSquare,
     showBoardCoordinates,
     setShowBoardCoordinates,
+    enableBoardPremoves,
+    setEnableBoardPremoves,
     resetDisplaySettings,
     hideRankingsOpenings,
     setHideRankingsOpenings,
@@ -186,9 +191,11 @@ export const TopNav = () => {
   );
   const showBoardSettings =
     pathname === "/solve" ||
-    pathname.startsWith("/solve/") ||
+    /^\/solve\/[^/]+$/.test(pathname) ||
+    /^\/solve\/(?:set|custom|dashboard)\/[^/]+\/[^/]+$/.test(pathname) ||
     pathname === "/analysis" ||
     pathname.startsWith("/analysis/") ||
+    /^\/game\/[^/]+\/?$/.test(pathname) ||
     pathname === "/practice" ||
     pathname.startsWith("/practice/") ||
     pathname === "/puzzles/endgames" ||
@@ -324,9 +331,14 @@ export const TopNav = () => {
 
   useEffect(() => {
     setMobileMenuOpen(false);
+    setSettingsPage("main");
     clearNavDropdownCloseTimeout();
     setOpenPanel(null);
   }, [clearNavDropdownCloseTimeout, pathname]);
+
+  useEffect(() => {
+    if (!settingsOpen) setSettingsPage("main");
+  }, [settingsOpen]);
 
   useEffect(() => {
     if (!openPanel) return undefined;
@@ -727,7 +739,103 @@ export const TopNav = () => {
             <FontAwesomeIcon icon={faGear} aria-hidden="true" />
           </button>
           {settingsOpen ? (
-            <div className="navSettingsMenu" role="dialog" aria-label="Site settings">
+            <div
+              className={`navSettingsMenu ${settingsPage === "board" ? "boardSettingsPage" : ""}`}
+              role="dialog"
+              aria-label="Site settings"
+            >
+              {settingsPage === "board" ? (
+                <div className="navSettingsBoardPage">
+                  <div className="navSettingsPageHeader">
+                    <button
+                      className="navSettingsBackButton"
+                      type="button"
+                      onClick={() => setSettingsPage("main")}
+                      aria-label="Back to site settings"
+                    >
+                      <FontAwesomeIcon icon={faChevronLeft} aria-hidden="true" />
+                    </button>
+                    <span>Board settings</span>
+                  </div>
+                  <div className="navSettingsSection navSettingsStack">
+                    <label className="navSettingsCheckbox">
+                      <span>Coordinates</span>
+                      <input
+                        type="checkbox"
+                        checked={showBoardCoordinates}
+                        onChange={(event) => setShowBoardCoordinates(event.target.checked)}
+                      />
+                    </label>
+                    <label className="navSettingsCheckbox">
+                      <span>Premoves</span>
+                      <input
+                        type="checkbox"
+                        checked={enableBoardPremoves}
+                        onChange={(event) => setEnableBoardPremoves(event.target.checked)}
+                      />
+                    </label>
+                  </div>
+                  <div className="navSettingsSection">
+                    <label className="navSettingsLabel" htmlFor="piece-set-select">
+                      Piece set
+                    </label>
+                    <select
+                      id="piece-set-select"
+                      value={pieceSet}
+                      onChange={(event) => setPieceSet(event.target.value)}
+                    >
+                      {pieceSets.map((entry) => (
+                        <option key={entry.value} value={entry.value}>
+                          {entry.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="navSettingsSection">
+                    <label className="navSettingsLabel" htmlFor="board-theme-select">
+                      Board
+                    </label>
+                    <select
+                      id="board-theme-select"
+                      value={boardTheme}
+                      onChange={handleBoardThemeChange}
+                    >
+                      {boardThemes.map((entry) => (
+                        <option key={entry.value} value={entry.value}>
+                          {entry.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="navColorInputs">
+                      <label className="navColorField" htmlFor="light-square-color">
+                        <span>Light square</span>
+                        <input
+                          id="light-square-color"
+                          type="color"
+                          value={activeBoardColors.light}
+                          onChange={handleCustomLightSquareChange}
+                        />
+                      </label>
+                      <label className="navColorField" htmlFor="dark-square-color">
+                        <span>Dark square</span>
+                        <input
+                          id="dark-square-color"
+                          type="color"
+                          value={activeBoardColors.dark}
+                          onChange={handleCustomDarkSquareChange}
+                        />
+                      </label>
+                    </div>
+                    <button
+                      type="button"
+                      className="navSecondaryButton"
+                      onClick={resetDisplaySettings}
+                    >
+                      Reset to defaults
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               {isAuthenticated && normalizedAuthUsername ? (
                 <div className="navSettingsSection navSettingsStack">
                   <span className="navSettingsGroupTitle">Profile</span>
@@ -985,72 +1093,13 @@ export const TopNav = () => {
                     </div>
                   ) : null}
                   <div className="navSettingsSection">
-                    <label className="navSettingsCheckbox">
-                      <span>Show board coordinates</span>
-                      <input
-                        type="checkbox"
-                        checked={showBoardCoordinates}
-                        onChange={(event) => setShowBoardCoordinates(event.target.checked)}
-                      />
-                    </label>
-                  </div>
-                  <div className="navSettingsSection">
-                    <label className="navSettingsLabel" htmlFor="piece-set-select">
-                      Piece set
-                    </label>
-                    <select
-                      id="piece-set-select"
-                      value={pieceSet}
-                      onChange={(event) => setPieceSet(event.target.value)}
-                    >
-                      {pieceSets.map((entry) => (
-                        <option key={entry.value} value={entry.value}>
-                          {entry.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="navSettingsSection">
-                    <label className="navSettingsLabel" htmlFor="board-theme-select">
-                      Board
-                    </label>
-                    <select
-                      id="board-theme-select"
-                      value={boardTheme}
-                      onChange={handleBoardThemeChange}
-                    >
-                      {boardThemes.map((entry) => (
-                        <option key={entry.value} value={entry.value}>
-                          {entry.label}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="navColorInputs">
-                      <label className="navColorField" htmlFor="light-square-color">
-                        <span>Light square</span>
-                        <input
-                          id="light-square-color"
-                          type="color"
-                          value={activeBoardColors.light}
-                          onChange={handleCustomLightSquareChange}
-                        />
-                      </label>
-                      <label className="navColorField" htmlFor="dark-square-color">
-                        <span>Dark square</span>
-                        <input
-                          id="dark-square-color"
-                          type="color"
-                          value={activeBoardColors.dark}
-                          onChange={handleCustomDarkSquareChange}
-                        />
-                      </label>
-                    </div>
                     <button
                       type="button"
-                      className="navSecondaryButton"
-                      onClick={resetDisplaySettings}
+                      className="navSettingsPageLink"
+                      onClick={() => setSettingsPage("board")}
                     >
-                      Reset to defaults
+                      <span>Board settings</span>
+                      <FontAwesomeIcon icon={faChevronRight} aria-hidden="true" />
                     </button>
                   </div>
                 </>

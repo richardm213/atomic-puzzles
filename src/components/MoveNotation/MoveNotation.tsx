@@ -1,3 +1,4 @@
+import type { GameMoveAssessment } from "../../lib/gameAnalysis/gameAnalysis";
 import type { PlaybackCommand } from "../../types/chessboard";
 import { AnalysisMoveTree } from "../AnalysisMoveTree/AnalysisMoveTree";
 import { PlayedMoves } from "../PlayedMoves/PlayedMoves";
@@ -12,6 +13,7 @@ export const MoveNotation = ({
   onSelectVariation,
   onCycleOptions,
   onAnnotate,
+  assessments,
 }: {
   lines: string[][];
   moves: string[];
@@ -23,6 +25,7 @@ export const MoveNotation = ({
   onCycleOptions: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
   onAnnotate?:
     ((lineIndex: number | undefined, moveIndex: number, annotation: string) => void) | undefined;
+  assessments?: GameMoveAssessment[] | undefined;
 }) => {
   if (lines.length <= 1) {
     const mainline = lines[0] ?? moves;
@@ -30,6 +33,7 @@ export const MoveNotation = ({
       <PlayedMoves
         moves={mainline}
         currentPly={currentPly}
+        assessments={assessments}
         onNavigate={lines.length ? (ply) => onSelectVariation(0, Math.max(0, ply - 1)) : onNavigate}
         onAnnotate={
           onAnnotate

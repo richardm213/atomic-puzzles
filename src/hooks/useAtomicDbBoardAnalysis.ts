@@ -12,12 +12,14 @@ export const useAtomicDbBoardAnalysis = ({
   navigation,
   lineCount,
   terminalOutcome = null,
+  suspended = false,
 }: {
   currentFen: string;
   enabled: boolean;
   navigation: SolutionNavigation | null;
   lineCount: number;
   terminalOutcome?: "white" | "black" | "draw" | null;
+  suspended?: boolean;
 }) => {
   const variationStartFenRef = useRef<string | null>(null);
   const variationPlaying = navigation?.type === "line";
@@ -29,7 +31,7 @@ export const useAtomicDbBoardAnalysis = ({
     // the current request so the move is applied before analysis resumes on its destination.
     lineCount: enabled ? lineCount : 0,
     plyCount: PRINCIPAL_VARIATION_PLIES,
-    suspended: navigationPending,
+    suspended: navigationPending || suspended,
     fallbackToEngine: enabled,
     enabled: terminalOutcome === null,
   });

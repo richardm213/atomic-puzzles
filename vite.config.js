@@ -53,12 +53,10 @@ const proxyOpeningExplorerRequest = async (req, res, origin, route) => {
   const upstreamUrl = new URL(`${route}${suffix}`, origin);
   upstreamUrl.search = requestUrl.search;
   const forwardedHeaders = Object.fromEntries(
-    ["accept", "x-explorer-intent", "x-explorer-session", "x-explorer-sequence"].flatMap(
-      (name) => {
-        const value = req.headers[name];
-        return value ? [[name, Array.isArray(value) ? value.join(", ") : value]] : [];
-      },
-    ),
+    ["accept", "x-explorer-intent", "x-explorer-session", "x-explorer-sequence"].flatMap((name) => {
+      const value = req.headers[name];
+      return value ? [[name, Array.isArray(value) ? value.join(", ") : value]] : [];
+    }),
   );
   const response = await fetch(upstreamUrl, {
     method: req.method,
@@ -86,9 +84,7 @@ const remoteOpeningExplorerPlugin = (origin) => {
           res.end(
             JSON.stringify({
               error:
-                error instanceof Error
-                  ? error.message
-                  : "Remote opening explorer request failed.",
+                error instanceof Error ? error.message : "Remote opening explorer request failed.",
             }),
           );
         }
@@ -127,6 +123,7 @@ const localPuzzleFunctionsPlugin = ({ archiveOrigin, useLocalArchive }) => {
     ["/api/public-data", "/netlify/functions/public-data.ts"],
     ["/api/atomicdb-analysis", "/netlify/functions/atomicdb-analysis.ts"],
     ["/api/atomicdb-request", "/netlify/functions/atomicdb-request.ts"],
+    ["/api/game-analysis", "/netlify/functions/game-analysis.ts"],
     ["/api/archive-data", "/netlify/functions/archive-data.ts"],
     ["/api/player-social", "/netlify/functions/player-social.ts"],
   ]);

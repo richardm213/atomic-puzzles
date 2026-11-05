@@ -14,6 +14,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
   isCommentMentionNotification,
+  isGameAnalysisReadyNotification,
   isPredictionOrderFillNotification,
   isPredictionPayoutNotification,
   notificationCategory,
@@ -29,6 +30,7 @@ const notificationIcon = (notification: UserNotification) => {
   if (isCommentMentionNotification(notification)) return faAt;
   if (isPredictionOrderFillNotification(notification)) return faCheck;
   if (isPredictionPayoutNotification(notification)) return faCoins;
+  if (isGameAnalysisReadyNotification(notification)) return faChartLine;
   if (notification.notification_type === "feature") return faBullhorn;
   if (notification.notification_type === "coin_policy_update") return faGaugeHigh;
   if (notification.notification_type === "coin_gift") return faCoins;

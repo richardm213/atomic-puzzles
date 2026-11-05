@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { GameMoveAssessment } from "../../lib/gameAnalysis/gameAnalysis";
 import { splitSolutionMove } from "../../lib/puzzles/solutionPgn";
 import {
   type AnnotationMenuPosition,
@@ -36,11 +37,13 @@ export const PlayedMoves = ({
   currentPly,
   onNavigate,
   onAnnotate,
+  assessments = [],
 }: {
   moves: string[];
   currentPly: number;
   onNavigate: (ply: number) => void;
   onAnnotate?: ((moveIndex: number, annotation: string) => void) | undefined;
+  assessments?: GameMoveAssessment[] | undefined;
 }) => {
   const activeMoveRef = useRef<HTMLButtonElement | null>(null);
   const [annotationTarget, setAnnotationTarget] = useState<{
@@ -49,6 +52,10 @@ export const PlayedMoves = ({
     position: AnnotationMenuPosition;
   } | null>(null);
   const closeAnnotationMenu = useCallback(() => setAnnotationTarget(null), []);
+  const visibleAssessment = (ply: number): GameMoveAssessment | undefined => {
+    const assessment = assessments[ply - 1];
+    return assessment?.classification === "best" ? undefined : assessment;
+  };
 
   useEffect(() => {
     activeMoveRef.current?.scrollIntoView?.({ block: "nearest" });
@@ -64,7 +71,7 @@ export const PlayedMoves = ({
               <button
                 ref={currentPly === pair.whitePly ? activeMoveRef : undefined}
                 type="button"
-                className={currentPly === pair.whitePly ? "active" : ""}
+                className={`${currentPly === pair.whitePly ? "active" : ""} ${visibleAssessment(pair.whitePly)?.classification ?? ""}`}
                 aria-current={currentPly === pair.whitePly ? "step" : undefined}
                 onClick={() => onNavigate(pair.whitePly)}
                 onContextMenu={
@@ -81,7 +88,12 @@ export const PlayedMoves = ({
                 }
                 title={onAnnotate ? "Right-click to annotate" : undefined}
               >
-                {pair.white}
+                <span>{pair.white}</span>
+                {visibleAssessment(pair.whitePly) ? (
+                  <b aria-label={visibleAssessment(pair.whitePly)!.classification}>
+                    {visibleAssessment(pair.whitePly)!.symbol}
+                  </b>
+                ) : null}
               </button>
             ) : (
               <span />
@@ -90,7 +102,7 @@ export const PlayedMoves = ({
               <button
                 ref={currentPly === pair.blackPly ? activeMoveRef : undefined}
                 type="button"
-                className={currentPly === pair.blackPly ? "active" : ""}
+                className={`${currentPly === pair.blackPly ? "active" : ""} ${visibleAssessment(pair.blackPly)?.classification ?? ""}`}
                 aria-current={currentPly === pair.blackPly ? "step" : undefined}
                 onClick={() => onNavigate(pair.blackPly)}
                 onContextMenu={
@@ -107,7 +119,12 @@ export const PlayedMoves = ({
                 }
                 title={onAnnotate ? "Right-click to annotate" : undefined}
               >
-                {pair.black}
+                <span>{pair.black}</span>
+                {visibleAssessment(pair.blackPly) ? (
+                  <b aria-label={visibleAssessment(pair.blackPly)!.classification}>
+                    {visibleAssessment(pair.blackPly)!.symbol}
+                  </b>
+                ) : null}
               </button>
             ) : (
               <span />

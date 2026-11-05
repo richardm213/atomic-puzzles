@@ -50,6 +50,7 @@ const reasonCategory: Record<CoinTransactionReason, TransactionCategory> = {
   prediction_trade_fee: "bets",
   prediction_market_payout: "bets",
   prediction_liquidity_funding: "bets",
+  game_analysis: "purchases",
 };
 
 const selectedReasonsFor = (categories: TransactionCategory[]) =>
@@ -60,6 +61,7 @@ const selectedReasonsFor = (categories: TransactionCategory[]) =>
 const shopItemLabels: Record<string, string> = {
   username_change: "a username change",
   atomicdb_analysis_12h: "AtomicDB analysis",
+  game_analysis: "Game analysis",
   discord_nitro_month: "Discord Nitro Basic",
   discord_nitro_year: "Discord Nitro Basic",
   discord_nitro_full_month: "Discord Nitro Nitro",
@@ -104,6 +106,12 @@ const transactionDescription = (transaction: CoinTransaction) => {
     return transaction.amount > 0
       ? `Refunded ${shopItemLabels[itemKey] ?? "a shop item"}`
       : `Purchased ${shopItemLabels[itemKey] ?? "a shop item"}`;
+  }
+  if (transaction.reason === "game_analysis") {
+    const gameId = metadataString(transaction, "gameId");
+    return transaction.amount > 0
+      ? `Game analysis refunded${gameId ? ` · ${gameId}` : ""}`
+      : `Analyzed game${gameId ? ` · ${gameId}` : ""}`;
   }
   if (transaction.reason === "tournament_bet") {
     const selection = metadataString(transaction, "selection");

@@ -1,4 +1,5 @@
 .practicePanel {
+  container-type: inline-size;
   grid-column: 2;
   grid-row: 1;
   align-self: start;
@@ -708,7 +709,7 @@
   outline-offset: 2px;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 799px) and (orientation: portrait) {
   .practicePage {
     width: min(100%, 620px);
     grid-template-columns: minmax(0, 1fr);

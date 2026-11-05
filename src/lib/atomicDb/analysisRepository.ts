@@ -134,13 +134,51 @@ const positions = new AtomicDbRequestStore<AtomicDbPosition | null>(128);
 const backedPositions = new AtomicDbRequestStore<AtomicDbPosition>(128);
 const variationBatches = new AtomicDbRequestStore<AtomicDbPrincipalVariationResult>(64);
 const variationLines = new AtomicDbRequestStore<string[]>(128);
+const preloadedGamePositions = new Map<string, AtomicDbPosition | null>();
+const preloadedGameVariationLines = new Map<string, string[]>();
 
 const variationBatchKey = (fen: string, rootMoves: string[], plyCount: number): string =>
   `${fen}\n${rootMoves.join(",")}\n${plyCount}`;
 const variationLineKey = (fen: string, rootMove: string, plyCount: number): string =>
   `${fen}\n${rootMove}\n${plyCount}`;
 
+export type PreloadedAtomicDbGamePosition = {
+  fen: string;
+  position: AtomicDbPosition | null;
+  principalVariations: Record<string, string[]>;
+};
+
+export const replacePreloadedAtomicDbGamePositions = (
+  entries: PreloadedAtomicDbGamePosition[],
+): void => {
+  preloadedGamePositions.clear();
+  preloadedGameVariationLines.clear();
+  for (const { fen, position, principalVariations } of entries) {
+    preloadedGamePositions.set(fen, position);
+    for (const move of position?.moves ?? []) {
+      const line = principalVariations[move.uci] ?? [move.uci];
+      for (let plyCount = 1; plyCount <= 5; plyCount += 1) {
+        preloadedGameVariationLines.set(
+          variationLineKey(fen, move.uci, plyCount),
+          line.slice(0, plyCount),
+        );
+      }
+    }
+  }
+};
+
+export const clearPreloadedAtomicDbGamePositions = (): void => {
+  preloadedGamePositions.clear();
+  preloadedGameVariationLines.clear();
+};
+
 export const peekAtomicDbPosition = (fen: string): AtomicDbPositionCacheLookup => {
+  if (preloadedGamePositions.has(fen)) {
+    const preloaded = preloadedGamePositions.get(fen) ?? null;
+    return preloaded
+      ? { found: true, value: preloaded, backed: true }
+      : { found: true, value: null, backed: false };
+  }
   const complete = positions.peek(fen);
   if (complete.found) return { ...complete, backed: false };
   const backed = backedPositions.peek(fen);
@@ -161,6 +199,11 @@ export const loadAtomicDbVariations = async (
 ): Promise<AtomicDbPrincipalVariationResult> => {
   const lines: Record<string, string[]> = {};
   const missingMoves = rootMoves.filter((rootMove) => {
+    const preloaded = preloadedGameVariationLines.get(variationLineKey(fen, rootMove, plyCount));
+    if (preloaded) {
+      lines[rootMove] = preloaded;
+      return false;
+    }
     const cached = variationLines.peek(variationLineKey(fen, rootMove, plyCount));
     if (!cached.found) return true;
     lines[rootMove] = cached.value;
