@@ -5,6 +5,7 @@ import {
   peekAtomicDbPosition,
   peekAtomicDbVariationLines,
 } from "../lib/atomicDb/analysisRepository";
+import { isAtomicTablebasePosition } from "../lib/atomicTablebase/material";
 import {
   analyzeFairyStockfishPosition,
   type EngineCandidate,
@@ -105,17 +106,18 @@ export const useAtomicDbAnalysis = (
   const [state, setState] = useState<RequestState>(INITIAL_STATE);
   const [engineFocusEpoch, setEngineFocusEpoch] = useState(0);
   const lastRequestAtRef = useRef<number | null>(null);
+  const useAtomicStockfishOnly = fallbackToEngine && isAtomicTablebasePosition(fen);
 
   useEffect(() => {
     if (!fallbackToEngine) return;
     const retryInActiveTab = (): void => {
-      if (readLocalAnalysisEngine() === "atomic-stockfish") {
+      if (useAtomicStockfishOnly || readLocalAnalysisEngine() === "atomic-stockfish") {
         setEngineFocusEpoch((epoch) => epoch + 1);
       }
     };
     window.addEventListener("focus", retryInActiveTab);
     return () => window.removeEventListener("focus", retryInActiveTab);
-  }, [fallbackToEngine]);
+  }, [fallbackToEngine, useAtomicStockfishOnly]);
 
   useEffect(() => {
     if (!enabled) {
@@ -128,7 +130,9 @@ export const useAtomicDbAnalysis = (
     if (suspended) return;
 
     const controller = new AbortController();
-    const localAnalysisEngine = readLocalAnalysisEngine();
+    const localAnalysisEngine = useAtomicStockfishOnly
+      ? "atomic-stockfish"
+      : readLocalAnalysisEngine();
     const lineCount = clampInteger(requestedLineCount, 1, MAX_LINE_COUNT);
     const plyCount = clampInteger(requestedPlyCount, 1, MAX_PLY_COUNT);
     const cachedLinesFor = (position: AtomicDbPosition | null): Record<string, string[]> => {
@@ -198,12 +202,17 @@ export const useAtomicDbAnalysis = (
             });
           });
         };
-        const candidates = await analyzeFairyStockfishPosition(
-          fen,
-          lineCount,
-          controller.signal,
-          (progressCandidates) => publishEngineCandidates(progressCandidates, "loading"),
-        );
+        const publishProgress = (progressCandidates: EngineCandidate[]): void =>
+          publishEngineCandidates(progressCandidates, "loading");
+        const candidates = useAtomicStockfishOnly
+          ? await analyzeFairyStockfishPosition(
+              fen,
+              lineCount,
+              controller.signal,
+              publishProgress,
+              "atomic-stockfish",
+            )
+          : await analyzeFairyStockfishPosition(fen, lineCount, controller.signal, publishProgress);
         if (controller.signal.aborted) return;
         publishEngineCandidates(candidates, "ready");
       } catch (error: unknown) {
@@ -309,6 +318,11 @@ export const useAtomicDbAnalysis = (
       publishPosition(position, lines);
     };
 
+    if (useAtomicStockfishOnly) {
+      void publishEngineFallback();
+      return () => controller.abort();
+    }
+
     let showingCachedPosition = false;
     const cached = peekAtomicDbPosition(fen);
     if (cached.found) {
@@ -379,6 +393,7 @@ export const useAtomicDbAnalysis = (
     requestedLineCount,
     requestedPlyCount,
     suspended,
+    useAtomicStockfishOnly,
   ]);
 
   if (!enabled) return EMPTY_ANALYSIS;
@@ -391,6 +406,7 @@ export const useAtomicDbAnalysis = (
     status: state.result?.fen === fen ? "ready" : "loading",
     error: "",
     principalVariations: state.principalVariations,
-    source: "atomicdb",
+    source: useAtomicStockfishOnly ? "engine" : "atomicdb",
+    ...(useAtomicStockfishOnly ? { engine: "atomic-stockfish" } : {}),
   };
 };

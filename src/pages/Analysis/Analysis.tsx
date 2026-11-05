@@ -46,6 +46,7 @@ import { buildBoardLoadNavigation, gamePlyFromHash } from "../../lib/analysis/bo
 import { getBoardMoveState } from "../../lib/analysis/boardState";
 import { readAnalysisHandoff } from "../../lib/analysis/handoff";
 import { type ArchiveGame, decodeGameResult } from "../../lib/archive/games";
+import { isAtomicTablebasePosition } from "../../lib/atomicTablebase/material";
 import { createAtomicPosition, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { atomicDbPositionUrl, requestAtomicDbAnalysis } from "../../utils/atomicDb";
@@ -539,6 +540,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     : null;
   const canRequestAtomicDbAnalysis =
     atomicDbResultIsCurrent &&
+    !isAtomicTablebasePosition(currentFen) &&
     !atomicDbPositionKey &&
     atomicDbAnalysis.status !== "error" &&
     (atomicDbAnalysis.status === "ready" || atomicDbAnalysis.source === "engine") &&

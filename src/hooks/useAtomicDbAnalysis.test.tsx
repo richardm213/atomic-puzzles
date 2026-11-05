@@ -36,29 +36,37 @@ describe("useAtomicDbAnalysis", () => {
     analyzeWithEngineMock.mockReset();
   });
 
-  it("checks AtomicDB before using Fairy-Stockfish for six-piece endgames", async () => {
-    const fen = "8/8/8/8/3k4/8/1K3P1P/6NR w - - 3 71";
-    const fetchMock = vi.fn().mockResolvedValue(
-      bundleResponse({
-        key: "atomicdb-endgame",
-        status: "UNKNOWN",
-        score: 85,
-        best_move: "h1h4",
-        moves: [{ uci: "h1h4", status: "UNKNOWN", score: 85 }],
-      }),
-    );
+  it("uses Atomic-Stockfish directly for five-piece endgames", async () => {
+    const fen = "8/8/8/8/3k4/8/1K3P1P/6N1 w - - 3 71";
+    const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
+    analyzeWithEngineMock.mockResolvedValue([
+      {
+        move: "g1f3",
+        multipv: 1,
+        scoreType: "cp",
+        score: 85,
+        depth: 18,
+      },
+    ]);
 
     const { result } = renderHook(() =>
       useAtomicDbAnalysis(fen, { debounceMs: 0, fallbackToEngine: true, lineCount: 1 }),
     );
 
     await waitFor(() => expect(result.current.status).toBe("ready"));
-    expect(fetchMock).toHaveBeenCalled();
-    expect(analyzeWithEngineMock).not.toHaveBeenCalled();
-    expect(result.current.source).toBe("atomicdb");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(analyzeWithEngineMock).toHaveBeenCalledWith(
+      fen,
+      1,
+      expect.any(AbortSignal),
+      expect.any(Function),
+      "atomic-stockfish",
+    );
+    expect(result.current.source).toBe("engine");
+    expect(result.current.engine).toBe("atomic-stockfish");
     expect(result.current.result?.position?.moves[0]).toMatchObject({
-      uci: "h1h4",
+      uci: "g1f3",
       score: 85,
     });
   });
@@ -267,8 +275,8 @@ describe("useAtomicDbAnalysis", () => {
   });
 
   it("keeps the next position labeled AtomicDB until an engine fallback is needed", async () => {
-    const firstFen = "8/8/8/8/8/8/1K6/7k w - - 4 71";
-    const secondFen = "8/8/8/8/8/8/1K6/7k b - - 5 71";
+    const firstFen = "8/8/8/8/8/8/1KPP2pp/7k w - - 4 71";
+    const secondFen = "8/8/8/8/8/8/1KPP2pp/7k b - - 5 71";
     let resolveSecondAtomicDbRequest: ((response: Response) => void) | undefined;
     let resolveSecondAnalysis:
       ((value: Awaited<ReturnType<typeof analyzeFairyStockfishPosition>>) => void) | undefined;

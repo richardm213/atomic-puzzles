@@ -654,8 +654,9 @@ export const analyzeFairyStockfishPosition = async (
   lineCount: number,
   signal?: AbortSignal,
   onProgress?: EngineProgressListener,
+  engineOverride?: LocalAnalysisEngine,
 ): Promise<EngineCandidate[]> => {
-  const engine = readLocalAnalysisEngine();
+  const engine = engineOverride ?? readLocalAnalysisEngine();
   const requestedLineCount = Math.min(MULTIPV_COUNT, Math.max(1, Math.floor(lineCount)));
   const cachedSearch = readCachedEvaluation(engine, fen);
   const handleProgress = (candidates: EngineCandidate[]): void => {
