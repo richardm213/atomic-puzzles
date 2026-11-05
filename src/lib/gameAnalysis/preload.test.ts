@@ -89,6 +89,9 @@ describe("completed game analysis preload", () => {
     expect(cached.value?.moves.map((move) => move.backedPlies)).toEqual([0, 0]);
     expect(cached.value?.moves.map((move) => move.searchDepth)).toEqual([26, 26]);
 
+    preloadCompletedGameAnalysis(analysis, 1);
+    expect(peekAtomicDbPosition(FEN).found).toBe(false);
+
     preloadCompletedGameAnalysis(null);
     expect(peekAtomicDbPosition(FEN).found).toBe(false);
   });

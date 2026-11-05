@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildGameAnalysisSummary,
   evaluationsForPositions,
+  ignoreInitialGameAnalysisPlies,
   parseStoredAtomicDbPosition,
   type StoredAtomicDbPosition,
 } from "../../../shared/domain/gameAnalysis";
@@ -89,5 +90,36 @@ describe("AtomicDB game analysis classification", () => {
     expect(summary.assessments[0]?.classification).toBe("best");
     expect(summary.whiteCounts.excellent).toBe(0);
     expect(summary.whiteCounts.good).toBe(0);
+  });
+
+  it("excludes Wolfrandom's first three moves per side from negative review", () => {
+    const positions = Array.from({ length: 9 }, (_, index) =>
+      position(
+        `8/8/8/8/8/8/8/K6k ${index % 2 === 0 ? "w" : "b"} - - 0 1`,
+        index % 2 === 0 ? 400 : -400,
+        "a1a2",
+      ),
+    );
+    const summary = buildGameAnalysisSummary(
+      ["a1b1", "h1g1", "b1a1", "g1h1", "a1b1", "h1g1", "b1a1", "g1h1"],
+      positions,
+    );
+    summary.assessments[6] = {
+      ...summary.assessments[6]!,
+      classification: "blunder",
+      symbol: "??",
+    };
+    summary.assessments[7] = {
+      ...summary.assessments[7]!,
+      classification: "blunder",
+      symbol: "??",
+    };
+    const wolfrandom = ignoreInitialGameAnalysisPlies(summary, 6);
+
+    expect(wolfrandom.assessments.slice(0, 6).every(({ classification }) => classification === "best"))
+      .toBe(true);
+    expect(wolfrandom.assessments[6]?.classification).toBe("blunder");
+    expect(wolfrandom.whiteCounts.blunder).toBe(1);
+    expect(wolfrandom.blackCounts.blunder).toBe(1);
   });
 });

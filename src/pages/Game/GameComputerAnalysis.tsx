@@ -25,25 +25,33 @@ const EvaluationGraph = ({
   assessments,
   currentPly,
   onNavigate,
+  excludedInitialPlies = 0,
 }: {
   evaluations: number[];
   moves: string[];
   assessments: GameMoveAssessment[];
   currentPly: number;
   onNavigate: (ply: number) => void;
+  excludedInitialPlies?: number;
 }) => {
   const [hoveredPly, setHoveredPly] = useState<number | null>(null);
   const width = 1000;
   const height = 230;
-  const capped = evaluations.map((evaluation) => Math.max(-900, Math.min(900, evaluation)));
-  const points = capped.map((evaluation, index) => ({
-    x: (index / Math.max(1, capped.length - 1)) * width,
-    y: height / 2 - (evaluation / 900) * (height / 2 - 8),
+  const visibleEvaluations = evaluations
+    .map((evaluation, ply) => ({ evaluation, ply }))
+    .filter(({ ply }) => excludedInitialPlies === 0 || ply > excludedInitialPlies);
+  const points = visibleEvaluations.map(({ evaluation, ply }, index) => ({
+    evaluation,
+    ply,
+    x: (index / Math.max(1, visibleEvaluations.length - 1)) * width,
+    y:
+      height / 2 -
+      (Math.max(-900, Math.min(900, evaluation)) / 900) * (height / 2 - 8),
   }));
   const path = points.map((point, index) => `${index ? "L" : "M"}${point.x},${point.y}`).join(" ");
   const fill = `${path} L${width},${height / 2} L0,${height / 2} Z`;
-  const currentX = (currentPly / Math.max(1, capped.length - 1)) * width;
-  const hoveredPoint = hoveredPly === null ? null : points[hoveredPly];
+  const currentPoint = points.find(({ ply }) => ply === currentPly) ?? null;
+  const hoveredPoint = hoveredPly === null ? null : points.find(({ ply }) => ply === hoveredPly);
   const hoveredAssessment =
     hoveredPly === null || hoveredPly === 0 ? null : assessments[hoveredPly - 1];
   const hoveredEvaluation = hoveredPly === null ? null : (evaluations[hoveredPly] ?? null);
@@ -66,13 +74,21 @@ const EvaluationGraph = ({
         <path className="evaluationFill" d={fill} />
         <line className="evaluationAxis" x1="0" x2={width} y1={height / 2} y2={height / 2} />
         <path className="evaluationLine" d={path} />
-        <line className="currentEvaluation" x1={currentX} x2={currentX} y1="0" y2={height} />
+        {currentPoint ? (
+          <line
+            className="currentEvaluation"
+            x1={currentPoint.x}
+            x2={currentPoint.x}
+            y1="0"
+            y2={height}
+          />
+        ) : null}
       </svg>
       <div
         className="gameComputerGraphHits"
-        style={{ "--evaluation-count": evaluations.length } as CSSProperties}
+        style={{ "--evaluation-count": visibleEvaluations.length } as CSSProperties}
       >
-        {evaluations.map((evaluation, ply) => (
+        {visibleEvaluations.map(({ evaluation, ply }) => (
           <button
             key={ply}
             type="button"
@@ -202,6 +218,7 @@ export const GameComputerAnalysis = ({
   moves,
   currentPly,
   onNavigate,
+  excludedInitialPlies = 0,
 }: {
   analysis: GameAnalysisRecord | null;
   isLoading: boolean;
@@ -213,6 +230,7 @@ export const GameComputerAnalysis = ({
   moves: string[];
   currentPly: number;
   onNavigate: (ply: number) => void;
+  excludedInitialPlies?: number;
 }) => {
   const purchaseDialogRef = useRef<HTMLDialogElement>(null);
   const closePurchaseDialog = () => purchaseDialogRef.current?.close();
@@ -316,6 +334,7 @@ export const GameComputerAnalysis = ({
         assessments={analysis.result.assessments}
         currentPly={currentPly}
         onNavigate={onNavigate}
+        excludedInitialPlies={excludedInitialPlies}
       />
     </div>
   );

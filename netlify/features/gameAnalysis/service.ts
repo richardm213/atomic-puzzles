@@ -6,10 +6,12 @@ import { INITIAL_FEN } from "chessops/fen";
 import {
   buildGameAnalysisSummary,
   GAME_ANALYSIS_BUDGET_NODES,
+  ignoreInitialGameAnalysisPlies,
   parseStoredAtomicDbPosition,
   type StoredAtomicDbPosition,
 } from "../../../shared/domain/gameAnalysis";
 import { createAtomicPosition } from "../../../shared/domain/puzzles/solutionPgn";
+import { queryArchiveResource } from "../../archive/queries";
 import { createServerSupabase } from "../../platform/environment";
 
 const ATOMIC_DB_BASE_URL = "https://belzedar.duckdns.org/atomicdb";
@@ -19,6 +21,7 @@ const MAX_INITIAL_POLL_DELAY_MS = 60 * 60_000;
 const FOLLOW_UP_POLL_DELAY_MS = 2 * 60_000;
 const EXPECTED_ATOMIC_DB_WORKERS = 4;
 const ESTIMATED_WORKER_NODES_PER_SECOND = 14_000_000;
+const WOLFRANDOM_RANDOMIZED_PLIES = 6;
 
 type PositionState = {
   fen: string;
@@ -75,20 +78,43 @@ const terminalPosition = (fen: string): StoredAtomicDbPosition | null => {
   };
 };
 
-const initialStates = (fens: string[]): PositionState[] =>
-  fens.map((fen) => {
+const skippedPosition = (fen: string): StoredAtomicDbPosition => ({
+  fen,
+  key: null,
+  status: "SKIPPED",
+  closure: "WOLFRANDOM_OPENING",
+  score: null,
+  point: null,
+  bestMove: null,
+  budgetNodes: null,
+  lines: [],
+  candidates: [],
+});
+
+const initialStates = (fens: string[], skippedPositionCount = 0): PositionState[] =>
+  fens.map((fen, index) => {
+    if (index < skippedPositionCount) {
+      return { fen, terminal: false, completed: true, data: skippedPosition(fen) };
+    }
     const terminal = terminalPosition(fen);
     return terminal
       ? { fen, terminal: true, completed: true, data: terminal }
       : { fen, terminal: false, completed: false };
   });
 
-const readStates = (job: GameAnalysisJobRow, fens: string[]): PositionState[] => {
+const readStates = (
+  job: GameAnalysisJobRow,
+  fens: string[],
+  skippedPositionCount = 0,
+): PositionState[] => {
   const storedStates = job.position_states;
   if (!Array.isArray(storedStates) || storedStates.length !== fens.length) {
-    return initialStates(fens);
+    return initialStates(fens, skippedPositionCount);
   }
   return fens.map((fen, index) => {
+    if (index < skippedPositionCount) {
+      return { fen, terminal: false, completed: true, data: skippedPosition(fen) };
+    }
     const value = storedStates[index];
     if (!value || typeof value !== "object") return initialStates([fen])[0]!;
     const state = value as Partial<PositionState>;
@@ -104,6 +130,15 @@ const readStates = (job: GameAnalysisJobRow, fens: string[]): PositionState[] =>
       ...(typeof state.error === "string" ? { error: state.error } : {}),
     };
   });
+};
+
+const randomizedOpeningPlies = async (gameId: string): Promise<number> => {
+  const game = await queryArchiveResource(
+    new URLSearchParams({ resource: "game", gameId }),
+  );
+  return game && typeof game === "object" && Reflect.get(game, "mode") === "wolfrandom"
+    ? WOLFRANDOM_RANDOMIZED_PLIES
+    : 0;
 };
 
 const atomicDbRequest = async (
@@ -262,7 +297,10 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
     return;
   }
 
-  const states = readStates(data, fens);
+  const ignoredInitialPlies = await randomizedOpeningPlies(data.game_id);
+  // Position 6 is retained as the baseline needed to assess White's fourth move. Positions before
+  // it are neither queried nor stored because they belong to Wolfrandom's randomized opening.
+  const states = readStates(data, fens, ignoredInitialPlies);
   const pendingIndexes = states
     .map((state, index) => ({ state, index }))
     .filter(({ state }) => !state.completed)
@@ -303,7 +341,10 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
   const retryCount = data.retry_count + 1;
   if (preflightCompletedPositions === states.length) {
     const positions = states.map((state) => state.data).filter(Boolean) as StoredAtomicDbPosition[];
-    const result = buildGameAnalysisSummary(moves, positions);
+    const result = ignoreInitialGameAnalysisPlies(
+      buildGameAnalysisSummary(moves, positions),
+      ignoredInitialPlies,
+    );
     await updateJob(supabase, data.game_id, {
       status: "ready",
       // The completed result contains the full position data. Dropping the progress copy avoids

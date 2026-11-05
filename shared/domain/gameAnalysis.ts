@@ -327,6 +327,39 @@ export const averageCentipawnLossForEvaluations = (
   };
 };
 
+export const ignoreInitialGameAnalysisPlies = (
+  summary: GameAnalysisSummary,
+  ignoredPlies: number,
+): GameAnalysisSummary => {
+  const count = Math.max(0, Math.floor(ignoredPlies));
+  if (count === 0) return summary;
+
+  const assessments = summary.assessments.map((assessment) =>
+    assessment.ply <= count
+      ? {
+          ...assessment,
+          classification: "best" as const,
+          symbol: CLASSIFICATION_SYMBOLS.best,
+        }
+      : assessment,
+  );
+  const whiteCounts = emptyCounts();
+  const blackCounts = emptyCounts();
+  for (const assessment of assessments) {
+    (assessment.ply % 2 === 1 ? whiteCounts : blackCounts)[assessment.classification] += 1;
+  }
+  const scoredEvaluations = summary.evaluations.slice(count);
+
+  return {
+    ...summary,
+    assessments,
+    whiteCounts,
+    blackCounts,
+    ...gameAccuracyForEvaluations(scoredEvaluations),
+    ...averageCentipawnLossForEvaluations(scoredEvaluations),
+  };
+};
+
 export const buildGameAnalysisSummary = (
   moves: readonly string[],
   positions: StoredAtomicDbPosition[],
