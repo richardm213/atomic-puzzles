@@ -1,2 +1,5 @@
 [functions."game-analysis-sweep"]
 schedule = "*/3 * * * *"
+
+[functions."game-analysis-submit-sweep"]
+schedule = "*/15 * * * *"

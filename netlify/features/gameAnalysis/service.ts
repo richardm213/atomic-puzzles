@@ -25,6 +25,8 @@ const WOLFRANDOM_RANDOMIZED_PLIES = 6;
 const SWEEP_POSITION_BUDGET = 600;
 const SWEEP_JOB_LIMIT = 12;
 const SWEEP_JOB_CONCURRENCY = 1;
+const SUBMISSION_POSITION_BUDGET = 4_250;
+const ATOMIC_DB_QUEUE_TARGET = 4_800;
 
 type PositionState = {
   fen: string;
@@ -52,6 +54,15 @@ type GameAnalysisJobRow = {
 };
 
 type AtomicDbCredentials = { username: string; password: string };
+
+type SharedPositionRow = {
+  fen_key: string;
+  request_status: string | null;
+  task: string | null;
+  completed: boolean;
+  data: StoredAtomicDbPosition | null;
+  error: string | null;
+};
 
 const credentials = (): AtomicDbCredentials => {
   const username = process.env.ATOMICDB_USERNAME?.trim() ?? "";
@@ -84,6 +95,70 @@ const atomicDbFetch = async (
     );
   }
   throw new Error("AtomicDB request failed.");
+};
+
+export const gameAnalysisPositionKey = (fen: string): string =>
+  fen.trim().split(/\s+/).slice(0, 4).join(" ");
+
+const loadSharedPositions = async (
+  supabase: SupabaseClient,
+  states: PositionState[],
+): Promise<void> => {
+  const keys = [
+    ...new Set(
+      states.filter((state) => !state.completed).map((state) => gameAnalysisPositionKey(state.fen)),
+    ),
+  ];
+  const rows: SharedPositionRow[] = [];
+  for (let index = 0; index < keys.length; index += 50) {
+    const { data, error } = await supabase
+      .from("game_analysis_positions")
+      .select("fen_key,request_status,task,completed,data,error")
+      .in("fen_key", keys.slice(index, index + 50));
+    if (error) throw new Error(`Unable to load shared game positions: ${error.message}`);
+    rows.push(...((data ?? []) as SharedPositionRow[]));
+  }
+  const byKey = new Map(rows.map((row) => [row.fen_key, row]));
+  for (const state of states) {
+    const shared = byKey.get(gameAnalysisPositionKey(state.fen));
+    if (!shared) continue;
+    if (shared.completed && shared.data) {
+      state.completed = true;
+      state.data = shared.data;
+      delete state.error;
+    } else {
+      if (shared.request_status) state.requestStatus = shared.request_status;
+      if (shared.task) state.task = shared.task;
+      if (shared.error) state.error = shared.error;
+    }
+  }
+};
+
+const saveSharedPositions = async (
+  supabase: SupabaseClient,
+  states: PositionState[],
+  indexes: number[],
+): Promise<void> => {
+  const now = new Date().toISOString();
+  const rows = indexes
+    .map((index) => states[index]!)
+    .map((state) => ({
+      fen_key: gameAnalysisPositionKey(state.fen),
+      fen: state.fen,
+      request_status: state.requestStatus ?? null,
+      task: state.task === undefined || state.task === null ? null : String(state.task),
+      completed: state.completed,
+      data: state.data ?? null,
+      error: state.error ?? null,
+      requested_at: state.requestStatus ? now : null,
+      completed_at: state.completed ? now : null,
+      updated_at: now,
+    }));
+  if (rows.length === 0) return;
+  const { error } = await supabase
+    .from("game_analysis_positions")
+    .upsert(rows, { onConflict: "fen_key" });
+  if (error) throw new Error(`Unable to save shared game positions: ${error.message}`);
 };
 
 const terminalPosition = (fen: string): StoredAtomicDbPosition | null => {
@@ -304,7 +379,13 @@ const refundAndFail = async (
   if (error) throw new Error(`Unable to mark game analysis as failed: ${error.message}`);
 };
 
-export const processGameAnalysisJob = async (gameId: string, maxPositions = 160): Promise<void> => {
+type ProcessGameAnalysisOptions = { poll?: boolean; submit?: boolean };
+
+export const processGameAnalysisJob = async (
+  gameId: string,
+  maxPositions = 160,
+  options: ProcessGameAnalysisOptions = {},
+): Promise<number> => {
   const supabase = createServerSupabase("Game analysis worker");
   const { data, error } = await supabase
     .from("game_analyses")
@@ -314,7 +395,7 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
     .eq("game_id", gameId)
     .maybeSingle<GameAnalysisJobRow>();
   if (error) throw new Error(`Unable to load game analysis job: ${error.message}`);
-  if (!data || data.status === "ready" || data.status === "failed") return;
+  if (!data || data.status === "ready" || data.status === "failed") return 0;
 
   const moves = Array.isArray(data.moves)
     ? data.moves.filter((move): move is string => typeof move === "string")
@@ -324,13 +405,14 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
     : [];
   if (moves.length + 1 !== fens.length || fens.length !== data.total_positions) {
     await refundAndFail(supabase, data, "The saved game line is invalid.");
-    return;
+    return 0;
   }
 
   const ignoredInitialPlies = await randomizedOpeningPlies(data.game_id);
   // Position 6 is retained as the baseline needed to assess White's fourth move. Positions before
   // it are neither queried nor stored because they belong to Wolfrandom's randomized opening.
   const states = readStates(data, fens, ignoredInitialPlies);
+  await loadSharedPositions(supabase, states);
   const pendingIndexes = states
     .map((state, index) => ({ state, index }))
     .filter(({ state }) => !state.completed)
@@ -341,9 +423,12 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
     ...pendingIndexes.filter((index) => !standardOpeningIndexes.includes(index)),
   ];
 
-  const submittedIndexes = orderedIndexes
-    .filter((index) => Boolean(states[index]?.requestStatus))
-    .slice(0, maxPositions);
+  const submittedIndexes =
+    options.poll === false
+      ? []
+      : orderedIndexes
+          .filter((index) => Boolean(states[index]?.requestStatus))
+          .slice(0, maxPositions);
   await mapConcurrent(submittedIndexes, 5, async (index) => {
     const state = states[index]!;
     try {
@@ -357,6 +442,7 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
       state.error = errorMessage(positionError).slice(0, 500);
     }
   });
+  await saveSharedPositions(supabase, states, submittedIndexes);
 
   const preflightCompletedPositions = states.filter((state) => state.completed).length;
   if (preflightCompletedPositions > data.completed_positions) {
@@ -370,7 +456,7 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
     });
   }
 
-  const retryCount = data.retry_count + 1;
+  const retryCount = options.poll === false ? data.retry_count : data.retry_count + 1;
   if (preflightCompletedPositions === states.length) {
     const positions = states.map((state) => state.data).filter(Boolean) as StoredAtomicDbPosition[];
     const result = ignoreInitialGameAnalysisPlies(
@@ -390,7 +476,7 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
       completed_at: new Date().toISOString(),
       next_check_at: new Date(Date.now() + 86_400_000).toISOString(),
     });
-    return;
+    return 0;
   }
 
   let account: AtomicDbCredentials;
@@ -398,12 +484,14 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
     account = credentials();
   } catch (credentialError) {
     await refundAndFail(supabase, data, errorMessage(credentialError));
-    return;
+    return 0;
   }
 
-  const unsubmittedIndexes = orderedIndexes
-    .filter((index) => !states[index]?.requestStatus)
-    .slice(0, maxPositions);
+  const unsubmittedIndexes =
+    options.submit === false
+      ? []
+      : orderedIndexes.filter((index) => !states[index]?.requestStatus).slice(0, maxPositions);
+  let newlySubmitted = 0;
   await mapConcurrent(unsubmittedIndexes, 5, async (index) => {
     const state = states[index]!;
     if (state.completed || state.requestStatus) return;
@@ -412,11 +500,13 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
       state.requestStatus = typeof receipt.status === "string" ? receipt.status : "already-queued";
       state.task =
         typeof receipt.task === "string" || typeof receipt.task === "number" ? receipt.task : null;
+      newlySubmitted += 1;
       delete state.error;
     } catch (positionError) {
       state.error = errorMessage(positionError).slice(0, 500);
     }
   });
+  await saveSharedPositions(supabase, states, unsubmittedIndexes);
 
   const queuedPositions = states.filter(
     (state) => state.completed || Boolean(state.requestStatus),
@@ -435,18 +525,20 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
         ? "AtomicDB rejected the configured account credentials."
         : "No game positions could be added to AtomicDB.",
     );
-    return;
+    return newlySubmitted;
   }
 
   const nextPollDelay =
-    retryCount === 1
-      ? initialPollDelayMs(
-          Math.max(
-            (await atomicDbQueueSize(account).catch(() => null)) ?? 0,
-            incompleteQueuedPositions,
-          ),
-        )
-      : FOLLOW_UP_POLL_DELAY_MS;
+    options.poll === false
+      ? FOLLOW_UP_POLL_DELAY_MS
+      : retryCount === 1
+        ? initialPollDelayMs(
+            Math.max(
+              (await atomicDbQueueSize(account).catch(() => null)) ?? 0,
+              incompleteQueuedPositions,
+            ),
+          )
+        : FOLLOW_UP_POLL_DELAY_MS;
 
   await updateJob(supabase, data.game_id, {
     status: "processing",
@@ -457,10 +549,14 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
     error: null,
     next_check_at: new Date(Date.now() + nextPollDelay).toISOString(),
   });
+  return newlySubmitted;
 };
 
 export const gameAnalysisSweepPositionLimit = (jobCount: number): number =>
   Math.max(1, Math.floor(SWEEP_POSITION_BUDGET / Math.max(1, jobCount)));
+
+export const gameAnalysisSubmissionLimit = (queueSize: number): number =>
+  Math.min(SUBMISSION_POSITION_BUDGET, Math.max(0, ATOMIC_DB_QUEUE_TARGET - queueSize));
 
 export const processPendingGameAnalyses = async (limit = SWEEP_JOB_LIMIT): Promise<void> => {
   const supabase = createServerSupabase("Game analysis sweep");
@@ -480,4 +576,28 @@ export const processPendingGameAnalyses = async (limit = SWEEP_JOB_LIMIT): Promi
   await mapConcurrent(jobs, SWEEP_JOB_CONCURRENCY, async (row) => {
     await processGameAnalysisJob(String(row.game_id), positionsPerJob);
   });
+};
+
+export const submitPendingGameAnalysisPositions = async (): Promise<void> => {
+  const account = credentials();
+  const queueSize = (await atomicDbQueueSize(account).catch(() => null)) ?? 0;
+  let remaining = gameAnalysisSubmissionLimit(queueSize);
+  if (remaining === 0) return;
+
+  const supabase = createServerSupabase("Game analysis submission sweep");
+  const { data, error } = await supabase
+    .from("game_analyses")
+    .select("game_id")
+    .in("status", ["queued", "processing"])
+    .order("created_at", { ascending: true })
+    .limit(1000);
+  if (error) throw new Error(`Unable to load game analyses for submission: ${error.message}`);
+
+  for (const row of data ?? []) {
+    const submitted = await processGameAnalysisJob(String(row.game_id), remaining, {
+      poll: false,
+    });
+    remaining -= submitted;
+    if (remaining <= 0) break;
+  }
 };
