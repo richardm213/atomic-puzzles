@@ -48,6 +48,27 @@ const BoardPremovesSetting = () => {
   );
 };
 
+const BoardSoundSetting = () => {
+  const {
+    boardSoundsEnabled,
+    setBoardSoundsEnabled,
+    boardSoundSet,
+    setBoardSoundSet,
+    boardSoundSets,
+  } = useAppSettings();
+  return (
+    <>
+      <button type="button" onClick={() => setBoardSoundsEnabled((enabled) => !enabled)}>
+        {boardSoundsEnabled ? "Sounds on" : "Sounds muted"}
+      </button>
+      <button type="button" onClick={() => setBoardSoundSet("piano")}>
+        {boardSoundSet}
+      </button>
+      <span>{boardSoundSets.map((option) => option.label).join(", ")}</span>
+    </>
+  );
+};
+
 const PuzzleAnalysisTargetSetting = () => {
   const { puzzleAnalysisTarget, setPuzzleAnalysisTarget } = useAppSettings();
   return (
@@ -225,6 +246,43 @@ describe("board premove preference", () => {
       expect(screen.getByRole("button", { name: "Premoves disabled" })).toBeInTheDocument();
       expect(window.localStorage.getItem("atomic-puzzles.board.enable-premoves")).toBe("false");
     });
+  });
+});
+
+describe("board sound preferences", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("starts muted and persists the enabled state and selected sound set", async () => {
+    render(
+      <AppSettingsProvider>
+        <BoardSoundSetting />
+      </AppSettingsProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "Sounds muted" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Standard, Piano, NES, SFX, Futuristic, Lisp, Woodland, Robot, Pentatonic"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sounds muted" }));
+    fireEvent.click(screen.getByRole("button", { name: "standard" }));
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem("atomic-puzzles.board.sounds-enabled")).toBe("true");
+      expect(window.localStorage.getItem("atomic-puzzles.board.sound-set")).toBe('"piano"');
+    });
+  });
+
+  it("falls back to Standard when a stored sound set is invalid", () => {
+    window.localStorage.setItem("atomic-puzzles.board.sound-set", '"unknown"');
+
+    render(
+      <AppSettingsProvider>
+        <BoardSoundSetting />
+      </AppSettingsProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "standard" })).toBeInTheDocument();
   });
 });
 

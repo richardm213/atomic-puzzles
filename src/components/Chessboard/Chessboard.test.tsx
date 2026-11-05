@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   cancelPremove: vi.fn(),
   showBoardCoordinates: true,
   enableBoardPremoves: true,
+  boardSoundsEnabled: false,
+  playBoardMoveSound: vi.fn(),
 }));
 
 vi.mock("@lichess-org/chessground", () => ({
@@ -45,8 +47,15 @@ vi.mock("../../context/AppSettings", async (importOriginal) => {
       boardOverrideDarkSquare: "",
       showBoardCoordinates: mocks.showBoardCoordinates,
       enableBoardPremoves: mocks.enableBoardPremoves,
+      boardSoundsEnabled: mocks.boardSoundsEnabled,
+      boardSoundSet: "standard",
     }),
   };
+});
+
+vi.mock("../../lib/boardSounds/boardSounds", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/boardSounds/boardSounds")>();
+  return { ...actual, playBoardMoveSound: mocks.playBoardMoveSound };
 });
 
 const renderBoard = (
@@ -82,6 +91,8 @@ describe("Chessboard orchestration", () => {
     mocks.cancelPremove.mockClear();
     mocks.showBoardCoordinates = true;
     mocks.enableBoardPremoves = true;
+    mocks.boardSoundsEnabled = false;
+    mocks.playBoardMoveSound.mockClear();
   });
 
   it("does not mutate previously emitted move arrays", () => {
@@ -92,6 +103,21 @@ describe("Chessboard orchestration", () => {
 
     expect(initialState.lineMoves).toEqual([]);
     expect(states.at(-1)?.lineMoves).toEqual(["e4"]);
+  });
+
+  it("plays board sounds only after the muted-by-default preference is enabled", () => {
+    renderBoard();
+    play("e2", "e4");
+    expect(mocks.playBoardMoveSound).not.toHaveBeenCalled();
+
+    mocks.boardSoundsEnabled = true;
+    renderBoard();
+    play("e2", "e4");
+    expect(mocks.playBoardMoveSound).toHaveBeenLastCalledWith("standard", {
+      san: "e4",
+      uci: "e2e4",
+      isCheck: false,
+    });
   });
 
   it("keeps ? annotations visible in displayed solution lines", () => {

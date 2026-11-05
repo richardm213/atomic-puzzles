@@ -15,6 +15,11 @@ import {
   type ProfileRatingSlotPreferences,
 } from "../features/profile/profileRatingModes";
 import { usePersistedState } from "../hooks/usePersistedState";
+import {
+  BOARD_SOUND_SETS,
+  type BoardSoundSet,
+  isBoardSoundSet,
+} from "../lib/boardSounds/boardSounds";
 
 const STORAGE_KEYS = {
   theme: "atomic-puzzles.theme",
@@ -27,6 +32,8 @@ const STORAGE_KEYS = {
   boardOverrideDarkSquare: "atomic-puzzles.board-override-dark-square",
   showBoardCoordinates: "atomic-puzzles.board.show-coordinates",
   enableBoardPremoves: "atomic-puzzles.board.enable-premoves",
+  boardSoundsEnabled: "atomic-puzzles.board.sounds-enabled",
+  boardSoundSet: "atomic-puzzles.board.sound-set",
   hideRankingsOpenings: "atomic-puzzles.rankings.hide-openings",
   showChessComRankings: "atomic-puzzles.rankings.show-chesscom-users",
   profileRatingSlots: "atomic-puzzles.profile.rating-slots",
@@ -152,6 +159,7 @@ const DEFAULT_PIECE_SET = "cburnett";
 const DEFAULT_BOARD_THEME = "blue";
 const DEFAULT_CUSTOM_LIGHT_SQUARE = "#d4e4ff";
 const DEFAULT_CUSTOM_DARK_SQUARE = "#6291d8";
+const DEFAULT_BOARD_SOUND_SET: BoardSoundSet = "standard";
 
 export type AppSettingsContextValue = {
   theme: Theme;
@@ -176,6 +184,11 @@ export type AppSettingsContextValue = {
   setShowBoardCoordinates: Dispatch<SetStateAction<boolean>>;
   enableBoardPremoves: boolean;
   setEnableBoardPremoves: Dispatch<SetStateAction<boolean>>;
+  boardSoundsEnabled: boolean;
+  setBoardSoundsEnabled: Dispatch<SetStateAction<boolean>>;
+  boardSoundSet: BoardSoundSet;
+  setBoardSoundSet: Dispatch<SetStateAction<BoardSoundSet>>;
+  boardSoundSets: ReadonlyArray<{ value: BoardSoundSet; label: string }>;
   resetDisplaySettings: () => void;
   hideRankingsOpenings: boolean;
   setHideRankingsOpenings: Dispatch<SetStateAction<boolean>>;
@@ -221,6 +234,7 @@ const pieceSetSchema = z.string().refine(isValidPieceSet);
 const boardThemeSchema = z.string().refine(isValidBoardTheme);
 const hexColorSchema = z.string().refine(isValidHexColor);
 const boardColorOverrideSchema = z.string();
+const boardSoundSetSchema = z.custom<BoardSoundSet>(isBoardSoundSet);
 const profileRatingSlotSchema = z.enum([
   "auto",
   "blitz",
@@ -310,6 +324,16 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.boolean(),
     true,
   );
+  const [boardSoundsEnabled, setBoardSoundsEnabled] = usePersistedState(
+    STORAGE_KEYS.boardSoundsEnabled,
+    z.boolean(),
+    false,
+  );
+  const [boardSoundSet, setBoardSoundSet] = usePersistedState<BoardSoundSet>(
+    STORAGE_KEYS.boardSoundSet,
+    boardSoundSetSchema,
+    DEFAULT_BOARD_SOUND_SET,
+  );
   const [hideRankingsOpenings, setHideRankingsOpenings] = usePersistedState(
     STORAGE_KEYS.hideRankingsOpenings,
     z.boolean(),
@@ -395,6 +419,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     setBoardOverrideDarkSquare(DEFAULT_CUSTOM_DARK_SQUARE);
     setShowBoardCoordinates(false);
     setEnableBoardPremoves(true);
+    setBoardSoundsEnabled(false);
+    setBoardSoundSet(DEFAULT_BOARD_SOUND_SET);
   }, [
     setTheme,
     setPieceSet,
@@ -406,6 +432,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     setBoardOverrideDarkSquare,
     setShowBoardCoordinates,
     setEnableBoardPremoves,
+    setBoardSoundsEnabled,
+    setBoardSoundSet,
   ]);
 
   useEffect(() => {
@@ -437,6 +465,11 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowBoardCoordinates,
       enableBoardPremoves,
       setEnableBoardPremoves,
+      boardSoundsEnabled,
+      setBoardSoundsEnabled,
+      boardSoundSet,
+      setBoardSoundSet,
+      boardSoundSets: BOARD_SOUND_SETS,
       resetDisplaySettings,
       hideRankingsOpenings,
       setHideRankingsOpenings,
@@ -488,6 +521,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowBoardCoordinates,
       enableBoardPremoves,
       setEnableBoardPremoves,
+      boardSoundsEnabled,
+      setBoardSoundsEnabled,
+      boardSoundSet,
+      setBoardSoundSet,
       resetDisplaySettings,
       hideRankingsOpenings,
       setHideRankingsOpenings,

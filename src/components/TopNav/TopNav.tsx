@@ -31,6 +31,7 @@ import {
   type ProfileRatingSlotPreference,
 } from "../../features/profile/profileRatingModes";
 import { useNotificationNavigation } from "../../hooks/useNotificationNavigation";
+import { isBoardSoundSet, playBoardSound } from "../../lib/boardSounds/boardSounds";
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
 import {
@@ -154,6 +155,11 @@ export const TopNav = () => {
     setShowBoardCoordinates,
     enableBoardPremoves,
     setEnableBoardPremoves,
+    boardSoundsEnabled,
+    setBoardSoundsEnabled,
+    boardSoundSet,
+    setBoardSoundSet,
+    boardSoundSets,
     resetDisplaySettings,
     hideRankingsOpenings,
     setHideRankingsOpenings,
@@ -786,6 +792,43 @@ export const TopNav = () => {
                         onChange={(event) => setEnableBoardPremoves(event.target.checked)}
                       />
                     </label>
+                  </div>
+                  <div className="navSettingsSection navSettingsStack">
+                    <label className="navSettingsCheckbox">
+                      <span>Board sounds</span>
+                      <input
+                        type="checkbox"
+                        checked={boardSoundsEnabled}
+                        onChange={(event) => setBoardSoundsEnabled(event.target.checked)}
+                      />
+                    </label>
+                    <div className="navSettingsField">
+                      <label className="navSettingsLabel" htmlFor="board-sound-set-select">
+                        Sound set
+                      </label>
+                      <select
+                        id="board-sound-set-select"
+                        value={boardSoundSet}
+                        onChange={(event) => {
+                          if (isBoardSoundSet(event.target.value)) {
+                            setBoardSoundSet(event.target.value);
+                          }
+                        }}
+                      >
+                        {boardSoundSets.map((entry) => (
+                          <option key={entry.value} value={entry.value}>
+                            {entry.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      className="navSecondaryButton navSoundPreviewButton"
+                      onClick={() => playBoardSound(boardSoundSet, "move")}
+                    >
+                      Preview sound
+                    </button>
                   </div>
                   <div className="navSettingsSection">
                     <label className="navSettingsLabel" htmlFor="piece-set-select">

@@ -15,6 +15,7 @@ import type { Atomic } from "chessops/variant";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAppSettings } from "../../context/AppSettings";
+import { playBoardMoveSound } from "../../lib/boardSounds/boardSounds";
 import { lichessAnalysisGlyphSvg } from "../../lib/gameAnalysis/lichessAnalysisGlyph";
 import {
   convertUciLineToSan,
@@ -188,6 +189,8 @@ const ChessboardComponent = ({
     boardOverrideDarkSquare,
     showBoardCoordinates,
     enableBoardPremoves,
+    boardSoundsEnabled,
+    boardSoundSet,
   } = useAppSettings();
   const effectivePremovesEnabled = premovesEnabled && enableBoardPremoves;
   const elementRef = useRef<HTMLDivElement | null>(null);
@@ -220,6 +223,20 @@ const ChessboardComponent = ({
   const onStateChangeRef = useLatestRef(onStateChange);
   const onAttemptResolvedRef = useLatestRef(onAttemptResolved);
   const onNavigateHandledRef = useLatestRef(onNavigateHandled);
+  const boardSoundsEnabledRef = useLatestRef(boardSoundsEnabled);
+  const boardSoundSetRef = useLatestRef(boardSoundSet);
+
+  const playMoveSound = useCallback(
+    (positionAfterMove: Atomic, san: string, uci: string): void => {
+      if (!boardSoundsEnabledRef.current) return;
+      playBoardMoveSound(boardSoundSetRef.current, {
+        san,
+        uci,
+        isCheck: positionAfterMove.isCheck(),
+      });
+    },
+    [boardSoundSetRef, boardSoundsEnabledRef],
+  );
 
   const solutionUciLines = useMemo(
     () => suppliedSolutionUciLines ?? parseSolutionUciLines(fen, solution),
@@ -791,6 +808,7 @@ const ChessboardComponent = ({
 
       const opponentMoveSan = makeSan(position, move);
       position.play(move);
+      playMoveSound(position, opponentMoveSan, nextEntry.uci);
       saveMove(
         position,
         keyPair(nextEntry.uci.slice(0, 2), nextEntry.uci.slice(2, 4)),
@@ -810,7 +828,7 @@ const ChessboardComponent = ({
 
       return true;
     },
-    [boardStatusRef, candidateLinesRef, progressRef, saveMove],
+    [boardStatusRef, candidateLinesRef, playMoveSound, progressRef, saveMove],
   );
 
   const clearPendingPromotion = useCallback((): void => {
@@ -851,6 +869,12 @@ const ChessboardComponent = ({
       ) {
         syncBoard(position, historyRef.current.plies[historyRef.current.index]?.lastMove);
         return;
+      }
+
+      const soundPosition = tryCreateAtomicPosition(makeFen(position.toSetup())).position;
+      if (soundPosition) {
+        soundPosition.play(move);
+        playMoveSound(soundPosition, userMoveSan, userMoveText);
       }
 
       if (analysisModeRef.current) {
@@ -1011,6 +1035,7 @@ const ChessboardComponent = ({
       evaluationTimerRef,
       getCorrectLineMove,
       onAttemptResolvedRef,
+      playMoveSound,
       puzzleIdRef,
       progressRef,
       restrictMovesToSolutionRef,

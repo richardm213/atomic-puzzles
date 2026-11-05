@@ -559,6 +559,19 @@
   background: var(--color-panel-strong);
 }
 
+.navSecondaryButton:active {
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-panel-strong));
+}
+
+.navSecondaryButton:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.navSoundPreviewButton {
+  margin-top: 0;
+}
+
 .navSearchSlot {
   width: 30px;
   height: 30px;
