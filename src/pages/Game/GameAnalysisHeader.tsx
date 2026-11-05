@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
+import { lichessIcons } from "../../components/PlayerHoverCard/lichessIcons";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
+import { modeLabels } from "../../constants/matches";
 import type { ArchiveGame } from "../../lib/archive/games";
 import { decodeGameResult } from "../../lib/archive/games";
 import { gameTerminationLabel } from "../../lib/games/termination";
@@ -44,6 +46,15 @@ const ratingForPlayer = (game: ArchiveGame, username: string) =>
 const formatRating = (rating: number): string => String(Math.round(rating));
 
 const formatRatingChange = (change: number): string => (change > 0 ? `+${change}` : String(change));
+
+const gameModeIcons = {
+  hyperbullet: lichessIcons.ultraBullet,
+  bullet: lichessIcons.bullet,
+  blitz: lichessIcons.blitz,
+  rapid: lichessIcons.rapid,
+  wolfrandom: lichessIcons.blitz,
+  atomic960: lichessIcons.chess960,
+} as const;
 
 const PlayerRating = ({ game, username }: { game: ArchiveGame; username: string }) => {
   if (game.ratings_are_per_game !== true) return null;
@@ -120,24 +131,33 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
 
   return (
     <header className="gameAnalysisHeader">
-      <div className="gameAnalysisMeta">
-        <div className="gameAnalysisMetaPrimary">
-          <span>{game.time_control}</span>
-          <strong>{game.mode}</strong>
+      <div className="gameAnalysisMetaRow">
+        <span
+          className="gameAnalysisModeIcon"
+          aria-label={`${modeLabels[game.mode]} game`}
+          title={modeLabels[game.mode]}
+        >
+          {gameModeIcons[game.mode]}
+        </span>
+        <div className="gameAnalysisMeta">
+          <div className="gameAnalysisMetaPrimary">
+            <span>{game.time_control}</span>
+            <strong>{modeLabels[game.mode]}</strong>
+          </div>
+          {tournamentLocation ? (
+            <Link
+              className="gameAnalysisTournamentLink"
+              to="/tournaments/$tournamentId"
+              params={{
+                tournamentId: getTournamentRouteId(tournamentLocation.tournament.id),
+              }}
+              title={`Open ${tournamentLocation.tournament.title}`}
+            >
+              {tournamentLocation.tournament.title} {tournamentLocation.roundLabel}
+            </Link>
+          ) : null}
+          <span className="gameAnalysisDate">{formatLocalDateTime(game.start_ts)}</span>
         </div>
-        {tournamentLocation ? (
-          <Link
-            className="gameAnalysisTournamentLink"
-            to="/tournaments/$tournamentId"
-            params={{
-              tournamentId: getTournamentRouteId(tournamentLocation.tournament.id),
-            }}
-            title={`Open ${tournamentLocation.tournament.title}`}
-          >
-            {tournamentLocation.tournament.title} {tournamentLocation.roundLabel}
-          </Link>
-        ) : null}
-        <span className="gameAnalysisDate">{formatLocalDateTime(game.start_ts)}</span>
       </div>
       <div className="gameAnalysisPlayers">
         {player(white, "white")}

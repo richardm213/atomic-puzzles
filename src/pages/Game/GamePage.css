@@ -1,3 +1,7 @@
+.gameAnalysisPage {
+  padding-inline: clamp(8px, 1vw, 14px);
+}
+
 .gameAnalysisSidebar {
   min-width: 0;
   padding: 0;
@@ -103,6 +107,23 @@
   padding: 14px 12px;
 }
 
+.gameAnalysisMetaRow {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.gameAnalysisModeIcon {
+  color: color-mix(in srgb, var(--color-heading) 76%, var(--color-muted));
+  font-family: "Lichess Icons", sans-serif;
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1;
+  text-align: center;
+}
+
 .analysisRightPanel.gameAnalysisPanel:not(.customExplorerSplit):not(.explorerCollapsed) {
   grid-template-rows: minmax(300px, 1.35fr) minmax(120px, 0.65fr) auto;
 }
@@ -156,7 +177,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--color-heading);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   text-decoration: none;
   text-overflow: ellipsis;
@@ -1200,9 +1221,9 @@
   .analysisPage.gameAnalysisPage {
     width: 100%;
     grid-template-columns:
-      clamp(180px, 16vw, 230px) minmax(0, var(--analysis-board-size))
+      clamp(250px, 18vw, 300px) minmax(0, var(--analysis-board-size))
       clamp(340px, 28vw, 400px);
-    column-gap: clamp(16px, 1.5vw, 24px);
+    column-gap: clamp(12px, 1vw, 18px);
   }
 
   .gameAnalysisPage .gameAnalysisSidebar {
@@ -1230,22 +1251,22 @@
 @media (min-width: 1600px) {
   .analysisPage.gameAnalysisPage {
     width: 100%;
-    grid-template-columns: minmax(230px, 260px) minmax(0, var(--analysis-board-size)) minmax(
+    grid-template-columns: minmax(280px, 310px) minmax(0, var(--analysis-board-size)) minmax(
         360px,
         400px
       );
-    column-gap: 28px;
+    column-gap: 20px;
   }
 }
 
 @media (min-width: 2400px) {
   .analysisPage.gameAnalysisPage {
     width: 100%;
-    grid-template-columns: minmax(240px, 270px) minmax(0, var(--analysis-board-size)) minmax(
+    grid-template-columns: minmax(300px, 330px) minmax(0, var(--analysis-board-size)) minmax(
         360px,
         400px
       );
-    column-gap: 32px;
+    column-gap: 22px;
   }
 }
 
