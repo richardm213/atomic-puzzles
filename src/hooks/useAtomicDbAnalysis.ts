@@ -30,6 +30,7 @@ export type AtomicDbAnalysisOptions = {
   plyCount?: number;
   suspended?: boolean;
   fallbackToEngine?: boolean;
+  refreshPreloaded?: boolean;
 };
 
 type RequestState = AtomicDbAnalysisState & { requestedFen: string | null };
@@ -96,6 +97,7 @@ export const useAtomicDbAnalysis = (
     plyCount: requestedPlyCount = 5,
     suspended = false,
     fallbackToEngine = false,
+    refreshPreloaded = true,
   }: AtomicDbAnalysisOptions = {},
 ): AtomicDbAnalysisState => {
   const [state, setState] = useState<RequestState>(INITIAL_STATE);
@@ -318,6 +320,10 @@ export const useAtomicDbAnalysis = (
           publishAtomicDbOrFallback(cached.value);
           return () => controller.abort();
         }
+        if (cached.preloaded && cached.complete && !refreshPreloaded) {
+          publishPosition(cached.value);
+          return () => controller.abort();
+        }
         showingBackedPosition = true;
         publishBackedPosition(cached.value);
       }
@@ -376,6 +382,7 @@ export const useAtomicDbAnalysis = (
     fen,
     requestedLineCount,
     requestedPlyCount,
+    refreshPreloaded,
     suspended,
   ]);
 

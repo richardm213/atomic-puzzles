@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   averageCentipawnLossForEvaluations,
   CLASSIFICATION_SYMBOLS,
+  evaluationsForPositions,
   GAME_ANALYSIS_STATUSES,
   gameAccuracyForEvaluations,
   type GameAnalysisRecord,
@@ -26,6 +27,17 @@ const atomicDbLineSchema = z.object({
   pv: z.array(z.string()),
 });
 
+const candidateSchema = z.object({
+  move: z.string(),
+  status: z.string(),
+  closure: z.string().nullable(),
+  score: z.number().nullable(),
+  point: z.number().nullable(),
+  mate: z.number().nullable(),
+  backedPlies: z.number().int().nonnegative(),
+  pv: z.array(z.string()),
+});
+
 const positionSchema = z.object({
   fen: z.string(),
   key: z.string().nullable(),
@@ -36,6 +48,7 @@ const positionSchema = z.object({
   bestMove: z.string().nullable(),
   budgetNodes: z.number().nullable(),
   lines: z.array(atomicDbLineSchema),
+  candidates: z.array(candidateSchema).optional(),
 });
 
 const countsSchema = z.record(z.enum(MOVE_CLASSIFICATIONS), z.number());
@@ -63,6 +76,7 @@ const summarySchema = z
     blackCounts: countsSchema,
   })
   .transform((summary) => {
+    const evaluations = evaluationsForPositions(summary.positions);
     const normalizeCounts = (counts: typeof summary.whiteCounts) => ({
       ...counts,
       excellent: 0,
@@ -71,6 +85,7 @@ const summarySchema = z
     });
     return {
       ...summary,
+      evaluations,
       assessments: summary.assessments.map((assessment) =>
         assessment.classification === "excellent" || assessment.classification === "good"
           ? {
@@ -82,8 +97,8 @@ const summarySchema = z
       ),
       whiteCounts: normalizeCounts(summary.whiteCounts),
       blackCounts: normalizeCounts(summary.blackCounts),
-      ...gameAccuracyForEvaluations(summary.evaluations),
-      ...averageCentipawnLossForEvaluations(summary.evaluations),
+      ...gameAccuracyForEvaluations(evaluations),
+      ...averageCentipawnLossForEvaluations(evaluations),
     };
   });
 

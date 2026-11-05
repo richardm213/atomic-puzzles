@@ -98,6 +98,50 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.result?.position?.key).toBe("fresh-atomicdb-position");
   });
 
+  it("uses a preloaded game position without an AtomicDB call when continuations are hidden", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    replacePreloadedAtomicDbGamePositions([
+      {
+        fen: FIRST_FEN,
+        position: {
+          key: "saved-game-position",
+          outcome: "UNKNOWN",
+          closure: null,
+          score: 420,
+          point: 400,
+          bestMove: "a1a2",
+          moves: [
+            {
+              uci: "a1a2",
+              outcome: "UNKNOWN",
+              closure: null,
+              score: 420,
+              point: 400,
+              mate: null,
+              backedPlies: 8,
+            },
+          ],
+        },
+        principalVariations: { a1a2: ["a1a2"] },
+        complete: true,
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(FIRST_FEN, {
+        debounceMs: 0,
+        lineCount: 1,
+        plyCount: 1,
+        refreshPreloaded: false,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.result?.position?.key).toBe("saved-game-position");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("checks AtomicDB before using Fairy-Stockfish for six-piece endgames", async () => {
     const fen = "8/8/8/8/3k4/8/1K3P1P/6NR w - - 3 71";
     const fetchMock = vi.fn().mockResolvedValue(

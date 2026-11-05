@@ -25,6 +25,17 @@ export type AtomicDbAnalysisLine = {
   pv: string[];
 };
 
+export type StoredAtomicDbCandidate = {
+  move: string;
+  status: string;
+  closure: string | null;
+  score: number | null;
+  point: number | null;
+  mate: number | null;
+  backedPlies: number;
+  pv: string[];
+};
+
 export type StoredAtomicDbPosition = {
   fen: string;
   key: string | null;
@@ -35,6 +46,7 @@ export type StoredAtomicDbPosition = {
   bestMove: string | null;
   budgetNodes: number | null;
   lines: AtomicDbAnalysisLine[];
+  candidates?: StoredAtomicDbCandidate[] | undefined;
 };
 
 export type GameMoveAssessment = {
@@ -120,6 +132,33 @@ export const parseStoredAtomicDbPosition = (
         ];
       })
     : [];
+  const lineByMove = new Map(
+    lines.flatMap((line) => (line.move ? ([[line.move, line]] as const) : [])),
+  );
+  const candidates = Array.isArray(response.moves)
+    ? response.moves
+        .flatMap((entry): StoredAtomicDbCandidate[] => {
+          if (!entry || typeof entry !== "object") return [];
+          const candidate = entry as Record<string, unknown>;
+          const move = nullableString(candidate.uci);
+          if (!move || !/^[a-h][1-8][a-h][1-8][nbrq]?$/.test(move) || candidate.floor === true) {
+            return [];
+          }
+          return [
+            {
+              move,
+              status: typeof candidate.status === "string" ? candidate.status : "UNKNOWN",
+              closure: nullableString(candidate.closure),
+              score: nullableNumber(candidate.score),
+              point: nullableNumber(candidate.point),
+              mate: nullableNumber(candidate.mate),
+              backedPlies: Math.max(0, Math.floor(nullableNumber(candidate.backed_plies) ?? 0)),
+              pv: lineByMove.get(move)?.pv ?? [move],
+            },
+          ];
+        })
+        .slice(0, 5)
+    : [];
   const nodeCounts = [
     nullableNumber(analysis?.budget_nodes),
     nullableNumber(analysis?.nodes),
@@ -137,6 +176,7 @@ export const parseStoredAtomicDbPosition = (
     bestMove: nullableString(response.best_move),
     budgetNodes: nodeCounts.length > 0 ? Math.max(...nodeCounts) : null,
     lines,
+    candidates,
   };
 };
 
@@ -150,10 +190,17 @@ const terminalCentipawns = (status: string, fen: string): number | null => {
 
 const positionCentipawns = (position: StoredAtomicDbPosition): number =>
   terminalCentipawns(position.status, position.fen) ??
-  position.lines[0]?.cp ??
-  position.point ??
   position.score ??
+  position.point ??
+  position.lines[0]?.cp ??
   0;
+
+export const evaluationsForPositions = (positions: readonly StoredAtomicDbPosition[]): number[] =>
+  positions.map((position) =>
+    position.fen.trim().split(/\s+/)[1] === "b"
+      ? -positionCentipawns(position)
+      : positionCentipawns(position),
+  );
 
 const ceiledCentipawns = (centipawns: number): number =>
   Math.max(-1_000, Math.min(1_000, centipawns));
@@ -285,11 +332,7 @@ export const buildGameAnalysisSummary = (
     throw new Error("Game analysis positions do not match the move list.");
   }
 
-  const evaluations = positions.map((position) =>
-    position.fen.trim().split(/\s+/)[1] === "b"
-      ? -positionCentipawns(position)
-      : positionCentipawns(position),
-  );
+  const evaluations = evaluationsForPositions(positions);
   const assessments = moves.map((uci, index): GameMoveAssessment => {
     const before = positions[index]!;
     const after = positions[index + 1]!;

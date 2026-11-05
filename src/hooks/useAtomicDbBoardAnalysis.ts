@@ -11,6 +11,7 @@ export const useAtomicDbBoardAnalysis = ({
   enabled,
   navigation,
   lineCount,
+  showFollowUpMoves = true,
   terminalOutcome = null,
   suspended = false,
 }: {
@@ -18,6 +19,7 @@ export const useAtomicDbBoardAnalysis = ({
   enabled: boolean;
   navigation: SolutionNavigation | null;
   lineCount: number;
+  showFollowUpMoves?: boolean;
   terminalOutcome?: "white" | "black" | "draw" | null;
   suspended?: boolean;
 }) => {
@@ -30,7 +32,8 @@ export const useAtomicDbBoardAnalysis = ({
     // invisible continuations while the engine panel is disabled. Any board navigation preempts
     // the current request so the move is applied before analysis resumes on its destination.
     lineCount: enabled ? lineCount : 0,
-    plyCount: PRINCIPAL_VARIATION_PLIES,
+    plyCount: showFollowUpMoves ? PRINCIPAL_VARIATION_PLIES : 1,
+    refreshPreloaded: showFollowUpMoves,
     suspended: navigationPending || suspended,
     fallbackToEngine: enabled,
     enabled: terminalOutcome === null,

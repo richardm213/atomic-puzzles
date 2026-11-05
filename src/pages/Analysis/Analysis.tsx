@@ -488,6 +488,7 @@ export const AnalysisPage = ({ game, initialFen, initialPgn = "" }: AnalysisPage
     enabled: positionAnalysisEnabled,
     navigation,
     lineCount: atomicDbEngineSettings.lineCount,
+    showFollowUpMoves: atomicDbEngineSettings.showFollowUpMoves,
     terminalOutcome,
     suspended: Boolean(game && gameAnalysis.isLoading),
   });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildGameAnalysisSummary,
+  evaluationsForPositions,
   parseStoredAtomicDbPosition,
   type StoredAtomicDbPosition,
 } from "../../../shared/domain/gameAnalysis";
@@ -28,9 +29,33 @@ describe("AtomicDB game analysis classification", () => {
         nodes: 12_000_006_934,
         lines: [{ move: "a1a2", cp: 10, nodes: 10_000_006_934, pv: ["a1a2"] }],
       },
+      moves: [
+        { uci: "a1a2", status: "UNKNOWN", score: 80, point: 10, backed_plies: 4 },
+        { uci: "a1b1", status: "UNKNOWN", score: 70, point: 8, backed_plies: 3 },
+        { uci: "a1b2", status: "UNKNOWN", score: 60, point: 6, backed_plies: 2 },
+        { uci: "a1a3", status: "UNKNOWN", score: 50, point: 4, backed_plies: 1 },
+        { uci: "a1b3", status: "UNKNOWN", score: 40, point: 2, backed_plies: 0 },
+        { uci: "a1a4", status: "UNKNOWN", score: 30, point: 0, backed_plies: 0 },
+      ],
     });
 
     expect(parsed?.budgetNodes).toBe(12_000_006_934);
+    expect(parsed?.candidates).toHaveLength(5);
+    expect(parsed?.candidates?.[0]).toMatchObject({
+      move: "a1a2",
+      score: 80,
+      point: 10,
+      backedPlies: 4,
+      pv: ["a1a2"],
+    });
+  });
+
+  it("charts AtomicDB's backed position value instead of the current engine pass", () => {
+    const stored = position("8/8/8/8/8/8/8/K6k w - - 0 1", 545, "a1a2");
+    stored.score = 1_238;
+    stored.point = 545;
+
+    expect(evaluationsForPositions([stored])).toEqual([1_238]);
   });
 
   it("classifies loss from the mover's perspective and lowers only that player's accuracy", () => {

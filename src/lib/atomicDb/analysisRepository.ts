@@ -17,8 +17,20 @@ type SharedRequest<T> = {
 
 type CacheLookup<T> = { found: true; value: T } | { found: false };
 export type AtomicDbPositionCacheLookup =
-  | { found: true; value: AtomicDbPosition | null; backed: false }
-  | { found: true; value: AtomicDbPosition; backed: true }
+  | {
+      found: true;
+      value: AtomicDbPosition | null;
+      backed: false;
+      preloaded: boolean;
+      complete: boolean;
+    }
+  | {
+      found: true;
+      value: AtomicDbPosition;
+      backed: true;
+      preloaded: boolean;
+      complete: boolean;
+    }
   | { found: false };
 
 class AtomicDbRequestStore<T> {
@@ -134,7 +146,10 @@ const positions = new AtomicDbRequestStore<AtomicDbPosition | null>(128);
 const backedPositions = new AtomicDbRequestStore<AtomicDbPosition>(128);
 const variationBatches = new AtomicDbRequestStore<AtomicDbPrincipalVariationResult>(64);
 const variationLines = new AtomicDbRequestStore<string[]>(128);
-const preloadedGamePositions = new Map<string, AtomicDbPosition | null>();
+const preloadedGamePositions = new Map<
+  string,
+  { position: AtomicDbPosition | null; complete: boolean }
+>();
 const preloadedGameVariationLines = new Map<string, string[]>();
 
 const variationBatchKey = (fen: string, rootMoves: string[], plyCount: number): string =>
@@ -146,6 +161,7 @@ export type PreloadedAtomicDbGamePosition = {
   fen: string;
   position: AtomicDbPosition | null;
   principalVariations: Record<string, string[]>;
+  complete?: boolean;
 };
 
 export const replacePreloadedAtomicDbGamePositions = (
@@ -153,8 +169,8 @@ export const replacePreloadedAtomicDbGamePositions = (
 ): void => {
   preloadedGamePositions.clear();
   preloadedGameVariationLines.clear();
-  for (const { fen, position, principalVariations } of entries) {
-    preloadedGamePositions.set(fen, position);
+  for (const { fen, position, principalVariations, complete = false } of entries) {
+    preloadedGamePositions.set(fen, { position, complete });
     for (const move of position?.moves ?? []) {
       const line = principalVariations[move.uci] ?? [move.uci];
       for (let plyCount = 1; plyCount <= 5; plyCount += 1) {
@@ -174,15 +190,27 @@ export const clearPreloadedAtomicDbGamePositions = (): void => {
 
 export const peekAtomicDbPosition = (fen: string): AtomicDbPositionCacheLookup => {
   if (preloadedGamePositions.has(fen)) {
-    const preloaded = preloadedGamePositions.get(fen) ?? null;
-    return preloaded
-      ? { found: true, value: preloaded, backed: true }
-      : { found: true, value: null, backed: false };
+    const preloaded = preloadedGamePositions.get(fen)!;
+    return preloaded.position
+      ? {
+          found: true,
+          value: preloaded.position,
+          backed: true,
+          preloaded: true,
+          complete: preloaded.complete,
+        }
+      : {
+          found: true,
+          value: null,
+          backed: false,
+          preloaded: true,
+          complete: preloaded.complete,
+        };
   }
   const complete = positions.peek(fen);
-  if (complete.found) return { ...complete, backed: false };
+  if (complete.found) return { ...complete, backed: false, preloaded: false, complete: true };
   const backed = backedPositions.peek(fen);
-  return backed.found ? { ...backed, backed: true } : backed;
+  return backed.found ? { ...backed, backed: true, preloaded: false, complete: false } : backed;
 };
 
 export const loadAtomicDbPosition = (

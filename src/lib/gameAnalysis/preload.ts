@@ -1,12 +1,13 @@
-import {
-  replacePreloadedAtomicDbGamePositions,
-  type PreloadedAtomicDbGamePosition,
-} from "../atomicDb/analysisRepository";
-import type { AtomicDbOutcome, AtomicDbPosition } from "../../utils/atomicDb";
 import type {
   GameAnalysisRecord,
   StoredAtomicDbPosition,
 } from "../../../shared/domain/gameAnalysis";
+import type { AtomicDbOutcome, AtomicDbPosition } from "../../utils/atomicDb";
+import {
+  clearPreloadedAtomicDbGamePositions,
+  type PreloadedAtomicDbGamePosition,
+  replacePreloadedAtomicDbGamePositions,
+} from "../atomicDb/analysisRepository";
 
 const UCI_MOVE = /^[a-h][1-8][a-h][1-8][nbrq]?$/;
 
@@ -16,19 +17,42 @@ const outcome = (status: string): AtomicDbOutcome =>
 const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGamePosition => {
   const principalVariations: Record<string, string[]> = {};
   const moves: AtomicDbPosition["moves"] = [];
-  for (const line of stored.lines) {
-    const move = line.move ?? line.pv[0] ?? null;
+  const storedMoves = stored.candidates?.length
+    ? stored.candidates.map((candidate) => ({
+        move: candidate.move,
+        status: candidate.status,
+        closure: candidate.closure,
+        score: candidate.score,
+        point: candidate.point,
+        mate: candidate.mate,
+        backedPlies: candidate.backedPlies,
+        pv: candidate.pv,
+      }))
+    : stored.lines.map((line) => ({
+        move: line.move ?? line.pv[0] ?? null,
+        status: "UNKNOWN",
+        closure: null,
+        score: line.cp,
+        point: null,
+        mate: line.mate,
+        // A stored line's depth is the search depth used to produce the game report. It is not
+        // AtomicDB's `backed_plies`.
+        backedPlies: 0,
+        pv: line.pv,
+      }));
+  for (const candidate of storedMoves) {
+    const move = candidate.move;
     if (!move || !UCI_MOVE.test(move) || moves.some((entry) => entry.uci === move)) continue;
-    const pv = line.pv[0] === move ? line.pv : [move, ...line.pv];
+    const pv = candidate.pv[0] === move ? candidate.pv : [move, ...candidate.pv];
     principalVariations[move] = pv.length > 0 ? pv : [move];
     moves.push({
       uci: move,
-      outcome: "UNKNOWN",
-      closure: null,
-      score: line.cp,
-      point: null,
-      mate: line.mate,
-      backedPlies: Math.max(0, Math.floor(line.depth ?? 0)),
+      outcome: outcome(candidate.status),
+      closure: candidate.closure,
+      score: candidate.score,
+      point: candidate.point,
+      mate: candidate.mate,
+      backedPlies: candidate.backedPlies,
     });
   }
 
@@ -51,6 +75,7 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
 
   return {
     fen: stored.fen,
+    complete: stored.candidates !== undefined,
     position: {
       key: stored.key,
       outcome: outcome(stored.status),
@@ -65,6 +90,9 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
 };
 
 export const preloadCompletedGameAnalysis = (analysis: GameAnalysisRecord | null): void => {
-  if (analysis?.status !== "ready" || !analysis.result) return;
+  if (analysis?.status !== "ready" || !analysis.result) {
+    clearPreloadedAtomicDbGamePositions();
+    return;
+  }
   replacePreloadedAtomicDbGamePositions(analysis.result.positions.map(preloadPosition));
 };
