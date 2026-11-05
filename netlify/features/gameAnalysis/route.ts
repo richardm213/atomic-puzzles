@@ -17,6 +17,7 @@ import { parseJsonBody } from "../../platform/validation";
 const gameIdSchema = z.string().trim().min(1).max(160);
 const inputSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("status"), gameId: gameIdSchema }),
+  z.object({ action: z.literal("adminList") }),
   z.object({
     action: z.literal("request"),
     gameId: gameIdSchema,
@@ -39,6 +40,20 @@ type GameAnalysisRow = {
   updated_at: string;
   completed_at: string | null;
 };
+
+type AdminGameAnalysisRow = {
+  game_id: string;
+  status: "queued" | "processing" | "ready";
+  requested_by: string;
+  total_positions: number;
+  completed_positions: number;
+  moves: unknown;
+  position_states: unknown;
+  created_at: string;
+  completed_at: string | null;
+};
+
+const GAME_ANALYSIS_ADMIN = "seaside_tiramisu";
 
 const publicRecord = (row: GameAnalysisRow) => ({
   gameId: row.game_id,
@@ -68,6 +83,59 @@ const selectRecord = async (gameId: string): Promise<GameAnalysisRow | null> => 
   return data;
 };
 
+const completedMoveCount = (row: AdminGameAnalysisRow): number => {
+  const totalMoves = Array.isArray(row.moves)
+    ? row.moves.length
+    : Math.max(0, row.total_positions - 1);
+  if (row.status === "ready") return totalMoves;
+  if (!Array.isArray(row.position_states)) return Math.min(totalMoves, row.completed_positions);
+  return row.position_states
+    .slice(1)
+    .filter(
+      (state) => state && typeof state === "object" && Reflect.get(state, "completed") === true,
+    ).length;
+};
+
+const adminRecord = (row: AdminGameAnalysisRow) => ({
+  gameId: row.game_id,
+  status: row.status,
+  requestedBy: row.requested_by,
+  completedMoves: completedMoveCount(row),
+  totalMoves: Array.isArray(row.moves) ? row.moves.length : Math.max(0, row.total_positions - 1),
+  createdAt: row.created_at,
+  completedAt: row.completed_at,
+});
+
+const selectAdminRecords = async () => {
+  const supabase = createServerSupabase("Game analysis admin list");
+  const columns =
+    "game_id,status,requested_by,total_positions,completed_positions,created_at,completed_at,moves,position_states";
+  const [pendingResult, completedResult] = await Promise.all([
+    supabase
+      .from("game_analyses")
+      .select(columns)
+      .in("status", ["queued", "processing"])
+      .order("created_at", { ascending: true })
+      .limit(1000),
+    supabase
+      .from("game_analyses")
+      .select(columns)
+      .eq("status", "ready")
+      .order("completed_at", { ascending: false })
+      .limit(10),
+  ]);
+  if (pendingResult.error) {
+    throw new Error(`Unable to load pending game analyses: ${pendingResult.error.message}`);
+  }
+  if (completedResult.error) {
+    throw new Error(`Unable to load completed game analyses: ${completedResult.error.message}`);
+  }
+  return {
+    pending: ((pendingResult.data ?? []) as AdminGameAnalysisRow[]).map(adminRecord),
+    completed: ((completedResult.data ?? []) as AdminGameAnalysisRow[]).map(adminRecord),
+  };
+};
+
 const dispatchWorker = async (event: FunctionEvent, gameId: string): Promise<void> => {
   const secret = process.env.GAME_ANALYSIS_WORKER_SECRET?.trim() ?? "";
   const host = event.headers?.host ?? event.headers?.Host ?? "";
@@ -88,6 +156,15 @@ export const gameAnalysisRoute = async (event: FunctionEvent) => {
   if (input.action === "status") {
     const record = await selectRecord(input.gameId);
     return identityResponse(identity, 200, { analysis: record ? publicRecord(record) : null });
+  }
+
+  if (input.action === "adminList") {
+    requireSameOrigin(event.headers, "Cross-site game analysis requests are not allowed.");
+    const username = requireUsername(identity, "Sign in to view game analyses.");
+    if (username.toLowerCase() !== GAME_ANALYSIS_ADMIN) {
+      throw new HttpError(403, "This page is restricted.");
+    }
+    return identityResponse(identity, 200, await selectAdminRecords());
   }
 
   requireSameOrigin(event.headers, "Cross-site game analysis requests are not allowed.");

@@ -10,6 +10,7 @@ import {
   faChevronRight,
   faClipboardCheck,
   faGear,
+  faListCheck,
   faRightFromBracket,
   faRightToBracket,
   faTriangleExclamation,
@@ -666,6 +667,17 @@ export const TopNav = () => {
                           <FontAwesomeIcon icon={faClipboardCheck} />
                         </span>
                         Shop redemptions
+                      </Link>
+                      <Link
+                        className="navProfileDropdownItem"
+                        to="/admin/game-analyses"
+                        role="menuitem"
+                        onClick={() => setOpenPanel(null)}
+                      >
+                        <span className="navProfileDropdownIcon" aria-hidden="true">
+                          <FontAwesomeIcon icon={faListCheck} />
+                        </span>
+                        Game analyses
                       </Link>
                       <Link
                         className="navProfileDropdownItem"

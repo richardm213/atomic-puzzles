@@ -1,0 +1,196 @@
+.gameAnalysesPage {
+  width: min(100%, 980px);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.gameAnalysesPanel {
+  overflow: hidden;
+  padding: 0;
+}
+
+.gameAnalysesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gameAnalysesHeader h1 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: clamp(24px, 4vw, 32px);
+}
+
+.gameAnalysesHeader > span {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.gameAnalysesSection + .gameAnalysesSection {
+  border-top: 1px solid var(--color-border);
+}
+
+.gameAnalysesSection h2 {
+  margin: 0;
+  padding: var(--space-5) var(--space-6) var(--space-3);
+  color: var(--color-heading);
+  font-size: 18px;
+}
+
+.gameAnalysesColumns,
+.gameAnalysesRow {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(180px, 1.3fr) minmax(140px, 1fr) minmax(
+      170px,
+      1fr
+    );
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.gameAnalysesColumns {
+  padding: var(--space-2) var(--space-6);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-inset);
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.gameAnalysesList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gameAnalysesRow {
+  min-height: 64px;
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gameAnalysesRow:last-child {
+  border-bottom: 0;
+}
+
+.gameAnalysesGame a,
+.gameAnalysesRequester a {
+  color: var(--color-primary-soft);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.gameAnalysesGame a {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.gameAnalysesProgress > div {
+  display: grid;
+  grid-template-columns: 58px minmax(80px, 1fr);
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.gameAnalysesProgress span,
+.gameAnalysesTime {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.gameAnalysesProgress progress {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-surface-inset);
+}
+
+.gameAnalysesProgress progress::-webkit-progress-bar {
+  border-radius: 999px;
+  background: var(--color-surface-inset);
+}
+
+.gameAnalysesProgress progress::-webkit-progress-value {
+  border-radius: 999px;
+  background: var(--color-primary);
+}
+
+.gameAnalysesProgress progress::-moz-progress-bar {
+  border-radius: 999px;
+  background: var(--color-primary);
+}
+
+.gameAnalysesMobileLabel {
+  display: none;
+}
+
+.gameAnalysesGame a:hover,
+.gameAnalysesRequester a:hover {
+  text-decoration: underline;
+}
+
+.gameAnalysesGame a:focus-visible,
+.gameAnalysesRequester a:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.gameAnalysesError,
+.gameAnalysesState {
+  margin: 0;
+  padding: var(--space-5) var(--space-6);
+}
+
+.gameAnalysesError {
+  color: var(--color-danger);
+}
+
+@media (max-width: 720px) {
+  .gameAnalysesHeader,
+  .gameAnalysesSection h2,
+  .gameAnalysesRow,
+  .gameAnalysesError,
+  .gameAnalysesState {
+    padding-inline: var(--space-4);
+  }
+
+  .gameAnalysesColumns {
+    display: none;
+  }
+
+  .gameAnalysesRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-3) var(--space-4);
+    padding-block: var(--space-4);
+  }
+
+  .gameAnalysesRow > div {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .gameAnalysesProgress > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gameAnalysesMobileLabel {
+    display: block;
+    color: var(--color-subtle);
+    font-size: 11px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+}
