@@ -51,9 +51,12 @@ describe("game analysis sweep", () => {
   });
 
   it("does not let submission-only passes postpone the next progress poll", () => {
-    expect(gameAnalysisPollSchedule(false, 4, 120_000, 1_000)).toEqual({});
+    expect(gameAnalysisPollSchedule(false, 4, 120_000, 1_000)).toEqual({
+      next_check_at: new Date(1_000).toISOString(),
+    });
     expect(gameAnalysisPollSchedule(true, 5, 120_000, 1_000)).toEqual({
       retry_count: 5,
+      last_checked_at: new Date(1_000).toISOString(),
       next_check_at: new Date(121_000).toISOString(),
     });
   });

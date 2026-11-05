@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import process from "node:process";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -17,8 +18,8 @@ import { createServerSupabase } from "../../platform/environment";
 const ATOMIC_DB_BASE_URL = "https://belzedar.duckdns.org/atomicdb";
 const MAX_RETRIES = 12;
 const INITIAL_POLL_BASE_MS = 2 * 60_000;
-const MAX_INITIAL_POLL_DELAY_MS = 60 * 60_000;
-const FOLLOW_UP_POLL_DELAY_MS = 2 * 60_000;
+const MAX_INITIAL_POLL_DELAY_MS = 10 * 60_000;
+const FOLLOW_UP_POLL_DELAY_MS = 60_000;
 const EXPECTED_ATOMIC_DB_WORKERS = 4;
 const ESTIMATED_WORKER_NODES_PER_SECOND = 14_000_000;
 const WOLFRANDOM_RANDOMIZED_PLIES = 6;
@@ -30,6 +31,7 @@ const SWEEP_JOB_LIMIT = SWEEP_POSITION_BUDGET;
 const SWEEP_JOB_CONCURRENCY = 1;
 const SUBMISSION_POSITION_BUDGET = 4_250;
 const ATOMIC_DB_QUEUE_TARGET = 4_800;
+const WORKER_LEASE_SECONDS = 10 * 60;
 
 type PositionState = {
   fen: string;
@@ -243,8 +245,29 @@ const readStates = (
   });
 };
 
-const randomizedOpeningPlies = async (gameId: string): Promise<number> => {
-  const game = await queryArchiveResource(new URLSearchParams({ resource: "game", gameId }));
+const randomizedOpeningPlies = async (job: GameAnalysisJobRow): Promise<number> => {
+  const storedStates = Array.isArray(job.position_states) ? job.position_states : [];
+  const hasStoredRandomizedOpening = storedStates
+    .slice(0, WOLFRANDOM_RANDOMIZED_PLIES)
+    .some(
+      (state) =>
+        state &&
+        typeof state === "object" &&
+        Reflect.get(Reflect.get(state, "data") ?? {}, "closure") === "WOLFRANDOM_OPENING",
+    );
+  if (hasStoredRandomizedOpening) return WOLFRANDOM_RANDOMIZED_PLIES;
+
+  let game: unknown;
+  try {
+    game = await queryArchiveResource(
+      new URLSearchParams({ resource: "game", gameId: job.game_id }),
+    );
+  } catch (error) {
+    // Existing jobs already carry the opening treatment in their saved states. An archive outage
+    // must not stop the entire progress sweep from reconciling those jobs.
+    if (storedStates.length > 0) return 0;
+    throw error;
+  }
   return game && typeof game === "object" && Reflect.get(game, "mode") === "wolfrandom"
     ? WOLFRANDOM_RANDOMIZED_PLIES
     : 0;
@@ -394,20 +417,27 @@ const refundAndFail = async (
   if (error) throw new Error(`Unable to mark game analysis as failed: ${error.message}`);
 };
 
-type ProcessGameAnalysisOptions = { poll?: boolean; submit?: boolean };
+type ProcessGameAnalysisOptions = { dueBefore?: string; poll?: boolean; submit?: boolean };
 
 export const gameAnalysisPollSchedule = (
   poll: boolean,
   retryCount: number,
   delayMs: number,
   now = Date.now(),
-): { retry_count?: number; next_check_at?: string } =>
+): { retry_count?: number; last_checked_at?: string; next_check_at?: string } =>
   poll
     ? {
         retry_count: retryCount,
+        last_checked_at: new Date(now).toISOString(),
         next_check_at: new Date(now + delayMs).toISOString(),
       }
-    : {};
+    : {
+        // A submission-only pass can turn an old queued job into a processing job.
+        // Make it immediately eligible for its first real poll instead of preserving
+        // the queued row's stale schedule. This deliberately does not claim that the
+        // job was checked or increment its retry count.
+        next_check_at: new Date(now).toISOString(),
+      };
 
 export const gameAnalysisPollIndexes = (
   indexes: number[],
@@ -420,7 +450,7 @@ export const gameAnalysisPollIndexes = (
   return Array.from({ length: count }, (_, offset) => indexes[(start + offset) % indexes.length]!);
 };
 
-export const processGameAnalysisJob = async (
+const processClaimedGameAnalysisJob = async (
   gameId: string,
   maxPositions = 160,
   options: ProcessGameAnalysisOptions = {},
@@ -447,7 +477,7 @@ export const processGameAnalysisJob = async (
     return 0;
   }
 
-  const ignoredInitialPlies = await randomizedOpeningPlies(data.game_id);
+  const ignoredInitialPlies = await randomizedOpeningPlies(data);
   // Position 6 is retained as the baseline needed to assess White's fourth move. Positions before
   // it are neither queried nor stored because they belong to Wolfrandom's randomized opening.
   const states = readStates(data, fens, ignoredInitialPlies);
@@ -524,12 +554,14 @@ export const processGameAnalysisJob = async (
     return 0;
   }
 
-  let account: AtomicDbCredentials;
-  try {
-    account = credentials();
-  } catch (credentialError) {
-    await refundAndFail(supabase, data, errorMessage(credentialError));
-    return 0;
+  let account: AtomicDbCredentials | null = null;
+  if (options.submit !== false) {
+    try {
+      account = credentials();
+    } catch (credentialError) {
+      await refundAndFail(supabase, data, errorMessage(credentialError));
+      return 0;
+    }
   }
 
   const unsubmittedIndexes =
@@ -539,7 +571,7 @@ export const processGameAnalysisJob = async (
   let newlySubmitted = 0;
   await mapConcurrent(unsubmittedIndexes, 5, async (index) => {
     const state = states[index]!;
-    if (state.completed || state.requestStatus) return;
+    if (state.completed || state.requestStatus || !account) return;
     try {
       const receipt = await atomicDbRequest(state.fen, account);
       state.requestStatus = typeof receipt.status === "string" ? receipt.status : "already-queued";
@@ -579,7 +611,7 @@ export const processGameAnalysisJob = async (
       : retryCount === 1
         ? initialPollDelayMs(
             Math.max(
-              (await atomicDbQueueSize(account).catch(() => null)) ?? 0,
+              account ? ((await atomicDbQueueSize(account).catch(() => null)) ?? 0) : 0,
               incompleteQueuedPositions,
             ),
           )
@@ -594,6 +626,40 @@ export const processGameAnalysisJob = async (
     ...gameAnalysisPollSchedule(options.poll !== false, retryCount, nextPollDelay),
   });
   return newlySubmitted;
+};
+
+const releaseGameAnalysisJob = async (
+  supabase: SupabaseClient,
+  gameId: string,
+  leaseToken: string,
+): Promise<void> => {
+  const { error } = await supabase.rpc("release_game_analysis", {
+    p_game_id: gameId,
+    p_lease_token: leaseToken,
+  });
+  if (error) throw new Error(`Unable to release game analysis: ${error.message}`);
+};
+
+export const processGameAnalysisJob = async (
+  gameId: string,
+  maxPositions = 160,
+  options: ProcessGameAnalysisOptions = {},
+): Promise<number> => {
+  const supabase = createServerSupabase("Game analysis lease");
+  const leaseToken = randomUUID();
+  const { data: claimed, error: claimError } = await supabase.rpc("claim_game_analysis", {
+    p_game_id: gameId,
+    p_lease_token: leaseToken,
+    p_lease_seconds: WORKER_LEASE_SECONDS,
+    p_due_before: options.dueBefore ?? null,
+  });
+  if (claimError) throw new Error(`Unable to claim game analysis: ${claimError.message}`);
+  if (claimed !== true) return 0;
+  try {
+    return await processClaimedGameAnalysisJob(gameId, maxPositions, options);
+  } finally {
+    await releaseGameAnalysisJob(supabase, gameId, leaseToken);
+  }
 };
 
 export const gameAnalysisSweepPositionLimit = (jobCount: number): number =>
@@ -620,11 +686,13 @@ export const hasPendingGameAnalyses = async (): Promise<boolean> => {
 
 export const processPendingGameAnalyses = async (limit = SWEEP_JOB_LIMIT): Promise<void> => {
   const supabase = createServerSupabase("Game analysis sweep");
+  const dueBefore = new Date().toISOString();
   const { data, error } = await supabase
     .from("game_analyses")
     .select("game_id")
     .in("status", ["queued", "processing"])
-    .lte("next_check_at", new Date().toISOString())
+    .lte("next_check_at", dueBefore)
+    .order("last_checked_at", { ascending: true, nullsFirst: true })
     .order("next_check_at", { ascending: true })
     .limit(limit);
   if (error) throw new Error(`Unable to load pending game analyses: ${error.message}`);
@@ -634,7 +702,11 @@ export const processPendingGameAnalyses = async (limit = SWEEP_JOB_LIMIT): Promi
   // allowance instead of stopping at the scheduled-function timeout. Processing one game at a
   // time keeps the five position requests inside AtomicDB's per-address limit.
   await mapConcurrent(jobs, SWEEP_JOB_CONCURRENCY, async (row) => {
-    await processGameAnalysisJob(String(row.game_id), positionsPerJob);
+    try {
+      await processGameAnalysisJob(String(row.game_id), positionsPerJob, { dueBefore });
+    } catch (jobError) {
+      console.error(`Unable to refresh game analysis ${String(row.game_id)}:`, jobError);
+    }
   });
 };
 

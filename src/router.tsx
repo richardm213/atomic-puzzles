@@ -96,6 +96,10 @@ const GameAnalysesPage = lazyRouteComponent(
   () => import("./pages/GameAnalyses/GameAnalyses"),
   "GameAnalysesPage",
 );
+const GameAnalysesFinishedPage = lazyRouteComponent(
+  () => import("./pages/GameAnalyses/GameAnalysesFinished"),
+  "GameAnalysesFinishedPage",
+);
 const PuzzleMotifsPage = lazyRouteComponent(
   () => import("./pages/PuzzleMotifs/PuzzleMotifs"),
   "PuzzleMotifsPage",
@@ -580,6 +584,18 @@ const gameAnalysesRoute = createRoute({
   component: GameAnalysesPage,
 });
 
+const gameAnalysesFinishedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/game-analyses/finished",
+  validateSearch: (search: Record<string, unknown>) => ({
+    page:
+      typeof search.page === "number" && Number.isInteger(search.page) && search.page > 1
+        ? search.page
+        : undefined,
+  }),
+  component: GameAnalysesFinishedPage,
+});
+
 const legacyPuzzleLeaderboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve/leaderboard",
@@ -801,6 +817,7 @@ const routeTree = rootRoute.addChildren([
   coinEconomyBansRoute,
   shopRedemptionsRoute,
   gameAnalysesRoute,
+  gameAnalysesFinishedRoute,
   legacyPuzzleLeaderboardRoute,
   puzzleMotifsRoute,
   puzzleSubmissionRoute,

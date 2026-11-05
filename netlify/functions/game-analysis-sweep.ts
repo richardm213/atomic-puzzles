@@ -14,4 +14,4 @@ export default async (request: Request): Promise<void> => {
   });
 };
 
-export const config = { schedule: "*/3 * * * *" } as const;
+export const config = { schedule: "* * * * *" } as const;

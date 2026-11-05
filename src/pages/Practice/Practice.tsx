@@ -32,11 +32,11 @@ import type { OpeningDatabaseMove } from "../../components/OpeningDatabaseDispla
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
 import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
-import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
 import {
   AnalysisWorkspaceLayout,
   AnalysisWorkspacePanel,
 } from "../../features/analysisWorkspace/AnalysisWorkspaceLayout";
+import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
 import { OpeningExplorerPanel } from "../../features/analysisWorkspace/OpeningExplorerPanel";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";

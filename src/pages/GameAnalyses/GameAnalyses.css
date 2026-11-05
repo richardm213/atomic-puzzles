@@ -24,13 +24,63 @@
   font-size: clamp(24px, 4vw, 32px);
 }
 
-.gameAnalysesHeader > span {
+.gameAnalysesHeaderStatus {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.gameAnalysesStatusBadge {
+  display: inline-flex;
+  align-items: center;
   padding: var(--space-1) var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: 999px;
   color: var(--color-muted);
-  font-size: 11px;
   font-weight: 650;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.gameAnalysesStatusLink {
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.gameAnalysesStatusLink:hover {
+  border-color: var(--color-primary-soft);
+  background: var(--color-surface-inset);
+  color: var(--color-primary-soft);
+}
+
+.gameAnalysesStatusLink:focus-visible,
+.gameAnalysesBackLink:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.gameAnalysesFinishedHeader > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.gameAnalysesBackLink {
+  flex: 0 0 auto;
+  color: var(--color-primary-soft);
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.gameAnalysesBackLink:hover {
+  text-decoration: underline;
 }
 
 .gameAnalysesSection + .gameAnalysesSection {
@@ -108,6 +158,31 @@
   font-size: 12px;
 }
 
+.gameAnalysesProgress small {
+  grid-column: 1 / -1;
+  color: var(--color-subtle);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.gameAnalysesProgress .gameAnalysesFailure {
+  color: var(--color-danger);
+}
+
+.gameAnalysesTime {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.gameAnalysesTime small {
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.gameAnalysesTime small time {
+  margin-left: var(--space-1);
+}
+
 .gameAnalysesProgress progress {
   width: 100%;
   height: 6px;
@@ -157,12 +232,36 @@
   color: var(--color-danger);
 }
 
+.gameAnalysesPagination {
+  padding: var(--space-5) var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
 @media (max-width: 720px) {
   .gameAnalysesHeader,
   .gameAnalysesSection h2,
   .gameAnalysesRow,
   .gameAnalysesError,
   .gameAnalysesState {
+    padding-inline: var(--space-4);
+  }
+
+  .gameAnalysesHeaderStatus {
+    align-items: flex-end;
+    flex-direction: column;
+  }
+
+  .gameAnalysesFinishedHeader {
+    align-items: flex-start;
+  }
+
+  .gameAnalysesFinishedHeader > div {
+    align-items: flex-start;
+    flex-direction: column-reverse;
+    gap: var(--space-2);
+  }
+
+  .gameAnalysesPagination {
     padding-inline: var(--space-4);
   }
 

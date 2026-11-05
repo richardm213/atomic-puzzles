@@ -24,11 +24,11 @@ import { UsernamePickerModal } from "../../components/UsernamePickerModal/Userna
 import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
-import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
 import {
   AnalysisWorkspaceLayout,
   AnalysisWorkspacePanel,
 } from "../../features/analysisWorkspace/AnalysisWorkspaceLayout";
+import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
 import {
   OpeningExplorerPanel,
   OpeningExplorerResizeHandle,

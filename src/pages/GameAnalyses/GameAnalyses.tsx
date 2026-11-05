@@ -3,82 +3,25 @@ import "./GameAnalyses.css";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
-import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
-import { type AdminGameAnalysis, fetchAdminGameAnalyses } from "../../lib/gameAnalysis/admin";
+import { fetchAdminGameAnalyses, GAME_ANALYSIS_ADMIN_USERNAME } from "../../lib/gameAnalysis/admin";
 import { formatLocalDateTime } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
-
-const GAME_ANALYSIS_ADMIN = "seaside_tiramisu";
-
-const AnalysisRow = ({
-  analysis,
-  completed = false,
-}: {
-  analysis: AdminGameAnalysis;
-  completed?: boolean;
-}) => {
-  const progress = analysis.totalMoves
-    ? Math.round((analysis.completedMoves / analysis.totalMoves) * 100)
-    : 100;
-  return (
-    <li className="gameAnalysesRow">
-      <div className="gameAnalysesGame">
-        <span className="gameAnalysesMobileLabel">Game</span>
-        <Link to="/game/$gameId" params={{ gameId: analysis.gameId }}>
-          {analysis.gameId}
-        </Link>
-      </div>
-      <div className="gameAnalysesProgress">
-        <span className="gameAnalysesMobileLabel">Progress</span>
-        <div>
-          <span>
-            {analysis.completedMoves} / {analysis.totalMoves}
-          </span>
-          {!completed ? (
-            <progress value={analysis.completedMoves} max={Math.max(1, analysis.totalMoves)}>
-              {progress}%
-            </progress>
-          ) : null}
-        </div>
-      </div>
-      <div className="gameAnalysesRequester">
-        <span className="gameAnalysesMobileLabel">Requester</span>
-        <PlayerLink username={analysis.requestedBy}>{analysis.requestedBy}</PlayerLink>
-      </div>
-      <div className="gameAnalysesTime">
-        <span className="gameAnalysesMobileLabel">{completed ? "Completed" : "Requested"}</span>
-        <time
-          dateTime={completed ? (analysis.completedAt ?? analysis.createdAt) : analysis.createdAt}
-        >
-          {formatLocalDateTime(
-            completed ? (analysis.completedAt ?? analysis.createdAt) : analysis.createdAt,
-          )}
-        </time>
-      </div>
-    </li>
-  );
-};
-
-const ColumnLabels = ({ completed = false }: { completed?: boolean }) => (
-  <div className="gameAnalysesColumns" aria-hidden="true">
-    <span>Game</span>
-    <span>Progress</span>
-    <span>Requester</span>
-    <span>{completed ? "Completed" : "Requested"}</span>
-  </div>
-);
+import { GameAnalysisColumnLabels, GameAnalysisRow } from "./GameAnalysisList";
 
 export const GameAnalysesPage = () => {
   const { isLoading: authLoading, user } = useAuth();
-  const isAdmin = normalizeUsername(user?.username) === GAME_ANALYSIS_ADMIN;
+  const isAdmin = normalizeUsername(user?.username) === GAME_ANALYSIS_ADMIN_USERNAME;
   const query = useQuery({
     queryKey: ["admin-game-analyses"],
     queryFn: fetchAdminGameAnalyses,
     enabled: isAdmin,
-    refetchInterval: 10_000,
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: "always",
+    staleTime: 0,
   });
 
   if (authLoading || (isAdmin && query.isPending)) return <RouteLoadingFallback />;
@@ -89,7 +32,27 @@ export const GameAnalysesPage = () => {
       <section className="panel gameAnalysesPanel">
         <header className="gameAnalysesHeader">
           <h1>Game analyses</h1>
-          {isAdmin ? <span>{query.data?.pending.length ?? 0} pending</span> : null}
+          {isAdmin ? (
+            <div className="gameAnalysesHeaderStatus" aria-live="polite">
+              <span className="gameAnalysesStatusBadge">
+                {query.data?.pendingTotal ?? 0} pending
+              </span>
+              <Link
+                className="gameAnalysesStatusBadge gameAnalysesStatusLink"
+                to="/admin/game-analyses/finished"
+                title="Finished in the past 7 days"
+              >
+                {query.data?.finishedLast7Days ?? 0} finished
+              </Link>
+              {query.data?.generatedAt ? (
+                <time dateTime={query.data.generatedAt}>
+                  {query.isFetching
+                    ? "Refreshing…"
+                    : `Synced ${formatLocalDateTime(query.data.generatedAt)}`}
+                </time>
+              ) : null}
+            </div>
+          ) : null}
         </header>
 
         {!isAdmin ? <p className="gameAnalysesState">This page is restricted.</p> : null}
@@ -105,26 +68,43 @@ export const GameAnalysesPage = () => {
               <h2 id="pending-game-analyses">Pending</h2>
               {query.data.pending.length ? (
                 <>
-                  <ColumnLabels />
+                  <GameAnalysisColumnLabels />
                   <ol className="gameAnalysesList">
                     {query.data.pending.map((analysis) => (
-                      <AnalysisRow key={analysis.gameId} analysis={analysis} />
+                      <GameAnalysisRow key={analysis.gameId} analysis={analysis} kind="pending" />
                     ))}
                   </ol>
+                  {query.data.pendingTotal > query.data.pending.length ? (
+                    <p className="gameAnalysesState">
+                      Showing the {query.data.pending.length} oldest pending analyses.
+                    </p>
+                  ) : null}
                 </>
               ) : (
                 <p className="gameAnalysesState">No pending analyses.</p>
               )}
             </section>
 
+            {query.data.failed.length ? (
+              <section className="gameAnalysesSection" aria-labelledby="failed-game-analyses">
+                <h2 id="failed-game-analyses">Failed</h2>
+                <GameAnalysisColumnLabels />
+                <ol className="gameAnalysesList">
+                  {query.data.failed.map((analysis) => (
+                    <GameAnalysisRow key={analysis.gameId} analysis={analysis} kind="failed" />
+                  ))}
+                </ol>
+              </section>
+            ) : null}
+
             <section className="gameAnalysesSection" aria-labelledby="completed-game-analyses">
               <h2 id="completed-game-analyses">Recently completed</h2>
               {query.data.completed.length ? (
                 <>
-                  <ColumnLabels completed />
+                  <GameAnalysisColumnLabels completed />
                   <ol className="gameAnalysesList">
                     {query.data.completed.map((analysis) => (
-                      <AnalysisRow key={analysis.gameId} analysis={analysis} completed />
+                      <GameAnalysisRow key={analysis.gameId} analysis={analysis} kind="completed" />
                     ))}
                   </ol>
                 </>
