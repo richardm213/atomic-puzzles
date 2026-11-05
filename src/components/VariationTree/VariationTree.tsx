@@ -9,9 +9,9 @@ import {
   movePrefix,
   orderedChildren,
   sameSolutionMove,
-} from "../../lib/puzzles/solutionPgn";
+} from "../../lib/chess/pgn";
 
-type MoveTreeNode = import("../../lib/puzzles/solutionPgn").SolutionMoveNode<{
+type MoveTreeNode = import("../../lib/chess/pgn").SolutionMoveNode<{
   lineIndexes: Set<number>;
 }>;
 

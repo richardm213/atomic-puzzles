@@ -4,7 +4,7 @@ import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useRef } from "react";
 
-import { movePrefix } from "../../lib/puzzles/solutionPgn";
+import { movePrefix } from "../../lib/chess/pgn";
 import type { PlaybackCommand } from "../../types/chessboard";
 import { PlaybackButtons } from "../PlaybackButtons/PlaybackButtons";
 import {

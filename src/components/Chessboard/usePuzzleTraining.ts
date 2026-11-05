@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 
-import type { UciSolutionLine } from "../../lib/puzzles/solutionPgn";
+import type { UciSolutionLine } from "../../lib/chess/pgn";
 
 export type BoardMode = "training" | "evaluating" | "solution" | "analysis";
 

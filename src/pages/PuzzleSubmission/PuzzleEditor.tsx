@@ -23,6 +23,17 @@ import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDb
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
+import { buildBoardLoadNavigation } from "../../lib/analysis/boardLoading";
+import {
+  convertUciLineToSan,
+  formatSolutionMove,
+  mergeAdditiveSolutionLine,
+  parseSolutionUciLines,
+  prunePgnLinesFromMove,
+  sameSolutionMove,
+  serializeSanLinesToPgn,
+  splitSolutionMove,
+} from "../../lib/chess/pgn";
 import {
   ensurePuzzlePgnHeaders,
   parsePuzzlePgnInput,
@@ -31,15 +42,6 @@ import {
   validateParsedPuzzleSubmission,
   validatePuzzleSubmission,
 } from "../../lib/puzzles/puzzleSubmission";
-import {
-  convertUciLineToSan,
-  formatSolutionMove,
-  mergeAdditiveSolutionLine,
-  parseSolutionUciLines,
-  sameSolutionMove,
-  serializeSanLinesToPgn,
-  splitSolutionMove,
-} from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { orientationFromFen } from "../../utils/chessNotation";
 import { getErrorMessage } from "../../utils/errors";
@@ -300,7 +302,14 @@ export const PuzzleEditor = ({
     setNavigation({ type: "solution", line: lineIndex, ply: moveIndex + 1 });
   };
 
-  const commitSolutionLines = (nextLines: string[][], targetLineIndex: number): void => {
+  const commitSolutionLines = (
+    nextLines: string[][],
+    targetLineIndex: number,
+    {
+      targetPly,
+      resetBoardHistory = false,
+    }: { targetPly?: number; resetBoardHistory?: boolean } = {},
+  ): void => {
     const parsedDraft = parsePuzzlePgnInput(solutionDraft, appliedFen);
     const headers = ensurePuzzlePgnHeaders(parsedDraft.headerText, appliedFen);
 
@@ -329,11 +338,21 @@ export const PuzzleEditor = ({
     setEditorError("");
     setActiveLineIndex(nextActiveLineIndex);
     onChange(normalized);
-    setNavigation({
-      type: "solution",
-      line: nextActiveLineIndex,
-      ply: nextLines[nextActiveLineIndex]?.length ?? 0,
-    });
+    const nextPly = targetPly ?? nextLines[nextActiveLineIndex]?.length ?? 0;
+    setNavigation(
+      resetBoardHistory
+        ? buildBoardLoadNavigation({
+            fen: appliedFen,
+            pgn: nextDraft,
+            line: nextActiveLineIndex,
+            ply: nextPly,
+          })
+        : {
+            type: "solution",
+            line: nextActiveLineIndex,
+            ply: nextPly,
+          },
+    );
   };
 
   const deleteCurrentLine = (): void => {
@@ -343,6 +362,7 @@ export const PuzzleEditor = ({
       commitSolutionLines(
         solutionLines.filter((_, lineIndex) => lineIndex !== activeLineIndex),
         Math.max(0, activeLineIndex - 1),
+        { resetBoardHistory: true },
       );
     } catch (error) {
       setEditorError(getErrorMessage(error, "Unable to delete line."));
@@ -376,12 +396,11 @@ export const PuzzleEditor = ({
     if (!line?.[moveIndex]) return;
 
     try {
-      const truncatedLine = line.slice(0, moveIndex);
-      const nextLines = solutionLines.flatMap((candidate, candidateIndex) => {
-        if (candidateIndex !== lineIndex) return [candidate];
-        return truncatedLine.length ? [truncatedLine] : [];
+      const pruned = prunePgnLinesFromMove(solutionLines, lineIndex, moveIndex, sameSolutionMove);
+      commitSolutionLines(pruned.lines, pruned.lineIndex, {
+        targetPly: pruned.ply,
+        resetBoardHistory: true,
       });
-      commitSolutionLines(nextLines, Math.max(0, lineIndex - (truncatedLine.length ? 0 : 1)));
     } catch (error) {
       setEditorError(getErrorMessage(error, "Unable to delete move."));
     }

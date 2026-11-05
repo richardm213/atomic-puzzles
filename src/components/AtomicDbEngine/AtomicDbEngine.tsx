@@ -7,8 +7,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { AtomicDbAnalysisState } from "../../hooks/useAtomicDbAnalysis";
 import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
+import { atomicLegalMoveCount } from "../../lib/chess/pgn";
 import { localAnalysisEngineLabel } from "../../lib/practice/localAnalysisEngine";
-import { atomicLegalMoveCount } from "../../lib/puzzles/solutionPgn";
 import {
   atomicDbPositionUrl,
   type AtomicDbView,
@@ -320,8 +320,7 @@ export const AtomicDbEngine = ({
               const moveEvaluation = getAtomicDbMoveEvaluation(move, view.fen);
               const searchDepth = Math.max(0, Math.floor(move.searchDepth ?? 0));
               const nodeBackedPlies = move.nodeBackedPlies;
-              const nodeBackingDepth =
-                nodeBackedPlies === null ? null : `depth ${nodeBackedPlies}`;
+              const nodeBackingDepth = nodeBackedPlies === null ? null : `depth ${nodeBackedPlies}`;
               const showNodeBacking = nodeBackingDepth !== null && move.origin !== "engine";
               const showDepth =
                 searchDepth > 0 &&

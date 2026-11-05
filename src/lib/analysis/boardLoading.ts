@@ -1,5 +1,5 @@
 import type { SolutionNavigation } from "../../types/chessboard";
-import { serializeUciLinesToPgn } from "../puzzles/solutionPgn";
+import { serializeUciLinesToPgn } from "../chess/pgn";
 
 type BoardLoadSource = {
   fen: string;

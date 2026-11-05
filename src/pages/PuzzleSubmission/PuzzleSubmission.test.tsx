@@ -185,10 +185,12 @@ const EditorHarness = ({
   initialSolution,
   showCopyPgn = false,
   allowSolutionEditing = false,
+  showAnalysisEngine = false,
 }: {
   initialSolution?: string;
   showCopyPgn?: boolean;
   allowSolutionEditing?: boolean;
+  showAnalysisEngine?: boolean;
 }) => {
   const [value, setValue] = useState<PuzzleSubmissionValue>({
     fen: STARTING_FEN,
@@ -205,6 +207,7 @@ const EditorHarness = ({
         resetKey="test-puzzle"
         showCopyPgn={showCopyPgn}
         allowSolutionEditing={allowSolutionEditing}
+        showAnalysisEngine={showAnalysisEngine}
       />
       <output data-testid="stored-solution">{value.solution}</output>
     </>
@@ -423,6 +426,27 @@ describe("PuzzleEditor move tree", () => {
         ]),
       ),
     );
+  });
+
+  it("removes a deleted alternate branch from both the PGN and board history", async () => {
+    const user = userEvent.setup();
+    render(<EditorHarness allowSolutionEditing showAnalysisEngine />);
+
+    const alternateMove = screen.getByRole("button", { name: "1... c5" });
+    fireEvent.contextMenu(alternateMove);
+    await user.click(screen.getByRole("menuitem", { name: "Delete from here" }));
+
+    const textarea = screen.getByRole("textbox", { name: "Solution PGN" }) as HTMLTextAreaElement;
+    await waitFor(() =>
+      expect(lineSet(solutionLinesFromTextarea(textarea))).toEqual([startingLines[0]!.join(" ")]),
+    );
+    expect(chessboardMocks.navigations.at(-1)).toMatchObject({
+      type: "loadPgn",
+      line: 0,
+      ply: 1,
+    });
+    expect(chessboardMocks.navigations.at(-1)).toHaveProperty("pgn");
+    expect((chessboardMocks.navigations.at(-1) as { pgn: string }).pgn).not.toContain("c5");
   });
 
   it("keeps every alternate line while navigating and rejects board edits", async () => {

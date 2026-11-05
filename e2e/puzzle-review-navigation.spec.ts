@@ -14,7 +14,9 @@ const queuePuzzle = {
   opa_style: false,
 };
 
-test("puzzle review returns to the main continuation after backtracking", async ({ page }) => {
+test("deleting a puzzle variation removes it from backward and forward navigation", async ({
+  page,
+}) => {
   await page.unroute("**/api/auth/session");
   await page.route("**/api/auth/session", (route) =>
     route.fulfill({
@@ -33,17 +35,18 @@ test("puzzle review returns to the main continuation after backtracking", async 
   await page.goto("/puzzles/review");
 
   const moves = page.getByRole("region", { name: "Solution moves" });
-  await expect(moves.getByRole("button", { name: /c5/ })).toBeVisible();
-  await moves.getByRole("button", { name: /c5/ }).click();
+  const alternateMove = moves.getByRole("button", { name: /c5/ });
+  await expect(alternateMove).toBeVisible();
+  await alternateMove.click();
+  await alternateMove.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Delete from here" }).click();
+
+  await expect(moves.getByRole("button", { name: /c5/ })).toHaveCount(0);
 
   for (let repetition = 0; repetition < 3; repetition += 1) {
-    await page.keyboard.press("ArrowLeft");
-    await expect(moves.getByRole("button", { name: /e4/ })).toHaveAttribute("aria-current", "step");
     await page.keyboard.press("ArrowRight");
     await expect(moves.getByRole("button", { name: /e5/ })).toHaveAttribute("aria-current", "step");
-    await expect(moves.getByRole("button", { name: /c5/ })).not.toHaveAttribute(
-      "aria-current",
-      "step",
-    );
+    await page.keyboard.press("ArrowLeft");
+    await expect(moves.getByRole("button", { name: /e4/ })).toHaveAttribute("aria-current", "step");
   }
 });

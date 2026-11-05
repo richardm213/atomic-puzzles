@@ -5,14 +5,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 
-import type { GameMoveAssessment } from "../../lib/gameAnalysis/gameAnalysis";
 import {
   buildSolutionMoveTree,
   findMainChild,
   movePrefix,
   orderedChildren,
   splitSolutionMove,
-} from "../../lib/puzzles/solutionPgn";
+} from "../../lib/chess/pgn";
+import type { GameMoveAssessment } from "../../lib/gameAnalysis/gameAnalysis";
 import type { PlaybackCommand } from "../../types/chessboard";
 import {
   type AnnotationMenuPosition,
@@ -25,7 +25,7 @@ import {
   variationOptions,
 } from "../VariationTree/VariationTree";
 
-type MoveTreeNode = import("../../lib/puzzles/solutionPgn").SolutionMoveNode<{
+type MoveTreeNode = import("../../lib/chess/pgn").SolutionMoveNode<{
   lineIndexes: Set<number>;
 }>;
 

@@ -2,11 +2,7 @@ import { makeFen } from "chessops/fen";
 import { makeSan } from "chessops/san";
 import type { Atomic } from "chessops/variant";
 
-import {
-  createAtomicPosition,
-  moveFromUci,
-  type UciSolutionLine,
-} from "../../lib/puzzles/solutionPgn";
+import { createAtomicPosition, moveFromUci, type UciSolutionLine } from "../../lib/chess/pgn";
 import { appendBoardMove, type BoardHistory, createBoardHistory } from "./boardHistory";
 
 export type TrainingState = {

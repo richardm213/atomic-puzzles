@@ -1,8 +1,8 @@
 import type { ChangeEvent, FocusEvent, KeyboardEvent, TextareaHTMLAttributes } from "react";
 import { useEffect, useRef, useState } from "react";
 
+import { createAtomicPosition } from "../lib/chess/pgn";
 import { parseAtomicPgnInput } from "../lib/puzzles/puzzleSubmission";
-import { createAtomicPosition } from "../lib/puzzles/solutionPgn";
 import type { ChessboardState } from "../types/chessboard";
 import { getErrorMessage } from "../utils/errors";
 

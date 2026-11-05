@@ -654,6 +654,48 @@ describe("Chessboard orchestration", () => {
     });
   });
 
+  it("cannot revisit a deleted variation after going backward and forward", () => {
+    const states: ChessboardState[] = [];
+    const props: ComponentProps<typeof Chessboard> = {
+      puzzleId: "deleted-variation",
+      fen: STARTING_FEN,
+      orientation: "white",
+      coordinates: true,
+      solution: "1. e4 e5 (1... c5 2. Nf3) 2. Nf3",
+      showSolution: false,
+      analysisMode: true,
+      preserveAnalysisHistoryOnSolutionChange: true,
+      solutionNavigation: { type: "solution", line: 1, ply: 2 },
+      onStateChange: (state) => states.push(state),
+    };
+    const { rerender } = render(<Chessboard {...props} />);
+
+    rerender(
+      <Chessboard
+        {...props}
+        solution="1. e4 e5 2. Nf3"
+        solutionNavigation={{
+          type: "loadPgn",
+          fen: STARTING_FEN,
+          pgn: "1. e4 e5 2. Nf3",
+          line: 0,
+          ply: 1,
+        }}
+      />,
+    );
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    expect(states.at(-1)).toMatchObject({
+      lineMoves: ["e4", "e5", "Nf3"],
+      lineIndex: 2,
+      solutionLineIndex: 0,
+      viewingSolution: true,
+    });
+    expect(states.at(-1)?.customLines).toEqual([]);
+  });
+
   it("preserves both lines when a move branches from custom analysis history", () => {
     const states = renderBoard();
 

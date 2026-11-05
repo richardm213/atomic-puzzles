@@ -10,6 +10,7 @@ import {
   movePrefix,
   normalizeSolutionPgn,
   parseSolutionUciLines,
+  prunePgnLinesFromMove,
   sameSolutionMove,
   serializeSanLinesToPgn,
   serializeUciLinesToPgn,
@@ -108,6 +109,38 @@ describe("mergeAdditiveSolutionLine", () => {
 
     expect(result).toEqual({ lines, lineIndex: 0, changed: false });
     expect(result.lines).toBe(lines);
+  });
+});
+
+describe("prunePgnLinesFromMove", () => {
+  it("deletes the selected move and every continuation in that branch", () => {
+    const lines = [
+      ["e4", "e5", "Nf3"],
+      ["e4", "c5", "Nf3", "d6"],
+      ["e4", "c5", "Nf3", "Nc6"],
+      ["e4", "c5", "Nc3"],
+    ];
+
+    expect(prunePgnLinesFromMove(lines, 1, 2, sameSolutionMove)).toEqual({
+      lines: [lines[0], lines[3]],
+      lineIndex: 1,
+      ply: 2,
+      changed: true,
+    });
+  });
+
+  it("removes an alternate branch without leaving a redundant prefix line", () => {
+    const lines = [
+      ["e4", "e5", "Nf3"],
+      ["e4", "c5", "Nf3"],
+    ];
+
+    expect(prunePgnLinesFromMove(lines, 1, 1, sameSolutionMove)).toEqual({
+      lines: [lines[0]],
+      lineIndex: 0,
+      ply: 1,
+      changed: true,
+    });
   });
 });
 

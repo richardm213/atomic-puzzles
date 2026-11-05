@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { splitSolutionMove } from "../../lib/chess/pgn";
 import type { GameMoveAssessment } from "../../lib/gameAnalysis/gameAnalysis";
-import { splitSolutionMove } from "../../lib/puzzles/solutionPgn";
 import {
   type AnnotationMenuPosition,
   annotationMenuPosition,

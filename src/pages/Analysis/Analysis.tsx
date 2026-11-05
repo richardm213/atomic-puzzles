@@ -47,7 +47,12 @@ import { getBoardMoveState } from "../../lib/analysis/boardState";
 import { readAnalysisHandoff } from "../../lib/analysis/handoff";
 import { type ArchiveGame, decodeGameResult } from "../../lib/archive/games";
 import { isAtomicTablebasePosition } from "../../lib/atomicTablebase/material";
-import { createAtomicPosition, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
+import {
+  createAtomicPosition,
+  prunePgnLinesFromMove,
+  sameSolutionMove,
+  serializeSanLinesToPgn,
+} from "../../lib/chess/pgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { atomicDbPositionUrl, requestAtomicDbAnalysis } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
@@ -787,6 +792,22 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     [],
   );
 
+  const deleteMove = useCallback(
+    (lineIndex: number, moveIndex: number): void => {
+      const pruned = prunePgnLinesFromMove(customLines, lineIndex, moveIndex, sameSolutionMove);
+      const pgn = serializeSanLinesToPgn(rootFen, pruned.lines);
+      setNavigation(
+        buildBoardLoadNavigation({
+          fen: rootFen,
+          pgn,
+          line: pruned.lineIndex,
+          ply: pruned.ply,
+        }),
+      );
+    },
+    [customLines, rootFen],
+  );
+
   const playExplorerMove = (uci: string): void => {
     setHoveredExplorerMoveUci(null);
     setNavigation({ type: "play", uci });
@@ -1482,6 +1503,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                 onSelectVariation={navigateToCustomMove}
                 onCycleOptions={requestNavigation}
                 onAnnotate={game ? undefined : annotateMove}
+                onDelete={game ? undefined : deleteMove}
                 assessments={game && gameComputerAnalysisEnabled ? gameAssessments : undefined}
               />
             </div>

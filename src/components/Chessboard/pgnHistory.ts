@@ -10,7 +10,7 @@ import {
   parseSolutionUciLines,
   toComparableUci,
   type UciSolutionLine,
-} from "../../lib/puzzles/solutionPgn";
+} from "../../lib/chess/pgn";
 import { getErrorMessage } from "../../utils/errors";
 import { appendBoardMove, type BoardHistory, createBoardHistory } from "./boardHistory";
 import { tryCreateAtomicPosition } from "./puzzlePlayback";

@@ -16,7 +16,6 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAppSettings } from "../../context/AppSettings";
 import { playBoardMoveSound } from "../../lib/boardSounds/boardSounds";
-import { lichessAnalysisGlyphSvg } from "../../lib/gameAnalysis/lichessAnalysisGlyph";
 import {
   convertUciLineToSan,
   formatSolutionMove,
@@ -27,7 +26,8 @@ import {
   toComparableUci,
   type UciSolutionEntry,
   type UciSolutionLine,
-} from "../../lib/puzzles/solutionPgn";
+} from "../../lib/chess/pgn";
+import { lichessAnalysisGlyphSvg } from "../../lib/gameAnalysis/lichessAnalysisGlyph";
 import type {
   AttemptResolved,
   ChessboardState,
@@ -681,6 +681,34 @@ const ChessboardComponent = ({
     [activateHistory],
   );
 
+  const resumeDefaultMainLine = useCallback(
+    (history: BoardHistory, matchingPly: number, targetPly: number): boolean => {
+      const currentStep = history.plies[matchingPly];
+      if (!currentStep) return false;
+
+      const mainSolution = solutionEntriesRef.current[0]?.history;
+      if (
+        mainSolution?.plies[matchingPly]?.fen === currentStep.fen &&
+        mainSolution.plies[targetPly]
+      ) {
+        showSolutionLine(0, targetPly);
+        return true;
+      }
+
+      const mainAnalysisLine = variationHistoryAt(customVariationsRef.current, 0);
+      if (
+        mainAnalysisLine?.plies[matchingPly]?.fen === currentStep.fen &&
+        mainAnalysisLine.plies[targetPly]
+      ) {
+        showCustomLine(0, targetPly);
+        return true;
+      }
+
+      return false;
+    },
+    [showCustomLine, showSolutionLine],
+  );
+
   const navigatePlayback = useCallback(
     (command: PlaybackCommand): void => {
       const history = historyRef.current;
@@ -745,48 +773,12 @@ const ChessboardComponent = ({
 
       if (resolvedCommand === "previous") {
         alternativeContinuationSelectedRef.current = false;
-        const targetIndex = history.index - 1;
-        const targetStep = history.plies[targetIndex];
-        const mainSolution = solutionEntriesRef.current[0]?.history;
-        const mainSolutionStep = mainSolution?.plies[targetIndex];
-        if (
-          targetStep &&
-          mainSolutionStep?.fen === targetStep.fen &&
-          !(activeLineRef.current.source === "solution" && activeLineRef.current.index === 0)
-        ) {
-          showSolutionLine(0, targetIndex);
-          return;
-        }
-
-        const mainCustom = variationHistoryAt(customVariationsRef.current, 0);
-        const mainCustomStep = mainCustom?.plies[targetIndex];
-        if (
-          targetStep &&
-          mainCustomStep?.fen === targetStep.fen &&
-          !(activeLineRef.current.source === "custom" && activeLineRef.current.index === 0)
-        ) {
-          showCustomLine(0, targetIndex);
-          return;
-        }
+        const targetPly = history.index - 1;
+        if (resumeDefaultMainLine(history, targetPly, targetPly)) return;
       }
 
       if (resolvedCommand === "next" && !alternativeContinuationSelectedRef.current) {
-        const currentIndex = history.index;
-        const nextIndex = currentIndex + 1;
-        const currentStep = history.plies[currentIndex];
-        const mainSolution = solutionEntriesRef.current[0]?.history;
-        const mainSolutionCurrentStep = mainSolution?.plies[currentIndex];
-        if (currentStep && mainSolutionCurrentStep?.fen === currentStep.fen) {
-          if (mainSolution?.plies[nextIndex]) showSolutionLine(0, nextIndex);
-          return;
-        }
-
-        const mainCustom = variationHistoryAt(customVariationsRef.current, 0);
-        const mainCustomCurrentStep = mainCustom?.plies[currentIndex];
-        if (currentStep && mainCustomCurrentStep?.fen === currentStep.fen) {
-          if (mainCustom?.plies[nextIndex]) showCustomLine(0, nextIndex);
-          return;
-        }
+        if (resumeDefaultMainLine(history, history.index, history.index + 1)) return;
       }
 
       if (showSolutionRef.current && activeLineRef.current.source === "solution") {
@@ -830,6 +822,7 @@ const ChessboardComponent = ({
       analysisModeRef,
       navigateTo,
       preserveAnalysisHistoryOnSolutionChange,
+      resumeDefaultMainLine,
       showCustomLine,
       showSolutionLine,
       showSolutionRef,
