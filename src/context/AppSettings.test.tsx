@@ -121,6 +121,22 @@ const CoinVisibilitySettings = () => {
   );
 };
 
+const LocalAnalysisEngineSetting = () => {
+  const { localAnalysisEngine, setLocalAnalysisEngine } = useAppSettings();
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        setLocalAnalysisEngine((engine) =>
+          engine === "atomic-stockfish" ? "fairy-stockfish-14" : "atomic-stockfish",
+        )
+      }
+    >
+      {localAnalysisEngine}
+    </button>
+  );
+};
+
 const ProfileRatingSetting = () => {
   const {
     profileRatingSlots,
@@ -208,6 +224,33 @@ describe("puzzle timer preference", () => {
       </AppSettingsProvider>,
     );
     expect(screen.getByRole("button", { name: "Timer hidden" })).toBeInTheDocument();
+  });
+});
+
+describe("local analysis engine preference", () => {
+  beforeEach(() => window.localStorage.clear());
+
+  it("defaults to Atomic-Stockfish and persists an explicit FSF14 selection", async () => {
+    const firstRender = render(
+      <AppSettingsProvider>
+        <LocalAnalysisEngineSetting />
+      </AppSettingsProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "atomic-stockfish" }));
+    await waitFor(() => {
+      expect(window.localStorage.getItem("atomic-puzzles.local-analysis-engine")).toBe(
+        '"fairy-stockfish-14"',
+      );
+    });
+    firstRender.unmount();
+
+    render(
+      <AppSettingsProvider>
+        <LocalAnalysisEngineSetting />
+      </AppSettingsProvider>,
+    );
+    expect(screen.getByRole("button", { name: "fairy-stockfish-14" })).toBeInTheDocument();
   });
 });
 

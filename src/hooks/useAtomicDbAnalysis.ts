@@ -9,6 +9,10 @@ import {
   analyzeFairyStockfishPosition,
   type EngineCandidate,
 } from "../lib/practice/fairyStockfish";
+import {
+  type LocalAnalysisEngine,
+  readLocalAnalysisEngine,
+} from "../lib/practice/localAnalysisEngine";
 import type { AtomicDbPosition, AtomicDbResult } from "../utils/atomicDb";
 import { getErrorMessage } from "../utils/errors";
 
@@ -20,6 +24,7 @@ export type AtomicDbAnalysisState = {
   error: string;
   principalVariations: Record<string, string[]>;
   source?: "atomicdb" | "engine" | "mixed" | "terminal" | undefined;
+  engine?: LocalAnalysisEngine | undefined;
 };
 
 type AtomicDbAnalysisOptions = {
@@ -97,7 +102,19 @@ export const useAtomicDbAnalysis = (
   }: AtomicDbAnalysisOptions = {},
 ): AtomicDbAnalysisState => {
   const [state, setState] = useState<RequestState>(INITIAL_STATE);
+  const [engineFocusEpoch, setEngineFocusEpoch] = useState(0);
   const lastRequestAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!fallbackToEngine) return;
+    const retryInActiveTab = (): void => {
+      if (readLocalAnalysisEngine() === "atomic-stockfish") {
+        setEngineFocusEpoch((epoch) => epoch + 1);
+      }
+    };
+    window.addEventListener("focus", retryInActiveTab);
+    return () => window.removeEventListener("focus", retryInActiveTab);
+  }, [fallbackToEngine]);
 
   useEffect(() => {
     if (!enabled) {
@@ -110,6 +127,7 @@ export const useAtomicDbAnalysis = (
     if (suspended) return;
 
     const controller = new AbortController();
+    const localAnalysisEngine = readLocalAnalysisEngine();
     const lineCount = clampInteger(requestedLineCount, 1, MAX_LINE_COUNT);
     const plyCount = clampInteger(requestedPlyCount, 1, MAX_PLY_COUNT);
     const cachedLinesFor = (position: AtomicDbPosition | null): Record<string, string[]> => {
@@ -154,6 +172,7 @@ export const useAtomicDbAnalysis = (
         error: "",
         principalVariations: {},
         source: "engine",
+        engine: localAnalysisEngine,
       }));
       try {
         const publishEngineCandidates = (
@@ -174,6 +193,7 @@ export const useAtomicDbAnalysis = (
                 ]),
               ),
               source: "engine",
+              engine: localAnalysisEngine,
             });
           });
         };
@@ -195,6 +215,7 @@ export const useAtomicDbAnalysis = (
             error: getErrorMessage(error, "Engine analysis failed."),
             principalVariations: {},
             source: "engine",
+            engine: localAnalysisEngine,
           });
         });
       }
@@ -211,6 +232,7 @@ export const useAtomicDbAnalysis = (
         error: "",
         principalVariations: atomicDbLines,
         source: "mixed",
+        engine: localAnalysisEngine,
       });
 
       const publishMixedCandidates = (
@@ -237,6 +259,7 @@ export const useAtomicDbAnalysis = (
                   error: "",
                   principalVariations: { ...current.principalVariations, ...engineLines },
                   source: "mixed",
+                  engine: localAnalysisEngine,
                 }
               : current,
           );
@@ -257,7 +280,13 @@ export const useAtomicDbAnalysis = (
         startTransition(() => {
           setState((current) =>
             current.requestedFen === fen
-              ? { ...current, status: "ready", error: "", source: "atomicdb" }
+              ? {
+                  ...current,
+                  status: "ready",
+                  error: "",
+                  source: "atomicdb",
+                  engine: undefined,
+                }
               : current,
           );
         });
@@ -344,6 +373,7 @@ export const useAtomicDbAnalysis = (
     debounceMs,
     enabled,
     fallbackToEngine,
+    engineFocusEpoch,
     fen,
     requestedLineCount,
     requestedPlyCount,

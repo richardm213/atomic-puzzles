@@ -59,7 +59,7 @@ describe("AtomicDbEngine", () => {
       "https://belzedar.duckdns.org/atomicdb/explore/atomic-position-key/",
     );
     expect(screen.getByRole("link", { name: "Open this position on AtomicDB" })).toHaveTextContent(
-      "AtomicDB + Fairy-Stockfish 14",
+      "AtomicDB + Atomic-Stockfish",
     );
   });
 

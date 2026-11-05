@@ -49,7 +49,11 @@ import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { buildBoardLoadNavigation } from "../../lib/analysis/boardLoading";
 import { getBoardMoveState } from "../../lib/analysis/boardState";
 import { apiRequest } from "../../lib/api/postApi";
-import { findFairyStockfishMove, warmFairyStockfish } from "../../lib/practice/fairyStockfish";
+import { findFairyStockfishMove } from "../../lib/practice/fairyStockfish";
+import {
+  localAnalysisEngineLabel,
+  readLocalAnalysisEngine,
+} from "../../lib/practice/localAnalysisEngine";
 import { movePrefix } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
@@ -494,22 +498,6 @@ export const PracticePage = () => {
   }, [clockRunning]);
 
   useEffect(() => {
-    const warmEngine = (): void => {
-      void warmFairyStockfish();
-    };
-    const idleWindow = window as Window & {
-      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-      cancelIdleCallback?: (handle: number) => void;
-    };
-    if (idleWindow.requestIdleCallback) {
-      const idleId = idleWindow.requestIdleCallback(warmEngine, { timeout: 1_000 });
-      return () => idleWindow.cancelIdleCallback?.(idleId);
-    }
-    const timeoutId = window.setTimeout(warmEngine, 250);
-    return () => window.clearTimeout(timeoutId);
-  }, []);
-
-  useEffect(() => {
     if (
       !canUsePlayerSource ||
       manualContinuationActive ||
@@ -592,7 +580,7 @@ export const PracticePage = () => {
           throw new Error(
             triedMoveUcisByFenRef.current.get(currentFen)?.size
               ? "No different safe engine move is available"
-              : "Fairy-Stockfish found no legal move",
+              : `${localAnalysisEngineLabel(readLocalAnalysisEngine())} found no legal move`,
           );
         }
 
@@ -603,7 +591,12 @@ export const PracticePage = () => {
       .catch((engineFailure) => {
         if (controller.signal.aborted) return;
         setEngineStatus("error");
-        setEngineError(getErrorMessage(engineFailure, "Fairy-Stockfish failed"));
+        setEngineError(
+          getErrorMessage(
+            engineFailure,
+            `${localAnalysisEngineLabel(readLocalAnalysisEngine())} failed`,
+          ),
+        );
       });
 
     return () => controller.abort();

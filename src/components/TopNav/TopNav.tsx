@@ -185,6 +185,8 @@ export const TopNav = () => {
     setLichessLinkTarget,
     gameExplorerOnLeft,
     setGameExplorerOnLeft,
+    localAnalysisEngine,
+    setLocalAnalysisEngine,
     showCoinBalance,
     setShowCoinBalance,
     showCoinChangePopups,
@@ -953,6 +955,25 @@ export const TopNav = () => {
                   >
                     <option value="lichess">Lichess</option>
                     <option value="atomic-puzzles">Atomic Puzzles</option>
+                  </select>
+                </div>
+                <div className="navSettingsField">
+                  <label className="navSettingsLabel" htmlFor="local-analysis-engine-select">
+                    Analysis engine
+                  </label>
+                  <select
+                    id="local-analysis-engine-select"
+                    value={localAnalysisEngine}
+                    onChange={(event) =>
+                      setLocalAnalysisEngine(
+                        event.target.value === "fairy-stockfish-14"
+                          ? "fairy-stockfish-14"
+                          : "atomic-stockfish",
+                      )
+                    }
+                  >
+                    <option value="atomic-stockfish">Atomic-Stockfish</option>
+                    <option value="fairy-stockfish-14">Fairy-Stockfish 14</option>
                   </select>
                 </div>
               </div>

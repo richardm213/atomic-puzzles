@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
 } from "react";
 import { z } from "zod";
 
@@ -20,6 +21,11 @@ import {
   type BoardSoundSet,
   isBoardSoundSet,
 } from "../lib/boardSounds/boardSounds";
+import {
+  DEFAULT_LOCAL_ANALYSIS_ENGINE,
+  LOCAL_ANALYSIS_ENGINE_STORAGE_KEY,
+  type LocalAnalysisEngine,
+} from "../lib/practice/localAnalysisEngine";
 
 const STORAGE_KEYS = {
   theme: "atomic-puzzles.theme",
@@ -45,6 +51,7 @@ const STORAGE_KEYS = {
   puzzleAnalysisTarget: "atomic-puzzles.puzzles.analysis-link-target",
   lichessLinkTarget: "atomic-puzzles.games.lichess-link-target",
   gameExplorerOnLeft: "atomic-puzzles.games.explorer-on-left",
+  localAnalysisEngine: LOCAL_ANALYSIS_ENGINE_STORAGE_KEY,
   showRatingGraphLines: "profile.ratingGraph.showLines",
   hiddenRatingGraphModes: "profile.ratingGraph.hiddenModes",
 };
@@ -214,6 +221,8 @@ export type AppSettingsContextValue = {
   setLichessLinkTarget: Dispatch<SetStateAction<"atomic-puzzles" | "lichess">>;
   gameExplorerOnLeft: boolean;
   setGameExplorerOnLeft: Dispatch<SetStateAction<boolean>>;
+  localAnalysisEngine: LocalAnalysisEngine;
+  setLocalAnalysisEngine: Dispatch<SetStateAction<LocalAnalysisEngine>>;
   showCoinBalance: boolean;
   setShowCoinBalance: Dispatch<SetStateAction<boolean>>;
   showCoinChangePopups: boolean;
@@ -373,6 +382,12 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.boolean(),
     false,
   );
+  const [localAnalysisEngine, setLocalAnalysisEngine] = usePersistedState<LocalAnalysisEngine>(
+    STORAGE_KEYS.localAnalysisEngine,
+    z.enum(["atomic-stockfish", "fairy-stockfish-14"]),
+    DEFAULT_LOCAL_ANALYSIS_ENGINE,
+  );
+  const previousLocalAnalysisEngineRef = useRef(localAnalysisEngine);
   const [showCoinBalance, setShowCoinBalance] = usePersistedState(
     STORAGE_KEYS.showCoinBalance,
     z.boolean(),
@@ -441,6 +456,14 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.dataset["theme"] = theme;
   }, [theme]);
 
+  useEffect(() => {
+    if (previousLocalAnalysisEngineRef.current === localAnalysisEngine) return;
+    previousLocalAnalysisEngineRef.current = localAnalysisEngine;
+    void import("../lib/practice/fairyStockfish").then(({ disposeInactiveLocalAnalysisEngine }) =>
+      disposeInactiveLocalAnalysisEngine(localAnalysisEngine),
+    );
+  }, [localAnalysisEngine]);
+
   const value = useMemo<AppSettingsContextValue>(
     () => ({
       theme,
@@ -495,6 +518,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setLichessLinkTarget,
       gameExplorerOnLeft,
       setGameExplorerOnLeft,
+      localAnalysisEngine,
+      setLocalAnalysisEngine,
       showCoinBalance,
       setShowCoinBalance,
       showCoinChangePopups,
@@ -550,6 +575,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setLichessLinkTarget,
       gameExplorerOnLeft,
       setGameExplorerOnLeft,
+      localAnalysisEngine,
+      setLocalAnalysisEngine,
       showCoinBalance,
       setShowCoinBalance,
       showCoinChangePopups,

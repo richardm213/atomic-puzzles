@@ -46,7 +46,6 @@ import { buildBoardLoadNavigation, gamePlyFromHash } from "../../lib/analysis/bo
 import { getBoardMoveState } from "../../lib/analysis/boardState";
 import { readAnalysisHandoff } from "../../lib/analysis/handoff";
 import { type ArchiveGame, decodeGameResult } from "../../lib/archive/games";
-import { warmFairyStockfish } from "../../lib/practice/fairyStockfish";
 import { createAtomicPosition, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { atomicDbPositionUrl, requestAtomicDbAnalysis } from "../../utils/atomicDb";
@@ -1106,13 +1105,6 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   useEffect(() => {
     if (!positionAnalysisEnabled || threatFen === null) setThreatMode(false);
   }, [positionAnalysisEnabled, threatFen]);
-
-  useEffect(() => {
-    if (!positionAnalysisEnabled) return;
-    // Boot alongside the position request. Fresh positions fall back to the local
-    // engine, so waiting for an idle callback adds avoidable cold-start latency.
-    void warmFairyStockfish();
-  }, [positionAnalysisEnabled]);
 
   useEffect(() => {
     const handleAnalysisShortcut = (event: KeyboardEvent): void => {

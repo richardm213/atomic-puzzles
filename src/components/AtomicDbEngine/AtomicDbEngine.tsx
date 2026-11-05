@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { AtomicDbAnalysisState } from "../../hooks/useAtomicDbAnalysis";
 import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
+import { localAnalysisEngineLabel } from "../../lib/practice/localAnalysisEngine";
 import {
   atomicDbPositionUrl,
   type AtomicDbView,
@@ -41,13 +42,14 @@ type AtomicDbEngineControlsProps = {
 };
 
 const analysisSourceLabel = (analysis: AtomicDbAnalysisState, threatMode = false): string => {
+  const engine = localAnalysisEngineLabel(analysis.engine ?? "atomic-stockfish");
   const source =
     analysis.source === "terminal"
       ? "Final position"
       : analysis.source === "engine"
-        ? "Fairy-Stockfish 14"
+        ? engine
         : analysis.source === "mixed"
-          ? "AtomicDB + Fairy-Stockfish 14"
+          ? `AtomicDB + ${engine}`
           : "AtomicDB";
   return threatMode ? `Threat · ${source}` : source;
 };
