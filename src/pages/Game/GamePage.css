@@ -175,9 +175,9 @@
 }
 
 .gameAnalysisRating {
-  min-width: 8.5ch;
+  min-width: 9.5ch;
   display: inline-grid;
-  grid-template-columns: 4ch 1fr;
+  grid-template-columns: 5ch 1fr;
   align-items: baseline;
   gap: 5px;
   color: color-mix(in srgb, var(--color-heading) 76%, var(--color-muted));
