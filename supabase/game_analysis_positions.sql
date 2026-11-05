@@ -18,6 +18,7 @@ create index if not exists game_analysis_positions_pending_idx
   where not completed;
 
 revoke all on table public.game_analysis_positions from public, anon, authenticated;
+alter table public.game_analysis_positions enable row level security;
 
 create or replace function public.preserve_completed_game_analysis_position()
 returns trigger
