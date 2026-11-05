@@ -22,9 +22,9 @@ const FOLLOW_UP_POLL_DELAY_MS = 2 * 60_000;
 const EXPECTED_ATOMIC_DB_WORKERS = 4;
 const ESTIMATED_WORKER_NODES_PER_SECOND = 14_000_000;
 const WOLFRANDOM_RANDOMIZED_PLIES = 6;
-const SWEEP_POSITION_BUDGET = 72;
+const SWEEP_POSITION_BUDGET = 600;
 const SWEEP_JOB_LIMIT = 12;
-const SWEEP_JOB_CONCURRENCY = 2;
+const SWEEP_JOB_CONCURRENCY = 1;
 
 type PositionState = {
   fen: string;
@@ -62,6 +62,29 @@ const credentials = (): AtomicDbCredentials => {
 
 const errorMessage = (error: unknown): string =>
   error instanceof Error && error.message ? error.message : "AtomicDB request failed.";
+
+const retryAfterMs = (value: string | null): number => {
+  if (!value) return 1_000;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) return Math.max(250, seconds * 1_000);
+  const date = Date.parse(value);
+  return Number.isFinite(date) ? Math.max(250, date - Date.now()) : 1_000;
+};
+
+const atomicDbFetch = async (
+  input: string | URL,
+  init: Omit<RequestInit, "signal">,
+  timeoutMs: number,
+): Promise<Response> => {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const response = await fetch(input, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+    if (response.status !== 429 || attempt === 5) return response;
+    await new Promise((resolve) =>
+      setTimeout(resolve, retryAfterMs(response.headers.get("retry-after"))),
+    );
+  }
+  throw new Error("AtomicDB request failed.");
+};
 
 const terminalPosition = (fen: string): StoredAtomicDbPosition | null => {
   const position = createAtomicPosition(fen);
@@ -136,9 +159,7 @@ const readStates = (
 };
 
 const randomizedOpeningPlies = async (gameId: string): Promise<number> => {
-  const game = await queryArchiveResource(
-    new URLSearchParams({ resource: "game", gameId }),
-  );
+  const game = await queryArchiveResource(new URLSearchParams({ resource: "game", gameId }));
   return game && typeof game === "object" && Reflect.get(game, "mode") === "wolfrandom"
     ? WOLFRANDOM_RANDOMIZED_PLIES
     : 0;
@@ -148,17 +169,20 @@ const atomicDbRequest = async (
   fen: string,
   account: AtomicDbCredentials,
 ): Promise<Record<string, unknown>> => {
-  const response = await fetch(`${ATOMIC_DB_BASE_URL}/api/request`, {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      fen,
-      username: account.username,
-      password: account.password,
-      only_if_missing: "1",
-    }),
-    signal: AbortSignal.timeout(20_000),
-  });
+  const response = await atomicDbFetch(
+    `${ATOMIC_DB_BASE_URL}/api/request`,
+    {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        fen,
+        username: account.username,
+        password: account.password,
+        only_if_missing: "1",
+      }),
+    },
+    20_000,
+  );
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok || !body || typeof body !== "object") {
     const reason =
@@ -173,10 +197,13 @@ const atomicDbRequest = async (
 const atomicDbQuery = async (fen: string): Promise<StoredAtomicDbPosition | null> => {
   const url = new URL(`${ATOMIC_DB_BASE_URL}/api/query`);
   url.searchParams.set("fen", fen);
-  const response = await fetch(url, {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(15_000),
-  });
+  const response = await atomicDbFetch(
+    url,
+    {
+      headers: { Accept: "application/json" },
+    },
+    15_000,
+  );
   if (response.status === 404) return null;
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) throw new Error("AtomicDB position lookup failed.");
@@ -307,15 +334,17 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
   const pendingIndexes = states
     .map((state, index) => ({ state, index }))
     .filter(({ state }) => !state.completed)
-    .slice(0, maxPositions)
     .map(({ index }) => index);
   const standardOpeningIndexes = data.initial_fen.trim() === INITIAL_FEN ? [1, 2] : [];
-  const workIndexes = [
+  const orderedIndexes = [
     ...standardOpeningIndexes.filter((index) => pendingIndexes.includes(index)),
     ...pendingIndexes.filter((index) => !standardOpeningIndexes.includes(index)),
   ];
 
-  await mapConcurrent(workIndexes, 5, async (index) => {
+  const submittedIndexes = orderedIndexes
+    .filter((index) => Boolean(states[index]?.requestStatus))
+    .slice(0, maxPositions);
+  await mapConcurrent(submittedIndexes, 5, async (index) => {
     const state = states[index]!;
     try {
       const position = await atomicDbQuery(state.fen);
@@ -372,7 +401,10 @@ export const processGameAnalysisJob = async (gameId: string, maxPositions = 160)
     return;
   }
 
-  await mapConcurrent(workIndexes, 5, async (index) => {
+  const unsubmittedIndexes = orderedIndexes
+    .filter((index) => !states[index]?.requestStatus)
+    .slice(0, maxPositions);
+  await mapConcurrent(unsubmittedIndexes, 5, async (index) => {
     const state = states[index]!;
     if (state.completed || state.requestStatus) return;
     try {
@@ -442,8 +474,9 @@ export const processPendingGameAnalyses = async (limit = SWEEP_JOB_LIMIT): Promi
   if (error) throw new Error(`Unable to load pending game analyses: ${error.message}`);
   const jobs = data ?? [];
   const positionsPerJob = gameAnalysisSweepPositionLimit(jobs.length);
-  // Keep the same 72-position sweep budget, but spread it across more games. Two jobs at a time
-  // overlap network waits without materially increasing total AtomicDB or database work.
+  // A background function owns this pump, so it can use AtomicDB's full five-request-per-second
+  // allowance instead of stopping at the scheduled-function timeout. Processing one game at a
+  // time keeps the five position requests inside AtomicDB's per-address limit.
   await mapConcurrent(jobs, SWEEP_JOB_CONCURRENCY, async (row) => {
     await processGameAnalysisJob(String(row.game_id), positionsPerJob);
   });

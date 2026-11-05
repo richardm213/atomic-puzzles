@@ -1,7 +1,14 @@
-import { processPendingGameAnalyses } from "../features/gameAnalysis/service";
+import process from "node:process";
 
-export default async (): Promise<void> => {
-  await processPendingGameAnalyses();
+export default async (request: Request): Promise<void> => {
+  const secret = process.env.GAME_ANALYSIS_WORKER_SECRET?.trim() ?? "";
+  if (!secret) return;
+  const origin = new URL(request.url).origin;
+  await fetch(`${origin}/api/game-analysis-sweep-worker`, {
+    method: "POST",
+    headers: { "X-Game-Analysis-Worker": secret },
+    signal: AbortSignal.timeout(5_000),
+  });
 };
 
-export const config = { schedule: "*/2 * * * *" } as const;
+export const config = { schedule: "*/3 * * * *" } as const;
