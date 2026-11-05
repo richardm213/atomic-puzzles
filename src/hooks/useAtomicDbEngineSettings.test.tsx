@@ -10,10 +10,7 @@ describe("useAtomicDbEngineSettings", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("defaults to two lines on mobile without overriding a later preference", () => {
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn().mockReturnValue({ matches: true }),
-    );
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
 
     const first = renderHook(() => useAtomicDbEngineSettings({ storageKey: STORAGE_KEY }));
     expect(first.result.current[0].lineCount).toBe(2);
@@ -43,5 +40,15 @@ describe("useAtomicDbEngineSettings", () => {
 
     const second = renderHook(() => useAtomicDbEngineSettings({ storageKey: STORAGE_KEY }));
     expect(second.result.current[0].showFollowUpMoves).toBe(false);
+  });
+
+  it("restores the AtomicDB source preference", () => {
+    const first = renderHook(() => useAtomicDbEngineSettings({ storageKey: STORAGE_KEY }));
+
+    act(() => first.result.current[1]((current) => ({ ...current, atomicDbEnabled: false })));
+    first.unmount();
+
+    const second = renderHook(() => useAtomicDbEngineSettings({ storageKey: STORAGE_KEY }));
+    expect(second.result.current[0].atomicDbEnabled).toBe(false);
   });
 });

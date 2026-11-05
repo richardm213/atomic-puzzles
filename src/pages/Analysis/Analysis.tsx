@@ -518,6 +518,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   } = useAtomicDbBoardAnalysis({
     currentFen,
     enabled: positionAnalysisEnabled,
+    atomicDbEnabled: atomicDbEngineSettings.atomicDbEnabled !== false,
     navigation,
     lineCount: atomicDbEngineSettings.lineCount,
     showFollowUpMoves: atomicDbEngineSettings.showFollowUpMoves,
@@ -531,6 +532,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const threatAnalysis = useAtomicDbAnalysis(threatFen ?? currentFen, {
     debounceMs: 0,
     enabled: positionAnalysisEnabled && threatMode && threatFen !== null && !atomicDbLinePlaying,
+    atomicDbEnabled: atomicDbEngineSettings.atomicDbEnabled !== false,
     fallbackToEngine: true,
     lineCount: atomicDbEngineSettings.lineCount,
     plyCount: 5,
@@ -548,6 +550,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     ? (atomicDbAnalysis.result?.position?.key ?? null)
     : null;
   const canRequestAtomicDbAnalysis =
+    atomicDbEngineSettings.atomicDbEnabled !== false &&
     atomicDbResultIsCurrent &&
     !isAtomicTablebasePosition(currentFen) &&
     !atomicDbPositionKey &&

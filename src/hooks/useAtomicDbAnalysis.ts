@@ -32,6 +32,7 @@ export type AtomicDbAnalysisState = {
 
 type AtomicDbAnalysisOptions = {
   enabled?: boolean;
+  atomicDbEnabled?: boolean;
   debounceMs?: number;
   lineCount?: number;
   plyCount?: number;
@@ -102,6 +103,7 @@ export const useAtomicDbAnalysis = (
   fen: string,
   {
     enabled = true,
+    atomicDbEnabled = true,
     debounceMs = 220,
     lineCount: requestedLineCount = 3,
     plyCount: requestedPlyCount = 5,
@@ -112,14 +114,15 @@ export const useAtomicDbAnalysis = (
   const [state, setState] = useState<RequestState>(INITIAL_STATE);
   const [engineFocusEpoch, setEngineFocusEpoch] = useState(0);
   const lastRequestAtRef = useRef<number | null>(null);
-  const useAtomicStockfishOnly = fallbackToEngine && isAtomicTablebasePosition(fen);
+  const useAtomicStockfishOnly =
+    !atomicDbEnabled || (fallbackToEngine && isAtomicTablebasePosition(fen));
 
   useEffect(() => {
-    if (!fallbackToEngine) return;
+    if (!fallbackToEngine && atomicDbEnabled) return;
     const retryInActiveTab = (): void => setEngineFocusEpoch((epoch) => epoch + 1);
     window.addEventListener("focus", retryInActiveTab);
     return () => window.removeEventListener("focus", retryInActiveTab);
-  }, [fallbackToEngine, useAtomicStockfishOnly]);
+  }, [atomicDbEnabled, fallbackToEngine, useAtomicStockfishOnly]);
 
   useEffect(() => {
     if (!enabled) {
@@ -135,7 +138,8 @@ export const useAtomicDbAnalysis = (
     const assistanceEngine: LocalAnalysisEngine = "atomic-stockfish";
     const requestedLines = clampInteger(requestedLineCount, 1, MAX_LINE_COUNT);
     const legalMoveCount = atomicLegalMoveCount(fen);
-    const lineCount = legalMoveCount > 0 ? Math.min(requestedLines, legalMoveCount) : requestedLines;
+    const lineCount =
+      legalMoveCount > 0 ? Math.min(requestedLines, legalMoveCount) : requestedLines;
     const plyCount = clampInteger(requestedPlyCount, 1, MAX_PLY_COUNT);
     const cachedLinesFor = (position: AtomicDbPosition | null): Record<string, string[]> => {
       const rootMoves = position?.moves.slice(0, lineCount).map((move) => move.uci) ?? [];
@@ -250,12 +254,7 @@ export const useAtomicDbAnalysis = (
         status: AtomicDbAnalysisStatus,
       ): void => {
         if (controller.signal.aborted) return;
-        const filledPosition = fillAtomicDbPosition(
-          fen,
-          position,
-          candidates,
-          lineCount,
-        );
+        const filledPosition = fillAtomicDbPosition(fen, position, candidates, lineCount);
         const retainedMoveUcis = new Set(
           analyzedAtomicDbMoves(fen, position).map((move) => move.uci),
         );
@@ -403,6 +402,7 @@ export const useAtomicDbAnalysis = (
   }, [
     debounceMs,
     enabled,
+    atomicDbEnabled,
     fallbackToEngine,
     engineFocusEpoch,
     fen,

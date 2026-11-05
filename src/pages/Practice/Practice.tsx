@@ -273,6 +273,7 @@ export const PracticePage = () => {
   } = useAtomicDbBoardAnalysis({
     currentFen,
     enabled: atomicDbEngineSettings.enabled,
+    atomicDbEnabled: atomicDbEngineSettings.atomicDbEnabled !== false,
     navigation,
     lineCount: atomicDbEngineSettings.lineCount,
     showFollowUpMoves: atomicDbEngineSettings.showFollowUpMoves,

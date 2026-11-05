@@ -8,6 +8,33 @@ import { AtomicDbEngine, AtomicDbEngineControls, AtomicDbEvalBar } from "./Atomi
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 describe("AtomicDbEngine", () => {
+  it("can bypass AtomicDB from the shared engine settings", () => {
+    const setSettings = vi.fn();
+    const onDisable = vi.fn();
+    render(
+      <AtomicDbEngineControls
+        fen={STARTING_FEN}
+        analysis={{ status: "idle", error: "", result: null, principalVariations: {} }}
+        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: true }}
+        setSettings={setSettings}
+        onDisable={onDisable}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Engine settings" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Use AtomicDB" }));
+
+    expect(setSettings).toHaveBeenCalledOnce();
+    expect(
+      setSettings.mock.calls[0]?.[0]({
+        enabled: true,
+        lineCount: 1,
+        showFollowUpMoves: true,
+      }),
+    ).toMatchObject({ enabled: true, atomicDbEnabled: false });
+    expect(onDisable).not.toHaveBeenCalled();
+  });
+
   it("offers the move-notation layout in engine settings", () => {
     const onToggleNotation = vi.fn();
     render(

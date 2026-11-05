@@ -36,6 +36,35 @@ describe("useAtomicDbAnalysis", () => {
     analyzeWithEngineMock.mockReset();
   });
 
+  it("uses the fallback engine without requesting AtomicDB when AtomicDB is disabled", async () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    analyzeWithEngineMock.mockResolvedValue([
+      {
+        move: "e2e4",
+        multipv: 1,
+        scoreType: "cp",
+        score: 72,
+        depth: 16,
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(fen, {
+        atomicDbEnabled: false,
+        debounceMs: 0,
+        fallbackToEngine: true,
+        lineCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(analyzeWithEngineMock).toHaveBeenCalledOnce();
+    expect(result.current.source).toBe("engine");
+  });
+
   it("uses Atomic-Stockfish directly for five-piece endgames", async () => {
     const fen = "8/8/8/8/3k4/8/1K3P1P/6N1 w - - 3 71";
     const fetchMock = vi.fn();

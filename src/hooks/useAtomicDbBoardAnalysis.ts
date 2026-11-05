@@ -9,6 +9,7 @@ const PRINCIPAL_VARIATION_PLIES = 5;
 export const useAtomicDbBoardAnalysis = ({
   currentFen,
   enabled,
+  atomicDbEnabled = true,
   navigation,
   lineCount,
   showFollowUpMoves = true,
@@ -17,6 +18,7 @@ export const useAtomicDbBoardAnalysis = ({
 }: {
   currentFen: string;
   enabled: boolean;
+  atomicDbEnabled?: boolean;
   navigation: SolutionNavigation | null;
   lineCount: number;
   showFollowUpMoves?: boolean;
@@ -31,6 +33,7 @@ export const useAtomicDbBoardAnalysis = ({
     // A disabled panel is fully dormant. Any board navigation preempts the current request so the
     // move is applied before analysis resumes on its destination.
     lineCount,
+    atomicDbEnabled,
     plyCount: showFollowUpMoves ? PRINCIPAL_VARIATION_PLIES : 1,
     suspended: navigationPending || suspended,
     fallbackToEngine: enabled,

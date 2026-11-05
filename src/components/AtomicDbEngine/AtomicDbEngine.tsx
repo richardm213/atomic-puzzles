@@ -183,6 +183,17 @@ export const AtomicDbEngineControls = ({
         </button>
         {settingsOpen ? (
           <div className="atomicDbSettingsMenu" role="dialog" aria-label="Engine settings">
+            <label className="atomicDbSourceSetting">
+              <span>Use AtomicDB</span>
+              <input
+                type="checkbox"
+                checked={settings.atomicDbEnabled !== false}
+                onChange={(event) => {
+                  const atomicDbEnabled = event.target.checked;
+                  setSettings((current) => ({ ...current, atomicDbEnabled }));
+                }}
+              />
+            </label>
             <label className="atomicDbLinesSetting">
               <span>Multiple lines</span>
               <output>{visibleLineCount}</output>

@@ -181,11 +181,9 @@
   accent-color: var(--color-primary);
 }
 
+.atomicDbSourceSetting,
 .atomicDbFollowUpSetting {
   min-height: 34px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
   color: var(--color-text);
   display: grid;
   grid-template-columns: 1fr auto auto;
@@ -195,6 +193,20 @@
   font-weight: 650;
 }
 
+.atomicDbFollowUpSetting {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
+}
+
+.atomicDbSourceSetting {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
+  grid-template-columns: 1fr auto;
+}
+
+.atomicDbSourceSetting input,
 .atomicDbFollowUpSetting input {
   width: 18px;
   height: 18px;

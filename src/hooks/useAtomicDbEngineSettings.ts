@@ -7,6 +7,7 @@ const ENGINE_SETTINGS_VERSION = 2;
 
 export type AtomicDbEngineSettings = {
   enabled: boolean;
+  atomicDbEnabled?: boolean;
   lineCount: number;
   showFollowUpMoves: boolean;
   settingsVersion?: typeof ENGINE_SETTINGS_VERSION;
@@ -30,10 +31,13 @@ const engineSettingsSchema = (defaultEnabled: boolean, defaultLineCount: number)
         : Math.min(5, Math.max(1, parsedCount))
       : defaultLineCount;
     const enabled = typeof value.enabled === "boolean" ? value.enabled : defaultEnabled;
+    const atomicDbEnabled =
+      typeof value.atomicDbEnabled === "boolean" ? value.atomicDbEnabled : true;
     const showFollowUpMoves =
       typeof value.showFollowUpMoves === "boolean" ? value.showFollowUpMoves : true;
     return {
       enabled,
+      atomicDbEnabled,
       lineCount,
       showFollowUpMoves,
       settingsVersion: ENGINE_SETTINGS_VERSION,
@@ -53,6 +57,7 @@ export const useAtomicDbEngineSettings = ({
     engineSettingsSchema(defaultEnabled, defaultLineCount),
     {
       enabled: defaultEnabled,
+      atomicDbEnabled: true,
       lineCount: defaultLineCount,
       showFollowUpMoves: true,
       settingsVersion: ENGINE_SETTINGS_VERSION,

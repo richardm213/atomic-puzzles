@@ -134,9 +134,7 @@ export const PuzzleEditor = ({
   const [editorError, setEditorError] = useState("");
   const [activeLineIndex, setActiveLineIndex] = useState(0);
   const [hoveredEngineMove, setHoveredEngineMove] = useState<string | null>(null);
-  const [engineSettings, setEngineSettings] = useAtomicDbEngineSettings({
-    storageKey: "atomic-puzzles.puzzle-review-engine",
-  });
+  const [engineSettings, setEngineSettings] = useAtomicDbEngineSettings();
   const engineLinePlayingRef = useRef(false);
   const {
     copy: copyToClipboard,
@@ -478,6 +476,7 @@ export const PuzzleEditor = ({
   const engine = useAtomicDbBoardAnalysis({
     currentFen,
     enabled: showAnalysisEngine && engineSettings.enabled,
+    atomicDbEnabled: engineSettings.atomicDbEnabled !== false,
     navigation,
     lineCount: engineSettings.lineCount,
     showFollowUpMoves: engineSettings.showFollowUpMoves,
