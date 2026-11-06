@@ -61,7 +61,7 @@ begin
     end if;
 
     base_reward := case puzzle_level
-      when 1 then 2
+      when 1 then 1
       when 2 then 2
       when 4 then 5
       when 5 then 10
@@ -110,7 +110,7 @@ begin
   end if;
 
   base_penalty := case puzzle_level
-    when 1 then 2
+    when 1 then 4
     when 2 then 2
     when 3 then 1
     else 0
