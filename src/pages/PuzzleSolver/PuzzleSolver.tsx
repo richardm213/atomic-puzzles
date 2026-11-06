@@ -8,7 +8,15 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 
 import {
   DAILY_PUZZLE_ATTEMPT_LIMIT,
@@ -98,8 +106,10 @@ import {
   type CompletionFeedback,
   createInitialBoardSnapshot,
   createInitialBoardState,
+  createInitialPuzzleSession,
   getPuzzleAttemptStartedAt,
   puzzleIndexFromParam,
+  puzzleSessionReducer,
   removeValueFromSet,
   shuffleIndexes,
   toPuzzleKey,
@@ -118,8 +128,6 @@ const PUZZLE_RATING_EDITOR = "seaside_tiramisu";
 const PUZZLE_EXPLANATION_LEGACY_AUTHOR = "admin";
 const PUZZLE_EXPLANATION_LEGACY_EDITOR = "seaside_tiramisu";
 
-const SOLVE_MODE = "solve";
-const ANALYSIS_MODE = "analysis";
 const SOLUTION_UNLOCK_HINT = "Make at least one attempt before viewing the solution.";
 const SERVER_CUSTOM_SET_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -194,20 +202,19 @@ export const PuzzleSolverPage = () => {
     fading: boolean;
   } | null>(null);
   const [activePuzzleInfoTab, setActivePuzzleInfoTab] = useState<PuzzleInfoTab | null>(null);
-  const [solutionRevealed, setSolutionRevealed] = useState(false);
   const [solutionNavigation, setSolutionNavigation] = useState<SolutionNavigation | null>(null);
   const [analysisPreviewMove, setAnalysisPreviewMove] = useState<string | null>(null);
-  const [interactionMode, setInteractionMode] = useState(SOLVE_MODE);
-  const [completionFeedback, setCompletionFeedback] = useState<{
-    type: string;
-    icon: string;
-    title: string;
-  } | null>(null);
+  const [puzzleSession, dispatchPuzzleSession] = useReducer(
+    puzzleSessionReducer,
+    undefined,
+    createInitialPuzzleSession,
+  );
+  const puzzleSessionRef = useRef(puzzleSession);
+  puzzleSessionRef.current = puzzleSession;
   const [attemptRatingFeedback, setAttemptRatingFeedback] = useState<PuzzleRatingEvent | null>(
     null,
   );
   const [feedbackBadgeId, setFeedbackBadgeId] = useState(0);
-  const [explanationUnlockedByWrongMove, setExplanationUnlockedByWrongMove] = useState(false);
   const [explanationEditorOpen, setExplanationEditorOpen] = useState(false);
   const [explanationDraft, setExplanationDraft] = useState("");
   const [explanationSaveStatus, setExplanationSaveStatus] = useState<AsyncActionStatus>({
@@ -233,9 +240,6 @@ export const PuzzleSolverPage = () => {
   const previousBoardSnapshotRef = useRef<ReturnType<typeof createInitialBoardSnapshot>>(
     createInitialBoardSnapshot(),
   );
-  const interactionModeRef = useRef(SOLVE_MODE);
-  const hadWrongAttemptRef = useRef(false);
-  const lockedCompletionFeedbackRef = useRef<CompletionFeedback | null>(null);
   const mobileFeedbackIdRef = useRef(0);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const reportIssueDialogRef = useRef<HTMLDialogElement | null>(null);
@@ -644,7 +648,7 @@ export const PuzzleSolverPage = () => {
     puzzleSetParticipants.length === 2
       ? `${puzzleSetParticipants[0]} vs ${puzzleSetParticipants[1]}`
       : puzzleSetParticipants.join(" · ");
-  const isAnalysisMode = interactionMode === ANALYSIS_MODE;
+  const isAnalysisMode = puzzleSession.mode === "analysis";
   const hasPersistedAttempt = activePuzzleKey ? attemptedPuzzleIds.has(activePuzzleKey) : false;
   const hasSolvedPuzzle = activePuzzleKey ? solvedPuzzleIds.has(activePuzzleKey) : false;
   const shouldShowPuzzleTimer = showPuzzleTimer && attemptedPuzzleIdsReady && !hasSolvedPuzzle;
@@ -679,11 +683,11 @@ export const PuzzleSolverPage = () => {
       : ATTEMPTED_PUZZLE_BADGE_LABEL;
   const canViewExplanation =
     (hasExplanation || canManagePuzzleExplanation) &&
-    (hasAttemptedActivePuzzle || explanationUnlockedByWrongMove);
+    (hasAttemptedActivePuzzle || puzzleSession.attempt === "wrong");
   const showSolution = activePuzzleInfoTab === "solution";
   const showExplanation = activePuzzleInfoTab === "explanation";
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
-  const boardShowsSolution = isAnalysisMode && solutionRevealed;
+  const boardShowsSolution = isAnalysisMode && puzzleSession.solutionRevealed;
 
   useEffect(() => {
     setRatingEditorOpen(false);
@@ -874,6 +878,7 @@ export const PuzzleSolverPage = () => {
       setElapsedTimeMs(elapsedTimeMsRef.current);
       setElapsedTimerRunning(false);
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
+      dispatchPuzzleSession({ type: "attempt-resolved", correct: puzzleCorrect });
       setResolvedAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
       if (puzzleCorrect) {
         setSolvedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
@@ -901,22 +906,13 @@ export const PuzzleSolverPage = () => {
 
   const resetPuzzleUiState = useCallback(() => {
     setActivePuzzleInfoTab(null);
-    setSolutionRevealed(false);
     setSolutionNavigation(null);
-    setInteractionMode(SOLVE_MODE);
-    setCompletionFeedback(null);
+    dispatchPuzzleSession({ type: "reset" });
     setAttemptRatingFeedback(null);
     setFeedbackBadgeId(0);
-    setExplanationUnlockedByWrongMove(false);
-    lockedCompletionFeedbackRef.current = null;
     setPinnedSolutionLineIndex(null);
     setCustomSetRefreshState({ status: "idle" });
-    hadWrongAttemptRef.current = false;
   }, []);
-
-  useEffect(() => {
-    interactionModeRef.current = interactionMode;
-  }, [interactionMode]);
 
   useEffect(() => {
     if (activePuzzleIndex < 0) return;
@@ -933,6 +929,24 @@ export const PuzzleSolverPage = () => {
     setOtherPuzzleAttempts([]);
     previousBoardSnapshotRef.current = createInitialBoardSnapshot();
   }, [activePuzzleKey, fen, resetPuzzleUiState]);
+
+  useEffect(() => {
+    if (!activePuzzleKey || !attemptedPuzzleIdsReady || hasResolvedAttempt) return;
+    if (isCustomSetRoute || isDashboardSetSolveMode) return;
+
+    dispatchPuzzleSession({
+      type: "hydrate",
+      attempt: hasSolvedPuzzle ? "solved" : hasPersistedAttempt ? "wrong" : "unresolved",
+    });
+  }, [
+    activePuzzleKey,
+    attemptedPuzzleIdsReady,
+    hasPersistedAttempt,
+    hasResolvedAttempt,
+    hasSolvedPuzzle,
+    isCustomSetRoute,
+    isDashboardSetSolveMode,
+  ]);
 
   useEffect(() => {
     const shouldStartTimer = Boolean(
@@ -1004,13 +1018,16 @@ export const PuzzleSolverPage = () => {
   const isRetryFeedbackActive = Boolean(
     boardState.showRetryMove && !boardState.viewingSolution && !boardState.solved,
   );
-  const canRevealSolution = Boolean(fen) && hasAttemptedActivePuzzle && !isRetryFeedbackActive;
+  const canRevealSolution =
+    Boolean(fen) &&
+    (hasAttemptedActivePuzzle || puzzleSession.attempt === "wrong") &&
+    !isRetryFeedbackActive;
   const solutionButtonTitle = isRetryFeedbackActive
     ? "Find the better move before viewing the solution."
     : hasAttemptedActivePuzzle
       ? "View the solution"
       : SOLUTION_UNLOCK_HINT;
-  const feedback = completionFeedback;
+  const feedback = puzzleSession.feedback;
   const visibleRatingFeedback =
     attemptRatingFeedback?.puzzleId === activePuzzleKey &&
     feedback &&
@@ -1105,8 +1122,7 @@ export const PuzzleSolverPage = () => {
       return;
     }
 
-    setInteractionMode(ANALYSIS_MODE);
-    setSolutionRevealed(true);
+    dispatchPuzzleSession({ type: "enter-analysis", revealSolution: true });
     setActivePuzzleInfoTab("solution");
     setSolutionNavigation(null);
     if (isMobileLayout) {
@@ -1114,6 +1130,23 @@ export const PuzzleSolverPage = () => {
         boardPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
+  };
+
+  const handleGiveUp = () => {
+    if (puzzleSession.attempt !== "wrong" || isAnalysisMode) return;
+
+    const elapsedAtGiveUp =
+      elapsedTimerStartedAtRef.current === null
+        ? elapsedTimeMsRef.current
+        : Math.max(0, window.performance.now() - elapsedTimerStartedAtRef.current);
+    elapsedTimeMsRef.current = Math.min(elapsedAtGiveUp, MAX_PUZZLE_ATTEMPT_DURATION_MS);
+    elapsedTimerStartedAtRef.current = null;
+    setElapsedTimeMs(elapsedTimeMsRef.current);
+    setElapsedTimerRunning(false);
+    dispatchPuzzleSession({ type: "enter-analysis", revealSolution: true });
+    setActivePuzzleInfoTab("solution");
+    setSolutionNavigation(null);
+    setPinnedSolutionLineIndex(0);
   };
 
   const loadOtherPuzzleAttempts = () => {
@@ -1252,6 +1285,7 @@ export const PuzzleSolverPage = () => {
 
   const handleBoardStateChange = useCallback(
     (nextBoardState: ChessboardState): void => {
+      const currentSession = puzzleSessionRef.current;
       const previousBoardSnapshot = previousBoardSnapshotRef.current;
       const boardPositionChanged =
         previousBoardSnapshot.fen !== nextBoardState.fen ||
@@ -1260,35 +1294,23 @@ export const PuzzleSolverPage = () => {
         previousBoardSnapshot.viewingSolution !== nextBoardState.viewingSolution;
       const nextCompletionFeedback = buildCompletionFeedback(
         nextBoardState,
-        hadWrongAttemptRef.current,
+        currentSession.attempt === "wrong",
       );
       const shouldShowTransientFeedback =
         nextCompletionFeedback !== null && !nextBoardState.viewingSolution;
-      const lockedCompletionFeedback =
-        nextCompletionFeedback?.type === "retry" || nextCompletionFeedback?.type === "wrong"
-          ? null
-          : (nextCompletionFeedback ?? lockedCompletionFeedbackRef.current);
-      const enteringAnalysisMode =
-        interactionModeRef.current !== ANALYSIS_MODE &&
-        nextCompletionFeedback !== null &&
-        nextCompletionFeedback.type !== "wrong" &&
-        nextCompletionFeedback.type !== "retry";
 
       setBoardState(nextBoardState);
+      if (nextCompletionFeedback) {
+        dispatchPuzzleSession({ type: "board-feedback", feedback: nextCompletionFeedback });
+      } else {
+        dispatchPuzzleSession({ type: "board-idle", positionChanged: boardPositionChanged });
+      }
 
       if (isMobileLayout) {
         if (shouldShowTransientFeedback) {
           showMobileFeedback(nextCompletionFeedback);
-        } else if (interactionModeRef.current === SOLVE_MODE && boardPositionChanged) {
+        } else if (currentSession.mode === "play" && boardPositionChanged) {
           setMobileFeedback(null);
-        }
-      }
-
-      if (nextBoardState.showWrongMove) {
-        hadWrongAttemptRef.current = true;
-        if (hasExplanation) {
-          setExplanationUnlockedByWrongMove(true);
-          setActivePuzzleInfoTab("explanation");
         }
       }
 
@@ -1296,26 +1318,9 @@ export const PuzzleSolverPage = () => {
         setFeedbackBadgeId((current) => current + 1);
       }
 
-      if (nextCompletionFeedback?.type === "retry" || nextCompletionFeedback?.type === "wrong") {
-        lockedCompletionFeedbackRef.current = null;
-      } else if (nextCompletionFeedback) {
-        lockedCompletionFeedbackRef.current = nextCompletionFeedback;
-      }
-
-      if (enteringAnalysisMode && nextCompletionFeedback) {
-        setInteractionMode(ANALYSIS_MODE);
-        setCompletionFeedback(nextCompletionFeedback);
-      } else if (nextCompletionFeedback) {
-        setCompletionFeedback(nextCompletionFeedback);
-      } else if (lockedCompletionFeedback) {
-        setCompletionFeedback(lockedCompletionFeedback);
-      } else {
-        setCompletionFeedback(null);
-      }
-
       if (
-        interactionModeRef.current === ANALYSIS_MODE &&
-        boardShowsSolution &&
+        currentSession.mode === "analysis" &&
+        currentSession.solutionRevealed &&
         previousBoardSnapshot.viewingSolution &&
         previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex
       ) {
@@ -1333,7 +1338,7 @@ export const PuzzleSolverPage = () => {
         setSolutionNavigation(null);
       }
     },
-    [boardShowsSolution, hasExplanation, isMobileLayout, showMobileFeedback],
+    [isMobileLayout, showMobileFeedback],
   );
 
   const handlePlaybackCommand = useCallback((command: PlaybackCommand): void => {
@@ -1475,29 +1480,32 @@ export const PuzzleSolverPage = () => {
     <PuzzleAnalysisPanel
       key={activePuzzleId ?? "empty"}
       fen={currentFen}
-      attempted={hasAttemptedActivePuzzle}
+      analysisActive={isAnalysisMode}
       terminalOutcome={
         boardState.winner ?? (boardState.status.toLowerCase() === "draw" ? "draw" : null)
       }
-      lines={allVariationLines}
+      lines={isAnalysisMode ? allVariationLines : []}
       moves={boardState.lineMoves ?? []}
       currentPly={currentAnalysisMoves.length}
       activeLineIndex={activeVariationLineIndex}
       onNavigate={(ply) => {
         if (hasAttemptedActivePuzzle) {
-          setInteractionMode(ANALYSIS_MODE);
-          setSolutionRevealed(true);
+          dispatchPuzzleSession({ type: "enter-analysis", revealSolution: true });
         }
         setSolutionNavigation({ type: "history", ply });
       }}
       onSelectVariation={(lineIndex, moveIndex) => {
-        setInteractionMode(ANALYSIS_MODE);
-        setSolutionRevealed(true);
+        dispatchPuzzleSession({ type: "enter-analysis", revealSolution: true });
         handleVariationMoveClick(lineIndex, moveIndex);
       }}
       onCycleOptions={(command) => setSolutionNavigation({ type: "command", command })}
       onPlayLine={(ucis) => setSolutionNavigation({ type: "line", ucis })}
       onHoverMove={setAnalysisPreviewMove}
+      canGiveUp={puzzleSession.attempt === "wrong" && !isAnalysisMode}
+      onGiveUp={handleGiveUp}
+      canStepBack={canPlaybackPrevious}
+      canStepForward={canPlaybackNext}
+      onNavigateMoves={handlePlaybackCommand}
     />
   );
 
@@ -1507,6 +1515,7 @@ export const PuzzleSolverPage = () => {
       activeTab={activePuzzleInfoTab}
       solution={{
         canReveal: canRevealSolution,
+        canGiveUp: puzzleSession.attempt === "wrong" && !isAnalysisMode,
         buttonTitle: solutionButtonTitle,
         mobileAnalysis: mobile ? puzzleAnalysisPanel : undefined,
         onToggle: handleSelectSolutionTab,

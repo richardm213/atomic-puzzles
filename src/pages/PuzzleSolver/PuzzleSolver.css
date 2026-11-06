@@ -26,21 +26,43 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.puzzleAnalysisPanel.attempted .puzzleAnalysisEngine {
+.puzzleAnalysisPanel.analysisActive .puzzleAnalysisEngine {
   min-height: calc(54px + var(--puzzle-engine-line-count, 3) * 30px);
 }
 
-.puzzleAnalysisLocked {
-  min-height: 172px;
-  background: var(--color-panel-strong);
-}
-
 .puzzleAnalysisMoves {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   min-height: 0;
   max-height: 240px;
   overflow: auto;
   padding: 0;
   background: var(--color-panel-strong);
+}
+
+.puzzleMoveToolbar {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 3px 8px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-panel-deep);
+}
+
+.puzzleMoveToolbar.hasGiveUp {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.puzzleGiveUpButton {
+  color: var(--color-warning);
+}
+
+.puzzleGiveUpButton:hover:not(:disabled) {
+  color: var(--color-heading);
 }
 
 :root[data-theme="light"] .puzzlePage {
@@ -1962,12 +1984,8 @@ button.puzzleRatingBadge.editable:focus-visible {
     box-shadow: none;
   }
 
-  .mobileActionCard .puzzleAnalysisPanel.attempted .puzzleAnalysisEngine {
+  .mobileActionCard .puzzleAnalysisPanel.analysisActive .puzzleAnalysisEngine {
     min-height: 0;
-  }
-
-  .mobileActionCard .puzzleAnalysisLocked {
-    min-height: 148px;
   }
 
   .mobileActionCard .puzzleAnalysisMoves {

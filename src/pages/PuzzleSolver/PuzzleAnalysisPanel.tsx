@@ -1,8 +1,11 @@
 import "../../features/analysisWorkspace/AnalysisWorkspace.css";
 
+import { faFlag } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { type CSSProperties, useEffect, useState } from "react";
 
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
+import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
 import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
@@ -18,7 +21,7 @@ const initialEngineSettings = (): AtomicDbEngineSettings => ({
 
 export const PuzzleAnalysisPanel = ({
   fen,
-  attempted,
+  analysisActive,
   terminalOutcome,
   lines,
   moves,
@@ -29,9 +32,14 @@ export const PuzzleAnalysisPanel = ({
   onCycleOptions,
   onPlayLine,
   onHoverMove,
+  canGiveUp,
+  onGiveUp,
+  canStepBack,
+  canStepForward,
+  onNavigateMoves,
 }: {
   fen: string;
-  attempted: boolean;
+  analysisActive: boolean;
   terminalOutcome: "white" | "black" | "draw" | null;
   lines: string[][];
   moves: string[];
@@ -42,6 +50,13 @@ export const PuzzleAnalysisPanel = ({
   onCycleOptions: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
   onPlayLine: (ucis: string[]) => void;
   onHoverMove: (uci: string | null) => void;
+  canGiveUp: boolean;
+  onGiveUp: () => void;
+  canStepBack: boolean;
+  canStepForward: boolean;
+  onNavigateMoves: (
+    command: Extract<PlaybackCommand, "start" | "previous" | "next" | "end">,
+  ) => void;
 }) => {
   const [engineSettings, setEngineSettings] = useState(initialEngineSettings);
 
@@ -52,7 +67,7 @@ export const PuzzleAnalysisPanel = ({
 
   const { analysis } = useAtomicDbBoardAnalysis({
     currentFen: fen,
-    enabled: attempted && engineSettings.enabled,
+    enabled: analysisActive && engineSettings.enabled,
     atomicDbEnabled: engineSettings.atomicDbEnabled !== false,
     navigation: null,
     lineCount: engineSettings.lineCount,
@@ -62,12 +77,12 @@ export const PuzzleAnalysisPanel = ({
 
   return (
     <section
-      className={`puzzleAnalysisPanel ${attempted ? "attempted" : ""}`.trim()}
+      className={`puzzleAnalysisPanel ${analysisActive ? "analysisActive" : ""}`.trim()}
       style={{ "--puzzle-engine-line-count": engineSettings.lineCount } as CSSProperties}
       aria-label="Puzzle analysis"
     >
-      <div className="puzzleAnalysisEngine">
-        {attempted ? (
+      {analysisActive ? (
+        <div className="puzzleAnalysisEngine">
           <AtomicDbAnalysisBlock
             fen={fen}
             analysis={analysis}
@@ -78,14 +93,12 @@ export const PuzzleAnalysisPanel = ({
             onHoverMove={onHoverMove}
             onPlayLine={onPlayLine}
           />
-        ) : (
-          <div className="puzzleAnalysisLocked" aria-hidden="true" />
-        )}
-      </div>
+        </div>
+      ) : null}
 
       <div className="puzzleAnalysisMoves" aria-label="Played moves">
         <MoveNotation
-          lines={attempted ? lines : []}
+          lines={analysisActive ? lines : []}
           moves={moves}
           currentPly={currentPly}
           pinnedLineIndex={activeLineIndex}
@@ -94,6 +107,30 @@ export const PuzzleAnalysisPanel = ({
           onSelectVariation={onSelectVariation}
           onCycleOptions={onCycleOptions}
         />
+        <div
+          className={`puzzleMoveToolbar ${canGiveUp ? "hasGiveUp" : ""}`.trim()}
+          aria-label="Move navigation"
+        >
+          {canGiveUp ? (
+            <button
+              type="button"
+              className="analysisToolbarButton puzzleGiveUpButton"
+              aria-label="Give up and reveal the solution"
+              title="Give up and reveal the solution"
+              onClick={onGiveUp}
+            >
+              <FontAwesomeIcon icon={faFlag} aria-hidden="true" />
+            </button>
+          ) : null}
+          <PlaybackButtons
+            buttonClassName="analysisToolbarButton"
+            canStart={canStepBack}
+            canPrevious={canStepBack}
+            canNext={canStepForward}
+            canEnd={canStepForward}
+            onNavigate={onNavigateMoves}
+          />
+        </div>
       </div>
     </section>
   );

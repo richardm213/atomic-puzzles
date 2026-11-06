@@ -2,6 +2,7 @@ import {
   faCheck,
   faCircleInfo,
   faClockRotateLeft,
+  faFlag,
   faMagnifyingGlassChart,
   faUsers,
   faXmark,
@@ -23,6 +24,7 @@ type PuzzleInfoSectionProps = {
   activeTab: PuzzleInfoTab | null;
   solution: {
     canReveal: boolean;
+    canGiveUp: boolean;
     buttonTitle: string;
     mobileAnalysis?: ReactNode;
     onToggle: () => void;
@@ -249,8 +251,11 @@ export const PuzzleInfoSection = ({
             aria-expanded={showSolution}
             title={showSolution ? "Hide the solution panel" : solution.buttonTitle}
           >
-            <FontAwesomeIcon icon={faMagnifyingGlassChart} aria-hidden="true" />
-            <span>Solution</span>
+            <FontAwesomeIcon
+              icon={solution.canGiveUp ? faFlag : faMagnifyingGlassChart}
+              aria-hidden="true"
+            />
+            <span>{solution.canGiveUp ? "Give up" : "Solution"}</span>
             {showSolution ? (
               <span className="puzzleInfoTabToggle" aria-hidden="true">
                 ⌃

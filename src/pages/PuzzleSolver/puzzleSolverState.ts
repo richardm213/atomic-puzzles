@@ -72,9 +72,84 @@ export const shuffleIndexes = (indexes: number[]): number[] => {
 };
 
 export type CompletionFeedback = {
-  type: string;
+  type: "correct" | "retrySuccess" | "wrong" | "retry";
   icon: string;
   title: string;
+};
+
+export type PuzzleSessionState = {
+  mode: "play" | "analysis";
+  attempt: "unresolved" | "wrong" | "solved";
+  solutionRevealed: boolean;
+  feedback: CompletionFeedback | null;
+};
+
+export type PuzzleSessionAction =
+  | { type: "reset" }
+  | { type: "hydrate"; attempt: "unresolved" | "wrong" | "solved" }
+  | { type: "attempt-resolved"; correct: boolean }
+  | { type: "board-feedback"; feedback: CompletionFeedback }
+  | { type: "board-idle"; positionChanged: boolean }
+  | { type: "enter-analysis"; revealSolution?: boolean };
+
+export const createInitialPuzzleSession = (): PuzzleSessionState => ({
+  mode: "play",
+  attempt: "unresolved",
+  solutionRevealed: false,
+  feedback: null,
+});
+
+export const puzzleSessionReducer = (
+  state: PuzzleSessionState,
+  action: PuzzleSessionAction,
+): PuzzleSessionState => {
+  switch (action.type) {
+    case "reset":
+      return createInitialPuzzleSession();
+    case "hydrate":
+      if (action.attempt === "solved") {
+        return { ...createInitialPuzzleSession(), mode: "analysis", attempt: "solved" };
+      }
+      return { ...createInitialPuzzleSession(), attempt: action.attempt };
+    case "attempt-resolved":
+      return action.correct
+        ? { ...state, mode: "analysis", attempt: "solved", feedback: null }
+        : {
+            ...state,
+            mode: "play",
+            attempt: "wrong",
+            solutionRevealed: false,
+            feedback: null,
+          };
+    case "board-feedback":
+      if (action.feedback.type === "wrong") {
+        return {
+          mode: "play",
+          attempt: "wrong",
+          solutionRevealed: false,
+          feedback: action.feedback,
+        };
+      }
+      if (action.feedback.type === "correct" || action.feedback.type === "retrySuccess") {
+        return {
+          ...state,
+          mode: "analysis",
+          attempt: "solved",
+          feedback: action.feedback,
+        };
+      }
+      return { ...state, feedback: action.feedback };
+    case "board-idle":
+      return action.positionChanged && state.mode === "play" && state.feedback
+        ? { ...state, feedback: null }
+        : state;
+    case "enter-analysis":
+      return {
+        ...state,
+        mode: "analysis",
+        solutionRevealed: state.solutionRevealed || action.revealSolution === true,
+      };
+  }
 };
 
 export const buildCompletionFeedback = (
