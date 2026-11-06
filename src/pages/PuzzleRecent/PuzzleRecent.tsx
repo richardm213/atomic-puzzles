@@ -217,56 +217,56 @@ export const PuzzleRecentPage = () => {
     <section className="puzzleQueuePage puzzleRecentPage">
       <Seo title="Recent puzzles" description="Administer recent atomic chess puzzles." />
       <header className="puzzleQueueHeader puzzleAdminHeader">
-        <h1>Recent puzzles</h1>
+        <div className="puzzleRecentHeaderMain">
+          <div className="puzzleRecentNavigation" aria-label="Puzzle navigation">
+            <button
+              type="button"
+              className="queueSecondaryButton"
+              aria-label="Previous puzzle"
+              disabled={loading || !response?.olderPuzzleId}
+              onClick={() => void load(puzzle?.id, "older")}
+            >
+              <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
+            </button>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                const id = Number(jumpId);
+                if (!Number.isSafeInteger(id) || id < 1) {
+                  setError("Enter a valid puzzle ID.");
+                  return;
+                }
+                void load(id, "exact");
+              }}
+            >
+              <label htmlFor="recent-puzzle-id">Puzzle ID</label>
+              <input
+                id="recent-puzzle-id"
+                type="number"
+                min={1}
+                step={1}
+                value={jumpId}
+                onChange={(event) => setJumpId(event.target.value)}
+              />
+              <button type="submit" className="queueSecondaryButton" disabled={loading}>
+                Go
+              </button>
+            </form>
+            <button
+              type="button"
+              className="queueSecondaryButton"
+              aria-label="Next puzzle"
+              disabled={loading || !response?.newerPuzzleId}
+              onClick={() => void load(puzzle?.id, "newer")}
+            >
+              <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
         <Link className="queueSecondaryButton" to="/puzzles/review">
           Review queue
         </Link>
       </header>
-
-      <div className="puzzleRecentNavigation" aria-label="Puzzle navigation">
-        <button
-          type="button"
-          className="queueSecondaryButton"
-          aria-label="Previous puzzle"
-          disabled={loading || !response?.olderPuzzleId}
-          onClick={() => void load(puzzle?.id, "older")}
-        >
-          <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
-        </button>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            const id = Number(jumpId);
-            if (!Number.isSafeInteger(id) || id < 1) {
-              setError("Enter a valid puzzle ID.");
-              return;
-            }
-            void load(id, "exact");
-          }}
-        >
-          <label htmlFor="recent-puzzle-id">Puzzle ID</label>
-          <input
-            id="recent-puzzle-id"
-            type="number"
-            min={1}
-            step={1}
-            value={jumpId}
-            onChange={(event) => setJumpId(event.target.value)}
-          />
-          <button type="submit" className="queueSecondaryButton" disabled={loading}>
-            Go
-          </button>
-        </form>
-        <button
-          type="button"
-          className="queueSecondaryButton"
-          aria-label="Next puzzle"
-          disabled={loading || !response?.newerPuzzleId}
-          onClick={() => void load(puzzle?.id, "newer")}
-        >
-          <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
-        </button>
-      </div>
 
       {puzzle ? (
         <div className="puzzleReviewEditor">
