@@ -55,7 +55,8 @@ describe("puzzle-tags function", () => {
     const tags = ["fork", "pin", "tempo"];
     const single = vi.fn(async () => ({ data: { id: 42, tags }, error: null }));
     const select = vi.fn(() => ({ single }));
-    const eq = vi.fn(() => ({ select }));
+    const is = vi.fn(() => ({ select }));
+    const eq = vi.fn(() => ({ is }));
     const update = vi.fn(() => ({ eq }));
     const from = vi.fn(() => ({ update }));
     mocks.createClient.mockReturnValue({ from });
@@ -71,5 +72,6 @@ describe("puzzle-tags function", () => {
     expect(from).toHaveBeenCalledWith("puzzles");
     expect(update).toHaveBeenCalledWith({ tags });
     expect(eq).toHaveBeenCalledWith("id", 42);
+    expect(is).toHaveBeenCalledWith("deleted_at", null);
   });
 });

@@ -24,7 +24,7 @@ export const clearPuzzleRatingCaches = (): void => {
 const fetchUncachedPuzzleCatalogFromSupabase = async (): Promise<PuzzleRow[]> => {
   const supabase = getSupabaseClient();
   return fetchAllSupabaseRows<PuzzleRow>(PUZZLES_TABLE, () =>
-    supabase.from(PUZZLES_TABLE).select(PUZZLE_CATALOG_COLUMNS).order("id"),
+    supabase.from(PUZZLES_TABLE).select(PUZZLE_CATALOG_COLUMNS).is("deleted_at", null).order("id"),
   );
 };
 

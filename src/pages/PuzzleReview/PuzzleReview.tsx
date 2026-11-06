@@ -8,6 +8,7 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
@@ -277,6 +278,14 @@ export const PuzzleReviewPage = () => {
   return (
     <section className="puzzleQueuePage">
       <Seo title="Puzzle review queue" description="Review submitted atomic chess puzzles." />
+      {isReviewer ? (
+        <header className="puzzleQueueHeader puzzleAdminHeader">
+          <h1>Puzzle review queue</h1>
+          <Link className="queueSecondaryButton" to="/puzzles/recent">
+            Recent puzzles
+          </Link>
+        </header>
+      ) : null}
       <div className="puzzleReviewLayout">
         <aside className="puzzleQueueList" aria-label="Pending submissions">
           {queue.map((row) => (

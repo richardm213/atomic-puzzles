@@ -21,7 +21,8 @@ const mockPuzzleUpdate = (
   hasAttempt = true,
 ) => {
   const lookupSingle = vi.fn(async () => ({ data: { id: 42, author }, error: null }));
-  const lookupEq = vi.fn(() => ({ single: lookupSingle }));
+  const lookupIs = vi.fn(() => ({ single: lookupSingle }));
+  const lookupEq = vi.fn(() => ({ is: lookupIs }));
   const lookupSelect = vi.fn(() => ({ eq: lookupEq }));
   const attemptMaybeSingle = vi.fn(async () => ({
     data: hasAttempt ? { puzzle_id: "42" } : null,
@@ -35,7 +36,8 @@ const mockPuzzleUpdate = (
     error: null,
   }));
   const updateSelect = vi.fn(() => ({ single: updateSingle }));
-  const updateEq = vi.fn(() => ({ select: updateSelect }));
+  const updateIs = vi.fn(() => ({ select: updateSelect }));
+  const updateEq = vi.fn(() => ({ is: updateIs }));
   const update = vi.fn(() => ({ eq: updateEq }));
   const from = vi
     .fn()

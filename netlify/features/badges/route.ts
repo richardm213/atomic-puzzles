@@ -101,7 +101,11 @@ export const badgesRoute = async (event: FunctionEvent) => {
       "correct puzzles",
     ),
     countRows(
-      supabase.from("puzzles").select("id", { count: "exact", head: true }).eq("author", username),
+      supabase
+        .from("puzzles")
+        .select("id", { count: "exact", head: true })
+        .eq("author", username)
+        .is("deleted_at", null),
       "created puzzles",
     ),
     loadRatingPeaks(username),

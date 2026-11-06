@@ -453,6 +453,7 @@ export class CommunityRepository {
       .from("puzzles")
       .select("author")
       .eq("id", puzzleId)
+      .is("deleted_at", null)
       .maybeSingle();
     const parentAuthorQuery = parentId
       ? this.supabase.from("community_comments").select("username").eq("id", parentId).maybeSingle()

@@ -34,6 +34,7 @@ export const puzzleExplanationRoute = async (event: FunctionEvent) => {
     .from("puzzles")
     .select("id,author")
     .eq("id", input.puzzleId)
+    .is("deleted_at", null)
     .single();
   if (lookupError || !puzzle) throw new HttpError(404, "Puzzle not found.");
 
@@ -62,6 +63,7 @@ export const puzzleExplanationRoute = async (event: FunctionEvent) => {
     .from("puzzles")
     .update({ explanation: input.explanation })
     .eq("id", input.puzzleId)
+    .is("deleted_at", null)
     .select("id,explanation")
     .single();
   if (error) throw new Error(`Unable to update puzzle explanation: ${error.message}`);

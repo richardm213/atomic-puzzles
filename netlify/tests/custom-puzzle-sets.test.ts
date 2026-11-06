@@ -110,6 +110,7 @@ const createRefreshSupabaseMock = () => {
 
   const puzzleQuery: Record<string, ReturnType<typeof vi.fn>> = {};
   puzzleQuery.select = vi.fn(() => puzzleQuery);
+  puzzleQuery.is = vi.fn(() => puzzleQuery);
   puzzleQuery.in = vi.fn(async () => ({
     data: [
       { id: 1369, author: "admin", tags: ["fork"] },
@@ -156,6 +157,7 @@ const createEndgameSetSupabaseMock = () => {
 
   const puzzleQuery: Record<string, ReturnType<typeof vi.fn>> = {};
   puzzleQuery.select = vi.fn(() => puzzleQuery);
+  puzzleQuery.is = vi.fn(() => puzzleQuery);
   puzzleQuery.order = vi.fn(() => puzzleQuery);
   puzzleQuery.range = vi.fn(async () => ({
     data: [

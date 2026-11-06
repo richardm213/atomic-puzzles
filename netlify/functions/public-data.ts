@@ -63,7 +63,7 @@ const publicDataRoute = async (event: FunctionEvent) => {
             .from("atomic_tour_ranking_snapshots")
             .select("snapshot_date")
             .order("snapshot_date", { ascending: false })
-        : supabase.from("puzzles").select("id").order("id");
+        : supabase.from("puzzles").select("id").is("deleted_at", null).order("id");
     const { data, error } = await query.range(from, from + pageSize - 1);
     if (error) throw new Error(`Unable to load public data: ${error.message}`);
     const page = (data ?? []) as Record<string, unknown>[];

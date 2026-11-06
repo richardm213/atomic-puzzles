@@ -15,7 +15,7 @@ import { createSiteSessionCookie } from "../lib/siteSession";
 
 const queryChain = (result: Record<string, unknown>) => {
   const chain: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "order", "upsert"]) {
+  for (const method of ["select", "eq", "is", "order", "upsert"]) {
     chain[method] = vi.fn(() => chain);
   }
   chain.then = (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) =>
@@ -23,6 +23,7 @@ const queryChain = (result: Record<string, unknown>) => {
   return chain as {
     select: ReturnType<typeof vi.fn>;
     eq: ReturnType<typeof vi.fn>;
+    is: ReturnType<typeof vi.fn>;
     order: ReturnType<typeof vi.fn>;
     upsert: ReturnType<typeof vi.fn>;
   };

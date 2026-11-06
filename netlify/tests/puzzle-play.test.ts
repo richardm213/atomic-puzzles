@@ -14,12 +14,14 @@ const authHeaders = () => ({
 const createPuzzleQuery = () => {
   const query = {
     select: vi.fn(),
-    in: vi.fn(async () => ({
+    in: vi.fn(),
+    is: vi.fn(async () => ({
       data: [{ id: 414, fen: "puzzle fen", solution: "18. O-O-O" }],
       error: null,
     })),
   };
   query.select.mockReturnValue(query);
+  query.in.mockReturnValue(query);
   return query;
 };
 
@@ -97,6 +99,7 @@ describe("puzzle-play function", () => {
       dailyLimitReached: false,
     });
     expect(query.in).toHaveBeenCalledWith("id", [414]);
+    expect(query.is).toHaveBeenCalledWith("deleted_at", null);
   });
 
   it("only returns previously attempted puzzles after the UTC daily limit", async () => {
@@ -125,6 +128,7 @@ describe("puzzle-play function", () => {
       dailyLimitReached: true,
     });
     expect(puzzleQuery.in).toHaveBeenCalledWith("id", [414]);
+    expect(puzzleQuery.is).toHaveBeenCalledWith("deleted_at", null);
   });
 
   it("rejects cross-site puzzle detail requests", async () => {

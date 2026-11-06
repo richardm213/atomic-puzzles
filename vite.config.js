@@ -108,6 +108,7 @@ const localPuzzleFunctionsPlugin = ({ archiveOrigin, useLocalArchive }) => {
     ["/api/auth/session", "/netlify/functions/auth-session.ts"],
     ["/api/puzzles/submit", "/netlify/functions/puzzle-submit.ts"],
     ["/api/puzzles/review", "/netlify/functions/puzzle-review.ts"],
+    ["/api/puzzles/admin", "/netlify/functions/puzzle-admin.ts"],
     ["/api/puzzles/issues", "/netlify/functions/puzzle-issues.ts"],
     ["/api/puzzles/tags", "/netlify/functions/puzzle-tags.ts"],
     ["/api/puzzles/rating", "/netlify/functions/puzzle-rating.ts"],

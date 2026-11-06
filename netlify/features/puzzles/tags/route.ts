@@ -36,6 +36,7 @@ export const puzzleTagRoute = async (event: FunctionEvent) => {
     .from("puzzles")
     .update({ tags })
     .eq("id", input.puzzleId)
+    .is("deleted_at", null)
     .select("id,tags")
     .single();
   if (error) throw new Error(`Unable to update puzzle motifs: ${error.message}`);

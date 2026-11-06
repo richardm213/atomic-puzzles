@@ -120,6 +120,10 @@ const PuzzleReviewPage = lazyRouteComponent(
   () => import("./pages/PuzzleReview/PuzzleReview"),
   "PuzzleReviewPage",
 );
+const PuzzleRecentPage = lazyRouteComponent(
+  () => import("./pages/PuzzleRecent/PuzzleRecent"),
+  "PuzzleRecentPage",
+);
 const PuzzleIssuesPage = lazyRouteComponent(
   () => import("./pages/PuzzleIssues/PuzzleIssues"),
   "PuzzleIssuesPage",
@@ -189,6 +193,7 @@ const AuthenticatedPuzzleSetsPage = requirePuzzleLogin(PuzzleSetsPage);
 const AuthenticatedPuzzleSolverPage = requirePuzzleLogin(PuzzleSolverPage);
 const AuthenticatedPuzzleSubmissionPage = requirePuzzleLogin(PuzzleSubmissionPage);
 const AuthenticatedPuzzleReviewPage = requirePuzzleLogin(PuzzleReviewPage);
+const AuthenticatedPuzzleRecentPage = requirePuzzleLogin(PuzzleRecentPage);
 const AuthenticatedPuzzleIssuesPage = requirePuzzleLogin(PuzzleIssuesPage);
 
 const appBasePath = (() => {
@@ -628,6 +633,12 @@ const puzzleReviewRoute = createRoute({
   component: AuthenticatedPuzzleReviewPage,
 });
 
+const puzzleRecentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/puzzles/recent",
+  component: AuthenticatedPuzzleRecentPage,
+});
+
 const puzzleIssuesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/puzzles/issues",
@@ -828,6 +839,7 @@ const routeTree = rootRoute.addChildren([
   puzzleMotifsRoute,
   puzzleSubmissionRoute,
   puzzleReviewRoute,
+  puzzleRecentRoute,
   puzzleIssuesRoute,
   notificationsRoute,
   shopRoute,

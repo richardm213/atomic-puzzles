@@ -81,6 +81,7 @@ export class CustomPuzzleSetRepository {
       this.supabase
         .from("puzzles")
         .select("id,author,tags")
+        .is("deleted_at", null)
         .order("id", { ascending: true })
         .range(from, to),
     );
@@ -92,6 +93,7 @@ export class CustomPuzzleSetRepository {
       const result = await this.supabase
         .from("puzzles")
         .select("id,author,tags")
+        .is("deleted_at", null)
         .in("id", puzzleIds.slice(index, index + 500));
       if (result.error) throw new Error(result.error.message);
       puzzles.push(...((result.data ?? []) as PuzzleFilterRow[]));

@@ -3,6 +3,7 @@
 /api/opening-explorer    /.netlify/functions/opening-explorer    200
 /api/puzzles/submit    /.netlify/functions/puzzle-submit    200
 /api/puzzles/review    /.netlify/functions/puzzle-review    200
+/api/puzzles/admin    /.netlify/functions/puzzle-admin    200
 /api/puzzles/issues    /.netlify/functions/puzzle-issues    200
 /api/puzzles/tags    /.netlify/functions/puzzle-tags    200
 /api/puzzles/rating    /.netlify/functions/puzzle-rating    200

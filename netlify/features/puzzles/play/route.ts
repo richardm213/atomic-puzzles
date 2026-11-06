@@ -87,7 +87,11 @@ export const puzzlePlayRoute = async (event: FunctionEvent) => {
   }
 
   const { data, error } = allowedPuzzleIds.length
-    ? await supabase.from("puzzles").select(DETAIL_COLUMNS).in("id", allowedPuzzleIds)
+    ? await supabase
+        .from("puzzles")
+        .select(DETAIL_COLUMNS)
+        .in("id", allowedPuzzleIds)
+        .is("deleted_at", null)
     : { data: [], error: null };
   if (error) throw new Error(`Unable to load puzzles: ${error.message}`);
 
