@@ -1,27 +1,18 @@
 import {
-  faArrowUpRightFromSquare,
   faCheck,
   faCircleInfo,
   faClockRotateLeft,
-  faCopy,
-  faMagnifyingGlass,
   faMagnifyingGlassChart,
   faUsers,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, type ReactNode, useState } from "react";
 
 import { CommunityCommentsLink } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
-import {
-  SolutionMoveTree,
-  SolutionPlaybackControls,
-} from "../../components/SolutionMoveNavigation/SolutionMoveNavigation";
-import type { VariationOption } from "../../components/VariationTree/VariationTree";
 import type { PuzzleProgressWithUsernameRow } from "../../lib/supabase/puzzleProgress";
 import type { AsyncActionStatus } from "../../types/async";
-import type { PlaybackCommand } from "../../types/chessboard";
 import { formatElapsedDuration, formatLocalDateTime } from "../../utils/formatters";
 
 export type PuzzleInfoTab = "solution" | "explanation" | "attempts" | "comments";
@@ -33,23 +24,7 @@ type PuzzleInfoSectionProps = {
   solution: {
     canReveal: boolean;
     buttonTitle: string;
-    fen: string;
-    analysisUrl: string;
-    onAnalyze: () => void;
-    canStart: boolean;
-    canPrevious: boolean;
-    canNext: boolean;
-    canEnd: boolean;
-    copyLabel: string;
-    canCopy: boolean;
-    hasLines: boolean;
-    lines: string[][];
-    options: VariationOption[];
-    currentPly: number;
-    activeLineIndex: number;
-    onSelect: (lineIndex: number, moveIndex: number) => void;
-    onNavigate: (command: PlaybackCommand) => void;
-    onCopy: () => void;
+    mobileAnalysis?: ReactNode;
     onToggle: () => void;
   };
   explanation: {
@@ -77,44 +52,6 @@ type PuzzleInfoSectionProps = {
   };
   comments: { canView: boolean; puzzleId: number | undefined; onSelect: () => void };
 };
-
-const AnalysisLink = ({
-  href,
-  enabled,
-  label,
-  mobile,
-  onActivate,
-}: {
-  href: string;
-  enabled: boolean;
-  label: string;
-  mobile: boolean;
-  onActivate: () => void;
-}) => (
-  <a
-    className={`fenAnalyzeButton ${mobile ? "mobileAnalyzeButton" : ""} ${
-      enabled ? "" : "disabled"
-    }`}
-    href={href}
-    target="_blank"
-    rel="noreferrer"
-    aria-label={`Analyze ${label}`}
-    aria-disabled={!enabled}
-    onClick={(event) => {
-      if (!enabled) {
-        event.preventDefault();
-        return;
-      }
-      onActivate();
-    }}
-  >
-    <span className="fenAnalyzeIcon" aria-hidden="true">
-      <FontAwesomeIcon icon={faMagnifyingGlass} />
-    </span>
-    <span className="fenAnalyzeText">Analyze {label}</span>
-    <FontAwesomeIcon className="fenAnalyzeExternalIcon" icon={faArrowUpRightFromSquare} />
-  </a>
-);
 
 const AttemptsPanel = ({
   status,
@@ -224,64 +161,14 @@ export const PuzzleInfoSection = ({
   attempts,
   comments,
 }: PuzzleInfoSectionProps) => {
-  const showSolution = activeTab === "solution";
+  const showSolution = mobile && activeTab === "solution";
   const showExplanation = activeTab === "explanation";
   const showAttempts = activeTab === "attempts";
   const showComments = activeTab === "comments";
   let panel = null;
 
   if (showSolution && solution.canReveal) {
-    panel = (
-      <div className="puzzleInfoPanel">
-        <div className={mobile ? "mobileAnalyzeActions" : "analysisButtonsRow"}>
-          <AnalysisLink
-            href={solution.analysisUrl}
-            enabled={Boolean(solution.fen)}
-            label="Puzzle"
-            mobile={mobile}
-            onActivate={solution.onAnalyze}
-          />
-        </div>
-        <div className={mobile ? "lineBox mobileLineBox" : "lineBox"}>
-          <div className="lineHeader">
-            <div className="fenLabel">Solution</div>
-            <div className="solutionHeaderActions">
-              <button
-                type="button"
-                className={`fenAnalyzeButton copyPgnButton ${solution.copyLabel === "Copied" ? "copied" : ""}`.trim()}
-                onClick={solution.onCopy}
-                disabled={!solution.canCopy}
-                aria-label={solution.copyLabel}
-                title={solution.copyLabel}
-              >
-                <FontAwesomeIcon
-                  icon={solution.copyLabel === "Copied" ? faCheck : faCopy}
-                  aria-hidden="true"
-                />
-              </button>
-              <SolutionPlaybackControls
-                canStart={Boolean(solution.fen) && solution.canStart}
-                canPrevious={Boolean(solution.fen) && solution.canPrevious}
-                canNext={Boolean(solution.fen) && solution.canNext}
-                canEnd={Boolean(solution.fen) && solution.canEnd}
-                onNavigate={solution.onNavigate}
-              />
-            </div>
-          </div>
-          {solution.hasLines ? (
-            <SolutionMoveTree
-              lines={solution.lines}
-              options={solution.options}
-              currentPly={solution.currentPly}
-              activeLineIndex={solution.activeLineIndex}
-              onSelect={solution.onSelect}
-            />
-          ) : (
-            <code>No solution available</code>
-          )}
-        </div>
-      </div>
-    );
+    panel = <div className="puzzleInfoPanel">{solution.mobileAnalysis}</div>;
   } else if (showAttempts && attempts.canView) {
     panel = (
       <div className="puzzleInfoPanel">
@@ -351,24 +238,26 @@ export const PuzzleInfoSection = ({
   return (
     <div className={`puzzleInfoStack ${panel ? "hasContent" : ""}`}>
       <div className="puzzleInfoTabs" role="tablist" aria-label="Puzzle details">
-        <button
-          type="button"
-          role="tab"
-          className={`puzzleInfoTab ${showSolution ? "active" : ""}`}
-          onClick={solution.onToggle}
-          disabled={!solution.canReveal}
-          aria-selected={showSolution}
-          aria-expanded={showSolution}
-          title={showSolution ? "Hide the solution panel" : solution.buttonTitle}
-        >
-          <FontAwesomeIcon icon={faMagnifyingGlassChart} aria-hidden="true" />
-          <span>Solution</span>
-          {mobile && showSolution ? (
-            <span className="puzzleInfoTabToggle" aria-hidden="true">
-              ⌃
-            </span>
-          ) : null}
-        </button>
+        {mobile ? (
+          <button
+            type="button"
+            role="tab"
+            className={`puzzleInfoTab ${showSolution ? "active" : ""}`}
+            onClick={solution.onToggle}
+            disabled={!solution.canReveal}
+            aria-selected={showSolution}
+            aria-expanded={showSolution}
+            title={showSolution ? "Hide the solution panel" : solution.buttonTitle}
+          >
+            <FontAwesomeIcon icon={faMagnifyingGlassChart} aria-hidden="true" />
+            <span>Solution</span>
+            {showSolution ? (
+              <span className="puzzleInfoTabToggle" aria-hidden="true">
+                ⌃
+              </span>
+            ) : null}
+          </button>
+        ) : null}
         {explanation.available ? (
           <button
             type="button"

@@ -11,7 +11,6 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { readAnalysisHandoff } from "../../lib/analysis/handoff";
 import type { AttemptResolved, SolutionNavigation } from "../../types/chessboard";
 
 const mocks = vi.hoisted(() => ({
@@ -561,12 +560,18 @@ describe("PuzzleSolverPage solution options", () => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
 
-    const solutionTab = await screen.findByRole("tab", { name: "Solution" });
-    await waitFor(() => expect(solutionTab).toBeEnabled());
-    await user.click(solutionTab);
-
-    const optionList = await screen.findByRole("list", { name: "Solution options" });
-    await user.click(within(optionList).getByRole("button", { name: optionName }));
+    await screen.findByTestId("mock-board");
+    act(() => {
+      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+        puzzleId: 1369,
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: "1. O-O",
+      });
+    });
+    const analysis = await screen.findByLabelText("Puzzle analysis");
+    const optionButtons = await within(analysis).findAllByRole("button", { name: optionName });
+    await user.click(optionButtons.at(-1)!);
 
     await waitFor(() => {
       expect(mocks.chessboardProps.at(-1)?.solutionNavigation).toEqual({
@@ -577,35 +582,19 @@ describe("PuzzleSolverPage solution options", () => {
     });
   });
 
-  it("copies the puzzle PGN with Atomic variant and starting FEN headers", async () => {
-    const user = userEvent.setup();
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText },
-    });
-    render(<PuzzleSolverPage />);
-
-    const solutionTab = await screen.findByRole("tab", { name: "Solution" });
-    await waitFor(() => expect(solutionTab).toBeEnabled());
-    await user.click(solutionTab);
-    await user.click(await screen.findByRole("button", { name: "Copy PGN" }));
-
-    expect(writeText).toHaveBeenCalledOnce();
-    expect(writeText).toHaveBeenCalledWith(
-      expect.stringMatching(
-        /^\[Variant "Atomic"\]\n\[FEN "rn2k2r\/pp5p\/1qpp2p1\/2Q5\/1b2P3\/2N5\/PPP3PP\/R3KB1R b KQkq - 1 12"\]\n\n12\.\.\./,
-      ),
-    );
-  });
-
   it("keeps original solution lines when board analysis adds a variation", async () => {
-    const user = userEvent.setup();
     render(<PuzzleSolverPage />);
 
-    const solutionTab = await screen.findByRole("tab", { name: "Solution" });
-    await waitFor(() => expect(solutionTab).toBeEnabled());
-    await user.click(solutionTab);
+    await screen.findByTestId("mock-board");
+    act(() => {
+      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+        puzzleId: 1369,
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: "1. O-O",
+      });
+    });
+    await screen.findByRole("button", { name: "Toggle position analysis" });
 
     act(() => {
       mocks.chessboardProps.at(-1)?.onStateChange?.({
@@ -629,24 +618,33 @@ describe("PuzzleSolverPage solution options", () => {
       });
     });
 
-    const variations = await screen.findByRole("list", { name: "Solution variations" });
+    const variations = await screen.findByRole("list", { name: "Analysis variations" });
     expect(within(variations).getByRole("button", { name: "1. O-O" })).toBeVisible();
     expect(within(variations).getByRole("button", { name: "1. Rf8" })).toBeVisible();
     expect(within(variations).getByRole("button", { name: "1... Kd7" })).toBeVisible();
   });
 
-  it("uses the mouse wheel for moves only after the solution is open", async () => {
+  it("uses the mouse wheel for moves only after a solution move is selected", async () => {
     const user = userEvent.setup();
     const { container } = render(<PuzzleSolverPage />);
+    await screen.findByTestId("mock-board");
     const boardFrame = container.querySelector(".boardFrame")!;
-    const solutionTab = await screen.findByRole("tab", { name: "Solution" });
-    await waitFor(() => expect(solutionTab).toBeEnabled());
 
     fireEvent.wheel(boardFrame, { deltaY: 12 });
     const navigationBeforeReveal = mocks.chessboardProps.at(-1)?.solutionNavigation;
     expect(navigationBeforeReveal === null || navigationBeforeReveal === undefined).toBe(true);
 
-    await user.click(solutionTab);
+    act(() => {
+      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+        puzzleId: 1369,
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: "1. O-O",
+      });
+    });
+    const analysis = await screen.findByLabelText("Puzzle analysis");
+    const optionButtons = await within(analysis).findAllByRole("button", { name: "1. O-O" });
+    await user.click(optionButtons.at(-1)!);
     fireEvent.wheel(boardFrame, { deltaY: 12 });
 
     await waitFor(() =>
@@ -669,6 +667,16 @@ describe("PuzzleSolverPage solution options", () => {
       within(motifList).queryByRole("button", { name: "Remove fork" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add tag" })).not.toBeInTheDocument();
+  });
+
+  it("uses the player's primary nickname for the puzzle author link", async () => {
+    mocks.fetchPrimaryPlayerNicknames.mockResolvedValueOnce([
+      { username: "admin", nickname: "Puzzle Curator", is_primary: true },
+    ]);
+
+    render(<PuzzleSolverPage />);
+
+    expect(await screen.findByRole("link", { name: "Puzzle Curator" })).toBeInTheDocument();
   });
 
   it("shows the issue report only after an attempt and submits the selected category", async () => {
@@ -849,106 +857,13 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
-    expect(await screen.findByText("1. Rf8")).toBeInTheDocument();
-    expect(screen.getByText("2. Nf3+")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Played 1. Rf8")).toBeInTheDocument();
+    expect(screen.getByLabelText("Played 2. Nf3+")).toBeInTheDocument();
 
     await user.click(screen.getByRole("checkbox", { name: "Hide answers" }));
 
-    expect(screen.queryByText("1. Rf8")).not.toBeInTheDocument();
-    expect(screen.queryByText("2. Nf3+")).not.toBeInTheDocument();
-  });
-
-  it("opens the complete puzzle analysis at the current branch and ply", async () => {
-    const user = userEvent.setup();
-    render(<PuzzleSolverPage />);
-
-    await user.click(await screen.findByRole("tab", { name: "Solution" }));
-    const optionList = await screen.findByRole("list", { name: "Solution options" });
-    await user.click(within(optionList).getByRole("button", { name: "1. Rf8" }));
-    await waitFor(() =>
-      expect(mocks.chessboardProps.at(-1)?.solutionNavigation).toEqual({
-        type: "solution",
-        line: 1,
-        ply: 1,
-      }),
-    );
-
-    const analyzeLink = screen.getByRole("link", { name: "Analyze Puzzle" });
-    const href = analyzeLink.getAttribute("href") ?? "";
-    expect(href).toMatch(
-      /^\/analysis\/rn2k2r\/pp5p\/1qpp2p1\/2Q5\/1b2P3\/2N5\/PPP3PP\/R3KB1R_b_KQkq_-_1_12\?handoff=/,
-    );
-    expect(
-      screen.queryByRole("link", { name: "Analyze Current Position" }),
-    ).not.toBeInTheDocument();
-
-    fireEvent.click(analyzeLink);
-    const handoff = readAnalysisHandoff(href.slice(href.indexOf("?")));
-    expect(handoff).toMatchObject({ line: 1, ply: 1, orientation: "black" });
-    expect(handoff?.pgn).toContain("O-O");
-    expect(handoff?.pgn).toContain("Rf8");
-  });
-
-  it("opens analysis at the puzzle start from an exact solution leaf", async () => {
-    const user = userEvent.setup();
-    render(<PuzzleSolverPage />);
-
-    await user.click(await screen.findByRole("tab", { name: "Solution" }));
-    const solutionLine = await screen.findByRole("list", { name: "Solution variations" });
-    await user.click(within(solutionLine).getAllByRole("button", { name: "3. Ba3" })[0]!);
-    await waitFor(() =>
-      expect(mocks.chessboardProps.at(-1)?.solutionNavigation).toEqual({
-        type: "solution",
-        line: 0,
-        ply: 5,
-      }),
-    );
-
-    const analyzeLink = screen.getByRole("link", { name: "Analyze Puzzle" });
-    const href = analyzeLink.getAttribute("href") ?? "";
-    fireEvent.click(analyzeLink);
-
-    expect(readAnalysisHandoff(href.slice(href.indexOf("?")))).toMatchObject({
-      line: 0,
-      ply: 0,
-    });
-  });
-
-  it("keeps a custom line's leaf position when opening analysis", async () => {
-    const user = userEvent.setup();
-    render(<PuzzleSolverPage />);
-
-    await user.click(await screen.findByRole("tab", { name: "Solution" }));
-    act(() => {
-      mocks.chessboardProps.at(-1)?.onStateChange?.({
-        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
-        turn: "black",
-        status: "black to move",
-        error: "",
-        lineMoves: ["O-O", "Kd7"],
-        solutionLines: [
-          ["O-O", "O-O-O", "Rf2", "Be2", "Ba3"],
-          ["Rf8", "O-O-O", "Rf2", "Be2", "Ba3"],
-        ],
-        customLines: [["O-O", "Kd7"]],
-        solutionLineIndex: 0,
-        customLineIndex: 0,
-        lineIndex: 2,
-        viewingSolution: false,
-        showWrongMove: false,
-        showRetryMove: false,
-        solved: false,
-      });
-    });
-
-    const analyzeLink = screen.getByRole("link", { name: "Analyze Puzzle" });
-    const href = analyzeLink.getAttribute("href") ?? "";
-    fireEvent.click(analyzeLink);
-
-    expect(readAnalysisHandoff(href.slice(href.indexOf("?")))).toMatchObject({
-      line: 2,
-      ply: 2,
-    });
+    expect(screen.queryByLabelText("Played 1. Rf8")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Played 2. Nf3+")).not.toBeInTheDocument();
   });
 
   it("retries loading other attempts after a request fails", async () => {
@@ -980,7 +895,10 @@ describe("PuzzleSolverPage solution options", () => {
     expect(
       screen.getByRole("img", { name: "You've solved this puzzle before" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Solution" })).toBeDisabled();
+    expect(screen.queryByRole("tab", { name: "Solution" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Toggle position analysis" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Explanation" })).toBeDisabled();
     expect(screen.getByRole("tab", { name: "Other attempts" })).toBeDisabled();
     expect(screen.queryByLabelText("Puzzle tags")).not.toBeInTheDocument();
@@ -994,7 +912,9 @@ describe("PuzzleSolverPage solution options", () => {
       });
     });
 
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Solution" })).toBeEnabled());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Toggle position analysis" })).toBeInTheDocument(),
+    );
     expect(screen.getByRole("tab", { name: "Explanation" })).toBeEnabled();
     expect(screen.getByRole("tab", { name: "Other attempts" })).toBeEnabled();
     expect(screen.getByLabelText("Puzzle tags")).toBeInTheDocument();
@@ -1126,7 +1046,7 @@ describe("PuzzleSolverPage solution options", () => {
   it("does not track elapsed time for a previously solved puzzle", async () => {
     render(<PuzzleSolverPage />);
 
-    await screen.findByRole("tab", { name: "Solution" });
+    await screen.findByRole("button", { name: "Toggle position analysis" });
     expect(screen.queryByLabelText(/^Elapsed time/)).not.toBeInTheDocument();
   });
 

@@ -28,10 +28,10 @@ import {
 } from "../../../shared/domain/puzzles/puzzleSetMetadata";
 import { buildPieceStyle } from "../../components/Chessboard/boardStyle";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { PuzzleCommunity } from "../../components/PuzzleCommunity/PuzzleCommunity";
 import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
 import { Seo } from "../../components/Seo/Seo";
-import { continuationOptionsAt } from "../../components/SolutionMoveNavigation/SolutionMoveNavigation";
 import {
   activeLineIndex,
   matchingLineIndexes,
@@ -40,13 +40,7 @@ import {
 import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
-import { useCopyFeedback } from "../../hooks/useCopyFeedback";
 import { boardLineNavigation, getBoardLineState } from "../../lib/analysis/boardState";
-import {
-  analysisHandoffUrl,
-  createAnalysisHandoffId,
-  saveAnalysisHandoff,
-} from "../../lib/analysis/handoff";
 import { ApiError } from "../../lib/api/postApi";
 import {
   fetchCustomPuzzleSet,
@@ -74,9 +68,7 @@ import {
   getPuzzleSetSourceId,
   isAwcPuzzleEvent,
 } from "../../lib/puzzles/puzzleSets";
-import { ensurePuzzlePgnHeaders } from "../../lib/puzzles/puzzleSubmission";
 import { updatePuzzleTags } from "../../lib/puzzles/puzzleTags";
-import { movePrefix, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import {
   fetchPuzzleAttemptsForPuzzle,
   fetchPuzzleProgressRowsForUsername,
@@ -94,10 +86,10 @@ import type {
 import { orientationFromFen } from "../../utils/chessNotation";
 import { getErrorMessage } from "../../utils/errors";
 import { formatElapsedDuration, formatSignedDecimal } from "../../utils/formatters";
-import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import { normalizeUsername } from "../../utils/playerNames";
 import { castlingRightsFromFen } from "./castlingRights";
 import { materialCountFromFen, type MaterialPieceRole } from "./materialCount";
+import { PuzzleAnalysisPanel } from "./PuzzleAnalysisPanel";
 import { PuzzleInfoSection, type PuzzleInfoTab } from "./PuzzleInfoSection";
 import { PuzzleIssueDialog, type PuzzleIssueStatus } from "./PuzzleIssueDialog";
 import {
@@ -180,7 +172,7 @@ export const PuzzleSolverPage = () => {
     ...puzzleUserRatingQueryOptions(normalizedUsername),
     enabled: Boolean(normalizedUsername),
   });
-  const { pieceSet, showPuzzleTimer, puzzleAnalysisTarget } = useAppSettings();
+  const { pieceSet, showPuzzleTimer } = useAppSettings();
   const { puzzles, setPuzzles, loadingError, setLoadingError, mergeLoadedPuzzles } =
     usePuzzleCatalog(routePuzzleId, routeSetKey || routeDashboardSetId);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
@@ -204,6 +196,7 @@ export const PuzzleSolverPage = () => {
   const [activePuzzleInfoTab, setActivePuzzleInfoTab] = useState<PuzzleInfoTab | null>(null);
   const [solutionRevealed, setSolutionRevealed] = useState(false);
   const [solutionNavigation, setSolutionNavigation] = useState<SolutionNavigation | null>(null);
+  const [analysisPreviewMove, setAnalysisPreviewMove] = useState<string | null>(null);
   const [interactionMode, setInteractionMode] = useState(SOLVE_MODE);
   const [completionFeedback, setCompletionFeedback] = useState<{
     type: string;
@@ -221,7 +214,6 @@ export const PuzzleSolverPage = () => {
     state: "idle",
   });
   const [pinnedSolutionLineIndex, setPinnedSolutionLineIndex] = useState<number | null>(null);
-  const { copy: copyPgn, copyLabel: copyPgnLabel, resetCopyFeedback } = useCopyFeedback();
   const [otherPuzzleAttemptsStatus, setOtherPuzzleAttemptsStatus] = useState<
     "idle" | "loading" | "loaded" | "error"
   >("idle");
@@ -381,7 +373,7 @@ export const PuzzleSolverPage = () => {
     if (typeof window === "undefined") return undefined;
 
     const mediaQuery = window.matchMedia(
-      "(max-width: 680px), (max-width: 1024px) and (max-height: 500px) and (orientation: landscape)",
+      "(max-width: 680px), (min-width: 681px) and (max-width: 799px) and (orientation: portrait), (max-width: 1024px) and (max-height: 500px) and (orientation: landscape)",
     );
     const updateLayout = () => setIsMobileLayout(mediaQuery.matches);
     updateLayout();
@@ -537,7 +529,6 @@ export const PuzzleSolverPage = () => {
   const activePuzzle = activePuzzleIndex >= 0 ? (puzzles[activePuzzleIndex] ?? null) : null;
   const activePuzzleId = activePuzzle?.puzzleId;
   const activePuzzleKey = toPuzzleKey(activePuzzleId);
-  const analysisHandoffId = useMemo(createAnalysisHandoffId, [activePuzzleKey]);
   const activePuzzleSetMetadata = useMemo(
     () => (activePuzzle ? puzzleSetMetadataFromRow(activePuzzle, routeSetKey) : null),
     [activePuzzle, routeSetKey],
@@ -573,18 +564,6 @@ export const PuzzleSolverPage = () => {
       materialCount.whitePieces.length > 0 ||
       materialCount.blackPieces.length > 0);
   const hasAnyCastlingRights = castlingRights.white.length > 0 || castlingRights.black.length > 0;
-  const analysisUrl = (positionFen: string) =>
-    puzzleAnalysisTarget === "lichess"
-      ? lichessAtomicAnalysisUrl(positionFen)
-      : positionFen
-        ? `/analysis/${positionFen.replaceAll(" ", "_")}`
-        : "/analysis";
-  const puzzleAnalysisUrl =
-    puzzleAnalysisTarget === "lichess"
-      ? analysisUrl(fen)
-      : fen
-        ? analysisHandoffUrl(fen, analysisHandoffId)
-        : "/analysis";
   const activeSetPuzzlePosition = isSetSolveMode
     ? orderedSetPuzzleIndexes.indexOf(activePuzzleIndex)
     : -1;
@@ -655,6 +634,7 @@ export const PuzzleSolverPage = () => {
       ),
     [playerNicknamesQuery.data],
   );
+  const authorLabel = playerNicknames.get(authorDashboardUsername) || author;
   const whitePlayerLabel = playerNicknames.get(normalizeUsername(whitePlayer)) || whitePlayer;
   const blackPlayerLabel = playerNicknames.get(normalizeUsername(blackPlayer)) || blackPlayer;
   const hasKnownPlayers = Boolean(whitePlayer && blackPlayer);
@@ -949,11 +929,10 @@ export const PuzzleSolverPage = () => {
   useEffect(() => {
     resetPuzzleUiState();
     setMobileFeedback(null);
-    resetCopyFeedback();
     setOtherPuzzleAttemptsStatus("idle");
     setOtherPuzzleAttempts([]);
     previousBoardSnapshotRef.current = createInitialBoardSnapshot();
-  }, [activePuzzleKey, fen, resetCopyFeedback, resetPuzzleUiState]);
+  }, [activePuzzleKey, fen, resetPuzzleUiState]);
 
   useEffect(() => {
     const shouldStartTimer = Boolean(
@@ -1389,19 +1368,14 @@ export const PuzzleSolverPage = () => {
     [boardState.solutionLineIndex, pinnedSolutionLineIndex, sortedMatchingSolutionLineIndexes],
   );
   const activeSolutionLine = boardState.solutionLines?.[activeSolutionLineIndex] ?? [];
-  const mainSolutionLine = boardState.solutionLines?.[0] ?? [];
   const isOnSolutionPath =
     matchingSolutionLineIndexes.length > 0 &&
     activeSolutionLine.length >= currentAnalysisMoves.length;
-  const isAtSolutionLeaf = matchingSolutionLineIndexes.some(
-    (lineIndex) => boardState.solutionLines?.[lineIndex]?.length === currentAnalysisMoves.length,
-  );
   const variationLineState = getBoardLineState(boardState, {
     ...(boardState.viewingSolution ? { activeSolutionLineIndex } : {}),
   });
   const allVariationLines = variationLineState.lines;
   const activeVariationLineIndex = variationLineState.activeLineIndex;
-  const analysisHandoffLineIndex = activeVariationLineIndex;
 
   const handleVariationMoveClick = useCallback(
     (lineIndex: number, moveIndex: number): void => {
@@ -1431,56 +1405,6 @@ export const PuzzleSolverPage = () => {
     isOnSolutionPath,
     solutionNavigation,
   ]);
-
-  const variationOptionList = useMemo(
-    () => continuationOptionsAt(allVariationLines, currentAnalysisMoves),
-    [allVariationLines, currentAnalysisMoves],
-  );
-
-  const moveLinePgn = useMemo(() => {
-    if (allVariationLines.length) {
-      return serializeSanLinesToPgn(fen, allVariationLines);
-    }
-
-    if (!boardState.lineMoves?.length) return "";
-
-    return boardState.lineMoves
-      .map((move, index) => `${movePrefix(index, index % 2 === 1)}${move}`.trim())
-      .join(" ");
-  }, [allVariationLines, boardState.lineMoves, fen]);
-
-  const puzzlePgn = useMemo(
-    () => (moveLinePgn && fen ? `${ensurePuzzlePgnHeaders("", fen)}\n\n${moveLinePgn}` : ""),
-    [fen, moveLinePgn],
-  );
-
-  const handleAnalyzePuzzle = useCallback(() => {
-    if (puzzleAnalysisTarget !== "atomic-puzzles" || !fen || !puzzlePgn) return;
-    saveAnalysisHandoff(analysisHandoffId, {
-      fen,
-      pgn: puzzlePgn,
-      line: analysisHandoffLineIndex,
-      // A completed solution is more useful from its root; partial and custom analysis should
-      // preserve the exact position the user was investigating.
-      ply: isAtSolutionLeaf ? 0 : currentAnalysisMoves.length,
-      orientation,
-    });
-  }, [
-    analysisHandoffLineIndex,
-    analysisHandoffId,
-    currentAnalysisMoves.length,
-    fen,
-    isAtSolutionLeaf,
-    orientation,
-    puzzleAnalysisTarget,
-    puzzlePgn,
-  ]);
-
-  const handleCopyPgn = useCallback(async () => {
-    if (!puzzlePgn) return;
-
-    await copyPgn(puzzlePgn);
-  }, [copyPgn, puzzlePgn]);
 
   const updatePuzzleMotifs = async (nextTags: string[]): Promise<void> => {
     if (!canManagePuzzleTags || !activePuzzleId) return;
@@ -1537,16 +1461,8 @@ export const PuzzleSolverPage = () => {
       ? activeSolutionLine.length
       : (boardState.lineMoves?.length ?? 0);
   const currentPly = boardState.lineIndex ?? 0;
-  const isAtMainSolutionEnd =
-    boardShowsSolution &&
-    canRevealSolution &&
-    (boardState.solutionLineIndex ?? 0) === 0 &&
-    currentPly >= mainSolutionLine.length;
-  const canPlaybackStart = currentPly > 0;
   const canPlaybackPrevious = currentPly > 0;
   const canPlaybackNext = currentPly < currentLineLength;
-  const canPlaybackEnd =
-    boardShowsSolution && canRevealSolution ? !isAtMainSolutionEnd : currentPly < currentLineLength;
 
   useBoardWheelNavigation({
     boardPanelRef,
@@ -1555,6 +1471,33 @@ export const PuzzleSolverPage = () => {
     onNavigate: handlePlaybackCommand,
   });
 
+  const puzzleAnalysisPanel = (
+    <PuzzleAnalysisPanel
+      key={activePuzzleId ?? "empty"}
+      fen={currentFen}
+      attempted={hasAttemptedActivePuzzle}
+      lines={allVariationLines}
+      moves={boardState.lineMoves ?? []}
+      currentPly={currentAnalysisMoves.length}
+      activeLineIndex={activeVariationLineIndex}
+      onNavigate={(ply) => {
+        if (hasAttemptedActivePuzzle) {
+          setInteractionMode(ANALYSIS_MODE);
+          setSolutionRevealed(true);
+        }
+        setSolutionNavigation({ type: "history", ply });
+      }}
+      onSelectVariation={(lineIndex, moveIndex) => {
+        setInteractionMode(ANALYSIS_MODE);
+        setSolutionRevealed(true);
+        handleVariationMoveClick(lineIndex, moveIndex);
+      }}
+      onCycleOptions={(command) => setSolutionNavigation({ type: "command", command })}
+      onPlayLine={(ucis) => setSolutionNavigation({ type: "line", ucis })}
+      onHoverMove={setAnalysisPreviewMove}
+    />
+  );
+
   const renderPuzzleInfoSection = (mobile = false) => (
     <PuzzleInfoSection
       mobile={mobile}
@@ -1562,23 +1505,7 @@ export const PuzzleSolverPage = () => {
       solution={{
         canReveal: canRevealSolution,
         buttonTitle: solutionButtonTitle,
-        fen,
-        analysisUrl: puzzleAnalysisUrl,
-        onAnalyze: handleAnalyzePuzzle,
-        canStart: canPlaybackStart,
-        canPrevious: canPlaybackPrevious,
-        canNext: canPlaybackNext,
-        canEnd: canPlaybackEnd,
-        copyLabel: copyPgnLabel,
-        canCopy: Boolean(moveLinePgn),
-        hasLines: Boolean(boardState.solutionLines?.length),
-        lines: allVariationLines,
-        options: variationOptionList,
-        currentPly: currentAnalysisMoves.length,
-        activeLineIndex: activeVariationLineIndex,
-        onSelect: handleVariationMoveClick,
-        onNavigate: handlePlaybackCommand,
-        onCopy: () => void handleCopyPgn(),
+        mobileAnalysis: mobile ? puzzleAnalysisPanel : undefined,
         onToggle: handleSelectSolutionTab,
       }}
       explanation={{
@@ -1669,14 +1596,14 @@ export const PuzzleSolverPage = () => {
             >
               <span className={`playerColorMarker ${side}`} aria-hidden="true" />
               {player ? (
-                <Link
+                <PlayerLink
                   className="puzzlePlayerLink"
-                  to="/@/$username/puzzles"
-                  params={{ username: normalizeUsername(player) }}
+                  username={normalizeUsername(player)}
+                  variant="puzzles"
                   title={player}
                 >
                   {playerLabel}
-                </Link>
+                </PlayerLink>
               ) : mobile && hasPlayerNames ? (
                 <span className="puzzlePlayerNameSpacer" aria-hidden="true" />
               ) : null}
@@ -1782,6 +1709,7 @@ export const PuzzleSolverPage = () => {
       <button
         type="button"
         className={`puzzleRatingBadge editable ${changeDirection} ${mobile ? "mobile" : ""}`.trim()}
+        data-level={activePuzzleRating.level}
         title={`${details}. Edit level.`}
         aria-label={`${details}. Edit level.`}
         onClick={() => {
@@ -1795,6 +1723,7 @@ export const PuzzleSolverPage = () => {
     ) : (
       <span
         className={`puzzleRatingBadge ${changeDirection} ${mobile ? "mobile" : ""}`.trim()}
+        data-level={activePuzzleRating.level}
         title={details}
         aria-label={details}
       >
@@ -1932,17 +1861,18 @@ export const PuzzleSolverPage = () => {
             </div>
             <div className="puzzleHeaderMetadata">
               <div className="puzzleHeaderMeta" title={author}>
-                <span>Created by</span>
+                <span>By</span>
                 {authorDashboardUsername ? (
-                  <Link
+                  <PlayerLink
                     className="puzzleHeaderAuthorLink"
-                    to="/@/$username/puzzles"
-                    params={{ username: authorDashboardUsername }}
+                    username={authorDashboardUsername}
+                    variant="puzzles"
+                    title={author}
                   >
-                    {author}
-                  </Link>
+                    {authorLabel}
+                  </PlayerLink>
                 ) : (
-                  <strong>{author}</strong>
+                  <strong>{authorLabel}</strong>
                 )}
               </div>
               {event && !showPuzzleSetMetadata ? (
@@ -2133,6 +2063,7 @@ export const PuzzleSolverPage = () => {
                 analysisMode={isAnalysisMode}
                 disabled={dailyLimitReached}
                 captureNavigationShortcuts
+                previewMove={analysisPreviewMove}
                 solutionNavigation={solutionNavigation}
                 onNavigateHandled={() => setSolutionNavigation(null)}
                 onAttemptResolved={handleAttemptResolved}
@@ -2159,6 +2090,8 @@ export const PuzzleSolverPage = () => {
           ) : null}
         </div>
       </div>
+
+      {!isMobileLayout ? puzzleAnalysisPanel : null}
 
       {isMobileLayout ? (
         <>
@@ -2207,9 +2140,20 @@ export const PuzzleSolverPage = () => {
                   OPA style
                 </span>
               ) : null}
-              <span className="mobilePuzzleAuthor" title={author}>
-                {author}
-              </span>
+              {authorDashboardUsername ? (
+                <PlayerLink
+                  className="mobilePuzzleAuthor"
+                  username={authorDashboardUsername}
+                  variant="puzzles"
+                  title={author}
+                >
+                  {authorLabel}
+                </PlayerLink>
+              ) : (
+                <span className="mobilePuzzleAuthor" title={author}>
+                  {authorLabel}
+                </span>
+              )}
               {shouldShowPuzzleTimer ? (
                 <PuzzleElapsedTimer
                   elapsedTimeMs={elapsedTimeMs}
@@ -2245,7 +2189,6 @@ export const PuzzleSolverPage = () => {
 
       {hasAttemptedActivePuzzle ? (
         <p className="puzzleIssuePrompt">
-          Something wrong with this puzzle?
           <button type="button" onClick={() => setReportIssueOpen(true)}>
             Report issue
           </button>

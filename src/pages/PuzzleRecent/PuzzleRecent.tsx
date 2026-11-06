@@ -12,6 +12,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
@@ -59,9 +60,9 @@ const Attempts = ({ rows }: { rows: PuzzleProgressWithUsernameRow[] }) => (
       <ul>
         {rows.map((attempt) => (
           <li key={`${attempt.username}-${attempt.first_attempt_at}`}>
-            <Link to="/@/$username/puzzles" params={{ username: attempt.username }}>
+            <PlayerLink username={attempt.username} variant="puzzles">
               {attempt.username}
-            </Link>
+            </PlayerLink>
             <span className={attempt.puzzle_correct ? "correct" : "incorrect"}>
               {attempt.puzzle_correct ? "Correct" : "Incorrect"}
               {attempt.rated === false ? " · Unrated" : ""}
@@ -328,13 +329,13 @@ export const PuzzleRecentPage = () => {
                           return (
                             <div className="puzzlePlayer hasPlayerName" key={side}>
                               <span className={`playerColorMarker ${side}`} aria-hidden="true" />
-                              <Link
+                              <PlayerLink
                                 className="puzzlePlayerLink"
-                                to="/@/$username/puzzles"
-                                params={{ username: normalizeUsername(player) }}
+                                username={normalizeUsername(player)}
+                                variant="puzzles"
                               >
                                 {player}
-                              </Link>
+                              </PlayerLink>
                             </div>
                           );
                         })}

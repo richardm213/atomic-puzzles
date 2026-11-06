@@ -1,14 +1,46 @@
 .puzzlePage {
   --puzzle-gold: color-mix(in srgb, var(--color-accent-warm) 76%, var(--color-heading));
-  grid-template-columns: minmax(300px, 24rem) minmax(0, 32rem);
+  grid-template-columns: 300px minmax(0, 32rem) minmax(280px, 22rem);
+  justify-content: center;
   gap: clamp(18px, 2.4vw, 28px);
   align-items: start;
+  align-content: start;
   background: var(--site-background);
   background-size: var(--site-background-size);
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
-  width: min(100%, 1024px);
+  width: min(100%, 1420px);
   padding-block: clamp(16px, 2vw, 24px) clamp(18px, 2vw, 28px);
+}
+
+.puzzleAnalysisPanel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-panel) 92%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.puzzleAnalysisEngine {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.puzzleAnalysisPanel.attempted .puzzleAnalysisEngine {
+  min-height: calc(54px + var(--puzzle-engine-line-count, 3) * 30px);
+}
+
+.puzzleAnalysisLocked {
+  min-height: 172px;
+  background: var(--color-panel-strong);
+}
+
+.puzzleAnalysisMoves {
+  min-height: 0;
+  max-height: 240px;
+  overflow: auto;
+  padding: 0;
+  background: var(--color-panel-strong);
 }
 
 :root[data-theme="light"] .puzzlePage {
@@ -207,8 +239,8 @@ body:has(.puzzlePage) {
 .puzzleHeaderTopline {
   display: grid;
   grid-template-areas:
-    "title status"
-    "metadata metadata";
+    "title title"
+    "metadata status";
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
   gap: 8px;
@@ -219,7 +251,9 @@ body:has(.puzzlePage) {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
+  justify-content: space-between;
   gap: 4px;
+  width: 100%;
   min-width: 0;
 }
 
@@ -334,29 +368,78 @@ body:has(.puzzlePage) {
 }
 
 .puzzleRatingBadge {
+  --puzzle-level-color: oklch(78% 0.055 255);
   min-height: 28px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 3px;
-  border: 0;
-  background: transparent;
-  color: var(--color-muted);
+  justify-content: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 4px 9px;
+  border: 1px solid color-mix(in srgb, var(--puzzle-level-color) 42%, var(--color-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--puzzle-level-color) 13%, var(--color-panel-strong));
+  color: var(--puzzle-level-color);
   font: inherit;
   line-height: 1.2;
   text-align: left;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--puzzle-level-color) 10%, transparent) inset;
+}
+
+.puzzleRatingBadge[data-level="1"] {
+  --puzzle-level-color: oklch(78% 0.055 255);
+}
+
+.puzzleRatingBadge[data-level="2"] {
+  --puzzle-level-color: oklch(76% 0.13 245);
+}
+
+.puzzleRatingBadge[data-level="3"] {
+  --puzzle-level-color: oklch(78% 0.13 170);
+}
+
+.puzzleRatingBadge[data-level="4"] {
+  --puzzle-level-color: oklch(77% 0.17 300);
+}
+
+.puzzleRatingBadge[data-level="5"] {
+  --puzzle-level-color: oklch(82% 0.15 78);
+}
+
+:root[data-theme="light"] .puzzleRatingBadge[data-level="1"] {
+  --puzzle-level-color: oklch(47% 0.055 255);
+}
+
+:root[data-theme="light"] .puzzleRatingBadge[data-level="2"] {
+  --puzzle-level-color: oklch(47% 0.15 245);
+}
+
+:root[data-theme="light"] .puzzleRatingBadge[data-level="3"] {
+  --puzzle-level-color: oklch(45% 0.13 170);
+}
+
+:root[data-theme="light"] .puzzleRatingBadge[data-level="4"] {
+  --puzzle-level-color: oklch(48% 0.18 300);
+}
+
+:root[data-theme="light"] .puzzleRatingBadge[data-level="5"] {
+  --puzzle-level-color: oklch(49% 0.14 78);
 }
 
 .puzzleRatingBadge strong {
-  color: var(--color-heading);
+  color: inherit;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 750;
 }
 
 .puzzleHeaderRatings:not(.mobile) .userPuzzleRating > span,
 .puzzleHeaderRatings:not(.mobile) .puzzleRatingBadge strong {
   text-align: right;
+}
+
+.puzzleHeaderRatings:not(.mobile) .userPuzzleRating {
+  min-height: 24px;
+  padding-block: 0;
 }
 
 .puzzleHeaderRatings:not(.mobile) :is(.userPuzzleRating, .puzzleRatingBadge) {
@@ -365,9 +448,9 @@ body:has(.puzzlePage) {
 }
 
 .puzzleRatingBadge > span {
-  color: var(--color-text);
+  color: color-mix(in srgb, var(--puzzle-level-color) 70%, var(--color-heading));
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -390,15 +473,17 @@ button.puzzleRatingBadge.editable {
   transition:
     border-color 140ms ease,
     background 140ms ease,
-    color 140ms ease;
+    color 140ms ease,
+    transform 140ms ease;
 }
 
 button.puzzleRatingBadge.editable:hover {
-  color: var(--color-heading);
+  border-color: color-mix(in srgb, var(--puzzle-level-color) 68%, var(--color-border));
+  background: color-mix(in srgb, var(--puzzle-level-color) 19%, var(--color-panel-strong));
 }
 
 button.puzzleRatingBadge.editable:active {
-  color: var(--color-primary-pale);
+  transform: translateY(1px);
 }
 
 button.puzzleRatingBadge.editable:focus-visible {
@@ -551,10 +636,11 @@ button.puzzleRatingBadge.editable:focus-visible {
 
 .puzzleHeaderMeta {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   flex: 0 1 auto;
   gap: 5px;
   min-width: 0;
+  min-height: 24px;
   padding: 0;
   color: var(--color-muted);
   line-height: 1.25;
@@ -573,7 +659,7 @@ button.puzzleRatingBadge.editable:focus-visible {
   flex: 0 0 auto;
   white-space: nowrap;
   color: var(--color-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
 }
 
@@ -582,7 +668,7 @@ button.puzzleRatingBadge.editable:focus-visible {
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--color-heading);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 650;
 }
 
@@ -819,24 +905,9 @@ button.puzzleRatingBadge.editable:focus-visible {
   display: none;
 }
 
-.puzzleInfoTab:focus-visible,
-.fenAnalyzeButton:focus-visible {
+.puzzleInfoTab:focus-visible {
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;
-}
-
-.fenAnalyzeButton.disabled {
-  color: var(--color-subtle);
-  opacity: 1;
-  pointer-events: none;
-  box-shadow: none;
-  filter: grayscale(0.18);
-}
-
-.fenAnalyzeButton.disabled .fenAnalyzeIcon,
-.fenAnalyzeButton.disabled .fenAnalyzeExternalIcon,
-.fenAnalyzeButton.disabled .fenAnalyzeText {
-  opacity: 0.48;
 }
 
 .puzzleDetails {
@@ -876,6 +947,25 @@ button.puzzleRatingBadge.editable:focus-visible {
 }
 
 @media (min-width: 681px) {
+  .puzzleAnalysisPanel .atomicDbHeaderControls {
+    min-height: 44px;
+    padding: 6px 10px;
+  }
+
+  .puzzleAnalysisPanel .atomicDbEngine {
+    padding: 4px 8px 6px;
+  }
+
+  .puzzleAnalysisPanel :is(.atomicDbEngineLine, .atomicDbEngineLineUnavailable) {
+    min-height: 30px;
+    padding-inline: 4px;
+  }
+
+  .puzzlePage > .puzzleCommunity {
+    width: min(100%, 760px);
+    justify-self: center;
+  }
+
   .puzzleIssuePrompt + .puzzleCommunity {
     margin-top: -16px;
     padding-top: 0;
@@ -1064,6 +1154,7 @@ button.puzzleRatingBadge.editable:focus-visible {
 }
 
 @media (max-width: 680px),
+  (min-width: 681px) and (max-width: 799px) and (orientation: portrait),
   (max-width: 1024px) and (max-height: 500px) and (orientation: landscape) {
   .userPuzzleRating.mobile,
   .puzzleRatingBadge.mobile,
@@ -1075,12 +1166,6 @@ button.puzzleRatingBadge.editable:focus-visible {
   .puzzleRatingEditor.mobile {
     flex-wrap: wrap;
   }
-}
-
-.lineBox {
-  border-radius: var(--radius-ui);
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-border);
 }
 
 .puzzleInfoStack {
@@ -1450,187 +1535,6 @@ button.puzzleRatingBadge.editable:focus-visible {
   color: var(--color-subtle);
 }
 
-.fenAnalyzeButton {
-  flex: 0 0 auto;
-  gap: 9px;
-  min-height: 34px;
-  padding: 7px 10px;
-  border-radius: calc(var(--radius-ui) - 1px);
-  border: 1px solid color-mix(in srgb, var(--color-accent-soft-border) 42%, var(--color-border));
-  background: var(--color-panel-strong);
-  color: var(--color-text);
-  font-size: 12px;
-  text-decoration: none;
-  box-shadow: none;
-  transition:
-    transform 140ms ease,
-    border-color 140ms ease,
-    background 140ms ease,
-    box-shadow 140ms ease,
-    color 140ms ease,
-    opacity 140ms ease;
-}
-
-.fenAnalyzeButton:hover:not(.disabled) {
-  transform: none;
-  border-color: color-mix(in srgb, var(--color-cyan-bright) 46%, var(--color-primary));
-  background: color-mix(
-    in srgb,
-    var(--color-surface-elevated-strong) 82%,
-    var(--color-primary) 18%
-  );
-  box-shadow: var(--shadow-soft);
-  color: var(--color-heading);
-}
-
-.analysisButtonsRow,
-.mobileAnalyzeActions {
-  display: grid;
-  gap: 8px;
-}
-
-.analysisButtonsRow {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.analysisButtonsRow .fenAnalyzeButton,
-.mobileAnalyzeActions .fenAnalyzeButton {
-  justify-content: flex-start;
-  min-width: 0;
-  min-height: 38px;
-  padding: 6px 9px;
-}
-
-.analysisButtonsRow .fenAnalyzeButton {
-  min-height: 38px;
-  padding: 6px 9px;
-}
-
-.fenAnalyzeIcon {
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-panel));
-  color: var(--color-primary-pale);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary-soft) 22%, transparent) inset;
-  font-size: 12px;
-}
-
-.analysisButtonsRow .fenAnalyzeIcon {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  font-size: 11px;
-}
-
-.fenAnalyzeText {
-  min-width: 0;
-  text-align: left;
-  color: var(--color-text);
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 1;
-}
-
-.fenAnalyzeExternalIcon {
-  flex: 0 0 auto;
-  margin-left: auto;
-  color: var(--color-primary-soft);
-  font-size: 10px;
-  opacity: 0.82;
-}
-
-.analysisButtonsRow .fenAnalyzeExternalIcon {
-  font-size: 11px;
-  opacity: 0.76;
-}
-
-.lineBox {
-  padding: 12px;
-}
-
-.puzzleInfoPanel .lineBox {
-  overflow: hidden;
-  margin-top: 0;
-  padding: 0;
-  border-color: color-mix(in srgb, var(--color-border-strong) 72%, transparent);
-  background: var(--color-panel-strong);
-}
-
-.lineHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 9px;
-}
-
-.puzzleInfoPanel .lineHeader {
-  margin-bottom: 0;
-  padding: 10px;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
-  background: color-mix(in srgb, var(--color-panel-strong) 54%, transparent);
-}
-
-.solutionHeaderActions {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.copyPgnButton {
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  color: var(--color-primary-soft);
-  font-size: 15px;
-}
-
-.copyPgnButton.copied {
-  border-color: color-mix(in srgb, var(--color-success) 42%, var(--color-border));
-  color: var(--color-success);
-}
-
-.fenLabel {
-  font-size: 11px;
-  font-weight: 650;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--color-subtle);
-  margin-bottom: 7px;
-}
-
-.lineHeader .fenLabel {
-  margin-bottom: 0;
-}
-
-.lineBox code {
-  display: block;
-  color: var(--color-muted);
-  line-height: 1.5;
-}
-
-.puzzleInfoPanel .lineBox > code,
-.puzzleInfoPanel .lineBox > .moveList {
-  margin: 10px;
-}
-
-.puzzleInfoPanel .lineBox > .solutionOptions {
-  margin: 10px 10px 0;
-}
-
-.inlineSolutionTree {
-  align-items: center;
-}
-
 .boardWrap {
   display: flex;
   justify-content: center;
@@ -1691,11 +1595,6 @@ button.puzzleRatingBadge.editable:focus-visible {
 .mobileActionCard {
   display: grid;
   gap: 10px;
-}
-
-.mobileAnalyzeButton {
-  width: 100%;
-  min-height: 44px;
 }
 
 .boardFrame {
@@ -1796,10 +1695,6 @@ button.puzzleRatingBadge.editable:focus-visible {
     var(--shadow-soft);
 }
 
-.solutionHeaderActions .solutionPlaybackControls {
-  width: auto;
-}
-
 .feedbackBadge {
   --feedback-tone: var(--color-primary-soft);
   --feedback-text: var(--color-heading);
@@ -1891,9 +1786,9 @@ button.puzzleRatingBadge.editable:focus-visible {
   background: var(--color-panel-strong);
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1279px) {
   .page.puzzlePage {
-    grid-template-columns: minmax(220px, 0.58fr) minmax(0, 1fr);
+    grid-template-columns: 300px minmax(0, 1fr);
     align-items: start;
     gap: clamp(8px, 1.2vw, 16px);
     justify-items: stretch;
@@ -1904,6 +1799,10 @@ button.puzzleRatingBadge.editable:focus-visible {
     min-height: var(--page-shell-min-height);
     min-height: var(--page-shell-min-height-dynamic);
     overflow: visible;
+  }
+
+  .puzzleAnalysisPanel {
+    grid-column: 1 / -1;
   }
 
   .puzzlePanel {
@@ -1919,38 +1818,20 @@ button.puzzleRatingBadge.editable:focus-visible {
     line-height: 1.12;
   }
 
-  .lineBox {
-    padding: 10px;
-  }
-
-  .lineHeader,
-  .solutionHeaderActions {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .solutionHeaderActions {
-    width: 100%;
-  }
-
-  .solutionHeaderActions .solutionPlaybackControls {
-    width: 100%;
-  }
-
   .boardFrame {
     --board-feedback-gap: 6px;
-    max-width: 492px;
+    max-width: 500px;
   }
 
   .boardStage {
-    width: min(100%, 480px, calc(100svh - 112px));
-    max-width: 480px;
+    width: min(100%, 488px, calc(100svh - 112px));
+    max-width: 488px;
   }
 
   .boardFrame .cg-boardShell,
   .boardFrame .cg-board,
   .boardFrame .emptyBoard {
-    max-width: 480px;
+    max-width: 488px;
   }
 }
 
@@ -1970,6 +1851,7 @@ button.puzzleRatingBadge.editable:focus-visible {
 }
 
 @media (max-width: 680px),
+  (min-width: 681px) and (max-width: 799px) and (orientation: portrait),
   (max-width: 1024px) and (max-height: 500px) and (orientation: landscape) {
   .page.puzzlePage {
     grid-template-columns: 1fr;
@@ -1996,13 +1878,13 @@ button.puzzleRatingBadge.editable:focus-visible {
   .puzzleIssuePrompt {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     gap: 12px;
     width: min(100%, 548px);
     margin: 0 auto;
     padding-inline: 4px;
     font-size: 12px;
-    text-align: left;
+    text-align: center;
   }
 
   .puzzleIssuePrompt button {
@@ -2054,6 +1936,44 @@ button.puzzleRatingBadge.editable:focus-visible {
     backdrop-filter: blur(14px);
   }
 
+  .mobileActionCard .puzzleInfoStack:has(.puzzleAnalysisPanel) {
+    max-height: min(62svh, 470px);
+  }
+
+  .mobileActionCard .puzzleAnalysisPanel {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .mobileActionCard .puzzleAnalysisPanel.attempted .puzzleAnalysisEngine {
+    min-height: 0;
+  }
+
+  .mobileActionCard .puzzleAnalysisLocked {
+    min-height: 148px;
+  }
+
+  .mobileActionCard .puzzleAnalysisMoves {
+    min-height: 92px;
+    max-height: 132px;
+    padding: 4px 6px;
+  }
+
+  .mobileActionCard .puzzleAnalysisMoves .analysisContinuationChoices {
+    display: none;
+  }
+
+  .mobileActionCard .puzzleAnalysisMoves .analysisTree {
+    padding: 2px 0 6px;
+    line-height: 2.2;
+  }
+
+  .mobileActionCard .puzzleAnalysisMoves .analysisTreeMove {
+    margin-inline: 1px;
+    padding-inline: 4px;
+  }
+
   .mobileActionCard .puzzleInfoTabs {
     grid-template-columns: none;
     grid-auto-flow: column;
@@ -2067,7 +1987,7 @@ button.puzzleRatingBadge.editable:focus-visible {
   .puzzleInfoTab {
     position: relative;
     gap: 4px;
-    min-height: 44px;
+    min-height: 50px;
     padding-inline: 4px;
     border-bottom: 2px solid transparent;
     border-radius: 0;
@@ -2101,115 +2021,6 @@ button.puzzleRatingBadge.editable:focus-visible {
     gap: 0;
     padding: 0 10px 10px;
     scrollbar-width: thin;
-  }
-
-  .mobileActionCard .mobileAnalyzeActions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-    padding: 4px 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 64%, transparent);
-  }
-
-  .mobileActionCard .mobileAnalyzeActions .fenAnalyzeButton {
-    justify-content: center;
-    width: 100%;
-    gap: 5px;
-    min-height: 36px;
-    padding: 4px 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .mobileActionCard .mobileAnalyzeActions .fenAnalyzeIcon {
-    display: none;
-  }
-
-  .mobileActionCard .mobileAnalyzeActions .fenAnalyzeText {
-    display: block;
-  }
-
-  .mobileActionCard .mobileAnalyzeActions .fenAnalyzeText {
-    font-size: 12px;
-  }
-
-  .mobileActionCard .mobileAnalyzeActions .fenAnalyzeExternalIcon {
-    margin-left: 0;
-  }
-
-  .mobileActionCard .puzzleInfoPanel .lineHeader {
-    align-items: center;
-    flex-direction: row;
-    padding: 7px 0;
-    border-bottom: 0;
-    background: transparent;
-  }
-
-  .mobileActionCard .puzzleInfoPanel .lineHeader .fenLabel {
-    display: none;
-  }
-
-  .mobileActionCard .solutionHeaderActions {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    gap: 10px;
-    width: 100%;
-  }
-
-  .mobileActionCard .solutionHeaderActions .solutionPlaybackControls {
-    width: auto;
-  }
-
-  .mobileActionCard .solutionPlaybackControls {
-    grid-template-columns: repeat(4, 34px);
-    gap: 4px;
-    justify-content: start;
-    padding: 2px;
-    border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--color-surface-inset) 70%, transparent);
-  }
-
-  .mobileActionCard .solutionPlaybackButton {
-    width: 34px;
-    height: 32px;
-    border-color: transparent;
-    border-radius: 6px;
-    background: transparent;
-  }
-
-  .mobileActionCard .solutionPlaybackButton:hover:not(:disabled) {
-    border-color: transparent;
-    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
-  }
-
-  .mobileActionCard .lineHeader .fenAnalyzeButton {
-    min-height: 32px;
-    padding: 5px 4px;
-    border-color: transparent;
-    border-radius: 4px;
-    background: transparent;
-  }
-
-  .mobileActionCard .lineHeader .fenAnalyzeButton:hover:not(.disabled) {
-    border-color: transparent;
-    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-    box-shadow: none;
-  }
-
-  .mobileActionCard .mobileLineBox {
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-  }
-
-  .mobileActionCard .puzzleInfoPanel .mobileLineBox > .moveList {
-    margin: 2px 0 0;
-    padding: 8px 0 2px;
-    border-top: 1px solid color-mix(in srgb, var(--color-border) 64%, transparent);
   }
 
   .mobileActionCard .puzzleOtherAttemptRow {
@@ -2263,7 +2074,7 @@ button.puzzleRatingBadge.editable:focus-visible {
     width: auto;
   }
 
-  .mobilePuzzleStatus :is(.userPuzzleRating, .puzzleRatingBadge) {
+  .mobilePuzzleStatus .userPuzzleRating {
     grid-template-columns: auto auto auto;
     justify-content: center;
     width: auto;
@@ -2271,10 +2082,15 @@ button.puzzleRatingBadge.editable:focus-visible {
     padding-inline: 2px;
   }
 
+  .mobilePuzzleStatus .puzzleRatingBadge {
+    width: auto;
+    min-width: 0;
+  }
+
   .mobilePuzzlePlayers {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
     width: 100%;
   }
 
@@ -2352,6 +2168,11 @@ button.puzzleRatingBadge.editable:focus-visible {
     color: var(--color-muted);
     font-size: 13px;
     font-weight: 650;
+    text-decoration: none;
+  }
+
+  .mobilePuzzleAuthor:is(:hover, :focus-visible) {
+    color: var(--color-heading);
   }
 
   .mobileBottomNav button {
@@ -2419,14 +2240,6 @@ button.puzzleRatingBadge.editable:focus-visible {
   body:has(.puzzleCommentComposer textarea:focus) .mobileWorkflowPanel,
   body:has(.puzzleCommentComposer textarea:focus) .mobileBottomNav {
     display: none;
-  }
-
-  .lineBox {
-    padding: 12px;
-  }
-
-  .mobileLineBox {
-    margin-top: 0;
   }
 
   .boardFrame {
@@ -2560,57 +2373,8 @@ button.puzzleRatingBadge.editable:focus-visible {
     gap: 8px;
   }
 
-  .lineHeader:not(.mobileActionCard .lineHeader) {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .moveChip {
-    min-height: 32px;
-  }
-
-  .inlineSolutionTree {
-    align-items: flex-start;
-  }
-
   .feedbackBadge {
     top: 14px;
-  }
-}
-
-@media (max-width: 680px) and (min-height: 720px) {
-  .mobilePuzzlePlayers {
-    grid-template-columns: 1fr;
-    gap: 2px;
-  }
-
-  .mobilePuzzlePlayers.hasPlayerNames.hasCastlingData {
-    grid-template-columns: 18px minmax(0, 1fr) minmax(54px, auto);
-  }
-
-  .mobilePuzzlePlayers.hasPlayerNames.hasMaterialData {
-    grid-template-columns: 18px minmax(0, 1fr) minmax(18px, auto);
-  }
-
-  .mobilePuzzlePlayers.hasPlayerNames.hasCastlingData.hasMaterialData {
-    grid-template-columns: 18px minmax(0, 1fr) minmax(54px, auto) minmax(18px, auto);
-  }
-
-  .mobilePuzzlePlayers:not(.hasPlayerNames).hasCastlingData {
-    grid-template-columns: 18px minmax(54px, max-content);
-  }
-
-  .mobilePuzzlePlayers:not(.hasPlayerNames).hasMaterialData {
-    grid-template-columns: 18px minmax(18px, 1fr);
-  }
-
-  .mobilePuzzlePlayers:not(.hasPlayerNames).hasCastlingData.hasMaterialData {
-    grid-template-columns: 18px minmax(54px, max-content) minmax(18px, 1fr);
-  }
-
-  .mobilePuzzlePlayers > .puzzlePlayer {
-    grid-column: 1 / -1;
-    grid-template-columns: subgrid;
   }
 }
 

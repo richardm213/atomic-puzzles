@@ -11,18 +11,25 @@ type PlayerLinkProps = {
   role?: AriaRole | undefined;
   tabIndex?: number | undefined;
   title?: string | undefined;
+  variant?: "profile" | "puzzles" | undefined;
   username: string;
 };
 
 export const PlayerLink = forwardRef<HTMLAnchorElement, PlayerLinkProps>(
-  ({ children, username, ...props }, ref) => {
+  ({ children, username, variant = "profile", ...props }, ref) => {
     return (
       <PlayerHoverCardTrigger username={username} anchorRef={ref}>
-        {(triggerProps) => (
-          <Link {...props} {...triggerProps} to="/@/$username" params={{ username }}>
-            {children}
-          </Link>
-        )}
+        {(triggerProps) =>
+          variant === "puzzles" ? (
+            <Link {...props} {...triggerProps} to="/@/$username/puzzles" params={{ username }}>
+              {children}
+            </Link>
+          ) : (
+            <Link {...props} {...triggerProps} to="/@/$username" params={{ username }}>
+              {children}
+            </Link>
+          )
+        }
       </PlayerHoverCardTrigger>
     );
   },
