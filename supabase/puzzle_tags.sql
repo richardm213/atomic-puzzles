@@ -45,6 +45,7 @@ alter table public.puzzles
       'stuck_pawn',
       'stuck_piece',
       'endgame',
+      'threading_the_needle',
       'pawn_endgame'
     ]::text[]
   );

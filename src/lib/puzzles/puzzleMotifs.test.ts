@@ -21,6 +21,7 @@ describe("puzzle motifs", () => {
 
   it("recognizes endgame motif tags", () => {
     expect(isPuzzleEndgameMotifTag("endgame")).toBe(true);
+    expect(isPuzzleEndgameMotifTag("threading_the_needle")).toBe(true);
     expect(isPuzzleEndgameMotifTag("pawn_endgame")).toBe(true);
     expect(isPuzzleEndgameMotifTag("fork")).toBe(false);
   });

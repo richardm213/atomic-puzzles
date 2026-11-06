@@ -86,8 +86,7 @@ export const puzzleMotifs: PuzzleMotif[] = [
   {
     tag: "trident",
     name: "Trident",
-    description:
-      "A bishop or queen lines up two pieces on the same diagonal. Capturing the nearer piece opens new lines, while attacking from a distance may lead to mate.",
+    description: "A bishop or queen lines up an attack of two pieces on the same diagonal.",
   },
   {
     tag: "sacrifice",
@@ -212,6 +211,13 @@ export const puzzleMotifs: PuzzleMotif[] = [
     name: "Endgame",
     description:
       "The solution requires precise endgame play with little material, such as a promotion race, active king, or exact piece placement.",
+  },
+  {
+    tag: "threading_the_needle",
+    name: "Threading the needle",
+    parentTag: "endgame",
+    description:
+      "In an endgame, the queen and king thread an escape path away from the enemy king, forcing it next to its pawn where it will be exploded.",
   },
   {
     tag: "pawn_endgame",
