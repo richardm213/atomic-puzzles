@@ -47,6 +47,8 @@
   --color-chesscom-icon-highlight: #a5d877;
   --color-success: #86efac;
   --color-success-strong: #5ee5a4;
+  --color-profit-strip-bg: #5ee5a4;
+  --color-profit-strip-text: #070c16;
   --color-warning: #facc15;
   --color-danger: #fca5a5;
   --color-loss-strip-bg: #3a1520;
@@ -183,12 +185,14 @@
   --color-pychess-shadow-hover: rgba(109, 40, 217, 0.2);
   --color-success: #15803d;
   --color-success-strong: #12844c;
+  --color-profit-strip-bg: #d1fae5;
+  --color-profit-strip-text: #0d6b3a;
   --color-warning: #a86d00;
   --color-danger: #dc2626;
   --color-loss-strip-bg: #fee2e2;
   --color-loss-strip-text: #b91c1c;
-  --color-market-yes: #0e7490;
-  --color-market-no: #a21caf;
+  --color-market-yes: #1d5ed8;
+  --color-market-no: #a915b6;
   --color-rating-blitz: #d92727;
   --color-rating-hyper: #2859df;
   --color-rating-bullet: #00849e;
@@ -213,7 +217,7 @@
   --color-accent-soft-bg-strong: rgba(15, 142, 163, 0.14);
   --color-accent-soft-border: rgba(76, 94, 122, 0.22);
   --color-accent-soft-text: #124654;
-  --color-success-soft-bg: rgba(21, 128, 61, 0.1);
+  --color-success-soft-bg: #d1fae5;
   --color-danger-soft-bg: rgba(220, 38, 38, 0.1);
   --color-warning-soft-bg: rgba(232, 190, 114, 0.2);
   --color-warning-soft-border: rgba(143, 101, 0, 0.22);

@@ -173,8 +173,8 @@
 }
 
 .predictionSharedRoi--profit {
-  background: var(--color-success-strong);
-  color: var(--color-panel-deep);
+  background: var(--color-profit-strip-bg);
+  color: var(--color-profit-strip-text);
 }
 
 .predictionSharedRoi--loss {
