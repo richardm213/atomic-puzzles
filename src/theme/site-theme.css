@@ -49,6 +49,8 @@
   --color-success-strong: #5ee5a4;
   --color-warning: #facc15;
   --color-danger: #fca5a5;
+  --color-loss-strip-bg: #3a1520;
+  --color-loss-strip-text: #ff5c75;
   --color-market-yes: #22d3ee;
   --color-market-no: #e879f9;
   --color-rating-blitz: #ff5252;
@@ -183,6 +185,8 @@
   --color-success-strong: #12844c;
   --color-warning: #a86d00;
   --color-danger: #dc2626;
+  --color-loss-strip-bg: #fee2e2;
+  --color-loss-strip-text: #b91c1c;
   --color-market-yes: #0e7490;
   --color-market-no: #a21caf;
   --color-rating-blitz: #d92727;

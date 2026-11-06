@@ -178,8 +178,8 @@
 }
 
 .predictionSharedRoi--loss {
-  background: var(--color-danger);
-  color: var(--color-heading);
+  background: var(--color-loss-strip-bg);
+  color: var(--color-loss-strip-text);
 }
 
 .predictionSharedGroupAction {
