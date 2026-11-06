@@ -1155,7 +1155,6 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
         (key !== "e" &&
           key !== "f" &&
           key !== "k" &&
-          key !== "l" &&
           key !== "x" &&
           key !== "z" &&
           !isSpacebarShortcut &&
@@ -1211,8 +1210,6 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           ...current,
           showFollowUpMoves: !current.showFollowUpMoves,
         }));
-      } else if (key === "l") {
-        setAtomicDbEngineSettings((current) => ({ ...current, enabled: !current.enabled }));
       } else if (key === "x") {
         if (positionAnalysisEnabled && threatFen !== null) {
           setThreatMode((enabled) => !enabled);

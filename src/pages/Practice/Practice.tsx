@@ -995,7 +995,6 @@ export const PracticePage = () => {
           key !== "e" &&
           key !== "f" &&
           key !== "k" &&
-          key !== "l" &&
           key !== "q" &&
           !isSpacebarShortcut &&
           !isMoveShortcut) ||
@@ -1047,8 +1046,6 @@ export const PracticePage = () => {
           ...current,
           showFollowUpMoves: !current.showFollowUpMoves,
         }));
-      } else if (key === "l") {
-        setAtomicDbEngineSettings((current) => ({ ...current, enabled: !current.enabled }));
       } else if (key === "a") {
         toggleGamePaused();
       } else if (key === "q") {

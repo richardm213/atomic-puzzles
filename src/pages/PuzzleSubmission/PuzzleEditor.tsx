@@ -608,7 +608,6 @@ export const PuzzleEditor = ({
           currentPly={currentPly}
           pinnedLineIndex={activeLineIndex}
           inline
-          alwaysUseTree
           onNavigate={(ply) => navigateToMove(activeLineIndex, Math.max(0, ply - 1))}
           onSelectVariation={navigateToMove}
           onCycleOptions={navigate}

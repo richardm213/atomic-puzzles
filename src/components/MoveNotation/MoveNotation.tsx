@@ -9,7 +9,6 @@ export const MoveNotation = ({
   currentPly,
   pinnedLineIndex,
   inline,
-  alwaysUseTree = false,
   onNavigate,
   onSelectVariation,
   onCycleOptions,
@@ -22,7 +21,6 @@ export const MoveNotation = ({
   currentPly: number;
   pinnedLineIndex?: number | undefined;
   inline: boolean;
-  alwaysUseTree?: boolean | undefined;
   onNavigate: (ply: number) => void;
   onSelectVariation: (lineIndex: number, moveIndex: number) => void;
   onCycleOptions: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
@@ -31,7 +29,7 @@ export const MoveNotation = ({
   onDelete?: ((lineIndex: number, moveIndex: number) => void) | undefined;
   assessments?: GameMoveAssessment[] | undefined;
 }) => {
-  if (!alwaysUseTree && lines.length <= 1) {
+  if (!inline && lines.length <= 1) {
     const mainline = lines[0] ?? moves;
     return (
       <PlayedMoves
@@ -50,14 +48,19 @@ export const MoveNotation = ({
     );
   }
 
+  const displayedLines = lines.length ? lines : moves.length ? [moves] : [];
+
   return (
     <AnalysisMoveTree
-      lines={lines}
+      lines={displayedLines}
       moves={moves}
       currentPly={currentPly}
       pinnedLineIndex={pinnedLineIndex}
       inline={inline}
-      onSelect={onSelectVariation}
+      onSelect={(lineIndex, moveIndex) => {
+        if (lines.length) onSelectVariation(lineIndex, moveIndex);
+        else onNavigate(moveIndex + 1);
+      }}
       onCycleOptions={onCycleOptions}
       assessments={assessments}
       onDelete={onDelete}

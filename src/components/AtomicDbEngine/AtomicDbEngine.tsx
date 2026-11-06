@@ -17,6 +17,7 @@ import {
   getAtomicDbMoveEvaluation,
 } from "../../utils/atomicDb";
 import { numberedSanLineFromUci } from "../../utils/chessNotation";
+import { isTextEntryTarget } from "../Chessboard/boardShortcuts";
 
 type AtomicDbEngineProps = {
   fen: string;
@@ -94,7 +95,6 @@ export const AtomicDbEngineControls = ({
 }: AtomicDbEngineControlsProps) => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
-  const visibleLineCount = settings.enabled ? settings.lineCount : 0;
   const view = useRetainedAtomicDbView(analysis, fen);
   const sourceLabel = analysisSourceLabel(analysis, threatMode);
   const finalResult = analysis.source === "terminal" ? resultLabel(view) : null;
@@ -108,13 +108,8 @@ export const AtomicDbEngineControls = ({
       : null;
 
   const setLineCount = (nextLineCount: number): void => {
-    const clampedCount = Math.min(5, Math.max(0, nextLineCount));
-    if (clampedCount === 0) {
-      setSettings((current) => ({ ...current, enabled: false }));
-      onDisable();
-      return;
-    }
-    setSettings((current) => ({ ...current, enabled: true, lineCount: clampedCount }));
+    const clampedCount = Math.min(5, Math.max(1, nextLineCount));
+    setSettings((current) => ({ ...current, lineCount: clampedCount }));
   };
 
   useEffect(() => {
@@ -134,12 +129,35 @@ export const AtomicDbEngineControls = ({
     };
   }, [settingsOpen]);
 
+  useEffect(() => {
+    const toggleFromKeyboard = (event: KeyboardEvent): void => {
+      if (
+        event.defaultPrevented ||
+        event.key.toLowerCase() !== "l" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        isTextEntryTarget(event.target)
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      setSettings((current) => ({ ...current, enabled: !current.enabled }));
+      onDisable();
+    };
+
+    window.addEventListener("keydown", toggleFromKeyboard);
+    return () => window.removeEventListener("keydown", toggleFromKeyboard);
+  }, [onDisable, setSettings]);
+
   return (
     <div className="atomicDbHeaderControls" aria-label="Position analysis controls">
       <button
         type="button"
         className={`atomicDbEngineToggle ${settings.enabled ? "active" : ""}`}
         aria-label="Toggle position analysis"
+        aria-keyshortcuts="L"
         aria-pressed={settings.enabled}
         title="Toggle analysis (L)"
         onClick={() => {
@@ -196,13 +214,14 @@ export const AtomicDbEngineControls = ({
             </label>
             <label className="atomicDbLinesSetting">
               <span>Multiple lines</span>
-              <output>{visibleLineCount}</output>
+              <output>{settings.lineCount}</output>
               <input
                 type="range"
-                min="0"
+                aria-label="Multiple lines"
+                min="1"
                 max="5"
                 step="1"
-                value={visibleLineCount}
+                value={settings.lineCount}
                 onChange={(event) => setLineCount(Number(event.target.value))}
               />
             </label>

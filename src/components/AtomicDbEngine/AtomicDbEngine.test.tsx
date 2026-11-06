@@ -8,6 +8,37 @@ import { AtomicDbEngine, AtomicDbEngineControls, AtomicDbEvalBar } from "./Atomi
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 describe("AtomicDbEngine", () => {
+  it("toggles analysis with L outside text-entry controls", () => {
+    const setSettings = vi.fn();
+    const onDisable = vi.fn();
+    render(
+      <>
+        <AtomicDbEngineControls
+          fen={STARTING_FEN}
+          analysis={{ status: "idle", error: "", result: null, principalVariations: {} }}
+          settings={{ enabled: false, lineCount: 1, showFollowUpMoves: true }}
+          setSettings={setSettings}
+          onDisable={onDisable}
+        />
+        <input aria-label="Position note" />
+      </>,
+    );
+
+    fireEvent.keyDown(window, { key: "l" });
+    expect(setSettings).toHaveBeenCalledOnce();
+    expect(
+      setSettings.mock.calls[0]?.[0]({
+        enabled: false,
+        lineCount: 1,
+        showFollowUpMoves: true,
+      }),
+    ).toMatchObject({ enabled: true });
+    expect(onDisable).toHaveBeenCalledOnce();
+
+    fireEvent.keyDown(screen.getByRole("textbox", { name: "Position note" }), { key: "l" });
+    expect(setSettings).toHaveBeenCalledOnce();
+  });
+
   it("can bypass AtomicDB from the shared engine settings", () => {
     const setSettings = vi.fn();
     const onDisable = vi.fn();
@@ -32,6 +63,36 @@ describe("AtomicDbEngine", () => {
         showFollowUpMoves: true,
       }),
     ).toMatchObject({ enabled: true, atomicDbEnabled: false });
+    expect(onDisable).not.toHaveBeenCalled();
+  });
+
+  it("keeps the selected line count visible and editable while analysis is off", () => {
+    const setSettings = vi.fn();
+    const onDisable = vi.fn();
+    render(
+      <AtomicDbEngineControls
+        fen={STARTING_FEN}
+        analysis={{ status: "idle", error: "", result: null, principalVariations: {} }}
+        settings={{ enabled: false, lineCount: 3, showFollowUpMoves: true }}
+        setSettings={setSettings}
+        onDisable={onDisable}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Engine settings" }));
+
+    const lineCount = screen.getByRole("slider", { name: "Multiple lines" });
+    expect(lineCount).toHaveValue("3");
+    expect(screen.getByText("3", { selector: "output" })).toBeVisible();
+
+    fireEvent.change(lineCount, { target: { value: "4" } });
+    expect(
+      setSettings.mock.calls[0]?.[0]({
+        enabled: false,
+        lineCount: 3,
+        showFollowUpMoves: true,
+      }),
+    ).toEqual({ enabled: false, lineCount: 4, showFollowUpMoves: true });
     expect(onDisable).not.toHaveBeenCalled();
   });
 
