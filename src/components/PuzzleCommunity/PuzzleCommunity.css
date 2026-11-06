@@ -191,6 +191,32 @@
   opacity: 0.55;
 }
 
+:root[data-theme="light"] .commentMentionSuggestions {
+  background: var(--color-panel-strong);
+}
+
+:root[data-theme="light"] .puzzleCommentComposer textarea {
+  border-color: color-mix(in srgb, var(--color-border-strong) 68%, var(--color-border));
+  background: color-mix(in srgb, var(--color-panel-strong) 94%, var(--color-surface-soft));
+}
+
+:root[data-theme="light"] .puzzleCommentComposer textarea::placeholder {
+  color: var(--color-subtle);
+}
+
+:root[data-theme="light"] .commentComposerActions button,
+:root[data-theme="light"] .commentLoginButton {
+  border-color: color-mix(in srgb, var(--color-primary) 44%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-panel-strong));
+}
+
+:root[data-theme="light"] .commentComposerActions button:disabled {
+  border-color: var(--color-border);
+  background: var(--color-surface-soft);
+  color: var(--color-subtle);
+  opacity: 1;
+}
+
 .commentLoginButton {
   justify-self: start;
   min-height: 44px;

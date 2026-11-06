@@ -740,7 +740,7 @@ export const CommunityDiscussion = ({
           </p>
         ) : null}
         {loading && !community ? <p className="puzzleCommunityEmpty">Loading discussion…</p> : null}
-        {!loading && !error && data.comments.length === 0 ? (
+        {!loading && !error && target.type !== "puzzle" && data.comments.length === 0 ? (
           <p className="puzzleCommunityEmpty">No comments yet.</p>
         ) : null}
         {rootComments.length > 0 ? (
