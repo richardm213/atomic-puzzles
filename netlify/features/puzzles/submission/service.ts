@@ -62,10 +62,14 @@ export class PuzzleSubmissionService {
     try {
       // Validate every puzzle before performing the first write.
       const normalizedPuzzles = inputs.map((input) => this.normalize(username, input));
-      if (isApprovedPuzzleCreator(username) && !allowDifferentStartMove) {
+      if (isApprovedPuzzleCreator(username)) {
         return {
           destination: "published" as const,
-          puzzleIds: await this.repository.publishBatch(username, normalizedPuzzles),
+          puzzleIds: await this.repository.publishBatch(
+            username,
+            normalizedPuzzles,
+            allowDifferentStartMove,
+          ),
         };
       }
       const puzzles = [];

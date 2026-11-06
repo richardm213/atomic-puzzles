@@ -265,14 +265,20 @@ describe("PuzzleSubmissionPage fields", () => {
     expect(screen.getByRole("button", { name: "Create puzzle" })).toBeVisible();
   });
 
-  it("only shows the puzzle author override to seaside_tiramisu", () => {
+  it("shows seaside_tiramisu's selected puzzle author as the creation target", async () => {
+    const user = userEvent.setup();
     const { rerender } = render(<PuzzleSubmissionPage />);
     expect(screen.queryByRole("textbox", { name: "Puzzle author" })).toBeNull();
 
     authMocks.username = "seaside_tiramisu";
     rerender(<PuzzleSubmissionPage />);
-    expect(screen.getByRole("textbox", { name: "Puzzle author" })).toBeVisible();
+    const authorInput = screen.getByRole("textbox", { name: "Puzzle author" });
+    expect(authorInput).toBeVisible();
     expect(screen.getByRole("checkbox", { name: "Keep author for next puzzle" })).toBeVisible();
+    expect(screen.getByText("Creating for seaside_tiramisu")).toBeVisible();
+
+    await user.type(authorInput, "maracker");
+    expect(screen.getByText("Creating for maracker")).toBeVisible();
   });
 
   it("remembers the selected PGN or FEN input mode", async () => {

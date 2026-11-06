@@ -194,6 +194,7 @@ describe("puzzle-submit function", () => {
         "publish_approved_puzzle_batch",
         expect.objectContaining({
           p_submitted_by: username,
+          p_allow_different_start_move: false,
           p_puzzles: [
             expect.objectContaining({
               solution: "1. e4",
@@ -218,7 +219,7 @@ describe("puzzle-submit function", () => {
       body: JSON.stringify({
         submissions: [
           {
-            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 2",
             solution: "1. e4",
             explanation: "",
           },
@@ -242,7 +243,7 @@ describe("puzzle-submit function", () => {
       expect.objectContaining({
         p_submitted_by: "wolfram_ep",
         p_puzzles: [
-          expect.objectContaining({ solution: "1. e4" }),
+          expect.objectContaining({ solution: "2. e4" }),
           expect.objectContaining({ solution: "1. d4" }),
         ],
       }),
@@ -371,40 +372,44 @@ describe("puzzle-submit function", () => {
     });
 
     expect(response.statusCode).toBe(409);
-    expect(JSON.parse(response.body).error).toMatch(/Send this puzzle to the review queue/);
+    expect(JSON.parse(response.body).error).toMatch(/Continue with this submission/);
     expect(rpc).toHaveBeenCalledWith(
       "enqueue_puzzle_submission",
       expect.objectContaining({ p_allow_different_start_move: false }),
     );
   });
 
-  it("routes a confirmed different starting move to review for an approved creator", async () => {
+  it("publishes a confirmed different starting move directly for seaside_tiramisu's chosen author", async () => {
     const upsert = vi.fn(async () => ({ error: null }));
-    const single = vi.fn(async () => ({ data: { id: 9 }, error: null }));
-    const rpc = vi.fn(() => ({ single }));
+    const rpc = vi.fn(async () => ({ data: [1802], error: null }));
     const from = vi.fn(() => ({ upsert }));
     mocks.createClient.mockReturnValue({ from, rpc });
 
     const response = await handler({
       httpMethod: "POST",
-      headers: authHeaders("wolfram_ep"),
+      headers: authHeaders("seaside_tiramisu"),
       body: JSON.stringify({
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         solution: "1. d4",
         explanation: "",
+        author: "maracker",
         allowDifferentStartMove: true,
       }),
     });
 
     expect(response.statusCode).toBe(201);
     expect(JSON.parse(response.body)).toEqual({
-      destination: "review",
-      puzzle: { id: 9 },
+      destination: "published",
+      puzzleId: 1802,
     });
     expect(rpc).toHaveBeenCalledWith(
-      "enqueue_puzzle_submission",
-      expect.objectContaining({ p_allow_different_start_move: true }),
+      "publish_approved_puzzle_batch",
+      expect.objectContaining({
+        p_submitted_by: "seaside_tiramisu",
+        p_allow_different_start_move: true,
+        p_puzzles: [expect.objectContaining({ author: "maracker" })],
+      }),
     );
-    expect(rpc).not.toHaveBeenCalledWith("publish_approved_puzzle_batch", expect.anything());
+    expect(rpc).not.toHaveBeenCalledWith("enqueue_puzzle_submission", expect.anything());
   });
 });

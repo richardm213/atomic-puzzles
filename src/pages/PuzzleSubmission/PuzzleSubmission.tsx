@@ -74,18 +74,11 @@ export const PuzzleSubmissionPage = () => {
           allowDifferentStartMove,
           author: canSetAuthor ? author : undefined,
         });
-        if (allowDifferentStartMove) {
-          if (result.destination !== "review") {
-            throw new Error("The alternate starting move was not sent for review.");
-          }
-          submittedCount = result.puzzles.length;
-        } else {
-          if (result.destination !== "published") {
-            throw new Error("Approved creator submission did not publish directly.");
-          }
-          createdPuzzleIds.push(...result.puzzleIds);
-          submittedCount = result.puzzleIds.length;
+        if (result.destination !== "published") {
+          throw new Error("Approved creator submission did not publish directly.");
         }
+        createdPuzzleIds.push(...result.puzzleIds);
+        submittedCount = result.puzzleIds.length;
       } else {
         if (normalizedSubmissions.length > 1) {
           const result = await submitPuzzleBatch(normalizedSubmissions, {
@@ -112,7 +105,7 @@ export const PuzzleSubmissionPage = () => {
       setEditorVersion((version) => version + 1);
       setConfirmDifferentStartMove(false);
       if (!keepAuthor) setAuthor("");
-      if (publishesDirectly && !allowDifferentStartMove) {
+      if (publishesDirectly) {
         announceCoinsEarned(createdPuzzleIds.length * 10, "Puzzle created");
         setMessage(formatCreatedPuzzleIds(createdPuzzleIds));
       } else {
@@ -137,7 +130,7 @@ export const PuzzleSubmissionPage = () => {
       }
       setError(
         submittedCount > 0
-          ? publishesDirectly && !allowDifferentStartMove
+          ? publishesDirectly
             ? `${formatCreatedPuzzleIds(createdPuzzleIds).replace(/\.$/, "")} before an error: ${detail}`
             : `${submittedCount} puzzle${submittedCount === 1 ? " was" : "s were"} submitted before an error: ${detail}`
           : detail,
@@ -313,7 +306,11 @@ export const PuzzleSubmissionPage = () => {
             }
             actions={
               <div className="puzzleQueueSubmitRow">
-                <span>Submitting as {user?.username}</span>
+                <span>
+                  {canSetAuthor
+                    ? `Creating for ${author.trim() || user?.username}`
+                    : `Submitting as ${user?.username}`}
+                </span>
                 {confirmDifferentStartMove ? (
                   <button
                     type="button"
@@ -334,12 +331,12 @@ export const PuzzleSubmissionPage = () => {
                   <span>
                     {submitting
                       ? publishesDirectly
-                        ? confirmDifferentStartMove
-                          ? "Sending…"
-                          : "Creating…"
+                        ? "Creating…"
                         : "Submitting…"
                       : confirmDifferentStartMove
-                        ? "Send to review"
+                        ? publishesDirectly
+                          ? "Create anyway"
+                          : "Send to review"
                         : batchValues.length > 1
                           ? publishesDirectly
                             ? `Create ${batchValues.length} puzzles`

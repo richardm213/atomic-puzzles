@@ -67,7 +67,11 @@ export class PuzzleSubmissionRepository {
     return data;
   }
 
-  async publishBatch(username: string, puzzles: QueuedPuzzleSubmission[]): Promise<number[]> {
+  async publishBatch(
+    username: string,
+    puzzles: QueuedPuzzleSubmission[],
+    allowDifferentStartMove = false,
+  ): Promise<number[]> {
     const { error: userError } = await this.supabase
       .from("users")
       .upsert({ username }, { onConflict: "username", ignoreDuplicates: true });
@@ -76,6 +80,7 @@ export class PuzzleSubmissionRepository {
     const { data, error } = await this.supabase.rpc("publish_approved_puzzle_batch", {
       p_puzzles: puzzles,
       p_submitted_by: username,
+      p_allow_different_start_move: allowDifferentStartMove,
     });
     if (
       error?.message.includes("Puzzle start move already exists for FEN in queue") ||

@@ -329,9 +329,12 @@ $$;
 -- Publishes a complete approved-creator batch atomically. The table lock keeps
 -- ID allocation contiguous across concurrent creators, while deterministically
 -- ordered advisory locks serialize duplicates against normal queue submissions.
+drop function if exists public.publish_approved_puzzle_batch(jsonb, text);
+
 create or replace function public.publish_approved_puzzle_batch(
   p_puzzles jsonb,
-  p_submitted_by text
+  p_submitted_by text,
+  p_allow_different_start_move boolean default false
 )
 returns bigint[]
 language plpgsql
@@ -385,7 +388,7 @@ begin
     raise exception 'Puzzle start move is duplicated within this batch';
   end if;
 
-  if exists (
+  if not coalesce(p_allow_different_start_move, false) and exists (
     select 1
     from (
       select btrim(coalesce(value->>'fen', '')) as fen
@@ -442,9 +445,10 @@ begin
       raise exception 'Puzzle start move already exists for FEN in queue';
     end if;
 
-    if exists (select 1 from public.puzzles where btrim(fen) = normalized_fen)
+    if not coalesce(p_allow_different_start_move, false) and (
+      exists (select 1 from public.puzzles where btrim(fen) = normalized_fen)
       or exists (select 1 from public.puzzles_queue where btrim(fen) = normalized_fen)
-    then
+    ) then
       raise exception 'Puzzle FEN exists with different start move';
     end if;
 
@@ -640,8 +644,8 @@ revoke all on function public.enqueue_puzzle_submission(text, text, text, text, 
 grant execute on function public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text, text[], text, boolean) to service_role;
 revoke all on function public.publish_approved_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text) from public;
 grant execute on function public.publish_approved_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text) to service_role;
-revoke all on function public.publish_approved_puzzle_batch(jsonb, text) from public;
-grant execute on function public.publish_approved_puzzle_batch(jsonb, text) to service_role;
+revoke all on function public.publish_approved_puzzle_batch(jsonb, text, boolean) from public;
+grant execute on function public.publish_approved_puzzle_batch(jsonb, text, boolean) to service_role;
 revoke all on function public.approve_queued_puzzle(bigint, text, bigint) from public;
 grant execute on function public.approve_queued_puzzle(bigint, text, bigint) to service_role;
 revoke all on function public.approve_queued_puzzle(bigint, text, bigint, boolean, boolean) from public;
