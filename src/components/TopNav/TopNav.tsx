@@ -195,6 +195,7 @@ export const TopNav = () => {
   const normalizedAuthUsername = normalizeUsername(user?.username);
   const canUseAmethystTheme =
     normalizedAuthUsername === "admin" || normalizedAuthUsername === "seaside_tiramisu";
+  const isProfilePage = /^\/@\/[^/]+\/?$/.test(pathname);
   const [profileUsername, setProfileUsername] = useState(() =>
     getStoredProfileUsername(user?.username),
   );
@@ -893,7 +894,7 @@ export const TopNav = () => {
                   </div>
                 </div>
               ) : null}
-              {isAuthenticated && normalizedAuthUsername ? (
+              {isProfilePage && isAuthenticated && normalizedAuthUsername ? (
                 <div className="navSettingsSection navSettingsStack">
                   <span className="navSettingsGroupTitle">Profile</span>
                   <div className="navSettingsField">
@@ -1010,7 +1011,7 @@ export const TopNav = () => {
                   </label>
                 </div>
               ) : null}
-              {/^\/@\/[^/]+\/?$/.test(pathname) ? (
+              {isProfilePage ? (
                 <div className="navSettingsSection navSettingsStack">
                   <span className="navSettingsGroupTitle">Profile ratings</span>
                   <div className="navSettingsSlotGrid">
