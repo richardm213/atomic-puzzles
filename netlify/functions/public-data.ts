@@ -8,9 +8,25 @@ import { jsonResponse } from "../platform/response";
 const resourceSchema = z.enum([
   "atomic-tour-rankings",
   "atomic-tour-snapshot-dates",
+  "puzzle-catalog",
   "puzzle-ranking-trophies",
   "puzzle-solver-index",
 ]);
+const puzzleSetFields = "id,event_name,event_date,players,source_id";
+const puzzleCatalogColumns = [
+  "id",
+  "author",
+  "created_at",
+  "players",
+  "puzzle_set_id",
+  `puzzle_set:puzzle_sets!puzzles_puzzle_set_id_fkey(${puzzleSetFields})`,
+  `puzzle_set_memberships(puzzle_set_id,puzzle_set:puzzle_sets(${puzzleSetFields}))`,
+  "white_player",
+  "black_player",
+  "tags",
+  "opa_style",
+  "rating_state:puzzle_ratings!puzzle_ratings_puzzle_id_fkey(rating,rating_deviation,attempts,successes,computed_level,human_level,human_rated_by,human_rated_at,updated_at)",
+].join(",");
 const cacheHeaders = {
   "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
   "Netlify-CDN-Cache-Control": "public, durable, s-maxage=300, stale-while-revalidate=3600",
@@ -57,13 +73,22 @@ const publicDataRoute = async (event: FunctionEvent) => {
   const rows: Record<string, unknown>[] = [];
   const pageSize = 1_000;
   for (let from = 0; ; from += pageSize) {
-    const query =
-      parsed.data === "atomic-tour-snapshot-dates"
-        ? supabase
-            .from("atomic_tour_ranking_snapshots")
-            .select("snapshot_date")
-            .order("snapshot_date", { ascending: false })
-        : supabase.from("puzzles").select("id").is("deleted_at", null).order("id");
+    const query = (() => {
+      if (parsed.data === "atomic-tour-snapshot-dates") {
+        return supabase
+          .from("atomic_tour_ranking_snapshots")
+          .select("snapshot_date")
+          .order("snapshot_date", { ascending: false });
+      }
+      if (parsed.data === "puzzle-catalog") {
+        return supabase
+          .from("puzzles")
+          .select(puzzleCatalogColumns)
+          .is("deleted_at", null)
+          .order("id");
+      }
+      return supabase.from("puzzles").select("id").is("deleted_at", null).order("id");
+    })();
     const { data, error } = await query.range(from, from + pageSize - 1);
     if (error) throw new Error(`Unable to load public data: ${error.message}`);
     const page = (data ?? []) as Record<string, unknown>[];
