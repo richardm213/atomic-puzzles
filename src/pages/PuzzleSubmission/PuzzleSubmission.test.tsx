@@ -226,6 +226,7 @@ const EditorHarness = ({
         showAnalysisEngine={showAnalysisEngine}
       />
       <output data-testid="stored-solution">{value.solution}</output>
+      <output data-testid="stored-fen">{value.fen}</output>
     </>
   );
 };
@@ -237,6 +238,18 @@ describe("PuzzleSubmissionPage fields", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("uses the shared engine and moves panel without the Lichess instruction card", () => {
+    render(<PuzzleSubmissionPage />);
+
+    expect(screen.getByRole("region", { name: "Position analysis and moves" })).toBeVisible();
+    expect(
+      screen.getByRole("textbox", { name: "Solution PGN" }).closest(".puzzleEditorBoard"),
+    ).not.toBeNull();
+    expect(screen.queryByText("Paste a PGN below, or build the solution on the board.")).toBeNull();
+    expect(screen.queryByText("Create the solution on Lichess")).toBeNull();
+    expect(screen.queryByText("Open analysis board")).toBeNull();
   });
 
   it("uses direct-creation actions only for approved puzzle creators", async () => {
@@ -253,20 +266,25 @@ describe("PuzzleSubmissionPage fields", () => {
 
   it("asks before sending an alternate starting move to the review queue", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: DIFFERENT_START_MOVE_CONFIRMATION }), {
-          status: 409,
-          headers: { "Content-Type": "application/json" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ destination: "review", puzzle: { id: 12 } }), {
-          status: 201,
-          headers: { "Content-Type": "application/json" },
-        }),
+    let submissionRequestCount = 0;
+    const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (!url.includes("/api/puzzles/submit")) {
+        return Promise.resolve(new Response(null, { status: 503 }));
+      }
+      submissionRequestCount += 1;
+      return Promise.resolve(
+        submissionRequestCount === 1
+          ? new Response(JSON.stringify({ error: DIFFERENT_START_MOVE_CONFIRMATION }), {
+              status: 409,
+              headers: { "Content-Type": "application/json" },
+            })
+          : new Response(JSON.stringify({ destination: "review", puzzle: { id: 12 } }), {
+              status: 201,
+              headers: { "Content-Type": "application/json" },
+            }),
       );
+    });
     vi.stubGlobal("fetch", fetchMock);
     render(<PuzzleSubmissionPage />);
 
@@ -280,7 +298,11 @@ describe("PuzzleSubmissionPage fields", () => {
     await user.click(screen.getByRole("button", { name: "Send to review" }));
 
     expect(await screen.findByText(/Puzzle submitted for review/)).toBeVisible();
-    const [, secondRequest] = fetchMock.mock.calls[1] ?? [];
+    const submissionCalls = fetchMock.mock.calls.filter(([input]) => {
+      const url = input instanceof Request ? input.url : String(input);
+      return url.includes("/api/puzzles/submit");
+    });
+    const [, secondRequest] = submissionCalls[1] ?? [];
     expect(JSON.parse(String(secondRequest?.body))).toEqual(
       expect.objectContaining({ allowDifferentStartMove: true }),
     );
@@ -382,6 +404,22 @@ describe("PuzzleEditor move tree", () => {
       line: 0,
       ply: 0,
     });
+  });
+
+  it("can load a FEN by itself and clear the previous solution", async () => {
+    const user = userEvent.setup();
+    render(<EditorHarness allowSolutionEditing />);
+
+    await user.click(screen.getByRole("button", { name: "FEN" }));
+    const changedFen = STARTING_FEN.replace(" w ", " b ");
+    const fenInput = screen.getByRole("textbox", { name: "FEN" });
+    await user.clear(fenInput);
+    await user.type(fenInput, changedFen);
+    await user.click(screen.getByRole("button", { name: "Load FEN" }));
+
+    expect(screen.getByTestId("stored-fen")).toHaveTextContent(changedFen);
+    expect(screen.getByTestId("stored-solution")).toBeEmptyDOMElement();
+    expect(chessboardMocks.navigations.at(-1)).toEqual({ type: "reset", fen: changedFen });
   });
 
   it("makes every puzzle field and board move read-only for public review", () => {

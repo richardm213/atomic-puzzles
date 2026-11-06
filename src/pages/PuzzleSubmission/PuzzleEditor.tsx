@@ -42,6 +42,7 @@ import {
   validateParsedPuzzleSubmission,
   validatePuzzleSubmission,
 } from "../../lib/puzzles/puzzleSubmission";
+import { createAtomicPosition } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { orientationFromFen } from "../../utils/chessNotation";
 import { getErrorMessage } from "../../utils/errors";
@@ -90,6 +91,7 @@ type PuzzleEditorProps = {
   feedback?: PuzzleEditorFeedback | undefined;
   showCopyPgn?: boolean;
   showSolutionPgnField?: boolean;
+  solutionPgnUnderBoard?: boolean;
   allowSolutionEditing?: boolean;
   readOnly?: boolean;
   showExplanation?: boolean;
@@ -111,6 +113,7 @@ export const PuzzleEditor = ({
   feedback,
   showCopyPgn = false,
   showSolutionPgnField = true,
+  solutionPgnUnderBoard = false,
   allowSolutionEditing = false,
   readOnly = false,
   showExplanation = true,
@@ -125,7 +128,9 @@ export const PuzzleEditor = ({
     editorPgnState(value.solution, value.fen || STARTING_FEN),
   );
   const [appliedFen, setAppliedFen] = useState(initialPgnState.fen);
+  const [fenDraft, setFenDraft] = useState(initialPgnState.fen);
   const [solutionDraft, setSolutionDraft] = useState(initialPgnState.draft);
+  const [solutionInputMode, setSolutionInputMode] = useState<"pgn" | "fen">("pgn");
   const [orientation, setOrientation] = useState<"white" | "black">(() =>
     orientationFromFen(initialPgnState.fen),
   );
@@ -173,7 +178,9 @@ export const PuzzleEditor = ({
     const nextPgnState = editorPgnState(value.solution, value.fen || STARTING_FEN);
     const nextFen = nextPgnState.fen;
     setAppliedFen(nextFen);
+    setFenDraft(nextFen);
     setSolutionDraft(nextPgnState.draft);
+    setSolutionInputMode("pgn");
     setOrientation(orientationFromFen(nextFen));
     setBoardState(null);
     setHoveredEngineMove(null);
@@ -229,6 +236,7 @@ export const PuzzleEditor = ({
         }
         onChange({ ...value, fen: nextFen, solution: "" });
         setAppliedFen(nextFen);
+        setFenDraft(nextFen);
         setOrientation(orientationFromFen(nextFen));
         setNavigation({ type: "reset", fen: nextFen });
         setEditorError("Enter at least one move.");
@@ -242,6 +250,7 @@ export const PuzzleEditor = ({
       onChange(normalized);
       setSolutionDraft(combinePgnHeadersAndMoves(nextHeaders, parsed.solution));
       setAppliedFen(normalized.fen);
+      setFenDraft(normalized.fen);
       setOrientation(orientationFromFen(normalized.fen));
       setEditorError("");
       setNavigation({
@@ -272,6 +281,7 @@ export const PuzzleEditor = ({
       if (fixedFenRef.current === null) fixedFenRef.current = normalized.fen;
       onChange(normalized);
       setAppliedFen(normalized.fen);
+      setFenDraft(normalized.fen);
       setOrientation(orientationFromFen(normalized.fen));
       setActiveLineIndex(0);
       setNavigation({
@@ -286,6 +296,33 @@ export const PuzzleEditor = ({
 
   const copyPgn = async (): Promise<void> => {
     await copyToClipboard(solutionDraft);
+  };
+
+  const applyFenDraft = (): void => {
+    const nextFen = fenDraft.trim();
+    try {
+      if (!nextFen) throw new Error("Enter a FEN.");
+      createAtomicPosition(nextFen);
+      if (nextFen === appliedFen) {
+        setFenDraft(nextFen);
+        setEditorError("");
+        return;
+      }
+
+      const nextHeaders = ensurePuzzlePgnHeaders("", nextFen);
+      fixedFenRef.current = null;
+      savedBoardLineRef.current = "";
+      setAppliedFen(nextFen);
+      setFenDraft(nextFen);
+      setSolutionDraft(nextHeaders);
+      setOrientation(orientationFromFen(nextFen));
+      setActiveLineIndex(0);
+      setEditorError("");
+      onChange({ ...value, fen: nextFen, solution: "" });
+      setNavigation({ type: "reset", fen: nextFen });
+    } catch (error) {
+      setEditorError(getErrorMessage(error, "Invalid FEN."));
+    }
   };
 
   const navigate = (command: PlaybackCommand): void => {
@@ -568,6 +605,80 @@ export const PuzzleEditor = ({
     </section>
   );
 
+  const solutionPgnField = showSolutionPgnField ? (
+    <div className="puzzleEditorSolutionField">
+      <div className="puzzleEditorFieldHeader">
+        {batchMode ? (
+          <label htmlFor={solutionInputId}>Solutions PGNs</label>
+        ) : (
+          <div className="puzzleSolutionInputMode" role="group" aria-label="Position input">
+            <button
+              type="button"
+              className={solutionInputMode === "pgn" ? "active" : ""}
+              aria-pressed={solutionInputMode === "pgn"}
+              onClick={() => setSolutionInputMode("pgn")}
+            >
+              PGN
+            </button>
+            <button
+              type="button"
+              className={solutionInputMode === "fen" ? "active" : ""}
+              aria-pressed={solutionInputMode === "fen"}
+              onClick={() => setSolutionInputMode("fen")}
+            >
+              FEN
+            </button>
+          </div>
+        )}
+        {showCopyPgn && solutionInputMode === "pgn" ? (
+          <button type="button" className="puzzleCopyPgnButton" onClick={() => void copyPgn()}>
+            <FontAwesomeIcon
+              icon={copyPgnLabel === "Copied" ? faCheck : faCopy}
+              aria-hidden="true"
+            />
+            {copyPgnLabel}
+          </button>
+        ) : null}
+      </div>
+      {batchMode || solutionInputMode === "pgn" ? (
+        <textarea
+          id={solutionInputId}
+          aria-label={batchMode ? undefined : "Solution PGN"}
+          value={solutionDraft}
+          rows={solutionPgnUnderBoard ? 4 : 6}
+          required
+          readOnly={solutionLocked}
+          spellCheck={false}
+          onChange={(event) => handleSolutionChange(event.target.value)}
+          onBlur={solutionLocked ? undefined : applySolutionDraft}
+        />
+      ) : (
+        <div className="puzzleEditorFenField">
+          <label htmlFor={`${solutionInputId}-fen`}>FEN</label>
+          <input
+            id={`${solutionInputId}-fen`}
+            type="text"
+            value={fenDraft}
+            readOnly={readOnly}
+            spellCheck={false}
+            onChange={(event) => {
+              setFenDraft(event.target.value);
+              setEditorError("");
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !readOnly) applyFenDraft();
+            }}
+          />
+          {!readOnly ? (
+            <button type="button" className="queueSecondaryButton" onClick={applyFenDraft}>
+              Load FEN
+            </button>
+          ) : null}
+        </div>
+      )}
+    </div>
+  ) : null;
+
   return (
     <div className="puzzleEditor">
       <div className="puzzleEditorBoard">
@@ -609,12 +720,13 @@ export const PuzzleEditor = ({
             </button>
           </nav>
         ) : null}
+        {solutionPgnUnderBoard ? solutionPgnField : null}
         {showAnalysisEngine ? null : editorMovePanel}
       </div>
 
       <div className="puzzleEditorFields">
         {showAnalysisEngine ? (
-          <div className="puzzleReviewAnalysisPanel" aria-label="Position analysis and moves">
+          <section className="puzzleReviewAnalysisPanel" aria-label="Position analysis and moves">
             <AtomicDbAnalysisBlock
               fen={engine.fen}
               analysis={engine.analysis}
@@ -629,40 +741,9 @@ export const PuzzleEditor = ({
               disabled={engine.variationPlaying}
             />
             {reviewMovePanel}
-          </div>
+          </section>
         ) : null}
-        {showSolutionPgnField ? (
-          <div className="puzzleEditorSolutionField">
-            <div className="puzzleEditorFieldHeader">
-              <label htmlFor={solutionInputId}>
-                {batchMode ? "Solutions PGNs" : "Solution PGN"}
-              </label>
-              {showCopyPgn ? (
-                <button
-                  type="button"
-                  className="puzzleCopyPgnButton"
-                  onClick={() => void copyPgn()}
-                >
-                  <FontAwesomeIcon
-                    icon={copyPgnLabel === "Copied" ? faCheck : faCopy}
-                    aria-hidden="true"
-                  />
-                  {copyPgnLabel}
-                </button>
-              ) : null}
-            </div>
-            <textarea
-              id={solutionInputId}
-              value={solutionDraft}
-              rows={6}
-              required
-              readOnly={solutionLocked}
-              spellCheck={false}
-              onChange={(event) => handleSolutionChange(event.target.value)}
-              onBlur={solutionLocked ? undefined : applySolutionDraft}
-            />
-          </div>
-        ) : null}
+        {!solutionPgnUnderBoard ? solutionPgnField : null}
 
         {fieldsBeforeEvent}
 

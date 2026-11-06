@@ -20,19 +20,7 @@ import {
   submitPuzzleBatch,
 } from "../../lib/supabase/puzzleQueue";
 import { getErrorMessage } from "../../utils/errors";
-import { PuzzleAnalysisInstructions } from "./PuzzleAnalysisInstructions";
 import { PuzzleEditor } from "./PuzzleEditor";
-
-const SUBMISSION_STEPS = [
-  "Set up the position on the Lichess analysis board",
-  "Write the complete solution there",
-  "Copy and paste the PGN below",
-];
-const BATCH_SUBMISSION_STEPS = [
-  "Create each position and complete solution on Lichess",
-  "Copy the complete PGN for each puzzle",
-  "Paste all consecutive PGNs into the box below",
-];
 
 export const formatCreatedPuzzleIds = (puzzleIds: number[]): string => {
   const firstId = puzzleIds[0];
@@ -199,10 +187,9 @@ export const PuzzleSubmissionPage = () => {
   if (isLoading) return <RouteLoadingFallback />;
 
   return (
-    <section className="puzzleQueuePage">
+    <section className="puzzleQueuePage puzzleSubmissionPage">
       <Seo title="Submit a Puzzle" description="Submit an atomic chess puzzle for review." />
       <header className="puzzleQueueHeader">
-        <p className="puzzleQueueEyebrow">Community puzzles</p>
         <h1>Submit a Puzzle</h1>
       </header>
 
@@ -219,34 +206,33 @@ export const PuzzleSubmissionPage = () => {
         </div>
       ) : (
         <>
-          <div className="puzzleSubmissionMode" role="group" aria-label="Submission type">
-            <button
-              type="button"
-              className={!batchMode ? "active" : ""}
-              aria-pressed={!batchMode}
-              onClick={() => changeSubmissionMode(false)}
-            >
-              Single puzzle
-            </button>
-            <button
-              type="button"
-              className={batchMode ? "active" : ""}
-              aria-pressed={batchMode}
-              onClick={() => changeSubmissionMode(true)}
-            >
-              Puzzle batch
-            </button>
+          <div className="puzzleSubmissionToolbar">
+            <div className="puzzleSubmissionMode" role="group" aria-label="Submission type">
+              <button
+                type="button"
+                className={!batchMode ? "active" : ""}
+                aria-pressed={!batchMode}
+                onClick={() => changeSubmissionMode(false)}
+              >
+                Single puzzle
+              </button>
+              <button
+                type="button"
+                className={batchMode ? "active" : ""}
+                aria-pressed={batchMode}
+                onClick={() => changeSubmissionMode(true)}
+              >
+                Puzzle batch
+              </button>
+            </div>
+            {batchMode ? <p>Paste consecutive PGNs below, then review each puzzle.</p> : null}
           </div>
-          <PuzzleAnalysisInstructions
-            title={
-              batchMode ? "Create the puzzle batch on Lichess" : "Create the solution on Lichess"
-            }
-            steps={batchMode ? BATCH_SUBMISSION_STEPS : SUBMISSION_STEPS}
-          />
           <PuzzleEditor
             value={value}
             onChange={updateValue}
             resetKey={`${editorVersion}-${activeBatchIndex}`}
+            showAnalysisEngine
+            solutionPgnUnderBoard
             showExplanation={!batchMode}
             batchMode={batchMode}
             allowSolutionEditing={!batchMode}
