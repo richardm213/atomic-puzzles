@@ -40,6 +40,27 @@ describe("useAtomicDbBoardAnalysis", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("publishes the final result without requesting analysis for terminal positions", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { result } = renderHook(() =>
+      useAtomicDbBoardAnalysis({
+        currentFen: FEN,
+        enabled: true,
+        navigation: null,
+        lineCount: 3,
+        terminalOutcome: "white",
+      }),
+    );
+
+    await waitFor(() => expect(result.current.analysis.status).toBe("ready"));
+    expect(result.current.analysis.source).toBe("terminal");
+    expect(result.current.analysis.result?.position?.outcome).toBe("WHITE_WIN");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(analyzeWithEngineMock).not.toHaveBeenCalled();
+  });
+
   it("uses a complete stored game analysis without refreshing AtomicDB", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

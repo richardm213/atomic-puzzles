@@ -4,7 +4,7 @@ import { type CSSProperties, useEffect, useState } from "react";
 
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
-import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
+import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import type { PlaybackCommand } from "../../types/chessboard";
 
@@ -19,6 +19,7 @@ const initialEngineSettings = (): AtomicDbEngineSettings => ({
 export const PuzzleAnalysisPanel = ({
   fen,
   attempted,
+  terminalOutcome,
   lines,
   moves,
   currentPly,
@@ -31,6 +32,7 @@ export const PuzzleAnalysisPanel = ({
 }: {
   fen: string;
   attempted: boolean;
+  terminalOutcome: "white" | "black" | "draw" | null;
   lines: string[][];
   moves: string[];
   currentPly: number;
@@ -48,12 +50,14 @@ export const PuzzleAnalysisPanel = ({
     onHoverMove(null);
   }, [onHoverMove]);
 
-  const analysis = useAtomicDbAnalysis(fen, {
+  const { analysis } = useAtomicDbBoardAnalysis({
+    currentFen: fen,
     enabled: attempted && engineSettings.enabled,
     atomicDbEnabled: engineSettings.atomicDbEnabled !== false,
-    fallbackToEngine: true,
+    navigation: null,
     lineCount: engineSettings.lineCount,
-    plyCount: engineSettings.showFollowUpMoves ? 5 : 1,
+    showFollowUpMoves: engineSettings.showFollowUpMoves,
+    terminalOutcome,
   });
 
   return (

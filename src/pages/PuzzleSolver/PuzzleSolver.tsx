@@ -1476,6 +1476,9 @@ export const PuzzleSolverPage = () => {
       key={activePuzzleId ?? "empty"}
       fen={currentFen}
       attempted={hasAttemptedActivePuzzle}
+      terminalOutcome={
+        boardState.winner ?? (boardState.status.toLowerCase() === "draw" ? "draw" : null)
+      }
       lines={allVariationLines}
       moves={boardState.lineMoves ?? []}
       currentPly={currentAnalysisMoves.length}
@@ -1825,38 +1828,13 @@ export const PuzzleSolverPage = () => {
               ) : null}
             </div>
             <div className="puzzleHeaderStatus">
-              <div className="puzzleHeaderRatings">
-                {renderUserPuzzleRating()}
-                {hasAttemptedActivePuzzle ? renderPuzzleRating() : null}
-              </div>
+              <div className="puzzleHeaderRatings">{renderUserPuzzleRating()}</div>
               {!isMobileLayout && shouldShowPuzzleTimer ? (
                 <PuzzleElapsedTimer
                   elapsedTimeMs={elapsedTimeMs}
                   running={elapsedTimerRunning}
                   readElapsedTimeMs={readElapsedTimeMs}
                 />
-              ) : null}
-              {unratedReason ? (
-                <span
-                  className="puzzleUnratedBadge"
-                  tabIndex={0}
-                  title={unratedLabel}
-                  aria-label={unratedLabel}
-                  data-tooltip={unratedLabel}
-                >
-                  Unrated
-                </span>
-              ) : null}
-              {opaStyle ? (
-                <span
-                  className="puzzleOpaBadge"
-                  tabIndex={0}
-                  title={OPA_STYLE_BADGE_LABEL}
-                  aria-label={`OPA style: ${OPA_STYLE_BADGE_LABEL}`}
-                  data-tooltip={OPA_STYLE_BADGE_LABEL}
-                >
-                  OPA style
-                </span>
               ) : null}
             </div>
             <div className="puzzleHeaderMetadata">
@@ -1893,6 +1871,33 @@ export const PuzzleSolverPage = () => {
                 </span>
               ) : null}
             </div>
+            {hasAttemptedActivePuzzle || unratedReason || opaStyle ? (
+              <div className="puzzleHeaderBadges">
+                {hasAttemptedActivePuzzle ? renderPuzzleRating() : null}
+                {unratedReason ? (
+                  <span
+                    className="puzzleUnratedBadge"
+                    tabIndex={0}
+                    title={unratedLabel}
+                    aria-label={unratedLabel}
+                    data-tooltip={unratedLabel}
+                  >
+                    Unrated
+                  </span>
+                ) : null}
+                {opaStyle ? (
+                  <span
+                    className="puzzleOpaBadge"
+                    tabIndex={0}
+                    title={OPA_STYLE_BADGE_LABEL}
+                    aria-label={`OPA style: ${OPA_STYLE_BADGE_LABEL}`}
+                    data-tooltip={OPA_STYLE_BADGE_LABEL}
+                  >
+                    OPA style
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           {showPuzzleSetMetadata && activePuzzleSetMetadata ? (
