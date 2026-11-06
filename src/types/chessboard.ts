@@ -10,12 +10,18 @@ export type PositionState = {
   lineIndex?: number;
 };
 
+export type BoardLineRef =
+  | { source: "history" }
+  | { source: "solution"; index: number }
+  | { source: "custom"; index: number };
+
 export type VariationState = {
   solutionLines?: string[][];
   customLines?: string[][];
   solutionLineIndex?: number;
   customLineIndex?: number;
   viewingSolution?: boolean;
+  activeLine?: BoardLineRef;
 };
 
 export type TrainingState = {

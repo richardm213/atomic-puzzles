@@ -43,7 +43,11 @@ import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { buildBoardLoadNavigation, gamePlyFromHash } from "../../lib/analysis/boardLoading";
-import { getBoardMoveState } from "../../lib/analysis/boardState";
+import {
+  boardLineAnnotationNavigation,
+  boardLineNavigation,
+  getBoardMoveState,
+} from "../../lib/analysis/boardState";
 import { readAnalysisHandoff } from "../../lib/analysis/handoff";
 import { type ArchiveGame, decodeGameResult } from "../../lib/archive/games";
 import { isAtomicTablebasePosition } from "../../lib/atomicTablebase/material";
@@ -494,7 +498,9 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     canStepForward,
     currentFen,
     currentPly,
-    customLines,
+    activeLineIndex,
+    lineTargets,
+    lines: analysisLines,
     moveList,
     terminalOutcome,
   } = getBoardMoveState(boardState, rootFen);
@@ -639,7 +645,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     }
   }, [currentPly, game?.game_id]);
 
-  const variationPgn = customLines.length ? serializeSanLinesToPgn(rootFen, customLines) : "";
+  const variationPgn = analysisLines.length ? serializeSanLinesToPgn(rootFen, analysisLines) : "";
 
   useEffect(() => {
     if (!game || typeof ResizeObserver === "undefined") return;
@@ -778,26 +784,28 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, [currentPly, game, navigateToPly]);
 
-  const navigateToCustomMove = useCallback((lineIndex: number, moveIndex: number): void => {
-    setNavigation({ type: "custom", line: lineIndex, ply: moveIndex + 1 });
-  }, []);
+  const navigateToAnalysisMove = useCallback(
+    (lineIndex: number, moveIndex: number): void => {
+      const target = lineTargets[lineIndex];
+      if (target) setNavigation(boardLineNavigation(target, moveIndex + 1));
+    },
+    [lineTargets],
+  );
 
   const annotateMove = useCallback(
     (lineIndex: number | undefined, moveIndex: number, annotation: string): void => {
-      setNavigation({
-        type: "annotate",
-        source: lineIndex === undefined ? "history" : "custom",
-        ...(lineIndex === undefined ? {} : { line: lineIndex }),
-        ply: moveIndex + 1,
-        annotation,
-      });
+      const target =
+        lineIndex === undefined ? { source: "history" as const } : lineTargets[lineIndex];
+      if (!target) return;
+      const nextNavigation = boardLineAnnotationNavigation(target, moveIndex + 1, annotation);
+      if (nextNavigation) setNavigation(nextNavigation);
     },
-    [],
+    [lineTargets],
   );
 
   const deleteMove = useCallback(
     (lineIndex: number, moveIndex: number): void => {
-      const pruned = prunePgnLinesFromMove(customLines, lineIndex, moveIndex, sameSolutionMove);
+      const pruned = prunePgnLinesFromMove(analysisLines, lineIndex, moveIndex, sameSolutionMove);
       const pgn = serializeSanLinesToPgn(rootFen, pruned.lines);
       setNavigation(
         buildBoardLoadNavigation({
@@ -808,7 +816,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
         }),
       );
     },
-    [customLines, rootFen],
+    [analysisLines, rootFen],
   );
 
   const playExplorerMove = (uci: string): void => {
@@ -1497,13 +1505,13 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
             ) : null}
             <div className="analysisMoveContent" ref={moveContentRef}>
               <MoveNotation
-                lines={customLines}
+                lines={analysisLines}
                 moves={moveList}
                 currentPly={currentPly}
-                pinnedLineIndex={boardState?.customLineIndex}
+                pinnedLineIndex={activeLineIndex}
                 inline={notationLayout === "inline"}
                 onNavigate={navigateToPly}
-                onSelectVariation={navigateToCustomMove}
+                onSelectVariation={navigateToAnalysisMove}
                 onCycleOptions={requestNavigation}
                 onAnnotate={game ? undefined : annotateMove}
                 onDelete={game ? undefined : deleteMove}

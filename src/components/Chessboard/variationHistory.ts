@@ -40,6 +40,8 @@ export const saveVariation = (
     tree.leaves[existingIndex] = node;
     return existingIndex;
   }
+  const existingLeafIndex = tree.leaves.indexOf(node);
+  if (existingLeafIndex >= 0) return existingLeafIndex;
   tree.leaves.push(node);
   return tree.leaves.length - 1;
 };

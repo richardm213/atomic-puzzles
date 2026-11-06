@@ -47,7 +47,11 @@ import { type OpeningExplorerRequest, useOpeningExplorer } from "../../hooks/use
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { buildBoardLoadNavigation } from "../../lib/analysis/boardLoading";
-import { getBoardMoveState } from "../../lib/analysis/boardState";
+import {
+  boardLineAnnotationNavigation,
+  boardLineNavigation,
+  getBoardMoveState,
+} from "../../lib/analysis/boardState";
 import { apiRequest } from "../../lib/api/postApi";
 import { findFairyStockfishMove } from "../../lib/practice/fairyStockfish";
 import {
@@ -260,7 +264,9 @@ export const PracticePage = () => {
     canStepForward,
     currentFen,
     currentPly,
-    customLines,
+    activeLineIndex,
+    lineTargets,
+    lines: analysisLines,
     moveList,
     terminalOutcome,
   } = getBoardMoveState(boardState, practiceRootFen);
@@ -718,27 +724,26 @@ export const PracticePage = () => {
     [clearAutoMoveState, currentPly, queueNavigation],
   );
 
-  const navigateToCustomMove = useCallback(
+  const navigateToAnalysisMove = useCallback(
     (lineIndex: number, moveIndex: number): void => {
       clearAutoMoveState();
       setManualContinuationActive(false);
       if (moveIndex + 1 < currentPly) setGamePaused(true);
-      queueNavigation({ type: "custom", line: lineIndex, ply: moveIndex + 1 });
+      const target = lineTargets[lineIndex];
+      if (target) queueNavigation(boardLineNavigation(target, moveIndex + 1));
     },
-    [clearAutoMoveState, currentPly, queueNavigation],
+    [clearAutoMoveState, currentPly, lineTargets, queueNavigation],
   );
 
   const annotateMove = useCallback(
     (lineIndex: number | undefined, moveIndex: number, annotation: string): void => {
-      queueNavigation({
-        type: "annotate",
-        source: lineIndex === undefined ? "history" : "custom",
-        ...(lineIndex === undefined ? {} : { line: lineIndex }),
-        ply: moveIndex + 1,
-        annotation,
-      });
+      const target =
+        lineIndex === undefined ? { source: "history" as const } : lineTargets[lineIndex];
+      if (!target) return;
+      const nextNavigation = boardLineAnnotationNavigation(target, moveIndex + 1, annotation);
+      if (nextNavigation) queueNavigation(nextNavigation);
     },
-    [queueNavigation],
+    [lineTargets, queueNavigation],
   );
 
   const handleBoardStateChange = useCallback(
@@ -1417,13 +1422,13 @@ export const PracticePage = () => {
             />
             <div className="analysisMoveContent">
               <MoveNotation
-                lines={customLines}
+                lines={analysisLines}
                 moves={moveList}
                 currentPly={currentPly}
-                pinnedLineIndex={boardState?.customLineIndex}
+                pinnedLineIndex={activeLineIndex}
                 inline
                 onNavigate={navigateToPly}
-                onSelectVariation={navigateToCustomMove}
+                onSelectVariation={navigateToAnalysisMove}
                 onCycleOptions={requestNavigation}
                 onAnnotate={annotateMove}
               />

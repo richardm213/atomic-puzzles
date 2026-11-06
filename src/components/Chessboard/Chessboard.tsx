@@ -30,6 +30,7 @@ import {
 import { lichessAnalysisGlyphSvg } from "../../lib/gameAnalysis/lichessAnalysisGlyph";
 import type {
   AttemptResolved,
+  BoardLineRef,
   ChessboardState,
   PlaybackCommand,
   SolutionNavigation,
@@ -77,11 +78,6 @@ type DisplaySolutionEntry = {
   sanLine: string[];
   history: BoardHistory;
 };
-
-type ActiveLine =
-  | { source: "history" }
-  | { source: "solution"; index: number }
-  | { source: "custom"; index: number };
 
 export type ChessboardProps = {
   puzzleId: string | number | null | undefined;
@@ -255,7 +251,7 @@ const ChessboardComponent = ({
   const solutionUciLinesRef = useLatestRef(solutionUciLines);
   const solutionEntriesRef = useRef(solutionEntries);
   solutionEntriesRef.current = solutionEntries;
-  const activeLineRef = useRef<ActiveLine>({ source: "history" });
+  const activeLineRef = useRef<BoardLineRef>({ source: "history" });
   const alternativeContinuationSelectedRef = useRef(false);
   const customVariationsRef = useRef(createVariationHistory());
   const pieceStyle = useMemo(() => buildPieceStyle(pieceSet), [pieceSet]);
@@ -339,6 +335,7 @@ const ChessboardComponent = ({
         lineMoves: historyMoveSans(history),
         solutionLines: solutionEntriesRef.current.map((entry) => [...entry.sanLine]),
         customLines: variationMoveSans(customVariationsRef.current),
+        activeLine: activeLineRef.current,
         solutionLineIndex:
           activeLineRef.current.source === "solution" ? activeLineRef.current.index : 0,
         ...(activeLineRef.current.source === "custom"
@@ -616,7 +613,7 @@ const ChessboardComponent = ({
     }: {
       history: BoardHistory;
       ply?: number | undefined;
-      activeLine: ActiveLine;
+      activeLine: BoardLineRef;
       locked: boolean;
       state?: Partial<ChessboardState>;
     }): void => {

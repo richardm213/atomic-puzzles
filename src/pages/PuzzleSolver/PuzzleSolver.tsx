@@ -40,6 +40,7 @@ import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
+import { boardLineNavigation, getBoardLineState } from "../../lib/analysis/boardState";
 import {
   analysisHandoffUrl,
   createAnalysisHandoffId,
@@ -74,11 +75,7 @@ import {
 } from "../../lib/puzzles/puzzleSets";
 import { ensurePuzzlePgnHeaders } from "../../lib/puzzles/puzzleSubmission";
 import { updatePuzzleTags } from "../../lib/puzzles/puzzleTags";
-import {
-  mergeAdditiveSolutionLine,
-  movePrefix,
-  serializeSanLinesToPgn,
-} from "../../lib/puzzles/solutionPgn";
+import { movePrefix, serializeSanLinesToPgn } from "../../lib/puzzles/solutionPgn";
 import {
   fetchPuzzleAttemptsForPuzzle,
   fetchPuzzleProgressRowsForUsername,
@@ -1360,49 +1357,12 @@ export const PuzzleSolverPage = () => {
     [boardShowsSolution, hasExplanation, isMobileLayout, showMobileFeedback],
   );
 
-  const handleMoveClick = useCallback((lineIndex: number, moveIndex: number): void => {
-    setPinnedSolutionLineIndex(lineIndex);
-    setSolutionNavigation({
-      type: "solution",
-      line: lineIndex,
-      ply: moveIndex + 1,
-    });
-  }, []);
-
-  const solutionLineCount = boardState.solutionLines?.length ?? 0;
-  const allVariationLines = useMemo(
-    () =>
-      (boardState.customLines ?? []).reduce(
-        (lines, customLine) => mergeAdditiveSolutionLine(lines, customLine).lines,
-        boardState.solutionLines ?? [],
-      ),
-    [boardState.customLines, boardState.solutionLines],
-  );
-
-  const handleVariationMoveClick = useCallback(
-    (lineIndex: number, moveIndex: number): void => {
-      if (lineIndex < solutionLineCount) {
-        handleMoveClick(lineIndex, moveIndex);
-        return;
-      }
-
-      setSolutionNavigation({
-        type: "custom",
-        line: lineIndex - solutionLineCount,
-        ply: moveIndex + 1,
-      });
-    },
-    [handleMoveClick, solutionLineCount],
-  );
-
   const handlePlaybackCommand = useCallback((command: PlaybackCommand): void => {
     setSolutionNavigation({ type: "command", command });
   }, []);
 
-  const currentAnalysisMoves = useMemo(
-    () => boardState.lineMoves?.slice(0, boardState.lineIndex) ?? [],
-    [boardState.lineMoves, boardState.lineIndex],
-  );
+  const baseLineState = getBoardLineState(boardState);
+  const currentAnalysisMoves = baseLineState.currentMoves;
 
   const matchingSolutionLineIndexes = useMemo(
     () => matchingLineIndexes(boardState.solutionLines, currentAnalysisMoves),
@@ -1436,19 +1396,22 @@ export const PuzzleSolverPage = () => {
   const isAtSolutionLeaf = matchingSolutionLineIndexes.some(
     (lineIndex) => boardState.solutionLines?.[lineIndex]?.length === currentAnalysisMoves.length,
   );
-  const activeVariationLineIndex = boardState.viewingSolution
-    ? activeSolutionLineIndex
-    : solutionLineCount + (boardState.customLineIndex ?? 0);
-  const analysisHandoffLineIndex = useMemo(() => {
-    const activeMoves = boardState.lineMoves ?? [];
-    const exactLineIndex = allVariationLines.findIndex(
-      (line) =>
-        line.length === activeMoves.length &&
-        line.every((move, moveIndex) => move === activeMoves[moveIndex]),
-    );
-    if (exactLineIndex >= 0) return exactLineIndex;
-    return Math.max(0, Math.min(activeVariationLineIndex, allVariationLines.length - 1));
-  }, [activeVariationLineIndex, allVariationLines, boardState.lineMoves]);
+  const variationLineState = getBoardLineState(boardState, {
+    ...(boardState.viewingSolution ? { activeSolutionLineIndex } : {}),
+  });
+  const allVariationLines = variationLineState.lines;
+  const activeVariationLineIndex = variationLineState.activeLineIndex;
+  const analysisHandoffLineIndex = activeVariationLineIndex;
+
+  const handleVariationMoveClick = useCallback(
+    (lineIndex: number, moveIndex: number): void => {
+      const target = variationLineState.lineTargets[lineIndex];
+      if (!target) return;
+      if (target.source === "solution") setPinnedSolutionLineIndex(target.index);
+      setSolutionNavigation(boardLineNavigation(target, moveIndex + 1));
+    },
+    [variationLineState.lineTargets],
+  );
 
   useEffect(() => {
     if (!boardShowsSolution || !isOnSolutionPath) return;

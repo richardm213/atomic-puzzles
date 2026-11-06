@@ -37,4 +37,13 @@ describe("variation history", () => {
       ["e4", "c5"],
     ]);
   });
+
+  it("reuses the existing index when the same line is saved again", () => {
+    const tree = createVariationHistory();
+    const first = saveVariation(tree, line("e4", "e5"));
+    const duplicate = saveVariation(tree, line("e4", "e5"));
+
+    expect(duplicate).toBe(first);
+    expect(variationMoveSans(tree)).toEqual([["e4", "e5"]]);
+  });
 });
