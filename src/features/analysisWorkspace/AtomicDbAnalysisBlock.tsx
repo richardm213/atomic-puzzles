@@ -40,7 +40,11 @@ export const AtomicDbAnalysisBlock = ({
   threatAvailable,
   threatMode,
 }: AtomicDbAnalysisBlockProps) => (
-  <div className="analysisEngineBlock">
+  <div
+    className="analysisEngineBlock"
+    onPointerDownCapture={() => onHoverMove(null)}
+    onPointerLeave={() => onHoverMove(null)}
+  >
     <AtomicDbEngineControls
       fen={fen}
       analysis={analysis}

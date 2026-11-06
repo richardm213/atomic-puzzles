@@ -443,6 +443,58 @@ describe("AtomicDbEngine", () => {
     expect(onPlayLine).toHaveBeenCalledWith(["g1h3"]);
   });
 
+  it("clears a move preview when the pointer leaves or the analyzed lines change", () => {
+    const onHoverMove = vi.fn();
+    const position = parseAtomicDbResponse({
+      status: "UNKNOWN",
+      score: 1100,
+      best_move: "g1f3",
+      moves: [{ uci: "g1f3", status: "UNKNOWN", score: 1100 }],
+    });
+    const props = {
+      fen: STARTING_FEN,
+      settings: { enabled: true, lineCount: 1, showFollowUpMoves: false },
+      onPlayLine: vi.fn(),
+      onHoverMove,
+    };
+    const { rerender } = render(
+      <AtomicDbEngine
+        {...props}
+        analysis={{
+          status: "ready",
+          error: "",
+          result: { fen: STARTING_FEN, position },
+          principalVariations: {},
+        }}
+      />,
+    );
+
+    fireEvent.pointerEnter(screen.getByRole("button", { name: "Play variation through Nf3" }));
+    expect(onHoverMove).toHaveBeenLastCalledWith("g1f3");
+
+    fireEvent.pointerLeave(screen.getByRole("region", { name: "Position analysis lines" }));
+    expect(onHoverMove).toHaveBeenLastCalledWith(null);
+
+    const nextPosition = parseAtomicDbResponse({
+      status: "UNKNOWN",
+      score: 900,
+      best_move: "g1h3",
+      moves: [{ uci: "g1h3", status: "UNKNOWN", score: 900 }],
+    });
+    rerender(
+      <AtomicDbEngine
+        {...props}
+        analysis={{
+          status: "ready",
+          error: "",
+          result: { fen: STARTING_FEN, position: nextPosition },
+          principalVariations: {},
+        }}
+      />,
+    );
+    expect(onHoverMove).toHaveBeenLastCalledWith(null);
+  });
+
   it("shows only each root move and its evaluation when follow-up moves are off", () => {
     const position = parseAtomicDbResponse({
       status: "UNKNOWN",

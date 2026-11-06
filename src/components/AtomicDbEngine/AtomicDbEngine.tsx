@@ -289,11 +289,23 @@ export const AtomicDbEngine = ({
   const targetLineCount = legalMoveCount > 0 ? Math.min(lineCount, legalMoveCount) : lineCount;
   const missingLineCount = Math.max(0, targetLineCount - visibleMoves.length);
   const showingPreviousPosition = status === "loading" && !view.isCurrent;
+  const previewSourceKey = `${view.fen}:${visibleMoves.map((move) => move.uci).join(",")}`;
+
+  useEffect(
+    () => () => {
+      onHoverMove(null);
+    },
+    [onHoverMove, previewSourceKey],
+  );
 
   if (!enabled) return null;
 
   return (
-    <section className="atomicDbEngine" aria-label="Position analysis lines">
+    <section
+      className="atomicDbEngine"
+      aria-label="Position analysis lines"
+      onPointerLeave={() => onHoverMove(null)}
+    >
       <div className="atomicDbEngineBody" aria-live="polite" aria-busy={status === "loading"}>
         {status === "loading" && !position ? (
           <div className="atomicDbEngineState">Loading analysis…</div>
