@@ -192,7 +192,7 @@ export const movePrefix = (plyIndex: number, force = false): string => {
   return "";
 };
 
-const startingPlyFromFen = (fen: string): number => {
+export const startingPlyFromFen = (fen: string): number => {
   const [, turn = "w", , , , fullmove = "1"] = String(fen ?? "")
     .trim()
     .split(/\s+/);

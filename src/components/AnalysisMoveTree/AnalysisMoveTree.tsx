@@ -49,6 +49,7 @@ export const AnalysisMoveTree = ({
   moves,
   currentPly,
   pinnedLineIndex,
+  initialPly = 0,
   inline = true,
   onSelect,
   onCycleOptions,
@@ -60,6 +61,7 @@ export const AnalysisMoveTree = ({
   moves: string[];
   currentPly: number;
   pinnedLineIndex?: number | undefined;
+  initialPly?: number | undefined;
   inline?: boolean;
   onSelect: (lineIndex: number, moveIndex: number) => void;
   onCycleOptions: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
@@ -91,6 +93,7 @@ export const AnalysisMoveTree = ({
     keyPrefix: string,
     forceMoveNumber = false,
   ): ReactNode[] => {
+    const displayPly = initialPly + ply;
     const indexes = [...node.lineIndexes].sort((left, right) => left - right);
     const targetLine = node.lineIndexes.has(activeLine) ? activeLine : (indexes[0] ?? 0);
     const mainlineAssessment = node.lineIndexes.has(0) ? assessments[ply] : undefined;
@@ -122,7 +125,7 @@ export const AnalysisMoveTree = ({
         }
         title={onAnnotate || onDelete ? "Right-click to edit move" : undefined}
       >
-        {movePrefix(ply, forceMoveNumber)}
+        {movePrefix(displayPly, forceMoveNumber)}
         {node.move}
         {visibleAssessment ? (
           <b aria-label={visibleAssessment.classification}>{visibleAssessment.symbol}</b>
@@ -140,7 +143,7 @@ export const AnalysisMoveTree = ({
             <span className="analysisTreeParen" aria-hidden="true">
               (
             </span>
-            {renderNode(variation, ply + 1, key, (ply + 1) % 2 === 1)}
+            {renderNode(variation, ply + 1, key, (initialPly + ply + 1) % 2 === 1)}
             <span className="analysisTreeParen" aria-hidden="true">
               )
             </span>
@@ -153,7 +156,7 @@ export const AnalysisMoveTree = ({
 
   const roots = orderedChildren(tree);
   const main = findMainChild(roots);
-  const content = main ? renderNode(main, 0, "root-main") : [];
+  const content = main ? renderNode(main, 0, "root-main", initialPly % 2 === 1) : [];
   roots
     .filter((node) => node !== main)
     .forEach((variation, index) => {
@@ -163,7 +166,7 @@ export const AnalysisMoveTree = ({
           <span className="analysisTreeParen" aria-hidden="true">
             (
           </span>
-          {renderNode(variation, 0, key)}
+          {renderNode(variation, 0, key, initialPly % 2 === 1)}
           <span className="analysisTreeParen" aria-hidden="true">
             )
           </span>
@@ -185,7 +188,7 @@ export const AnalysisMoveTree = ({
                 aria-current={option.move === activeMove ? "true" : undefined}
                 onClick={() => onSelect(option.lineIndex, option.plyIndex)}
               >
-                {movePrefix(currentPly, currentPly % 2 === 1)}
+                {movePrefix(initialPly + currentPly, (initialPly + currentPly) % 2 === 1)}
                 {option.move}
               </button>
             ))}

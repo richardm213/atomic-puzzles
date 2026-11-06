@@ -33,6 +33,7 @@ import {
   sameSolutionMove,
   serializeSanLinesToPgn,
   splitSolutionMove,
+  startingPlyFromFen,
 } from "../../lib/chess/pgn";
 import {
   ensurePuzzlePgnHeaders,
@@ -593,6 +594,7 @@ export const PuzzleEditor = ({
         lines={solutionLines}
         options={variationOptionList}
         currentPly={currentPly}
+        initialPly={startingPlyFromFen(appliedFen)}
         activeLineIndex={activeLineIndex}
         onSelect={navigateToMove}
       />
@@ -607,6 +609,7 @@ export const PuzzleEditor = ({
           moves={boardState?.lineMoves ?? solutionLines[activeLineIndex] ?? []}
           currentPly={currentPly}
           pinnedLineIndex={activeLineIndex}
+          initialPly={startingPlyFromFen(appliedFen)}
           inline
           onNavigate={(ply) => navigateToMove(activeLineIndex, Math.max(0, ply - 1))}
           onSelectVariation={navigateToMove}

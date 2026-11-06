@@ -437,6 +437,20 @@ describe("PuzzleEditor move tree", () => {
     });
   });
 
+  it("shows move numbers from the setup FEN after loading a PGN", async () => {
+    render(<EditorHarness initialSolution="" allowSolutionEditing />);
+
+    const solution = screen.getByRole("textbox", { name: "Solution PGN" });
+    fireEvent.change(solution, {
+      target: {
+        value: `[Variant "Atomic"]\n[SetUp "1"]\n[FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 5"]\n\n5. d4 d5 *`,
+      },
+    });
+
+    expect(await screen.findByRole("button", { name: "5. d4" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "1. d4" })).not.toBeInTheDocument();
+  });
+
   it("can load a FEN by itself and clear the previous solution", async () => {
     const user = userEvent.setup();
     render(<EditorHarness allowSolutionEditing />);

@@ -60,12 +60,14 @@ export const SolutionPlaybackControls = ({
 export const SolutionContinuationOptions = ({
   options,
   currentPly,
+  initialPly = 0,
   activeLineIndex,
   onSelect,
   onCycle,
 }: {
   options: VariationOption[];
   currentPly: number;
+  initialPly?: number | undefined;
   activeLineIndex: number;
   onSelect: (lineIndex: number, moveIndex: number) => void;
   onCycle?: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
@@ -120,7 +122,7 @@ export const SolutionContinuationOptions = ({
             aria-current={option.move === activeMove ? "true" : undefined}
             onClick={() => onSelect(option.lineIndex, option.plyIndex)}
           >
-            {movePrefix(currentPly, currentPly % 2 === 1)}
+            {movePrefix(initialPly + currentPly, (initialPly + currentPly) % 2 === 1)}
             {option.move}
           </button>
         ))}
@@ -133,6 +135,7 @@ export const SolutionMoveTree = ({
   lines,
   options,
   currentPly,
+  initialPly = 0,
   activeLineIndex,
   onSelect,
   onCycleOptions,
@@ -140,6 +143,7 @@ export const SolutionMoveTree = ({
   lines: string[][];
   options: VariationOption[];
   currentPly: number;
+  initialPly?: number | undefined;
   activeLineIndex: number;
   onSelect: (lineIndex: number, moveIndex: number) => void;
   onCycleOptions?: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
@@ -148,6 +152,7 @@ export const SolutionMoveTree = ({
     <SolutionContinuationOptions
       options={options}
       currentPly={currentPly}
+      initialPly={initialPly}
       activeLineIndex={activeLineIndex}
       onSelect={onSelect}
       {...(onCycleOptions ? { onCycle: onCycleOptions } : {})}
@@ -158,6 +163,7 @@ export const SolutionMoveTree = ({
           lines={lines}
           activeLine={Math.min(activeLineIndex, lines.length - 1)}
           currentPly={currentPly}
+          initialPly={initialPly}
           onMoveClick={onSelect}
         />
       </div>

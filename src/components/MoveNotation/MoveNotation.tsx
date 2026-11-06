@@ -8,6 +8,7 @@ export const MoveNotation = ({
   moves,
   currentPly,
   pinnedLineIndex,
+  initialPly = 0,
   inline,
   onNavigate,
   onSelectVariation,
@@ -20,6 +21,7 @@ export const MoveNotation = ({
   moves: string[];
   currentPly: number;
   pinnedLineIndex?: number | undefined;
+  initialPly?: number | undefined;
   inline: boolean;
   onNavigate: (ply: number) => void;
   onSelectVariation: (lineIndex: number, moveIndex: number) => void;
@@ -56,6 +58,7 @@ export const MoveNotation = ({
       moves={moves}
       currentPly={currentPly}
       pinnedLineIndex={pinnedLineIndex}
+      initialPly={initialPly}
       inline={inline}
       onSelect={(lineIndex, moveIndex) => {
         if (lines.length) onSelectVariation(lineIndex, moveIndex);

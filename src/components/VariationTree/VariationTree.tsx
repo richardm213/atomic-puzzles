@@ -69,11 +69,13 @@ export const VariationTree = ({
   lines,
   activeLine,
   currentPly,
+  initialPly = 0,
   onMoveClick,
 }: {
   lines: string[][];
   activeLine: number;
   currentPly: number;
+  initialPly?: number | undefined;
   onMoveClick: (lineIndex: number, moveIndex: number) => void;
 }) => {
   if (!lines.length) return null;
@@ -85,6 +87,7 @@ export const VariationTree = ({
     keyPrefix: string,
     forceMoveNumber = false,
   ): ReactNode[] => {
+    const displayPly = initialPly + ply;
     const indexes = [...node.lineIndexes].sort((a, b) => a - b);
     const targetLine = node.lineIndexes.has(activeLine) ? activeLine : (indexes[0] ?? 0);
     const content: ReactNode[] = [
@@ -94,7 +97,7 @@ export const VariationTree = ({
         className={`moveChip ${node.lineIndexes.has(activeLine) && currentPly === ply + 1 ? "active" : ""}`}
         onClick={() => onMoveClick(targetLine, ply)}
       >
-        {movePrefix(ply, forceMoveNumber)}
+        {movePrefix(displayPly, forceMoveNumber)}
         {node.move}
       </button>,
     ];
@@ -109,7 +112,7 @@ export const VariationTree = ({
             (
           </span>,
         );
-        content.push(...renderNode(variation, ply + 1, key, (ply + 1) % 2 === 1));
+        content.push(...renderNode(variation, ply + 1, key, (initialPly + ply + 1) % 2 === 1));
         content.push(
           <span key={`${key}-close`} className="variationParen">
             )
@@ -122,7 +125,7 @@ export const VariationTree = ({
 
   const roots = orderedChildren(tree);
   const main = findMainChild(roots);
-  const content = main ? renderNode(main, 0, "root-main") : [];
+  const content = main ? renderNode(main, 0, "root-main", initialPly % 2 === 1) : [];
   roots
     .filter((node) => node !== main)
     .forEach((variation, index) => {
@@ -132,7 +135,7 @@ export const VariationTree = ({
           (
         </span>,
       );
-      content.push(...renderNode(variation, 0, key));
+      content.push(...renderNode(variation, 0, key, initialPly % 2 === 1));
       content.push(
         <span key={`${key}-close`} className="variationParen">
           )
