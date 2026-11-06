@@ -1,3 +1,4 @@
+import { normalizePuzzleMotifTags } from "./puzzleMotifs";
 import { createAtomicPosition, parseSolutionUciLines, serializeUciLinesToPgn } from "./solutionPgn";
 
 export type PuzzleSubmissionValue = {
@@ -8,6 +9,7 @@ export type PuzzleSubmissionValue = {
   blackPlayer?: string;
   explanation: string;
   opaStyle?: boolean;
+  tags?: string[];
 };
 
 export type ParsedPuzzlePgn = {
@@ -141,6 +143,7 @@ export const validateParsedPuzzleSubmission = (
     blackPlayer,
     explanation,
     opaStyle: value.opaStyle === true,
+    tags: normalizePuzzleMotifTags(value.tags),
   };
 };
 

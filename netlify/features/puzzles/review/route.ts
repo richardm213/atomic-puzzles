@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isPuzzleMotifTag } from "../../../../shared/domain/puzzles/puzzleMotifs";
 import {
   authenticateRequest,
   requireSameOrigin,
@@ -23,6 +24,13 @@ const puzzleFieldsSchema = z.object({
   explanation: z.string().trim().max(5_000),
   opaStyle: z.boolean().default(false),
   author: z.string().trim().min(1).max(200),
+  tags: z
+    .array(z.string())
+    .max(30)
+    .refine((tags) => tags.every(isPuzzleMotifTag), {
+      message: "Unknown puzzle motif.",
+    })
+    .default([]),
 });
 const reviewBodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("list") }),

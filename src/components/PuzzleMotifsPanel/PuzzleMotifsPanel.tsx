@@ -1,3 +1,5 @@
+import "./PuzzleMotifsPanel.css";
+
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -17,7 +19,7 @@ export const PuzzleMotifsPanel = ({
   visible: boolean;
   tags: string[];
   canManage: boolean;
-  onUpdate: (tags: string[]) => Promise<void>;
+  onUpdate: (tags: string[]) => Promise<void> | void;
 }) => {
   const [editorOpen, setEditorOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");

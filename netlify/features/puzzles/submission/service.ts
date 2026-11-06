@@ -1,4 +1,5 @@
 import { isApprovedPuzzleCreator } from "../../../../shared/domain/puzzles/approvedPuzzleCreators";
+import { normalizePuzzleMotifTags } from "../../../../shared/domain/puzzles/puzzleMotifs";
 import { normalizePuzzlePlayers } from "../../../../shared/domain/puzzles/puzzleSetMetadata";
 import {
   compactPuzzleSolution,
@@ -49,6 +50,7 @@ export class PuzzleSubmissionService {
       explanation: input.explanation,
       opaStyle: input.opaStyle === true,
       author,
+      tags: normalizePuzzleMotifTags(input.tags),
     };
   }
 

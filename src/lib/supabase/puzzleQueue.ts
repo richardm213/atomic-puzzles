@@ -44,6 +44,7 @@ export const submitPuzzle = async (
       explanation: input.explanation.trim(),
       opaStyle: input.opaStyle === true,
       author: options.author?.trim() ?? "",
+      tags: input.tags ?? [],
       allowDifferentStartMove: options.allowDifferentStartMove ?? false,
     },
     {
@@ -80,6 +81,7 @@ export const submitPuzzleBatch = async (
         explanation: input.explanation.trim(),
         opaStyle: input.opaStyle === true,
         author: options.author?.trim() ?? "",
+        tags: input.tags ?? [],
       })),
       allowDifferentStartMove: options.allowDifferentStartMove ?? false,
     },
@@ -123,6 +125,7 @@ export const updateQueuedPuzzle = async (
     explanation: string;
     opaStyle?: boolean;
     author: string;
+    tags?: string[];
   },
 ): Promise<PuzzleQueueRow> => {
   const result = await reviewRequest<{ puzzle: PuzzleQueueRow }>({
@@ -139,6 +142,7 @@ export const updateQueuedPuzzle = async (
     explanation: input.explanation.trim(),
     opaStyle: input.opaStyle === true,
     author: input.author.trim(),
+    tags: input.tags ?? [],
   });
   if (!result.puzzle) {
     throw new Error("Unable to save queued puzzle: no queue row was returned.");

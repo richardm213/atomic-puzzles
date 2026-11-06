@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useState } from "react";
 
 import { isApprovedPuzzleCreator } from "../../../shared/domain/puzzles/approvedPuzzleCreators";
+import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
@@ -272,6 +273,15 @@ export const PuzzleSubmissionPage = () => {
                   </label>
                 </div>
               ) : null
+            }
+            eventAside={
+              <PuzzleMotifsPanel
+                key={`${editorVersion}-${activeBatchIndex}-tags`}
+                visible
+                tags={value.tags ?? []}
+                canManage={!submitting}
+                onUpdate={(tags) => updateValue({ ...value, tags })}
+              />
             }
             {...(batchValues.length > 1
               ? { batchPosition: { current: activeBatchIndex, total: batchValues.length } }

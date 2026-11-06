@@ -14,6 +14,7 @@ create table if not exists public.puzzles_queue (
   explanation text not null default '',
   opa_style boolean not null default false,
   author text not null default '',
+  tags text[] not null default '{}'::text[],
   submitted_by text not null check (length(btrim(submitted_by)) > 0),
   created_at timestamptz not null default now()
 );
@@ -37,7 +38,8 @@ alter table public.puzzles
   );
 
 alter table public.puzzles_queue
-  add column if not exists author text not null default '';
+  add column if not exists author text not null default '',
+  add column if not exists tags text[] not null default '{}'::text[];
 
 update public.puzzles_queue
 set author = lower(btrim(submitted_by))
@@ -92,6 +94,7 @@ drop function if exists public.enqueue_puzzle_submission(text, text, text, text,
 drop function if exists public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, text, boolean);
 drop function if exists public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text, boolean);
 drop function if exists public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text, text, boolean);
+drop function if exists public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text, text[], text, boolean);
 
 create or replace function public.enqueue_puzzle_submission(
   p_fen text,
@@ -105,6 +108,7 @@ create or replace function public.enqueue_puzzle_submission(
   p_explanation text,
   p_opa_style boolean,
   p_author text,
+  p_tags text[],
   p_submitted_by text,
   p_allow_different_start_move boolean
 )
@@ -179,6 +183,7 @@ begin
     explanation,
     opa_style,
     author,
+    tags,
     submitted_by
   )
   values (
@@ -197,6 +202,7 @@ begin
         then coalesce(nullif(btrim(p_author), ''), normalized_username)
       else normalized_username
     end,
+    coalesce(p_tags, '{}'::text[]),
     normalized_username
   )
   returning * into queued;
@@ -444,7 +450,7 @@ begin
 
     insert into public.puzzles (
       id, fen, solution, event, event_name, event_date, players,
-      white_player, black_player, explanation, opa_style, author
+      white_player, black_player, explanation, opa_style, author, tags
     )
     values (
       next_puzzle_id,
@@ -461,7 +467,11 @@ begin
       btrim(coalesce(item->>'blackPlayer', '')),
       btrim(coalesce(item->>'explanation', '')),
       coalesce((item->>'opaStyle')::boolean, false),
-      normalized_author
+      normalized_author,
+      coalesce(
+        array(select jsonb_array_elements_text(coalesce(item->'tags', '[]'::jsonb))),
+        '{}'::text[]
+      )
     );
 
     puzzle_ids := array_append(puzzle_ids, next_puzzle_id);
@@ -544,7 +554,7 @@ begin
   begin
     insert into public.puzzles (
       id, fen, solution, event, event_name, event_date, players,
-      white_player, black_player, explanation, opa_style, author
+      white_player, black_player, explanation, opa_style, author, tags
     )
     values (
       p_puzzle_id,
@@ -558,7 +568,8 @@ begin
       btrim(queued.black_player),
       btrim(queued.explanation),
       queued.opa_style,
-      coalesce(nullif(btrim(queued.author), ''), queued.submitted_by)
+      coalesce(nullif(btrim(queued.author), ''), queued.submitted_by),
+      queued.tags
     );
   exception
     when unique_violation then
@@ -625,8 +636,8 @@ drop policy if exists "public can edit pending puzzles" on public.puzzles_queue;
 revoke all on public.puzzles_queue from anon, authenticated;
 revoke usage, select on sequence public.puzzles_queue_id_seq from anon, authenticated;
 revoke all on function public.puzzle_start_move(text) from public;
-revoke all on function public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text, text, boolean) from public;
-grant execute on function public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text, text, boolean) to service_role;
+revoke all on function public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text, text[], text, boolean) from public;
+grant execute on function public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text, text[], text, boolean) to service_role;
 revoke all on function public.publish_approved_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text) from public;
 grant execute on function public.publish_approved_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text) to service_role;
 revoke all on function public.publish_approved_puzzle_batch(jsonb, text) from public;

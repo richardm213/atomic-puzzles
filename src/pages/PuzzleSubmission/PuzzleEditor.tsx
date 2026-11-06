@@ -88,6 +88,8 @@ type PuzzleEditorProps = {
   actions?: ReactNode;
   boardFooter?: ReactNode;
   fieldsBeforeEvent?: ReactNode;
+  eventAside?: ReactNode;
+  analysisFooter?: ReactNode;
   feedback?: PuzzleEditorFeedback | undefined;
   showCopyPgn?: boolean;
   showSolutionPgnField?: boolean;
@@ -95,6 +97,7 @@ type PuzzleEditorProps = {
   allowSolutionEditing?: boolean;
   readOnly?: boolean;
   showExplanation?: boolean;
+  showMetadataFields?: boolean;
   batchMode?: boolean;
   batchPosition?: { current: number; total: number };
   onBatchLoad?: (values: PuzzleSubmissionValue[]) => void;
@@ -120,6 +123,8 @@ export const PuzzleEditor = ({
   actions,
   boardFooter,
   fieldsBeforeEvent,
+  eventAside,
+  analysisFooter,
   feedback,
   showCopyPgn = false,
   showSolutionPgnField = true,
@@ -127,6 +132,7 @@ export const PuzzleEditor = ({
   allowSolutionEditing = false,
   readOnly = false,
   showExplanation = true,
+  showMetadataFields = true,
   batchMode = false,
   batchPosition,
   onBatchLoad,
@@ -761,79 +767,87 @@ export const PuzzleEditor = ({
             {reviewMovePanel}
           </section>
         ) : null}
+        {analysisFooter}
         {!solutionPgnUnderBoard ? solutionPgnField : null}
 
-        {fieldsBeforeEvent}
+        {showMetadataFields ? (
+          <>
+            {fieldsBeforeEvent}
 
-        <label>
-          <span className="puzzleEditorLabelHeader">
-            <span>Event</span>
-            <small>Same event creates a puzzle set</small>
-          </span>
-          <input
-            type="text"
-            aria-label="Event"
-            value={value.event}
-            placeholder="Optional event name"
-            readOnly={readOnly}
-            onChange={(event) => onChange({ ...value, event: event.target.value })}
-          />
-        </label>
+            <div className={`puzzleEditorEventFields${eventAside ? " withAside" : ""}`}>
+              <label>
+                <span className="puzzleEditorLabelHeader">
+                  <span>Event</span>
+                  <small>Same event creates a puzzle set</small>
+                </span>
+                <input
+                  type="text"
+                  aria-label="Event"
+                  value={value.event}
+                  placeholder="Optional event name"
+                  readOnly={readOnly}
+                  onChange={(event) => onChange({ ...value, event: event.target.value })}
+                />
+              </label>
+              {eventAside}
+            </div>
 
-        <div className="puzzleEditorPlayerFields">
-          <label>
-            <span className="puzzleEditorLabelHeader">
-              <span>White player</span>
-              <small>Optional</small>
-            </span>
-            <input
-              type="text"
-              aria-label="White player (optional)"
-              value={value.whitePlayer ?? ""}
-              placeholder="Lichess username"
-              readOnly={readOnly}
-              spellCheck={false}
-              onChange={(event) => onChange({ ...value, whitePlayer: event.target.value })}
-            />
-          </label>
-          <label>
-            <span className="puzzleEditorLabelHeader">
-              <span>Black player</span>
-              <small>Optional</small>
-            </span>
-            <input
-              type="text"
-              aria-label="Black player (optional)"
-              value={value.blackPlayer ?? ""}
-              placeholder="Lichess username"
-              readOnly={readOnly}
-              spellCheck={false}
-              onChange={(event) => onChange({ ...value, blackPlayer: event.target.value })}
-            />
-          </label>
-        </div>
+            <div className="puzzleEditorPlayerFields">
+              <label>
+                <span className="puzzleEditorLabelHeader">
+                  <span>White player</span>
+                  <small>Optional</small>
+                </span>
+                <input
+                  type="text"
+                  aria-label="White player (optional)"
+                  value={value.whitePlayer ?? ""}
+                  placeholder="Lichess username"
+                  readOnly={readOnly}
+                  spellCheck={false}
+                  onChange={(event) => onChange({ ...value, whitePlayer: event.target.value })}
+                />
+              </label>
+              <label>
+                <span className="puzzleEditorLabelHeader">
+                  <span>Black player</span>
+                  <small>Optional</small>
+                </span>
+                <input
+                  type="text"
+                  aria-label="Black player (optional)"
+                  value={value.blackPlayer ?? ""}
+                  placeholder="Lichess username"
+                  readOnly={readOnly}
+                  spellCheck={false}
+                  onChange={(event) => onChange({ ...value, blackPlayer: event.target.value })}
+                />
+              </label>
+            </div>
 
-        <div className="puzzleOpaField">
-          <label>
-            <input
-              type="checkbox"
-              checked={value.opaStyle === true}
-              disabled={readOnly}
-              onChange={(event) => onChange({ ...value, opaStyle: event.target.checked })}
-            />
-            <span>OPA style</span>
-          </label>
-          <span
-            className="puzzleOpaHelp"
-            role="img"
-            tabIndex={0}
-            title={OPA_STYLE_DESCRIPTION}
-            aria-label={`OPA style: ${OPA_STYLE_DESCRIPTION}`}
-            data-tooltip={OPA_STYLE_DESCRIPTION}
-          >
-            <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
-          </span>
-        </div>
+            <div className="puzzleOpaField">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={value.opaStyle === true}
+                  disabled={readOnly}
+                  onChange={(event) => onChange({ ...value, opaStyle: event.target.checked })}
+                />
+                <span>OPA style</span>
+              </label>
+              <span
+                className="puzzleOpaHelp"
+                role="img"
+                tabIndex={0}
+                title={OPA_STYLE_DESCRIPTION}
+                aria-label={`OPA style: ${OPA_STYLE_DESCRIPTION}`}
+                data-tooltip={OPA_STYLE_DESCRIPTION}
+              >
+                <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
+              </span>
+            </div>
+          </>
+        ) : null}
 
         {showExplanation ? (
           <label className="puzzleEditorExplanationField">

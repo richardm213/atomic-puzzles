@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isPuzzleMotifTag } from "../../../../shared/domain/puzzles/puzzleMotifs";
 import {
   authenticateRequest,
   requireSameOrigin,
@@ -21,6 +22,13 @@ const singleSubmissionSchema = z.object({
   explanation: z.string().trim().max(5_000),
   opaStyle: z.boolean().default(false),
   author: z.string().trim().max(200).default(""),
+  tags: z
+    .array(z.string())
+    .max(30)
+    .refine((tags) => tags.every(isPuzzleMotifTag), {
+      message: "Unknown puzzle motif.",
+    })
+    .default([]),
 });
 
 const submissionBodySchema = z.union([

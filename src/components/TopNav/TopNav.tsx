@@ -689,14 +689,14 @@ export const TopNav = () => {
                       </Link>
                       <Link
                         className="navProfileDropdownItem"
-                        to="/puzzles/review"
+                        to="/puzzles/recent"
                         role="menuitem"
                         onClick={() => setOpenPanel(null)}
                       >
                         <span className="navProfileDropdownIcon" aria-hidden="true">
                           <FontAwesomeIcon icon={faUser} />
                         </span>
-                        Review puzzles
+                        Recent puzzles
                       </Link>
                       <Link
                         className="navProfileDropdownItem"

@@ -1,3 +1,4 @@
+import { normalizePuzzleMotifTags } from "../../../../shared/domain/puzzles/puzzleMotifs";
 import {
   compactPuzzleSolution,
   validatePuzzleSubmission,
@@ -26,6 +27,7 @@ export type PuzzleReviewAction =
       explanation: string;
       opaStyle: boolean;
       author: string;
+      tags: string[];
     };
 
 const PUBLIC_DOMAIN_ERROR = /^(Invalid (FEN|atomic position|PGN)|Enter PGN|The PGN|The moves)/;
@@ -82,6 +84,7 @@ export class PuzzleReviewService {
         ...validated,
         solution: compactPuzzleSolution(validated.solution),
         author: input.author,
+        tags: normalizePuzzleMotifTags(input.tags),
       });
       return { puzzle };
     } catch (error) {

@@ -12,4 +12,5 @@ export const createEmptyPuzzleSubmission = (): PuzzleSubmissionValue => ({
   blackPlayer: "",
   explanation: "",
   opaStyle: false,
+  tags: [],
 });

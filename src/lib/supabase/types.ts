@@ -92,6 +92,7 @@ export type PuzzleQueueRow = {
   explanation: string;
   opa_style: boolean;
   author?: string;
+  tags?: string[];
   submitted_by: string;
   created_at: string;
 };

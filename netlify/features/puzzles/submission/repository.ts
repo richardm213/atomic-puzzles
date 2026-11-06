@@ -15,6 +15,7 @@ export type QueuedPuzzleSubmission = {
   explanation: string;
   opaStyle: boolean;
   author: string;
+  tags: string[];
 };
 
 export class PuzzleSubmissionRepository {
@@ -39,6 +40,7 @@ export class PuzzleSubmissionRepository {
         p_explanation: puzzle.explanation,
         p_opa_style: puzzle.opaStyle,
         p_author: puzzle.author,
+        p_tags: puzzle.tags,
         p_submitted_by: username,
         p_allow_different_start_move: allowDifferentStartMove,
       })

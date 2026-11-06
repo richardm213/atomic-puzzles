@@ -29,6 +29,7 @@ import {
 import { buildPieceStyle } from "../../components/Chessboard/boardStyle";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { PuzzleCommunity } from "../../components/PuzzleCommunity/PuzzleCommunity";
+import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
 import { Seo } from "../../components/Seo/Seo";
 import { continuationOptionsAt } from "../../components/SolutionMoveNavigation/SolutionMoveNavigation";
 import {
@@ -99,7 +100,6 @@ import { castlingRightsFromFen } from "./castlingRights";
 import { materialCountFromFen, type MaterialPieceRole } from "./materialCount";
 import { PuzzleInfoSection, type PuzzleInfoTab } from "./PuzzleInfoSection";
 import { PuzzleIssueDialog, type PuzzleIssueStatus } from "./PuzzleIssueDialog";
-import { PuzzleMotifsPanel } from "./PuzzleMotifsPanel";
 import {
   addValueToSet,
   buildCompletionFeedback,

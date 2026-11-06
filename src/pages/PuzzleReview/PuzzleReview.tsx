@@ -11,9 +11,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
+import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
+import { normalizePuzzleMotifTags } from "../../lib/puzzles/puzzleMotifs";
 import {
   createEmptyPuzzleSubmission,
   type PuzzleSubmissionValue,
@@ -52,6 +54,7 @@ export const PuzzleReviewPage = () => {
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [puzzleIdInput, setPuzzleIdInput] = useState("");
   const [authorInput, setAuthorInput] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [complexityBonus, setComplexityBonus] = useState(true);
   const [explanationBonus, setExplanationBonus] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -64,6 +67,8 @@ export const PuzzleReviewPage = () => {
   }>({ past: [], future: [] });
   const valueRef = useRef(value);
   const originalValueRef = useRef(value);
+  const originalAuthorRef = useRef("");
+  const originalTagsRef = useRef<string[]>([]);
   const historyGroupTimerRef = useRef<number | null>(null);
   const isReviewer = normalizeUsername(user?.username) === REVIEWER;
 
@@ -84,7 +89,12 @@ export const PuzzleReviewPage = () => {
           setValue(firstValue);
           setValueHistory({ past: [], future: [] });
           setPuzzleIdInput(String(first.next_puzzle_id));
-          setAuthorInput(first.author || first.submitted_by);
+          const firstAuthor = first.author || first.submitted_by;
+          originalAuthorRef.current = firstAuthor;
+          setAuthorInput(firstAuthor);
+          const firstTags = normalizePuzzleMotifTags(first.tags);
+          originalTagsRef.current = firstTags;
+          setTags(firstTags);
         }
       })
       .catch((loadError) => {
@@ -170,18 +180,30 @@ export const PuzzleReviewPage = () => {
   const resetValue = (): void => {
     const originalValue = originalValueRef.current;
     const currentValue = valueRef.current;
-    if (JSON.stringify(currentValue) === JSON.stringify(originalValue)) return;
-    replaceValue(originalValue);
+    const valueChanged = JSON.stringify(currentValue) !== JSON.stringify(originalValue);
+    const authorChanged = authorInput !== originalAuthorRef.current;
+    const tagsChanged = JSON.stringify(tags) !== JSON.stringify(originalTagsRef.current);
+    if (!valueChanged && !authorChanged && !tagsChanged) return;
+    if (valueChanged) replaceValue(originalValue);
+    setAuthorInput(originalAuthorRef.current);
+    setTags(originalTagsRef.current);
     setEditorRevision((current) => current + 1);
-    setValueHistory({
-      past: [...valueHistory.past, currentValue].slice(-HISTORY_LIMIT),
-      future: [],
-    });
+    if (valueChanged) {
+      setValueHistory({
+        past: [...valueHistory.past, currentValue].slice(-HISTORY_LIMIT),
+        future: [],
+      });
+    }
   };
 
   const selectQueuedPuzzle = (row: PuzzleReviewQueueRow): void => {
     resetValueHistory(queueRowValue(row));
-    setAuthorInput(row.submitted_by);
+    const nextAuthor = row.author || row.submitted_by;
+    originalAuthorRef.current = nextAuthor;
+    setAuthorInput(nextAuthor);
+    const nextTags = normalizePuzzleMotifTags(row.tags);
+    originalTagsRef.current = nextTags;
+    setTags(nextTags);
     setComplexityBonus(true);
     setExplanationBonus(false);
     setSelectedId(row.id);
@@ -193,14 +215,19 @@ export const PuzzleReviewPage = () => {
     const author = authorInput.trim();
     if (!author) throw new Error("Enter an author.");
     const normalized = validatePuzzleSubmission(value);
-    const saved = await updateQueuedPuzzle(queueId, { ...normalized, author });
+    const saved = await updateQueuedPuzzle(queueId, { ...normalized, author, tags });
     setQueue((rows) =>
       rows.map((row) =>
         row.id === saved.id ? { ...saved, next_puzzle_id: row.next_puzzle_id } : row,
       ),
     );
     replaceValue(queueRowValue(saved));
-    setAuthorInput(saved.submitted_by);
+    const savedAuthor = saved.author || saved.submitted_by;
+    originalAuthorRef.current = savedAuthor;
+    setAuthorInput(savedAuthor);
+    const savedTags = normalizePuzzleMotifTags(saved.tags);
+    originalTagsRef.current = savedTags;
+    setTags(savedTags);
   };
 
   const approve = async (): Promise<void> => {
@@ -232,6 +259,7 @@ export const PuzzleReviewPage = () => {
         setSelectedId(null);
         setPuzzleIdInput("");
         setAuthorInput("");
+        setTags([]);
       }
       setMessage(`Approved and added as puzzle #${puzzleId}.`);
     } catch (approveError) {
@@ -261,6 +289,7 @@ export const PuzzleReviewPage = () => {
         setSelectedId(null);
         setPuzzleIdInput("");
         setAuthorInput("");
+        setTags([]);
       }
       setMessage("Puzzle rejected and removed from the queue.");
     } catch (rejectError) {
@@ -356,7 +385,9 @@ export const PuzzleReviewPage = () => {
                           type="button"
                           className="reset"
                           disabled={
-                            JSON.stringify(value) === JSON.stringify(originalValueRef.current)
+                            JSON.stringify(value) === JSON.stringify(originalValueRef.current) &&
+                            authorInput === originalAuthorRef.current &&
+                            JSON.stringify(tags) === JSON.stringify(originalTagsRef.current)
                           }
                           onClick={resetValue}
                         >
@@ -369,28 +400,37 @@ export const PuzzleReviewPage = () => {
                 }
                 fieldsBeforeEvent={
                   isReviewer ? (
-                    <div className="puzzleReviewFields">
-                      <label className="puzzleReviewField">
-                        <span>Author</span>
-                        <input
-                          type="text"
-                          value={authorInput}
-                          disabled={saving}
-                          onChange={(event) => setAuthorInput(event.target.value)}
-                        />
-                      </label>
-                      <label className="puzzleReviewField">
-                        <span>Puzzle ID</span>
-                        <input
-                          type="number"
-                          min={1}
-                          step={1}
-                          value={puzzleIdInput}
-                          disabled={saving}
-                          onChange={(event) => setPuzzleIdInput(event.target.value)}
-                        />
-                      </label>
-                    </div>
+                    <>
+                      <div className="puzzleReviewFields">
+                        <label className="puzzleReviewField">
+                          <span>Author</span>
+                          <input
+                            type="text"
+                            value={authorInput}
+                            disabled={saving}
+                            onChange={(event) => setAuthorInput(event.target.value)}
+                          />
+                        </label>
+                        <label className="puzzleReviewField">
+                          <span>Puzzle ID</span>
+                          <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            value={puzzleIdInput}
+                            disabled={saving}
+                            onChange={(event) => setPuzzleIdInput(event.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <PuzzleMotifsPanel
+                        key={`${selected.id}-${editorRevision}-tags`}
+                        visible
+                        tags={tags}
+                        canManage={!saving}
+                        onUpdate={setTags}
+                      />
+                    </>
                   ) : (
                     <div className="puzzleReviewMeta puzzleReviewFieldMeta">
                       <span>Author: {selected.submitted_by}</span>

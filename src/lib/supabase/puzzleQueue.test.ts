@@ -40,6 +40,7 @@ describe("puzzle queue review client", () => {
         blackPlayer: " Black ",
         explanation: " idea ",
         author: " edited_author ",
+        tags: ["fork"],
       }),
     ).resolves.toEqual(puzzle);
 
@@ -59,6 +60,7 @@ describe("puzzle queue review client", () => {
       explanation: "idea",
       opaStyle: false,
       author: "edited_author",
+      tags: ["fork"],
     });
     expect(request?.credentials).toBe("same-origin");
     expect(request?.headers).not.toHaveProperty("Authorization");
@@ -131,6 +133,7 @@ describe("puzzle queue review client", () => {
           explanation: "",
           opaStyle: false,
           author: "",
+          tags: [],
         },
         {
           fen: "fen 2",
@@ -144,6 +147,7 @@ describe("puzzle queue review client", () => {
           explanation: "",
           opaStyle: false,
           author: "",
+          tags: [],
         },
       ],
     });

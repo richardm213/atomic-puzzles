@@ -133,6 +133,7 @@ describe("puzzle-submit function", () => {
         whitePlayer: "white",
         blackPlayer: "black",
         explanation: "",
+        tags: ["fork"],
       }),
     });
 
@@ -150,6 +151,7 @@ describe("puzzle-submit function", () => {
       p_opa_style: false,
       p_author: "submitter",
       p_submitted_by: "submitter",
+      p_tags: ["fork"],
       p_allow_different_start_move: false,
     });
   });

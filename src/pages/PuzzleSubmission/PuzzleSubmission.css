@@ -246,6 +246,22 @@
   gap: 10px;
 }
 
+.puzzleEditorEventFields {
+  display: grid;
+  gap: 10px;
+}
+
+.puzzleEditorEventFields.withAside {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.puzzleEditorEventFields > .puzzleMotifsPanel {
+  min-height: 42px;
+  margin: 20px 0 0;
+  padding: 5px 0;
+}
+
 .puzzleEditorFields label {
   display: grid;
   gap: 7px;
@@ -885,6 +901,12 @@
   justify-content: center;
 }
 
+.puzzleRecentEditToggle.active {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--color-panel-strong));
+  color: var(--color-heading);
+}
+
 .puzzleRecentNavigation form {
   display: grid;
   grid-template-columns: minmax(110px, 170px) auto;
@@ -923,6 +945,97 @@
 
 .puzzleRecentMeta strong {
   color: var(--color-danger);
+}
+
+.puzzleRecentSummary {
+  margin-bottom: var(--space-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-3) var(--space-5);
+}
+
+.puzzleRecentSummary > div:first-child {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.puzzleRecentSummary .puzzleHeaderMetadata {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.puzzleRecentSummary .puzzleHeaderMeta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  color: var(--color-muted);
+}
+
+.puzzleRecentSummary .puzzleHeaderMeta span {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.puzzleRecentSummary .puzzleHeaderMeta strong,
+.puzzleRecentSummary .puzzleHeaderAuthorLink {
+  color: var(--color-heading);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.puzzleRecentSummary .puzzleHeaderAuthorLink,
+.puzzleRecentSummary .puzzlePlayerLink {
+  border-radius: 3px;
+  color: var(--color-heading);
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.puzzleRecentSummary .puzzleHeaderAuthorLink:hover,
+.puzzleRecentSummary .puzzlePlayerLink:hover {
+  text-decoration: underline;
+}
+
+.puzzleRecentSummary .puzzleHeaderEvent {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.puzzleRecentSummary .puzzleOpaBadge {
+  padding: 3px 7px;
+  border: 1px solid var(--color-accent-soft-border);
+  border-radius: 999px;
+  background: var(--color-accent-soft-bg);
+  color: var(--color-accent-soft-text);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.puzzleRecentSummary .puzzlePlayers {
+  display: grid;
+  gap: 2px;
+}
+
+.puzzleRecentSummary .puzzlePlayer {
+  min-height: 27px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  padding: 0 4px;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.puzzleRecentSummary > .puzzleMotifsPanel {
+  min-width: min(340px, 100%);
+  margin: 0;
 }
 
 .puzzleRecentActions {
@@ -1140,6 +1253,10 @@
   .puzzleRecentAttempts li time {
     grid-column: 1;
   }
+
+  .puzzleRecentSummary {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 520px) {
@@ -1177,6 +1294,14 @@
 
   .puzzleEditorPlayerFields {
     grid-template-columns: 1fr;
+  }
+
+  .puzzleEditorEventFields.withAside {
+    grid-template-columns: 1fr;
+  }
+
+  .puzzleEditorEventFields > .puzzleMotifsPanel {
+    margin-top: 0;
   }
 
   .puzzleReviewBonuses {

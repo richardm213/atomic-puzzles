@@ -12,6 +12,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
@@ -85,7 +86,7 @@ export const PuzzleRecentPage = () => {
   const [response, setResponse] = useState<AdminPuzzleResponse | null>(null);
   const [value, setValue] = useState<PuzzleSubmissionValue>(createEmptyPuzzleSubmission);
   const [author, setAuthor] = useState("");
-  const [tags, setTags] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [jumpId, setJumpId] = useState("");
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -99,7 +100,7 @@ export const PuzzleRecentPage = () => {
     if (next.puzzle) {
       setValue(puzzleValue(next.puzzle));
       setAuthor(next.puzzle.author ?? "");
-      setTags(normalizePuzzleMotifTags(next.puzzle.tags).join(", "));
+      setTags(normalizePuzzleMotifTags(next.puzzle.tags));
       setJumpId(String(next.puzzle.id));
     }
     setEditing(false);
@@ -135,7 +136,7 @@ export const PuzzleRecentPage = () => {
     if (!response?.puzzle) return;
     setValue(puzzleValue(response.puzzle));
     setAuthor(response.puzzle.author ?? "");
-    setTags(normalizePuzzleMotifTags(response.puzzle.tags).join(", "));
+    setTags(normalizePuzzleMotifTags(response.puzzle.tags));
     setEditing(false);
     setError("");
     setEditorRevision((current) => current + 1);
@@ -147,15 +148,7 @@ export const PuzzleRecentPage = () => {
     setError("");
     setMessage("");
     try {
-      const next = await updateAdminPuzzle(
-        response.puzzle.id,
-        value,
-        author,
-        tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
-      );
+      const next = await updateAdminPuzzle(response.puzzle.id, value, author, tags);
       applyResponse(next);
       setMessage(`Puzzle #${response.puzzle.id} saved.`);
     } catch (saveError) {
@@ -261,6 +254,23 @@ export const PuzzleRecentPage = () => {
             >
               <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
             </button>
+            <button
+              type="button"
+              className={`queueSecondaryButton puzzleRecentEditToggle${editing ? " active" : ""}`}
+              aria-label={editing ? "Return to view mode" : "Edit puzzle"}
+              aria-pressed={editing}
+              disabled={loading || saving || deleted}
+              onClick={() => {
+                if (editing) resetDraft();
+                else {
+                  setEditing(true);
+                  setMessage("");
+                  setError("");
+                }
+              }}
+            >
+              <FontAwesomeIcon icon={faPen} aria-hidden="true" />
+            </button>
           </div>
         </div>
         <Link className="queueSecondaryButton" to="/puzzles/review">
@@ -273,7 +283,6 @@ export const PuzzleRecentPage = () => {
           <div className="puzzleRecentMeta">
             <span>{new Date(puzzle.created_at).toLocaleString()}</span>
             {deleted ? <strong>Deleted by {puzzle.deleted_by}</strong> : null}
-            <span>{editing ? "Edit mode" : "View mode"}</span>
           </div>
           <PuzzleEditor
             value={value}
@@ -283,39 +292,99 @@ export const PuzzleRecentPage = () => {
             readOnly={!editing || deleted}
             showAnalysisEngine
             showExplanation={false}
+            showSolutionPgnField={editing}
+            showMetadataFields={editing}
+            analysisFooter={
+              !editing ? (
+                <div className="puzzleRecentSummary">
+                  <div>
+                    <div className="puzzleHeaderMetadata">
+                      <div className="puzzleHeaderMeta" title={author}>
+                        <span>Created by</span>
+                        {author ? (
+                          <Link
+                            className="puzzleHeaderAuthorLink"
+                            to="/@/$username/puzzles"
+                            params={{ username: normalizeUsername(author) }}
+                          >
+                            {author}
+                          </Link>
+                        ) : (
+                          <strong>Unknown</strong>
+                        )}
+                      </div>
+                      {value.event ? (
+                        <div className="puzzleHeaderEvent" title={value.event}>
+                          {value.event}
+                        </div>
+                      ) : null}
+                      {value.opaStyle ? <span className="puzzleOpaBadge">OPA style</span> : null}
+                    </div>
+                    {value.whitePlayer || value.blackPlayer ? (
+                      <section className="puzzlePlayers hasPlayerNames" aria-label="Game players">
+                        {(["white", "black"] as const).map((side) => {
+                          const player = side === "white" ? value.whitePlayer : value.blackPlayer;
+                          if (!player) return null;
+                          return (
+                            <div className="puzzlePlayer hasPlayerName" key={side}>
+                              <span className={`playerColorMarker ${side}`} aria-hidden="true" />
+                              <Link
+                                className="puzzlePlayerLink"
+                                to="/@/$username/puzzles"
+                                params={{ username: normalizeUsername(player) }}
+                              >
+                                {player}
+                              </Link>
+                            </div>
+                          );
+                        })}
+                      </section>
+                    ) : null}
+                  </div>
+                  <PuzzleMotifsPanel
+                    key={`${puzzle.id}-${editorRevision}-view-tags`}
+                    visible
+                    tags={tags}
+                    canManage={false}
+                    onUpdate={() => undefined}
+                  />
+                </div>
+              ) : null
+            }
             boardFooter={
-              <label className="puzzleReviewBoardExplanation">
-                <span>Explanation</span>
-                <textarea
-                  value={value.explanation}
-                  rows={5}
-                  readOnly={!editing || deleted}
-                  onChange={(event) => setValue({ ...value, explanation: event.target.value })}
-                />
-              </label>
+              editing ? (
+                <label className="puzzleReviewBoardExplanation">
+                  <span>Explanation</span>
+                  <textarea
+                    value={value.explanation}
+                    rows={5}
+                    readOnly={!editing || deleted}
+                    onChange={(event) => setValue({ ...value, explanation: event.target.value })}
+                  />
+                </label>
+              ) : null
             }
             fieldsBeforeEvent={
-              <div className="puzzleReviewFields">
-                <label className="puzzleReviewField">
-                  <span>Author</span>
-                  <input
-                    type="text"
-                    value={author}
-                    readOnly={!editing || deleted}
-                    onChange={(event) => setAuthor(event.target.value)}
+              editing ? (
+                <>
+                  <label className="puzzleReviewField">
+                    <span>Author</span>
+                    <input
+                      type="text"
+                      value={author}
+                      readOnly={!editing || deleted}
+                      onChange={(event) => setAuthor(event.target.value)}
+                    />
+                  </label>
+                  <PuzzleMotifsPanel
+                    key={`${puzzle.id}-${editorRevision}-tags`}
+                    visible
+                    tags={tags}
+                    canManage={editing && !deleted}
+                    onUpdate={setTags}
                   />
-                </label>
-                <label className="puzzleReviewField">
-                  <span>Tags</span>
-                  <input
-                    type="text"
-                    value={tags}
-                    placeholder="Comma-separated motif IDs"
-                    readOnly={!editing || deleted}
-                    onChange={(event) => setTags(event.target.value)}
-                  />
-                </label>
-              </div>
+                </>
+              ) : null
             }
           />
 
@@ -354,29 +423,15 @@ export const PuzzleRecentPage = () => {
                 </button>
               </>
             ) : (
-              <>
-                <button
-                  type="button"
-                  className="queueDangerButton"
-                  disabled={saving}
-                  onClick={() => void remove()}
-                >
-                  <FontAwesomeIcon icon={faTrash} aria-hidden="true" />
-                  Delete puzzle
-                </button>
-                <button
-                  type="button"
-                  className="queuePrimaryButton"
-                  onClick={() => {
-                    setEditing(true);
-                    setMessage("");
-                    setError("");
-                  }}
-                >
-                  <FontAwesomeIcon icon={faPen} aria-hidden="true" />
-                  Edit puzzle
-                </button>
-              </>
+              <button
+                type="button"
+                className="queueDangerButton"
+                disabled={saving}
+                onClick={() => void remove()}
+              >
+                <FontAwesomeIcon icon={faTrash} aria-hidden="true" />
+                Delete puzzle
+              </button>
             )}
           </div>
 
