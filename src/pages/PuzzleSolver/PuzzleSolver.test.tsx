@@ -16,6 +16,7 @@ import type { AttemptResolved, SolutionNavigation } from "../../types/chessboard
 const mocks = vi.hoisted(() => ({
   chessboardProps: [] as Array<{
     disabled?: boolean;
+    analysisMode?: boolean;
     showSolution?: boolean;
     solutionNavigation?: SolutionNavigation | null;
     onAttemptResolved?: (attempt: AttemptResolved) => void;
@@ -144,6 +145,7 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
     Chessboard: (props: {
       disabled?: boolean;
       fen: string;
+      analysisMode?: boolean;
       showSolution?: boolean;
       solutionNavigation?: SolutionNavigation | null;
       onAttemptResolved?: (attempt: AttemptResolved) => void;
@@ -762,12 +764,30 @@ describe("PuzzleSolverPage solution options", () => {
     expect(screen.getAllByRole("button", { name: "Add tag" })).toHaveLength(1);
   });
 
-  it("unlocks and opens the explanation tab after a wrong move", async () => {
+  it("keeps the solution hidden after a wrong move until the player gives up", async () => {
     mocks.attemptedPuzzleIds = new Set();
+    let now = 0;
+    let nextIntervalId = 0;
+    const activeIntervals = new Map<number, () => void>();
+    const performanceNow = vi.spyOn(window.performance, "now").mockImplementation(() => now);
+    const setInterval = vi.spyOn(window, "setInterval").mockImplementation((callback) => {
+      nextIntervalId += 1;
+      activeIntervals.set(nextIntervalId, callback as () => void);
+      return nextIntervalId as unknown as ReturnType<typeof window.setInterval>;
+    });
+    const clearInterval = vi.spyOn(window, "clearInterval").mockImplementation((intervalId) => {
+      activeIntervals.delete(intervalId as unknown as number);
+    });
+    const user = userEvent.setup();
     render(<PuzzleSolverPage />);
 
     const explanationTab = await screen.findByRole("tab", { name: "Explanation" });
     expect(explanationTab).toBeDisabled();
+    expect(screen.getByLabelText("Elapsed time 0:00")).toBeInTheDocument();
+
+    now = 1_250;
+    act(() => activeIntervals.forEach((tick) => tick()));
+    expect(screen.getByLabelText("Elapsed time 0:01")).toBeInTheDocument();
 
     await waitFor(() => expect(mocks.chessboardProps.at(-1)?.onStateChange).toBeTypeOf("function"));
     act(() => {
@@ -788,12 +808,30 @@ describe("PuzzleSolverPage solution options", () => {
     });
 
     expect(explanationTab).toBeEnabled();
-    expect(explanationTab).toHaveAttribute("aria-selected", "true");
+    expect(explanationTab).toHaveAttribute("aria-selected", "false");
+    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
+    const moveNavigation = screen.getByLabelText("Move navigation");
+    expect(within(moveNavigation).getByRole("button", { name: "Previous move" })).toBeVisible();
+    expect(within(moveNavigation).getByRole("button", { name: "Next move" })).toBeVisible();
+    expect(within(moveNavigation).queryByTitle("Opening explorer")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Give up and reveal the solution" }));
+
+    await waitFor(() => {
+      expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
+      expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true);
+    });
     expect(
-      screen.getByText(
-        "Castling avoids the atomic mating net and creates the decisive rook threat.",
-      ),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Give up and reveal the solution" }),
+    ).not.toBeInTheDocument();
+    expect(activeIntervals.size).toBe(0);
+
+    now = 4_000;
+    act(() => activeIntervals.forEach((tick) => tick()));
+    expect(screen.getByLabelText("Elapsed time 0:01")).toBeInTheDocument();
+    clearInterval.mockRestore();
+    setInterval.mockRestore();
+    performanceNow.mockRestore();
   });
 
   it("shows the author an explanation editor only after attempting the puzzle", async () => {
