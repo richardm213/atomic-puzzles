@@ -10,10 +10,10 @@ import { z } from "zod";
 import { InlineState } from "../../components/InlineState/InlineState";
 import { PredictionOrderEditor } from "../../components/PredictionOrderEditor/PredictionOrderEditor";
 import { PredictionMarketGroupHeader } from "../../components/PredictionTrading/PredictionMarketGroupHeader";
-import { PredictionMarketIdentity } from "../../components/PredictionTrading/PredictionMarketIdentity";
 import { PredictionMarketTable } from "../../components/PredictionTrading/PredictionMarketTable";
 import { PredictionOrderBook } from "../../components/PredictionTrading/PredictionOrderBook";
 import { PredictionOrderComposer } from "../../components/PredictionTrading/PredictionOrderComposer";
+import { PredictionResolvedMarket } from "../../components/PredictionTrading/PredictionResolvedMarket";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
@@ -73,7 +73,7 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { getErrorMessage } from "../../utils/errors";
 import { BettingHistory } from "./BettingHistory";
-import { buildBetHistory } from "./bettingHistoryModel";
+import { buildBetHistory, predictionPnlByMarketId } from "./bettingHistoryModel";
 import { BettingSuggestions } from "./BettingSuggestions";
 import { useMarketDeadlineClock } from "./useMarketDeadlineClock";
 
@@ -552,6 +552,7 @@ export const BettingPage = () => {
       username,
     ],
   );
+  const personalPredictionPnlByMarketId = useMemo(() => predictionPnlByMarketId(myBets), [myBets]);
   const openBetCost = myBets.reduce(
     (total, bet) => total + (bet.status === "open" ? bet.totalCost : 0),
     0,
@@ -986,25 +987,7 @@ export const BettingPage = () => {
                       const noAsk = state?.book.no.asks[0]?.priceCents;
                       const isResolved = state?.market.status === "resolved";
                       if (isResolved) {
-                        const resolvedUserBets = myBets.filter(
-                          (bet) =>
-                            bet.kind === "prediction" &&
-                            bet.marketId === definition.id &&
-                            bet.status !== "open",
-                        );
-                        const rawUserProfit = resolvedUserBets.reduce(
-                          (total, bet) => total + bet.payout - bet.totalCost,
-                          0,
-                        );
-                        const userProfit = resolvedUserBets.length
-                          ? Math.abs(rawUserProfit) < 0.005
-                            ? 0
-                            : rawUserProfit
-                          : null;
-                        const userProfitLabel =
-                          userProfit === null
-                            ? null
-                            : `${userProfit > 0 ? "+" : ""}${formatCoinValue(userProfit)} coins`;
+                        const userProfit = personalPredictionPnlByMarketId.get(definition.id);
                         const resolvedOutcome = state.market.outcome ?? "no";
                         const settlementPrice = state.market.settlementPriceCents;
                         const invertChampionOutcome =
@@ -1020,43 +1003,16 @@ export const BettingPage = () => {
                             : invertChampionOutcome
                               ? 100 - settlementPrice
                               : settlementPrice;
-                        const resolvedSideLabel =
-                          displayedSettlementPrice === null
-                            ? predictionOutcomeLabel(definition, displayedResolvedOutcome)
-                            : `Settled ${displayedSettlementPrice}¢`;
                         return (
                           <article className="bettingPredictionBookResolvedRow" key={definition.id}>
-                            <span className="bettingPredictionBookResolvedIdentity">
-                              <span className="predictionSharedMarketIdentity">
-                                <PredictionMarketIdentity
-                                  definition={definition}
-                                  density="compact"
-                                />
-                              </span>
-                              {userProfit !== null && userProfitLabel ? (
-                                <span
-                                  className={`bettingPredictionBookResolved ${
-                                    userProfit > 0
-                                      ? "bettingPredictionBookResolved--profit"
-                                      : userProfit < 0
-                                        ? "bettingPredictionBookResolved--loss"
-                                        : "bettingPredictionBookResolved--price"
-                                  }`}
-                                  aria-label={`Your profit: ${userProfitLabel}`}
-                                >
-                                  {userProfitLabel}
-                                </span>
-                              ) : null}
-                            </span>
-                            <span
-                              className={`bettingPredictionBookResolvedSide ${
-                                displayedSettlementPrice === null
-                                  ? `bettingPredictionBookResolvedSide--${displayedResolvedOutcome}`
-                                  : "bettingPredictionBookResolvedSide--price"
-                              }`}
-                            >
-                              {resolvedSideLabel}
-                            </span>
+                            <PredictionResolvedMarket
+                              definition={definition}
+                              density="compact"
+                              displayedOutcome={displayedResolvedOutcome}
+                              displayedSettlementPriceCents={displayedSettlementPrice}
+                              pnl={userProfit}
+                              state={state}
+                            />
                           </article>
                         );
                       }
@@ -1175,6 +1131,7 @@ export const BettingPage = () => {
                           expandedMarketId={expandedPredictionMarketId}
                           expandedOutcome={expandedPredictionOutcome}
                           isAuthenticated={isAuthenticated}
+                          resolvedPnlByMarketId={personalPredictionPnlByMarketId}
                           states={predictionStateByMarketId}
                           selectedOutcome={predictionSelection?.outcome}
                           onToggleMarket={(definition) => togglePredictionStrike(definition.id)}

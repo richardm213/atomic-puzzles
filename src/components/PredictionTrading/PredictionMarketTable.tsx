@@ -2,7 +2,6 @@ import "./PredictionTrading.css";
 
 import type { ReactNode } from "react";
 
-import { formatCoinValue } from "../../lib/coins/coinDisplay";
 import type {
   PredictionMarketDefinition,
   PredictionMarketId,
@@ -11,7 +10,6 @@ import type {
 } from "../../lib/predictionMarkets/predictionMarkets";
 import {
   predictionOutcomeAbbreviation,
-  predictionOutcomeLabel,
   predictionOutcomes,
   predictionYesChance,
   sortPredictionMarketsByChance,
@@ -20,6 +18,7 @@ import {
 import { PredictionMarketIdentity } from "./PredictionMarketIdentity";
 import { PredictionPositionHoldings } from "./PredictionPositionHoldings";
 import { PredictionPrice } from "./PredictionPrice";
+import { PredictionResolvedMarket } from "./PredictionResolvedMarket";
 
 type OutcomeAvailability = {
   disabled?: boolean;
@@ -97,30 +96,13 @@ export const PredictionMarketTable = ({
           key={definition.id}
         >
           {isResolved ? (
-            <div className="predictionSharedMarketIdentity">
-              <PredictionMarketIdentity definition={definition} density={density} />
-              {isAuthenticated && resolvedPnl === undefined ? (
-                <PredictionPositionHoldings
-                  definition={definition}
-                  density={density}
-                  positions={state?.positions ?? []}
-                />
-              ) : null}
-              {resolvedPnl !== undefined ? (
-                <span
-                  className={`predictionSharedMarketPnl${
-                    resolvedPnl > 0
-                      ? " predictionSharedMarketPnl--profit"
-                      : resolvedPnl < 0
-                        ? " predictionSharedMarketPnl--loss"
-                        : ""
-                  }`}
-                >
-                  {resolvedPnl > 0 ? "+" : ""}
-                  {formatCoinValue(resolvedPnl)} coins
-                </span>
-              ) : null}
-            </div>
+            <PredictionResolvedMarket
+              definition={definition}
+              density={density}
+              pnl={resolvedPnl}
+              showHoldings={isAuthenticated}
+              state={state}
+            />
           ) : (
             <button
               type="button"
@@ -145,20 +127,7 @@ export const PredictionMarketTable = ({
             </button>
           )}
 
-          {isResolved ? (
-            <span
-              className={`predictionSharedMarketResolved predictionSharedMarketResolved--${
-                state?.market.settlementPriceCents === null
-                  ? (state.market.outcome ?? "no")
-                  : "price"
-              }`}
-            >
-              {state?.market.settlementPriceCents === null ||
-              state?.market.settlementPriceCents === undefined
-                ? predictionOutcomeLabel(definition, state?.market.outcome ?? "no")
-                : `Settled ${state.market.settlementPriceCents}¢`}
-            </span>
-          ) : (
+          {!isResolved ? (
             <span
               className="predictionSharedMarketPrices"
               aria-label={`${definition.username} outcome`}
@@ -195,7 +164,7 @@ export const PredictionMarketTable = ({
                 );
               })}
             </span>
-          )}
+          ) : null}
 
           {isExpanded && state && renderExpandedContent ? (
             <div className="predictionSharedMarketDrawer" id={drawerId}>

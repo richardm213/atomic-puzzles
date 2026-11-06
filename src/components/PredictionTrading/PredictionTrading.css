@@ -328,8 +328,7 @@
   gap: 8px;
 }
 
-.predictionSharedMarketPrice,
-.predictionSharedMarketResolved {
+.predictionSharedMarketPrice {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
@@ -349,13 +348,11 @@
     transform 120ms ease;
 }
 
-.predictionSharedMarketPrice--yes,
-.predictionSharedMarketResolved--yes {
+.predictionSharedMarketPrice--yes {
   color: var(--prediction-yes, var(--color-market-yes));
 }
 
-.predictionSharedMarketPrice--no,
-.predictionSharedMarketResolved--no {
+.predictionSharedMarketPrice--no {
   color: var(--prediction-no, var(--color-market-no));
 }
 
@@ -374,13 +371,21 @@
   opacity: 0.52;
 }
 
-.predictionSharedMarketResolved {
-  min-height: auto;
-  grid-column: 2 / 4;
-  justify-self: end;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
+.predictionSharedResolvedMarket {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.predictionSharedResolvedIdentity {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .predictionSharedMarketPnl {
@@ -392,14 +397,25 @@
 }
 
 .predictionSharedMarketPnl--profit {
-  color: var(--color-market-yes);
+  color: var(--color-success);
 }
 
 .predictionSharedMarketPnl--loss {
   color: var(--color-danger);
 }
 
-.predictionSharedMarketResolved--price {
+.predictionSharedResolvedSide {
+  color: var(--color-market-yes);
+  font-size: 16px;
+  font-weight: 650;
+  text-align: right;
+}
+
+.predictionSharedResolvedSide--no {
+  color: var(--color-market-no);
+}
+
+.predictionSharedResolvedSide--price {
   color: var(--color-text-secondary);
 }
 
@@ -856,11 +872,11 @@
 }
 
 .predictionSharedSummary .isPositive {
-  color: var(--color-market-yes);
+  color: var(--color-success);
 }
 
 .predictionSharedSummary .isNegative {
-  color: var(--color-market-no);
+  color: var(--color-danger);
 }
 
 .predictionSharedComposer--compact {

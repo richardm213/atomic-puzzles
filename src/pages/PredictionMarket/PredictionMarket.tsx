@@ -53,7 +53,7 @@ import {
 import { appAssetPath } from "../../utils/appAssetPath";
 import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
-import { buildBetHistory } from "../Betting/bettingHistoryModel";
+import { buildBetHistory, predictionPnlByMarketId } from "../Betting/bettingHistoryModel";
 
 const outcomeLabel = (outcome: PredictionOutcome, definition?: PredictionMarketDefinition) =>
   predictionOutcomeLabel(definition, outcome);
@@ -113,17 +113,7 @@ export const PredictionMarketPage = () => {
         groupMarketIds.has(bet.marketId),
     );
 
-    for (const bet of personalBets) {
-      if (bet.status === "open") continue;
-      const pnl = bet.payout - bet.totalCost;
-
-      pnlByMarketId.set(bet.marketId, (pnlByMarketId.get(bet.marketId) ?? 0) + pnl);
-    }
-
-    for (const [marketId, pnl] of pnlByMarketId) {
-      if (Math.abs(pnl) < 0.005) pnlByMarketId.set(marketId, 0);
-    }
-    return pnlByMarketId;
+    return predictionPnlByMarketId(personalBets);
   }, [isAuthenticated, legacyBetsQuery.data, marketGroup, marketStates, username]);
   const personalMarketPnlTotal = personalMarketPnlById.size
     ? [...personalMarketPnlById.values()].reduce((total, pnl) => total + pnl, 0)

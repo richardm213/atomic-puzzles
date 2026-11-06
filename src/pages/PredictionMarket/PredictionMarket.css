@@ -122,7 +122,7 @@
 }
 
 .predictionMarketPnl strong.isPositive {
-  color: var(--color-market-yes);
+  color: var(--color-success);
 }
 
 .predictionMarketPnl strong.isNegative {

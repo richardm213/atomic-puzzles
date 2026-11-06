@@ -18,6 +18,21 @@ export type BetHistoryEntry = TournamentBet & {
   predictionMarketTitle?: string | undefined;
 };
 
+export const predictionPnlByMarketId = (
+  bets: readonly BetHistoryEntry[],
+): ReadonlyMap<string, number> => {
+  const pnlByMarketId = new Map<string, number>();
+  for (const bet of bets) {
+    if (bet.kind !== "prediction" || bet.status === "open") continue;
+    const pnl = bet.payout - bet.totalCost;
+    pnlByMarketId.set(bet.marketId, (pnlByMarketId.get(bet.marketId) ?? 0) + pnl);
+  }
+  for (const [marketId, pnl] of pnlByMarketId) {
+    pnlByMarketId.set(marketId, Math.abs(pnl) < 0.005 ? 0 : pnl);
+  }
+  return pnlByMarketId;
+};
+
 const replacedTournamentMarketIds = new Set(["awc2026-winner", AWC_NOT_TO_WIN_MARKET_ID]);
 
 const roundCoins = (value: number) => Math.round(value * 10_000) / 10_000;
