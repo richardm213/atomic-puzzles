@@ -17,8 +17,8 @@ export const RequireAuthentication = ({ children }: { children: ReactNode }) => 
     <div className="authenticationGate">
       <section className="authenticationGatePanel" aria-labelledby="authentication-gate-title">
         <h1 id="authentication-gate-title">Log in to access puzzles</h1>
-        <p>Puzzle solving and training tools are available to logged-in users.</p>
         <button type="button" onClick={() => void login(returnTo)}>
+          <img src="/images/brands/lichess.svg" alt="" aria-hidden="true" />
           Log in with Lichess
         </button>
       </section>
