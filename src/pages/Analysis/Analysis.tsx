@@ -505,11 +505,8 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     terminalOutcome,
   } = getBoardMoveState(boardState, rootFen);
   const gameAnalysis = useGameAnalysis(game, rootFen, auth.user?.username ?? "");
-  const wolfrandomRandomizedOpening = game?.mode === "wolfrandom" && currentPly <= 6;
   const positionAnalysisEnabled =
-    atomicDbEngineSettings.enabled &&
-    (!game || gameComputerAnalysisEnabled) &&
-    !wolfrandomRandomizedOpening;
+    atomicDbEngineSettings.enabled && (!game || gameComputerAnalysisEnabled);
   const gameAssessments = gameAnalysis.analysis?.result?.assessments ?? [];
   const currentAssessment = currentPly > 0 ? (gameAssessments[currentPly - 1] ?? null) : null;
   const currentVisibleAssessment =
@@ -1477,7 +1474,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           aria-label="Analysis controls"
         >
           <div className="analysisMovePanel" ref={movePanelRef}>
-            {(!game || gameComputerAnalysisEnabled) && !wolfrandomRandomizedOpening ? (
+            {!game || gameComputerAnalysisEnabled ? (
               <AtomicDbAnalysisBlock
                 fen={displayedAnalysisFen}
                 analysis={displayedAnalysis}
@@ -1676,7 +1673,6 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
               moves={moveList}
               currentPly={currentPly}
               onNavigate={navigateToPly}
-              excludedInitialPlies={game.mode === "wolfrandom" ? 6 : 0}
             />
           }
           computerAnalysisEnabled={gameComputerAnalysisEnabled}

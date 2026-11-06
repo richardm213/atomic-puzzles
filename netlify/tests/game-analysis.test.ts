@@ -127,6 +127,7 @@ describe("game analysis admin list", () => {
           next_check_at: "2026-11-04T18:04:00.000Z",
         },
       ],
+      count: 9,
       error: null,
     }));
     const recentFinishedCount = Promise.resolve({ data: null, count: 14, error: null });
@@ -213,6 +214,7 @@ describe("game analysis admin list", () => {
           nextCheckAt: null,
         },
       ],
+      failedTotal: 9,
       finishedLast7Days: 14,
       generatedAt: expect.any(String),
     });

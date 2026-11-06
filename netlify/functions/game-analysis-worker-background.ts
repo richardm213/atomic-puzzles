@@ -14,4 +14,7 @@ export default async (request: Request): Promise<void> => {
   await processGameAnalysisJob(gameId);
 };
 
-export const config = { background: true, path: "/api/game-analysis-worker" } as const;
+export const config = {
+  background: true,
+  path: "/api/game-analysis-worker-background",
+} as const;

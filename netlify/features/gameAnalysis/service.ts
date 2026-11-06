@@ -70,11 +70,10 @@ type SharedPositionRow = {
   error: string | null;
 };
 
-const credentials = (): AtomicDbCredentials => {
+const configuredCredentials = (): AtomicDbCredentials | null => {
   const username = process.env.ATOMICDB_USERNAME?.trim() ?? "";
   const password = process.env.ATOMICDB_PASSWORD ?? "";
-  if (!username || !password) throw new Error("AtomicDB account credentials are not configured.");
-  return { username, password };
+  return username && password ? { username, password } : null;
 };
 
 const errorMessage = (error: unknown): string =>
@@ -192,46 +191,26 @@ const terminalPosition = (fen: string): StoredAtomicDbPosition | null => {
   };
 };
 
-const skippedPosition = (fen: string): StoredAtomicDbPosition => ({
-  fen,
-  key: null,
-  status: "SKIPPED",
-  closure: "WOLFRANDOM_OPENING",
-  score: null,
-  point: null,
-  bestMove: null,
-  budgetNodes: null,
-  lines: [],
-  candidates: [],
-});
-
-const initialStates = (fens: string[], skippedPositionCount = 0): PositionState[] =>
-  fens.map((fen, index) => {
-    if (index < skippedPositionCount) {
-      return { fen, terminal: false, completed: true, data: skippedPosition(fen) };
-    }
+const initialStates = (fens: string[]): PositionState[] =>
+  fens.map((fen) => {
     const terminal = terminalPosition(fen);
     return terminal
       ? { fen, terminal: true, completed: true, data: terminal }
       : { fen, terminal: false, completed: false };
   });
 
-const readStates = (
-  job: GameAnalysisJobRow,
-  fens: string[],
-  skippedPositionCount = 0,
-): PositionState[] => {
+const readStates = (job: GameAnalysisJobRow, fens: string[]): PositionState[] => {
   const storedStates = job.position_states;
   if (!Array.isArray(storedStates) || storedStates.length !== fens.length) {
-    return initialStates(fens, skippedPositionCount);
+    return initialStates(fens);
   }
   return fens.map((fen, index) => {
-    if (index < skippedPositionCount) {
-      return { fen, terminal: false, completed: true, data: skippedPosition(fen) };
-    }
     const value = storedStates[index];
     if (!value || typeof value !== "object") return initialStates([fen])[0]!;
     const state = value as Partial<PositionState>;
+    // Older Wolfrandom jobs stored placeholders for the randomized opening. Reopen those
+    // positions so future processing fills their evaluations and search depths as well.
+    if (state.data?.closure === "WOLFRANDOM_OPENING") return initialStates([fen])[0]!;
     return {
       fen,
       terminal: Boolean(state.terminal),
@@ -274,21 +253,26 @@ const randomizedOpeningPlies = async (job: GameAnalysisJobRow): Promise<number> 
     : 0;
 };
 
+export const gameAnalysisRequestParameters = (
+  fen: string,
+  account: AtomicDbCredentials | null,
+): URLSearchParams =>
+  new URLSearchParams({
+    fen,
+    only_if_missing: "1",
+    ...(account ? { username: account.username, password: account.password } : {}),
+  });
+
 const atomicDbRequest = async (
   fen: string,
-  account: AtomicDbCredentials,
+  account: AtomicDbCredentials | null,
 ): Promise<Record<string, unknown>> => {
   const response = await atomicDbFetch(
     `${ATOMIC_DB_BASE_URL}/api/request`,
     {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        fen,
-        username: account.username,
-        password: account.password,
-        only_if_missing: "1",
-      }),
+      body: gameAnalysisRequestParameters(fen, account),
     },
     20_000,
   );
@@ -341,14 +325,14 @@ export const parseAtomicDbQueueSize = (html: string): number | null => {
   return waiting === null || running === null ? null : waiting + running;
 };
 
-const atomicDbQueueSize = async (account: AtomicDbCredentials): Promise<number | null> => {
-  const response = await fetch(
-    `${ATOMIC_DB_BASE_URL}/queue/${encodeURIComponent(account.username)}/`,
-    {
-      headers: { Accept: "text/html" },
-      signal: AbortSignal.timeout(10_000),
-    },
-  );
+const atomicDbQueueSize = async (account: AtomicDbCredentials | null): Promise<number | null> => {
+  // Anonymous requests are attributed to Gannet, so its public queue page is also the
+  // authoritative throttle when no private account is configured.
+  const queueAccount = account?.username ?? "gannet";
+  const response = await fetch(`${ATOMIC_DB_BASE_URL}/queue/${encodeURIComponent(queueAccount)}/`, {
+    headers: { Accept: "text/html" },
+    signal: AbortSignal.timeout(10_000),
+  });
   if (!response.ok) return null;
   return parseAtomicDbQueueSize(await response.text());
 };
@@ -480,9 +464,9 @@ const processClaimedGameAnalysisJob = async (
 
   const randomizedOpeningPlyCount = await randomizedOpeningPlies(data);
   const ignoredInitialPlies = randomizedOpeningPlyCount || GAME_ANALYSIS_INITIAL_REVIEW_PLIES;
-  // Position 6 is retained as the baseline needed to assess White's fourth move. Positions before
-  // it are neither queried nor stored because they belong to Wolfrandom's randomized opening.
-  const states = readStates(data, fens, randomizedOpeningPlyCount);
+  // The randomized opening is excluded only from quality totals. Every position is still queried
+  // and stored so evaluation and line depth are available from move one.
+  const states = readStates(data, fens);
   await loadSharedPositions(supabase, states);
   const pendingIndexes = states
     .map((state, index) => ({ state, index }))
@@ -556,15 +540,7 @@ const processClaimedGameAnalysisJob = async (
     return 0;
   }
 
-  let account: AtomicDbCredentials | null = null;
-  if (options.submit !== false) {
-    try {
-      account = credentials();
-    } catch (credentialError) {
-      await refundAndFail(supabase, data, errorMessage(credentialError));
-      return 0;
-    }
-  }
+  const account = options.submit === false ? null : configuredCredentials();
 
   const unsubmittedIndexes =
     options.submit === false
@@ -715,8 +691,10 @@ export const processPendingGameAnalyses = async (limit = SWEEP_JOB_LIMIT): Promi
 export const submitPendingGameAnalysisPositions = async (
   positionBudget = SUBMISSION_POSITION_BUDGET,
 ): Promise<void> => {
-  const account = credentials();
-  const queueSize = (await atomicDbQueueSize(account).catch(() => null)) ?? 0;
+  const account = configuredCredentials();
+  // Fail closed when the queue page is unavailable. A later pass can retry, while assuming an
+  // empty queue here could flood AtomicDB with thousands of positions.
+  const queueSize = (await atomicDbQueueSize(account).catch(() => null)) ?? ATOMIC_DB_QUEUE_TARGET;
   let remaining = Math.min(positionBudget, gameAnalysisSubmissionLimit(queueSize));
   if (remaining === 0) return;
 

@@ -45,11 +45,8 @@ export const useGameAnalysis = (
     };
   }, [game?.mode, query.data]);
   useEffect(() => {
-    preloadCompletedGameAnalysis(
-      analysis,
-      game?.mode === "wolfrandom" ? WOLFRANDOM_RANDOMIZED_PLIES : 0,
-    );
-  }, [analysis, game?.mode]);
+    preloadCompletedGameAnalysis(analysis);
+  }, [analysis]);
   const mutation = useMutation({
     mutationFn: async () => {
       if (!game?.moves) throw new Error("This game does not have a complete move list.");

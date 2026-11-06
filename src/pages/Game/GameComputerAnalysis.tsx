@@ -26,21 +26,17 @@ const EvaluationGraph = ({
   assessments,
   currentPly,
   onNavigate,
-  excludedInitialPlies = 0,
 }: {
   evaluations: number[];
   moves: string[];
   assessments: GameMoveAssessment[];
   currentPly: number;
   onNavigate: (ply: number) => void;
-  excludedInitialPlies?: number;
 }) => {
   const [hoveredPly, setHoveredPly] = useState<number | null>(null);
   const width = 1000;
   const height = 230;
-  const visibleEvaluations = evaluations
-    .map((evaluation, ply) => ({ evaluation, ply }))
-    .filter(({ ply }) => excludedInitialPlies === 0 || ply > excludedInitialPlies);
+  const visibleEvaluations = evaluations.map((evaluation, ply) => ({ evaluation, ply }));
   const points = visibleEvaluations.map(({ evaluation, ply }, index) => ({
     evaluation,
     ply,
@@ -216,7 +212,6 @@ export const GameComputerAnalysis = ({
   moves,
   currentPly,
   onNavigate,
-  excludedInitialPlies = 0,
 }: {
   analysis: GameAnalysisRecord | null;
   isLoading: boolean;
@@ -228,7 +223,6 @@ export const GameComputerAnalysis = ({
   moves: string[];
   currentPly: number;
   onNavigate: (ply: number) => void;
-  excludedInitialPlies?: number;
 }) => {
   const purchaseDialogRef = useRef<HTMLDialogElement>(null);
   const closePurchaseDialog = () => purchaseDialogRef.current?.close();
@@ -329,7 +323,6 @@ export const GameComputerAnalysis = ({
         assessments={analysis.result.assessments}
         currentPly={currentPly}
         onNavigate={onNavigate}
-        excludedInitialPlies={excludedInitialPlies}
       />
     </div>
   );

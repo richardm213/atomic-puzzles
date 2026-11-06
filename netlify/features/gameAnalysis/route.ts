@@ -149,7 +149,7 @@ const selectAdminRecords = async (page: number, pageSize: number) => {
         .limit(25),
       supabase
         .from("game_analysis_admin_summaries")
-        .select(columns)
+        .select(columns, { count: "exact" })
         .eq("status", "failed")
         .order("updated_at", { ascending: false })
         .limit(25),
@@ -183,6 +183,7 @@ const selectAdminRecords = async (page: number, pageSize: number) => {
     pendingTotalPages: Math.max(1, Math.ceil(pendingTotal / pageSize)),
     completed: ((completedResult.data ?? []) as AdminGameAnalysisRow[]).map(adminRecord),
     failed: ((failedResult.data ?? []) as AdminGameAnalysisRow[]).map(adminRecord),
+    failedTotal: failedResult.count ?? failedResult.data?.length ?? 0,
     finishedLast7Days: finishedLast7DaysResult.count ?? 0,
     generatedAt: new Date().toISOString(),
   };
@@ -217,7 +218,7 @@ const dispatchWorker = async (event: FunctionEvent, gameId: string): Promise<voi
   const host = event.headers?.host ?? event.headers?.Host ?? "";
   if (!secret || !host) return;
   const protocol = host.includes("localhost") ? "http" : "https";
-  await fetch(`${protocol}://${host}/api/game-analysis-worker`, {
+  await fetch(`${protocol}://${host}/api/game-analysis-worker-background`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Game-Analysis-Worker": secret },
     body: JSON.stringify({ gameId }),

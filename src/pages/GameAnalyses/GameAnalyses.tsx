@@ -68,6 +68,7 @@ export const GameAnalysesPage = () => {
               >
                 {query.data?.finishedLast7Days ?? 0} finished
               </Link>
+              <span className="gameAnalysesStatusBadge">{query.data?.failedTotal ?? 0} failed</span>
               {query.data?.generatedAt ? (
                 <time dateTime={query.data.generatedAt}>
                   {query.isFetching
@@ -127,6 +128,11 @@ export const GameAnalysesPage = () => {
                     <GameAnalysisRow key={analysis.gameId} analysis={analysis} kind="failed" />
                   ))}
                 </ol>
+                {query.data.failedTotal > query.data.failed.length ? (
+                  <p className="gameAnalysesState">
+                    Showing the {query.data.failed.length} most recently failed analyses.
+                  </p>
+                ) : null}
               </section>
             ) : null}
 

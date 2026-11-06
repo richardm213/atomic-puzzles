@@ -5,6 +5,7 @@ import {
   gameAnalysisPollIndexes,
   gameAnalysisPollSchedule,
   gameAnalysisPositionKey,
+  gameAnalysisRequestParameters,
   gameAnalysisSubmissionLimit,
   gameAnalysisSweepPositionLimit,
   parseAtomicDbQueueSize,
@@ -23,6 +24,26 @@ describe("game analysis sweep", () => {
     expect(gameAnalysisSubmissionLimit(0)).toBe(4250);
     expect(gameAnalysisSubmissionLimit(1000)).toBe(3800);
     expect(gameAnalysisSubmissionLimit(4800)).toBe(0);
+  });
+
+  it("falls back to AtomicDB's anonymous request API when credentials are not configured", () => {
+    expect(Object.fromEntries(gameAnalysisRequestParameters("example fen", null))).toEqual({
+      fen: "example fen",
+      only_if_missing: "1",
+    });
+    expect(
+      Object.fromEntries(
+        gameAnalysisRequestParameters("example fen", {
+          username: "queue-user",
+          password: "queue-password",
+        }),
+      ),
+    ).toEqual({
+      fen: "example fen",
+      only_if_missing: "1",
+      username: "queue-user",
+      password: "queue-password",
+    });
   });
 
   it("reads both current and legacy AtomicDB queue counters", () => {

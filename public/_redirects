@@ -24,5 +24,7 @@
 /api/archive-data    /.netlify/functions/archive-data    200
 /api/player-social    /.netlify/functions/player-social    200
 /api/game-analysis    /.netlify/functions/game-analysis    200
-/api/game-analysis-worker    /.netlify/functions/game-analysis-worker    200
+/api/game-analysis-worker-background    /.netlify/functions/game-analysis-worker-background    200
+/api/game-analysis-sweep-worker-background    /.netlify/functions/game-analysis-sweep-worker-background    200
+/api/game-analysis-submit-worker-background    /.netlify/functions/game-analysis-submit-worker-background    200
 /*    /index.html   200

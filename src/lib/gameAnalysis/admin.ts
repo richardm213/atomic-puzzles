@@ -42,6 +42,7 @@ const responseSchema = z.object({
   pendingTotalPages: z.number().int().positive(),
   completed: z.array(recordSchema),
   failed: z.array(recordSchema),
+  failedTotal: z.number().int().nonnegative(),
   finishedLast7Days: z.number().int().nonnegative(),
   generatedAt: z.string(),
 });
@@ -66,6 +67,7 @@ export const fetchAdminGameAnalyses = async (
   pendingTotalPages: number;
   completed: AdminGameAnalysis[];
   failed: AdminGameAnalysis[];
+  failedTotal: number;
   finishedLast7Days: number;
   generatedAt: string;
 }> =>

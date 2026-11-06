@@ -160,7 +160,7 @@ export const parseStoredAtomicDbPosition = (
               point: nullableNumber(candidate.point),
               mate: nullableNumber(candidate.mate),
               nodeBackedPlies: nullableNonnegativeInteger(candidate.node_backed_plies),
-              depth: line?.depth ?? null,
+              depth: line?.depth ?? nullableNonnegativeInteger(candidate.search_depth),
               pv: line?.pv ?? [move],
             },
           ];

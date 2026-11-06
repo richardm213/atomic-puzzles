@@ -40,7 +40,14 @@ describe("AtomicDB game analysis classification", () => {
           backed_plies: 0,
           node_backed_plies: 4,
         },
-        { uci: "a1b1", status: "UNKNOWN", score: 70, point: 8, node_backed_plies: 3 },
+        {
+          uci: "a1b1",
+          status: "UNKNOWN",
+          score: 70,
+          point: 8,
+          node_backed_plies: 3,
+          search_depth: 24,
+        },
         { uci: "a1b2", status: "UNKNOWN", score: 60, point: 6, node_backed_plies: 2 },
         { uci: "a1a3", status: "UNKNOWN", score: 50, point: 4, node_backed_plies: 1 },
         { uci: "a1b3", status: "UNKNOWN", score: 40, point: 2, node_backed_plies: 0 },
@@ -57,6 +64,10 @@ describe("AtomicDB game analysis classification", () => {
       nodeBackedPlies: 4,
       depth: 26,
       pv: ["a1a2"],
+    });
+    expect(parsed?.candidates?.[1]).toMatchObject({
+      move: "a1b1",
+      depth: 24,
     });
   });
 

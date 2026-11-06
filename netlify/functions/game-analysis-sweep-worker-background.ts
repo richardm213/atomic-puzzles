@@ -10,5 +10,5 @@ export default async (request: Request): Promise<void> => {
 
 export const config = {
   background: true,
-  path: "/api/game-analysis-sweep-worker",
+  path: "/api/game-analysis-sweep-worker-background",
 } as const;

@@ -92,15 +92,10 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
   };
 };
 
-export const preloadCompletedGameAnalysis = (
-  analysis: GameAnalysisRecord | null,
-  skippedPositionCount = 0,
-): void => {
+export const preloadCompletedGameAnalysis = (analysis: GameAnalysisRecord | null): void => {
   if (analysis?.status !== "ready" || !analysis.result) {
     clearPreloadedAtomicDbGamePositions();
     return;
   }
-  replacePreloadedAtomicDbGamePositions(
-    analysis.result.positions.slice(skippedPositionCount).map(preloadPosition),
-  );
+  replacePreloadedAtomicDbGamePositions(analysis.result.positions.map(preloadPosition));
 };

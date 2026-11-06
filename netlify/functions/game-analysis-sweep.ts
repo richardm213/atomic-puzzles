@@ -7,7 +7,7 @@ export default async (request: Request): Promise<void> => {
   if (!secret) return;
   if (!(await hasPendingGameAnalyses())) return;
   const origin = new URL(request.url).origin;
-  await fetch(`${origin}/api/game-analysis-sweep-worker`, {
+  await fetch(`${origin}/api/game-analysis-sweep-worker-background`, {
     method: "POST",
     headers: { "X-Game-Analysis-Worker": secret },
     signal: AbortSignal.timeout(5_000),
