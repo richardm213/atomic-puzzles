@@ -160,6 +160,12 @@ export const puzzleMotifs: PuzzleMotif[] = [
     description: "A rook gives mate or creates an unavoidable mating threat along a rank or file.",
   },
   {
+    tag: "bishop_knight_mate",
+    name: "Bishop and knight mate",
+    description:
+      "A bishop and knight coordinate to give mate or create an unavoidable explosion-mate threat.",
+  },
+  {
     tag: "king_blockade",
     name: "King blockade",
     description: "The king blocks an opposing pawn from advancing, usually in the endgame.",

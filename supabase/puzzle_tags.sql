@@ -36,6 +36,7 @@ alter table public.puzzles
       'tempo',
       'discovered_mate',
       'rook_mate',
+      'bishop_knight_mate',
       'king_blockade',
       'square',
       'explosion_mate_threat',
