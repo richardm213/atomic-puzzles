@@ -148,6 +148,7 @@ describe("puzzle-submit function", () => {
       p_black_player: "black",
       p_explanation: "",
       p_opa_style: false,
+      p_author: "submitter",
       p_submitted_by: "submitter",
       p_allow_different_start_move: false,
     });
@@ -178,6 +179,7 @@ describe("puzzle-submit function", () => {
           fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
           solution: "1. e4",
           explanation: "",
+          author: "maracker",
         }),
       });
 
@@ -190,7 +192,12 @@ describe("puzzle-submit function", () => {
         "publish_approved_puzzle_batch",
         expect.objectContaining({
           p_submitted_by: username,
-          p_puzzles: [expect.objectContaining({ solution: "1. e4" })],
+          p_puzzles: [
+            expect.objectContaining({
+              solution: "1. e4",
+              author: username === "seaside_tiramisu" ? "maracker" : username,
+            }),
+          ],
         }),
       );
       expect(rpc).not.toHaveBeenCalledWith("enqueue_puzzle_submission", expect.anything());

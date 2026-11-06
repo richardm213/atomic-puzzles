@@ -20,6 +20,7 @@ export type PuzzleBatchSubmissionResult =
 
 type PuzzleSubmissionOptions = {
   allowDifferentStartMove?: boolean;
+  author?: string | undefined;
 };
 
 const submissionPlayers = (input: Pick<PuzzleSubmissionValue, "whitePlayer" | "blackPlayer">) =>
@@ -42,6 +43,7 @@ export const submitPuzzle = async (
       blackPlayer: input.blackPlayer?.trim() ?? "",
       explanation: input.explanation.trim(),
       opaStyle: input.opaStyle === true,
+      author: options.author?.trim() ?? "",
       allowDifferentStartMove: options.allowDifferentStartMove ?? false,
     },
     {
@@ -77,6 +79,7 @@ export const submitPuzzleBatch = async (
         blackPlayer: input.blackPlayer?.trim() ?? "",
         explanation: input.explanation.trim(),
         opaStyle: input.opaStyle === true,
+        author: options.author?.trim() ?? "",
       })),
       allowDifferentStartMove: options.allowDifferentStartMove ?? false,
     },

@@ -173,7 +173,7 @@ describe("puzzle-review function", () => {
         white_player: "White",
         black_player: "Black",
         explanation: "idea",
-        submitted_by: "edited_author",
+        author: "edited_author",
       }),
     );
     expect(firstEq).toHaveBeenCalledWith("id", 4);

@@ -81,7 +81,7 @@ export class PuzzleReviewService {
       const puzzle = await this.repository().update(input.id, {
         ...validated,
         solution: compactPuzzleSolution(validated.solution),
-        submitted_by: input.author,
+        author: input.author,
       });
       return { puzzle };
     } catch (error) {

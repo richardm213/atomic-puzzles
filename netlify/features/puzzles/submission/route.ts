@@ -20,6 +20,7 @@ const singleSubmissionSchema = z.object({
   blackPlayer: z.string().trim().max(200).default(""),
   explanation: z.string().trim().max(5_000),
   opaStyle: z.boolean().default(false),
+  author: z.string().trim().max(200).default(""),
 });
 
 const submissionBodySchema = z.union([

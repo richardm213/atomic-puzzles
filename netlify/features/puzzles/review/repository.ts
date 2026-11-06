@@ -4,7 +4,7 @@ import { normalizePuzzlePlayers } from "../../../../shared/domain/puzzles/puzzle
 import type { PuzzleSubmissionValue } from "../../../../shared/domain/puzzles/puzzleSubmission";
 import { HttpError } from "../../../platform/errors";
 
-export type QueuedPuzzleUpdate = PuzzleSubmissionValue & { submitted_by: string };
+export type QueuedPuzzleUpdate = PuzzleSubmissionValue & { author: string };
 
 export class PuzzleReviewRepository {
   constructor(private readonly supabase: SupabaseClient) {}
@@ -46,7 +46,7 @@ export class PuzzleReviewRepository {
         black_player: puzzle.blackPlayer ?? "",
         explanation: puzzle.explanation,
         opa_style: puzzle.opaStyle,
-        submitted_by: puzzle.submitted_by,
+        author: puzzle.author,
       })
       .eq("id", id)
       .select("*")

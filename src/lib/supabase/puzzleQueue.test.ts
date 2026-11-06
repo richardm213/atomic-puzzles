@@ -130,6 +130,7 @@ describe("puzzle queue review client", () => {
           blackPlayer: "black",
           explanation: "",
           opaStyle: false,
+          author: "",
         },
         {
           fen: "fen 2",
@@ -142,6 +143,7 @@ describe("puzzle queue review client", () => {
           blackPlayer: "",
           explanation: "",
           opaStyle: false,
+          author: "",
         },
       ],
     });

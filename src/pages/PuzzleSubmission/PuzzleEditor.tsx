@@ -103,6 +103,16 @@ type PuzzleEditorProps = {
   showAnalysisEngine?: boolean;
 };
 
+const SOLUTION_INPUT_MODE_STORAGE_KEY = "puzzleEditor.solutionInputMode";
+
+const savedSolutionInputMode = (): "pgn" | "fen" => {
+  try {
+    return window.localStorage.getItem(SOLUTION_INPUT_MODE_STORAGE_KEY) === "fen" ? "fen" : "pgn";
+  } catch {
+    return "pgn";
+  }
+};
+
 export const PuzzleEditor = ({
   value,
   onChange,
@@ -130,7 +140,7 @@ export const PuzzleEditor = ({
   const [appliedFen, setAppliedFen] = useState(initialPgnState.fen);
   const [fenDraft, setFenDraft] = useState(initialPgnState.fen);
   const [solutionDraft, setSolutionDraft] = useState(initialPgnState.draft);
-  const [solutionInputMode, setSolutionInputMode] = useState<"pgn" | "fen">("pgn");
+  const [solutionInputMode, setSolutionInputMode] = useState<"pgn" | "fen">(savedSolutionInputMode);
   const [orientation, setOrientation] = useState<"white" | "black">(() =>
     orientationFromFen(initialPgnState.fen),
   );
@@ -180,7 +190,6 @@ export const PuzzleEditor = ({
     setAppliedFen(nextFen);
     setFenDraft(nextFen);
     setSolutionDraft(nextPgnState.draft);
-    setSolutionInputMode("pgn");
     setOrientation(orientationFromFen(nextFen));
     setBoardState(null);
     setHoveredEngineMove(null);
@@ -296,6 +305,15 @@ export const PuzzleEditor = ({
 
   const copyPgn = async (): Promise<void> => {
     await copyToClipboard(solutionDraft);
+  };
+
+  const changeSolutionInputMode = (mode: "pgn" | "fen"): void => {
+    setSolutionInputMode(mode);
+    try {
+      window.localStorage.setItem(SOLUTION_INPUT_MODE_STORAGE_KEY, mode);
+    } catch {
+      // The preference is optional when browser storage is unavailable.
+    }
   };
 
   const applyFenDraft = (): void => {
@@ -616,7 +634,7 @@ export const PuzzleEditor = ({
               type="button"
               className={solutionInputMode === "pgn" ? "active" : ""}
               aria-pressed={solutionInputMode === "pgn"}
-              onClick={() => setSolutionInputMode("pgn")}
+              onClick={() => changeSolutionInputMode("pgn")}
             >
               PGN
             </button>
@@ -624,7 +642,7 @@ export const PuzzleEditor = ({
               type="button"
               className={solutionInputMode === "fen" ? "active" : ""}
               aria-pressed={solutionInputMode === "fen"}
-              onClick={() => setSolutionInputMode("fen")}
+              onClick={() => changeSolutionInputMode("fen")}
             >
               FEN
             </button>

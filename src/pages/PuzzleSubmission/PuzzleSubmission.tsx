@@ -20,7 +20,10 @@ import {
   submitPuzzleBatch,
 } from "../../lib/supabase/puzzleQueue";
 import { getErrorMessage } from "../../utils/errors";
+import { normalizeUsername } from "../../utils/playerNames";
 import { PuzzleEditor } from "./PuzzleEditor";
+
+const AUTHOR_OVERRIDE_USERNAME = "seaside_tiramisu";
 
 export const formatCreatedPuzzleIds = (puzzleIds: number[]): string => {
   const firstId = puzzleIds[0];
@@ -43,6 +46,9 @@ export const PuzzleSubmissionPage = () => {
   const [error, setError] = useState("");
   const [confirmDifferentStartMove, setConfirmDifferentStartMove] = useState(false);
   const publishesDirectly = isApprovedPuzzleCreator(user?.username ?? "");
+  const canSetAuthor = normalizeUsername(user?.username) === AUTHOR_OVERRIDE_USERNAME;
+  const [author, setAuthor] = useState("");
+  const [keepAuthor, setKeepAuthor] = useState(false);
 
   const submit = async (allowDifferentStartMove = false): Promise<void> => {
     if (!user?.username) return;
@@ -65,6 +71,7 @@ export const PuzzleSubmissionPage = () => {
       if (publishesDirectly) {
         const result = await submitPuzzleBatch(normalizedSubmissions, {
           allowDifferentStartMove,
+          author: canSetAuthor ? author : undefined,
         });
         if (allowDifferentStartMove) {
           if (result.destination !== "review") {
@@ -82,6 +89,7 @@ export const PuzzleSubmissionPage = () => {
         if (normalizedSubmissions.length > 1) {
           const result = await submitPuzzleBatch(normalizedSubmissions, {
             allowDifferentStartMove,
+            author: canSetAuthor ? author : undefined,
           });
           if (result.destination !== "review") {
             throw new Error("Puzzle batch was not sent for review.");
@@ -90,7 +98,10 @@ export const PuzzleSubmissionPage = () => {
         } else {
           const normalized = normalizedSubmissions[0];
           if (!normalized) throw new Error("No puzzle was available to submit.");
-          await submitPuzzle(normalized, { allowDifferentStartMove });
+          await submitPuzzle(normalized, {
+            allowDifferentStartMove,
+            author: canSetAuthor ? author : undefined,
+          });
           submittedCount = 1;
         }
       }
@@ -99,6 +110,7 @@ export const PuzzleSubmissionPage = () => {
       setActiveBatchIndex(0);
       setEditorVersion((version) => version + 1);
       setConfirmDifferentStartMove(false);
+      if (!keepAuthor) setAuthor("");
       if (publishesDirectly && !allowDifferentStartMove) {
         announceCoinsEarned(createdPuzzleIds.length * 10, "Puzzle created");
         setMessage(formatCreatedPuzzleIds(createdPuzzleIds));
@@ -236,6 +248,31 @@ export const PuzzleSubmissionPage = () => {
             showExplanation={!batchMode}
             batchMode={batchMode}
             allowSolutionEditing={!batchMode}
+            fieldsBeforeEvent={
+              canSetAuthor ? (
+                <div className="puzzleAuthorField">
+                  <label>
+                    <span>Puzzle author</span>
+                    <input
+                      type="text"
+                      aria-label="Puzzle author"
+                      value={author}
+                      placeholder={user?.username ?? AUTHOR_OVERRIDE_USERNAME}
+                      spellCheck={false}
+                      onChange={(event) => setAuthor(event.target.value)}
+                    />
+                  </label>
+                  <label className="puzzleAuthorKeep" title="Keep author for next puzzle">
+                    <input
+                      type="checkbox"
+                      aria-label="Keep author for next puzzle"
+                      checked={keepAuthor}
+                      onChange={(event) => setKeepAuthor(event.target.checked)}
+                    />
+                  </label>
+                </div>
+              ) : null
+            }
             {...(batchValues.length > 1
               ? { batchPosition: { current: activeBatchIndex, total: batchValues.length } }
               : {})}

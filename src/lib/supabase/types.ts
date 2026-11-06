@@ -91,6 +91,7 @@ export type PuzzleQueueRow = {
   black_player: string;
   explanation: string;
   opa_style: boolean;
+  author?: string;
   submitted_by: string;
   created_at: string;
 };

@@ -13,14 +13,14 @@ import {
 import { HttpError } from "../../../platform/errors";
 import type { PuzzleSubmissionRepository } from "./repository";
 
-export type PuzzleSubmissionInput = PuzzleSubmissionValue & { opaStyle: boolean };
+export type PuzzleSubmissionInput = PuzzleSubmissionValue & { opaStyle: boolean; author: string };
 
 const PUBLIC_DOMAIN_ERROR = /^(Invalid (FEN|atomic position|PGN)|Enter PGN|The PGN)/;
 
 export class PuzzleSubmissionService {
   constructor(private readonly repository: PuzzleSubmissionRepository) {}
 
-  private normalize(input: PuzzleSubmissionInput) {
+  private normalize(username: string, input: PuzzleSubmissionInput) {
     const parsedPgn = parsePuzzlePgnInput(input.solution, input.fen);
     const fen = parsedPgn.fen;
     const solution = compactPuzzleSolution(parsedPgn.solution);
@@ -30,6 +30,11 @@ export class PuzzleSubmissionService {
     }
     const whitePlayer = input.whitePlayer?.trim() ?? "";
     const blackPlayer = input.blackPlayer?.trim() ?? "";
+    const normalizedUsername = username.trim().toLowerCase();
+    const author =
+      normalizedUsername === "seaside_tiramisu"
+        ? input.author.trim() || normalizedUsername
+        : normalizedUsername;
     return {
       fen,
       solution: compactPuzzleSolution(normalizeSolutionPgn(fen, solution)),
@@ -43,6 +48,7 @@ export class PuzzleSubmissionService {
       blackPlayer,
       explanation: input.explanation,
       opaStyle: input.opaStyle === true,
+      author,
     };
   }
 
@@ -53,7 +59,7 @@ export class PuzzleSubmissionService {
   ) {
     try {
       // Validate every puzzle before performing the first write.
-      const normalizedPuzzles = inputs.map((input) => this.normalize(input));
+      const normalizedPuzzles = inputs.map((input) => this.normalize(username, input));
       if (isApprovedPuzzleCreator(username) && !allowDifferentStartMove) {
         return {
           destination: "published" as const,

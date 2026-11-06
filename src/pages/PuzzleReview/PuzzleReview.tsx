@@ -83,7 +83,7 @@ export const PuzzleReviewPage = () => {
           setValue(firstValue);
           setValueHistory({ past: [], future: [] });
           setPuzzleIdInput(String(first.next_puzzle_id));
-          setAuthorInput(first.submitted_by);
+          setAuthorInput(first.author || first.submitted_by);
         }
       })
       .catch((loadError) => {

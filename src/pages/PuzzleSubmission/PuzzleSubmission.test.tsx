@@ -237,6 +237,7 @@ describe("PuzzleSubmissionPage fields", () => {
   });
 
   afterEach(() => {
+    window.localStorage.clear();
     vi.unstubAllGlobals();
   });
 
@@ -262,6 +263,29 @@ describe("PuzzleSubmissionPage fields", () => {
 
     await user.click(screen.getByRole("button", { name: "Puzzle batch" }));
     expect(screen.getByRole("button", { name: "Create puzzle" })).toBeVisible();
+  });
+
+  it("only shows the puzzle author override to seaside_tiramisu", () => {
+    const { rerender } = render(<PuzzleSubmissionPage />);
+    expect(screen.queryByRole("textbox", { name: "Puzzle author" })).toBeNull();
+
+    authMocks.username = "seaside_tiramisu";
+    rerender(<PuzzleSubmissionPage />);
+    expect(screen.getByRole("textbox", { name: "Puzzle author" })).toBeVisible();
+    expect(screen.getByRole("checkbox", { name: "Keep author for next puzzle" })).toBeVisible();
+  });
+
+  it("remembers the selected PGN or FEN input mode", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<PuzzleSubmissionPage />);
+
+    await user.click(screen.getByRole("button", { name: "FEN" }));
+    expect(window.localStorage.getItem("puzzleEditor.solutionInputMode")).toBe("fen");
+    expect(screen.getByRole("button", { name: "FEN" })).toHaveAttribute("aria-pressed", "true");
+
+    unmount();
+    render(<PuzzleSubmissionPage />);
+    expect(screen.getByRole("button", { name: "FEN" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("asks before sending an alternate starting move to the review queue", async () => {
@@ -311,6 +335,7 @@ describe("PuzzleSubmissionPage fields", () => {
 
 describe("PuzzleEditor move tree", () => {
   beforeEach(() => {
+    window.localStorage.clear();
     chessboardMocks.navigations.length = 0;
     chessboardMocks.stateOnCommand = null;
   });
