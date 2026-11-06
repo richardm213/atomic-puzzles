@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import {
   GAME_ANALYSIS_INITIAL_REVIEW_PLIES,
   ignoreInitialGameAnalysisPlies,
+  WOLFRANDOM_RANDOMIZED_PLIES,
 } from "../../shared/domain/gameAnalysis";
 import type { ArchiveGame } from "../lib/archive/games";
 import { coinQueryKeys, updateCachedCoinBalance } from "../lib/coins/coinQueries";
@@ -11,8 +12,6 @@ import { fetchGameAnalysis, requestGameAnalysis } from "../lib/gameAnalysis/game
 import { preloadCompletedGameAnalysis } from "../lib/gameAnalysis/preload";
 
 const queryKey = (gameId: string) => ["game-analysis", gameId] as const;
-const WOLFRANDOM_RANDOMIZED_PLIES = 6;
-
 export const useGameAnalysis = (
   game: ArchiveGame | null | undefined,
   initialFen: string,

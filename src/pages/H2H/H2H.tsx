@@ -770,6 +770,7 @@ export const H2HPage = () => {
                                 <LichessGameLink
                                   gameId={match.firstGameId}
                                   source={match.sourceValue}
+                                  mode={match.mode}
                                   className="rankingLink h2hMatchDate"
                                   onClick={(event) => event.stopPropagation()}
                                 >

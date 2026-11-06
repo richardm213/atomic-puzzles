@@ -413,7 +413,11 @@ export const RecentMatchesPage = () => {
                       }}
                     >
                       <td>
-                        <LichessGameLink gameId={match.firstGameId} source={match.sourceValue}>
+                        <LichessGameLink
+                          gameId={match.firstGameId}
+                          source={match.sourceValue}
+                          mode={match.mode}
+                        >
                           {formatLocalDateTime(match.startTs)}
                         </LichessGameLink>
                       </td>

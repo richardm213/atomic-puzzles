@@ -26,6 +26,7 @@ type AtomicDbEngineProps = {
   onPlayLine: (ucis: string[]) => void;
   onHoverMove: (uci: string | null) => void;
   disabled?: boolean;
+  reserveLines?: boolean;
   threatMode?: boolean;
 };
 
@@ -292,6 +293,7 @@ export const AtomicDbEngine = ({
   onPlayLine,
   onHoverMove,
   disabled = false,
+  reserveLines = false,
   threatMode = false,
 }: AtomicDbEngineProps) => {
   const { enabled, lineCount, showFollowUpMoves } = settings;
@@ -337,6 +339,17 @@ export const AtomicDbEngine = ({
           <div className="atomicDbEngineState">
             {finalMessage ?? "No engine moves for this position."}
           </div>
+        ) : null}
+        {reserveLines && !position ? (
+          <ol className="atomicDbEngineLines" aria-hidden="true">
+            {Array.from({ length: lineCount }, (_, index) => (
+              <li className="atomicDbEngineLineUnavailable" key={index}>
+                <span />
+                <span />
+                <span />
+              </li>
+            ))}
+          </ol>
         ) : null}
         {visibleMoves.length > 0 ? (
           <ol className="atomicDbEngineLines">
@@ -457,45 +470,50 @@ export const AtomicDbEvalBar = ({
   fen,
   analysis,
   enabled,
+  neutral = false,
   orientation,
   threatMode = false,
 }: {
   fen: string;
   analysis: AtomicDbAnalysisState;
   enabled: boolean;
+  neutral?: boolean;
   orientation: "white" | "black";
   threatMode?: boolean;
 }) => {
   const { status } = analysis;
   const view = useRetainedAtomicDbView(analysis, fen);
-  const sourceLabel = analysisSourceLabel(analysis, threatMode);
-  const displayedEvaluation =
-    (analysis.source === "terminal" ? resultLabel(view) : null) ?? view.evaluationLabel;
+  const displayedStatus = neutral ? "ready" : status;
+  const sourceLabel = neutral ? "Wolfrandom opening" : analysisSourceLabel(analysis, threatMode);
+  const displayedEvaluation = neutral
+    ? "0.0"
+    : ((analysis.source === "terminal" ? resultLabel(view) : null) ?? view.evaluationLabel);
+  const whitePercent = neutral ? 50 : view.whitePercent;
 
   return (
     <div
       className={`atomicDbEvalBar ${enabled ? "expanded" : "collapsed"} ${
         orientation === "black" ? "flipped" : ""
-      } ${status === "loading" ? "loading" : ""}`}
+      } ${displayedStatus === "loading" ? "loading" : ""}`}
       role={enabled ? "meter" : undefined}
       aria-hidden={!enabled}
       aria-label={
         enabled
-          ? `${sourceLabel} evaluation ${status === "loading" ? "loading" : displayedEvaluation}`
+          ? `${sourceLabel} evaluation ${displayedStatus === "loading" ? "loading" : displayedEvaluation}`
           : undefined
       }
       aria-valuemin={enabled ? 0 : undefined}
       aria-valuemax={enabled ? 100 : undefined}
-      aria-valuenow={enabled ? view.whitePercent : undefined}
+      aria-valuenow={enabled ? whitePercent : undefined}
       title={
         enabled
-          ? status === "loading"
+          ? displayedStatus === "loading"
             ? `Loading ${sourceLabel} evaluation`
             : `${sourceLabel}: ${displayedEvaluation}`
           : undefined
       }
     >
-      <span className="atomicDbEvalWhite" style={{ height: `${view.whitePercent}%` }} />
+      <span className="atomicDbEvalWhite" style={{ height: `${whitePercent}%` }} />
     </div>
   );
 };

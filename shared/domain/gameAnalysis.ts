@@ -3,6 +3,7 @@ import { fenAfterAtomicMove } from "./puzzles/solutionPgn";
 export const GAME_ANALYSIS_COST = 1;
 export const GAME_ANALYSIS_BUDGET_NODES = 128_000_000;
 export const GAME_ANALYSIS_INITIAL_REVIEW_PLIES = 2;
+export const WOLFRANDOM_RANDOMIZED_PLIES = 6;
 
 export const GAME_ANALYSIS_STATUSES = ["queued", "processing", "ready", "failed"] as const;
 export type GameAnalysisStatus = (typeof GAME_ANALYSIS_STATUSES)[number];

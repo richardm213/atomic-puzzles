@@ -409,6 +409,31 @@ describe("AtomicDbEngine", () => {
     expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", settledBarValue);
   });
 
+  it("keeps the Wolfrandom opening bar neutral without exposing a loading state", () => {
+    const analysis: AtomicDbAnalysisState = {
+      status: "idle",
+      error: "",
+      result: null,
+      principalVariations: {},
+    };
+
+    render(
+      <AtomicDbEvalBar
+        fen={STARTING_FEN}
+        analysis={analysis}
+        enabled
+        neutral
+        orientation="white"
+      />,
+    );
+
+    expect(screen.getByRole("meter")).toHaveAttribute(
+      "aria-label",
+      "Wolfrandom opening evaluation 0.0",
+    );
+    expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "50");
+  });
+
   it("replaces stale analysis with the final result when the game is over", () => {
     const terminalFen = "rn3bnr/p1p4p/6p1/1p1PPp2/4P3/N7/PPP2PPP/R1B1KB1R b KQ - 0 8";
     const terminalAnalysis: AtomicDbAnalysisState = {

@@ -16,6 +16,7 @@ type AtomicDbAnalysisBlockProps = {
   onFlipBoard?: () => void;
   onHoverMove: (uci: string | null) => void;
   onPlayLine: (ucis: string[]) => void;
+  reserveLines?: boolean;
   onThreatModeChange?: (enabled: boolean) => void;
   onToggleNotation?: () => void;
   setSettings: Dispatch<SetStateAction<AtomicDbEngineSettings>>;
@@ -33,6 +34,7 @@ export const AtomicDbAnalysisBlock = ({
   onFlipBoard,
   onHoverMove,
   onPlayLine,
+  reserveLines,
   onThreatModeChange,
   onToggleNotation,
   setSettings,
@@ -65,6 +67,7 @@ export const AtomicDbAnalysisBlock = ({
       onPlayLine={onPlayLine}
       onHoverMove={onHoverMove}
       {...(disabled === undefined ? {} : { disabled })}
+      {...(reserveLines === undefined ? {} : { reserveLines })}
       {...(threatMode === undefined ? {} : { threatMode })}
     />
   </div>

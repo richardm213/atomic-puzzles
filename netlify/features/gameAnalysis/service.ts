@@ -11,6 +11,7 @@ import {
   ignoreInitialGameAnalysisPlies,
   parseStoredAtomicDbPosition,
   type StoredAtomicDbPosition,
+  WOLFRANDOM_RANDOMIZED_PLIES,
 } from "../../../shared/domain/gameAnalysis";
 import { createAtomicPosition } from "../../../shared/domain/puzzles/solutionPgn";
 import { queryArchiveResource } from "../../archive/queries";
@@ -23,7 +24,6 @@ const MAX_INITIAL_POLL_DELAY_MS = 10 * 60_000;
 const FOLLOW_UP_POLL_DELAY_MS = 60_000;
 const EXPECTED_ATOMIC_DB_WORKERS = 4;
 const ESTIMATED_WORKER_NODES_PER_SECOND = 14_000_000;
-const WOLFRANDOM_RANDOMIZED_PLIES = 6;
 const SWEEP_POSITION_BUDGET = 600;
 // A large queue still needs every job's progress refreshed on each sweep. The position budget
 // already reduces each job to one poll when hundreds are pending, so limiting the query to a
@@ -191,26 +191,56 @@ const terminalPosition = (fen: string): StoredAtomicDbPosition | null => {
   };
 };
 
-const initialStates = (fens: string[]): PositionState[] =>
-  fens.map((fen) => {
+const skippedWolfrandomPosition = (fen: string): StoredAtomicDbPosition => ({
+  fen,
+  key: null,
+  status: "SKIPPED",
+  closure: "WOLFRANDOM_OPENING",
+  score: 0,
+  point: 0,
+  bestMove: null,
+  budgetNodes: null,
+  lines: [],
+  candidates: [],
+});
+
+const initialStates = (fens: string[], skippedPositionCount = 0): PositionState[] =>
+  fens.map((fen, index) => {
+    if (index < skippedPositionCount) {
+      return {
+        fen,
+        terminal: false,
+        completed: true,
+        data: skippedWolfrandomPosition(fen),
+      };
+    }
     const terminal = terminalPosition(fen);
     return terminal
       ? { fen, terminal: true, completed: true, data: terminal }
       : { fen, terminal: false, completed: false };
   });
 
-const readStates = (job: GameAnalysisJobRow, fens: string[]): PositionState[] => {
+const readStates = (
+  job: GameAnalysisJobRow,
+  fens: string[],
+  skippedPositionCount = 0,
+): PositionState[] => {
   const storedStates = job.position_states;
   if (!Array.isArray(storedStates) || storedStates.length !== fens.length) {
-    return initialStates(fens);
+    return initialStates(fens, skippedPositionCount);
   }
   return fens.map((fen, index) => {
+    if (index < skippedPositionCount) {
+      return {
+        fen,
+        terminal: false,
+        completed: true,
+        data: skippedWolfrandomPosition(fen),
+      };
+    }
     const value = storedStates[index];
     if (!value || typeof value !== "object") return initialStates([fen])[0]!;
     const state = value as Partial<PositionState>;
-    // Older Wolfrandom jobs stored placeholders for the randomized opening. Reopen those
-    // positions so future processing fills their evaluations and search depths as well.
-    if (state.data?.closure === "WOLFRANDOM_OPENING") return initialStates([fen])[0]!;
     return {
       fen,
       terminal: Boolean(state.terminal),
@@ -228,7 +258,7 @@ const readStates = (job: GameAnalysisJobRow, fens: string[]): PositionState[] =>
 const randomizedOpeningPlies = async (job: GameAnalysisJobRow): Promise<number> => {
   const storedStates = Array.isArray(job.position_states) ? job.position_states : [];
   const hasStoredRandomizedOpening = storedStates
-    .slice(0, WOLFRANDOM_RANDOMIZED_PLIES)
+    .slice(0, WOLFRANDOM_RANDOMIZED_PLIES + 1)
     .some(
       (state) =>
         state &&
@@ -464,9 +494,10 @@ const processClaimedGameAnalysisJob = async (
 
   const randomizedOpeningPlyCount = await randomizedOpeningPlies(data);
   const ignoredInitialPlies = randomizedOpeningPlyCount || GAME_ANALYSIS_INITIAL_REVIEW_PLIES;
-  // The randomized opening is excluded only from quality totals. Every position is still queried
-  // and stored so evaluation and line depth are available from move one.
-  const states = readStates(data, fens);
+  // A move's graph value belongs to the position after that move. Skip the initial position and
+  // all six randomized opening positions; the graph begins with White's fourth move.
+  const skippedPositionCount = randomizedOpeningPlyCount ? randomizedOpeningPlyCount + 1 : 0;
+  const states = readStates(data, fens, skippedPositionCount);
   await loadSharedPositions(supabase, states);
   const pendingIndexes = states
     .map((state, index) => ({ state, index }))

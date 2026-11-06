@@ -1108,6 +1108,7 @@ export const PlayerProfilePage = ({
                             <LichessGameLink
                               gameId={win.gameId}
                               source={inferExternalGameSource(win.gameId)}
+                              mode={bestWinMode}
                             >
                               {formatLocalDateTime(win.startTs)}
                             </LichessGameLink>
@@ -1464,6 +1465,7 @@ export const PlayerProfilePage = ({
                                     <LichessGameLink
                                       gameId={match.firstGameId}
                                       source={match.sourceValue}
+                                      mode={match.mode}
                                       onClick={(event) => event.stopPropagation()}
                                     >
                                       {formatLocalDateTime(match.startTs)}

@@ -4,13 +4,13 @@ import { useAppSettings } from "../../context/AppSettings";
 import {
   buildAtomicPuzzlesGameUrl,
   buildExternalGameUrl,
-  isChessComSource,
-  isPyChessSource,
+  shouldUseAtomicPuzzlesGameLink,
 } from "../../lib/matches/routes";
 
 export type LichessGameLinkProps = {
   gameId: string | number;
   source?: unknown;
+  mode?: unknown;
   children?: ReactNode;
   className?: string;
   onClick?: MouseEventHandler<HTMLAnchorElement> | undefined;
@@ -26,6 +26,7 @@ export type LichessGameLinkProps = {
 export const LichessGameLink = ({
   gameId,
   source,
+  mode,
   children,
   className = "rankingLink",
   onClick,
@@ -43,12 +44,7 @@ export const LichessGameLink = ({
     .replace(/^(?:chesscom|pychess):/i, "")
     .trim();
   const internalGameUrl = buildAtomicPuzzlesGameUrl(normalizedGameId);
-  if (
-    (isChessComSource(source) ||
-      isPyChessSource(source) ||
-      lichessLinkTarget === "atomic-puzzles") &&
-    internalGameUrl
-  ) {
+  if (shouldUseAtomicPuzzlesGameLink({ source, mode, lichessLinkTarget }) && internalGameUrl) {
     return (
       <a
         className={className}

@@ -5,6 +5,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
+import { WOLFRANDOM_RANDOMIZED_PLIES } from "../../../shared/domain/gameAnalysis";
 import {
   ChessComProfileIcon,
   LichessProfileIcon,
@@ -38,21 +39,35 @@ const clockLinePath = (
   maximum: number,
   color: "white" | "black",
   plyCount: number,
+  startPly = 0,
 ): string => {
   const side = color === "white" ? 0 : 1;
-  const moveCount = Math.max(1, Math.ceil(plyCount / 2));
-  const slotCount = moveCount + (plyCount % 2 === 0 ? 0.5 : 0);
+  const visiblePlyCount = Math.max(0, plyCount - startPly);
+  const moveCount = Math.max(1, Math.ceil(visiblePlyCount / 2));
+  const slotCount = moveCount + (visiblePlyCount % 2 === 0 ? 0.5 : 0);
+  const previousClock = clocks
+    .slice(0, startPly)
+    .map((value, ply) => ({ value, ply }))
+    .filter(({ ply }) => ply % 2 === side)
+    .at(-1)?.value;
+  const yForClock = (value: number): number =>
+    color === "white"
+      ? 4 + (1 - Math.max(0, value) / maximum) * 42
+      : 96 - (1 - Math.max(0, value) / maximum) * 42;
   const points = [
-    { x: 0, y: color === "white" ? 4 : 96 },
+    {
+      x: 0,
+      y: previousClock === undefined ? (color === "white" ? 4 : 96) : yForClock(previousClock),
+    },
     ...clocks.flatMap((value, ply) =>
-      ply % 2 === side
+      ply >= startPly && ply % 2 === side
         ? [
             {
-              x: ((Math.floor(ply / 2) + 1 + (color === "black" ? 0.5 : 0)) / slotCount) * 100,
-              y:
-                color === "white"
-                  ? 4 + (1 - Math.max(0, value) / maximum) * 42
-                  : 96 - (1 - Math.max(0, value) / maximum) * 42,
+              x:
+                ((Math.floor((ply - startPly) / 2) + 1 + (color === "black" ? 0.5 : 0)) /
+                  slotCount) *
+                100,
+              y: yForClock(value),
             },
           ]
         : [],
@@ -188,15 +203,27 @@ export const GameUnderboard = ({
   const previousComputerAnalysisEnabled = useRef(computerAnalysisEnabled);
   const durations = useMemo(() => moveDurationsMilliseconds(game), [game]);
   const availableDurations = durations.filter((duration): duration is number => duration !== null);
-  const longestDuration = Math.max(1, ...availableDurations);
-  const moveTimePairs = Array.from({ length: Math.ceil(durations.length / 2) }, (_, index) => ({
-    moveNumber: index + 1,
-    white: durations[index * 2] ?? null,
-    black: durations[index * 2 + 1] ?? null,
-  }));
+  const chartStartPly = game.mode === "wolfrandom" ? WOLFRANDOM_RANDOMIZED_PLIES : 0;
+  const visibleDurations = durations.slice(chartStartPly);
+  const visibleAvailableDurations = visibleDurations.filter(
+    (duration): duration is number => duration !== null,
+  );
+  const longestDuration = Math.max(1, ...visibleAvailableDurations);
+  const firstMoveNumber = Math.floor(chartStartPly / 2) + 1;
+  const moveTimePairs = Array.from(
+    { length: Math.ceil(visibleDurations.length / 2) },
+    (_, index) => {
+      const moveNumber = firstMoveNumber + index;
+      return {
+        moveNumber,
+        white: durations[(moveNumber - 1) * 2] ?? null,
+        black: durations[(moveNumber - 1) * 2 + 1] ?? null,
+      };
+    },
+  );
   const timelineSlotCount = Math.max(
     1,
-    moveTimePairs.length + (durations.length % 2 === 0 ? 0.5 : 0),
+    moveTimePairs.length + (visibleDurations.length % 2 === 0 ? 0.5 : 0),
   );
   const initialClock = initialClockMilliseconds(game.time_control);
   const hasClockTimeline = initialClock !== null && (game.clocks?.length ?? 0) > 0;
@@ -205,14 +232,26 @@ export const GameUnderboard = ({
     initialClock ?? 0,
     ...(game.clocks?.filter((clock): clock is number => clock !== null) ?? []),
   );
-  const whiteClockPath = clockLinePath(game.clocks ?? [], maximumClock, "white", durations.length);
-  const blackClockPath = clockLinePath(game.clocks ?? [], maximumClock, "black", durations.length);
+  const whiteClockPath = clockLinePath(
+    game.clocks ?? [],
+    maximumClock,
+    "white",
+    durations.length,
+    chartStartPly,
+  );
+  const blackClockPath = clockLinePath(
+    game.clocks ?? [],
+    maximumClock,
+    "black",
+    durations.length,
+    chartStartPly,
+  );
   const plottedMoveTimes = durations.map((duration) =>
     duration === null ? null : moveTimePlotValue(duration),
   );
   const maximumMoveTimePlot = Math.max(
     1,
-    ...plottedMoveTimes.filter((value): value is number => value !== null),
+    ...plottedMoveTimes.slice(chartStartPly).filter((value): value is number => value !== null),
   );
   const gameDuration = availableDurations.reduce((total, duration) => total + duration, 0);
   const hoveredClock = hoveredPly === null ? null : (game.clocks?.[hoveredPly - 1] ?? null);
@@ -305,7 +344,7 @@ export const GameUnderboard = ({
       >
         {activeTab === "analysis" ? computerAnalysis : null}
         {activeTab === "move-times" ? (
-          availableDurations.length ? (
+          visibleAvailableDurations.length ? (
             <figure className="gameMoveTimesFigure" aria-label="Move time chart">
               {hasClockTimeline ? null : (
                 <figcaption className="gameMoveTimesLegend">
@@ -331,7 +370,7 @@ export const GameUnderboard = ({
                       <path className="whiteFill" d={`${whiteClockPath} L 100 50 L 0 50 Z`} />
                       <path className="blackFill" d={`${blackClockPath} L 100 50 L 0 50 Z`} />
                       {plottedMoveTimes.map((plotValue, ply) => {
-                        if (plotValue === null) return null;
+                        if (plotValue === null || ply < chartStartPly) return null;
                         const step = 100 / timelineSlotCount;
                         const height = Math.max(0.8, (plotValue / maximumMoveTimePlot) * 43);
                         const white = ply % 2 === 0;
@@ -339,7 +378,7 @@ export const GameUnderboard = ({
                           <rect
                             key={ply}
                             className={white ? "whiteMoveTime" : "blackMoveTime"}
-                            x={(ply * step) / 2}
+                            x={((ply - chartStartPly) * step) / 2}
                             y={white ? 50 - height : 50}
                             width={step}
                             height={height}
@@ -350,8 +389,16 @@ export const GameUnderboard = ({
                       <path className="blackLine" d={blackClockPath} />
                       <line
                         className="currentPlyLine"
-                        x1={currentPly === 0 ? 0 : ((currentPly + 1) / 2 / timelineSlotCount) * 100}
-                        x2={currentPly === 0 ? 0 : ((currentPly + 1) / 2 / timelineSlotCount) * 100}
+                        x1={
+                          currentPly <= chartStartPly
+                            ? 0
+                            : ((currentPly - chartStartPly + 1) / 2 / timelineSlotCount) * 100
+                        }
+                        x2={
+                          currentPly <= chartStartPly
+                            ? 0
+                            : ((currentPly - chartStartPly + 1) / 2 / timelineSlotCount) * 100
+                        }
                         y1="0"
                         y2="100"
                       />

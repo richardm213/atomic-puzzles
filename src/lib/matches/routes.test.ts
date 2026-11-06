@@ -11,6 +11,7 @@ import {
   inferExternalGameSource,
   isSingleGameMatch,
   normalizeMatchMode,
+  shouldUseAtomicPuzzlesGameLink,
   shouldUseInternalMatchPage,
 } from "./routes";
 
@@ -207,6 +208,21 @@ describe("buildSingleGameMatchUrl", () => {
     ).toBe("/game/AbC960");
   });
 
+  it.each(["wolfrandom", "atomic960"] as const)(
+    "builds internal URLs for one-game %s matches by default",
+    (mode) => {
+      expect(
+        buildSingleGameMatchUrl({
+          mode,
+          matchId: "match-id",
+          firstGameId: "variant-game",
+          gameCount: 1,
+          sourceValue: "friend",
+        }),
+      ).toBe("/game/variant-game");
+    },
+  );
+
   it("uses Atomic Puzzles for one-game Lichess matches when selected", () => {
     expect(
       buildSingleGameMatchUrl(
@@ -229,5 +245,14 @@ describe("buildSingleGameMatchUrl", () => {
         gameCount: 2,
       }),
     ).toBe("");
+  });
+});
+
+describe("shouldUseAtomicPuzzlesGameLink", () => {
+  it("defaults Wolfrandom, Atomic960, and Chess.com games to Atomic Puzzles", () => {
+    expect(shouldUseAtomicPuzzlesGameLink({ mode: "wolfrandom" })).toBe(true);
+    expect(shouldUseAtomicPuzzlesGameLink({ mode: "atomic960" })).toBe(true);
+    expect(shouldUseAtomicPuzzlesGameLink({ source: "chesscom" })).toBe(true);
+    expect(shouldUseAtomicPuzzlesGameLink({ mode: "blitz", source: "arena" })).toBe(false);
   });
 });

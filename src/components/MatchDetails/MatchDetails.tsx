@@ -93,6 +93,7 @@ export const MatchDetails = ({
               <LichessGameLink
                 gameId={game.id}
                 source={match.sourceValue}
+                mode={match.mode}
                 onClick={stopPropagation}
               >
                 {game.id}

@@ -11,6 +11,7 @@ import type {
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
+import { WOLFRANDOM_RANDOMIZED_PLIES } from "../../../shared/domain/gameAnalysis";
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
 import {
@@ -507,6 +508,9 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const gameAnalysis = useGameAnalysis(game, rootFen, auth.user?.username ?? "");
   const positionAnalysisEnabled =
     atomicDbEngineSettings.enabled && (!game || gameComputerAnalysisEnabled);
+  const wolfrandomOpening =
+    game?.mode === "wolfrandom" && currentPly <= WOLFRANDOM_RANDOMIZED_PLIES;
+  const positionAnalysisActive = positionAnalysisEnabled && !wolfrandomOpening;
   const gameAssessments = gameAnalysis.analysis?.result?.assessments ?? [];
   const currentAssessment = currentPly > 0 ? (gameAssessments[currentPly - 1] ?? null) : null;
   const currentVisibleAssessment =
@@ -520,7 +524,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     variationPlaying: atomicDbLinePlaying,
   } = useAtomicDbBoardAnalysis({
     currentFen,
-    enabled: positionAnalysisEnabled,
+    enabled: positionAnalysisActive,
     atomicDbEnabled: atomicDbEngineSettings.atomicDbEnabled !== false,
     navigation,
     lineCount: atomicDbEngineSettings.lineCount,
@@ -534,7 +538,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   );
   const threatAnalysis = useAtomicDbAnalysis(threatFen ?? currentFen, {
     debounceMs: 0,
-    enabled: positionAnalysisEnabled && threatMode && threatFen !== null && !atomicDbLinePlaying,
+    enabled: positionAnalysisActive && threatMode && threatFen !== null && !atomicDbLinePlaying,
     atomicDbEnabled: atomicDbEngineSettings.atomicDbEnabled !== false,
     fallbackToEngine: true,
     lineCount: atomicDbEngineSettings.lineCount,
@@ -554,6 +558,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     : null;
   const canRequestAtomicDbAnalysis =
     atomicDbEngineSettings.atomicDbEnabled !== false &&
+    positionAnalysisActive &&
     atomicDbResultIsCurrent &&
     !isAtomicTablebasePosition(currentFen) &&
     !atomicDbPositionKey &&
@@ -1138,8 +1143,8 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   }, [currentFen, explorerOpen, explorerStatus, filtersOpen]);
 
   useEffect(() => {
-    if (!positionAnalysisEnabled || threatFen === null) setThreatMode(false);
-  }, [positionAnalysisEnabled, threatFen]);
+    if (!positionAnalysisActive || threatFen === null) setThreatMode(false);
+  }, [positionAnalysisActive, threatFen]);
 
   useEffect(() => {
     const handleAnalysisShortcut = (event: KeyboardEvent): void => {
@@ -1171,7 +1176,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
         if (usernamePickerOpen || filtersOpen) return;
 
         const move = selectSpacebarMove({
-          engineEnabled: positionAnalysisEnabled,
+          engineEnabled: positionAnalysisActive,
           engineResult: atomicDbAnalysis.result,
           engineStatus: atomicDbAnalysis.status,
           databaseMoves: explorerMoves,
@@ -1208,7 +1213,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           showFollowUpMoves: !current.showFollowUpMoves,
         }));
       } else if (key === "x") {
-        if (positionAnalysisEnabled && threatFen !== null) {
+        if (positionAnalysisActive && threatFen !== null) {
           setThreatMode((enabled) => !enabled);
         }
       } else {
@@ -1229,7 +1234,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     filtersOpen,
     flipBoard,
     game,
-    positionAnalysisEnabled,
+    positionAnalysisActive,
     setAtomicDbEngineSettings,
     setExplorerOpen,
     threatFen,
@@ -1495,6 +1500,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                 onPlayLine={playAtomicDbLine}
                 onHoverMove={setHoveredExplorerMoveUci}
                 disabled={atomicDbLinePlaying || effectiveThreatMode}
+                reserveLines={wolfrandomOpening}
               />
             ) : null}
             <div className="analysisMoveContent" ref={moveContentRef}>
@@ -1634,6 +1640,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
               fen={displayedAnalysisFen}
               analysis={displayedAnalysis}
               enabled={positionAnalysisEnabled}
+              neutral={wolfrandomOpening}
               orientation={orientation}
               threatMode={effectiveThreatMode}
             />
@@ -1673,6 +1680,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
               moves={moveList}
               currentPly={currentPly}
               onNavigate={navigateToPly}
+              evaluationStartPly={game.mode === "wolfrandom" ? WOLFRANDOM_RANDOMIZED_PLIES + 1 : 0}
             />
           }
           computerAnalysisEnabled={gameComputerAnalysisEnabled}

@@ -84,6 +84,25 @@ export const isPyChessSource = (source: unknown): boolean =>
     .toLowerCase()
     .includes("pychess");
 
+export const shouldUseAtomicPuzzlesGameLink = ({
+  source,
+  mode,
+  lichessLinkTarget,
+}: {
+  source?: unknown;
+  mode?: unknown;
+  lichessLinkTarget?: LichessLinkTarget | undefined;
+}): boolean => {
+  const normalizedMode = normalizeMatchMode(mode);
+  return (
+    isChessComSource(source) ||
+    isPyChessSource(source) ||
+    normalizedMode === "wolfrandom" ||
+    normalizedMode === "atomic960" ||
+    lichessLinkTarget === "atomic-puzzles"
+  );
+};
+
 /**
  * Some legacy aggregates (including opening-explorer games and top wins) only
  * store the game id. In those archives, Chess.com ids are numeric and Lichess
@@ -150,11 +169,13 @@ export const buildSingleGameMatchUrl = (
   const candidates = [match?.firstGameId, firstGameFromGames, match?.matchId];
   for (const candidate of candidates) {
     const source = match?.sourceValue ?? match?.source;
-    if (isChessComSource(source) || isPyChessSource(source)) {
-      const archivedGameUrl = buildAtomicPuzzlesGameUrl(candidate);
-      if (archivedGameUrl) return archivedGameUrl;
-    }
-    if (options.lichessLinkTarget === "atomic-puzzles") {
+    if (
+      shouldUseAtomicPuzzlesGameLink({
+        source,
+        mode: match?.mode,
+        lichessLinkTarget: options.lichessLinkTarget,
+      })
+    ) {
       const archivedGameUrl = buildAtomicPuzzlesGameUrl(candidate);
       if (archivedGameUrl) return archivedGameUrl;
     }

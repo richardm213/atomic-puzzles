@@ -25,18 +25,22 @@ const EvaluationGraph = ({
   moves,
   assessments,
   currentPly,
+  startPly,
   onNavigate,
 }: {
   evaluations: number[];
   moves: string[];
   assessments: GameMoveAssessment[];
   currentPly: number;
+  startPly: number;
   onNavigate: (ply: number) => void;
 }) => {
   const [hoveredPly, setHoveredPly] = useState<number | null>(null);
   const width = 1000;
   const height = 230;
-  const visibleEvaluations = evaluations.map((evaluation, ply) => ({ evaluation, ply }));
+  const visibleEvaluations = evaluations
+    .map((evaluation, ply) => ({ evaluation, ply }))
+    .filter(({ ply }) => ply >= startPly);
   const points = visibleEvaluations.map(({ evaluation, ply }, index) => ({
     evaluation,
     ply,
@@ -211,6 +215,7 @@ export const GameComputerAnalysis = ({
   onRequest,
   moves,
   currentPly,
+  evaluationStartPly = 0,
   onNavigate,
 }: {
   analysis: GameAnalysisRecord | null;
@@ -222,6 +227,7 @@ export const GameComputerAnalysis = ({
   onLogin: () => void;
   moves: string[];
   currentPly: number;
+  evaluationStartPly?: number;
   onNavigate: (ply: number) => void;
 }) => {
   const purchaseDialogRef = useRef<HTMLDialogElement>(null);
@@ -322,6 +328,7 @@ export const GameComputerAnalysis = ({
         moves={moves}
         assessments={analysis.result.assessments}
         currentPly={currentPly}
+        startPly={evaluationStartPly}
         onNavigate={onNavigate}
       />
     </div>
