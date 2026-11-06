@@ -65,90 +65,11 @@
 .predictionMarketMeta {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  column-gap: clamp(16px, 2.2vw, 24px);
+  row-gap: 10px;
   align-items: center;
   color: var(--color-muted);
   font-size: 14px;
-}
-
-.predictionStatus {
-  border-radius: 999px;
-  padding: 4px 9px;
-  font-size: 12px;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.predictionStatus--open {
-  background: var(--color-success-soft-bg);
-  color: var(--prediction-yes);
-}
-
-.predictionStatus--closed {
-  background: var(--color-danger-soft-bg);
-  color: var(--prediction-no);
-}
-
-.predictionAccountSummary {
-  display: inline-grid;
-  grid-auto-flow: column;
-  align-items: stretch;
-  min-width: max-content;
-  border: 1px solid color-mix(in srgb, var(--color-gold) 32%, var(--color-border));
-  border-radius: var(--radius-ui);
-  background: var(--color-panel-strong);
-  overflow: hidden;
-}
-
-.predictionMarketPnl {
-  display: grid;
-  align-content: center;
-  gap: 2px;
-  padding: 9px 14px;
-  border-right: 1px solid var(--color-border);
-}
-
-.predictionMarketPnl small,
-.predictionBalance small {
-  color: var(--color-muted);
-  font-size: 11px;
-  text-transform: uppercase;
-}
-
-.predictionMarketPnl strong {
-  color: var(--color-heading);
-  font-variant-numeric: tabular-nums;
-}
-
-.predictionMarketPnl strong.isPositive {
-  color: var(--color-success);
-}
-
-.predictionMarketPnl strong.isNegative {
-  color: var(--color-danger);
-}
-
-.predictionBalance {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-}
-
-.predictionBalance img {
-  width: 34px;
-  height: 34px;
-  object-fit: contain;
-}
-
-.predictionBalance span {
-  display: grid;
-}
-
-.predictionBalance strong {
-  color: var(--color-heading);
-  font-variant-numeric: tabular-nums;
 }
 
 .predictionTradingGrid {
@@ -475,10 +396,6 @@
   .predictionMarketHeader {
     display: grid;
     padding: 22px 20px;
-  }
-
-  .predictionAccountSummary {
-    width: fit-content;
   }
 
   .predictionTradingGrid {

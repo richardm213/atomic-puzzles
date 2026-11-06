@@ -9,6 +9,8 @@ import { InlineState } from "../../components/InlineState/InlineState";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { PredictionMarketExplainer } from "../../components/PredictionMarketExplainer/PredictionMarketExplainer";
 import { PredictionOrderEditor } from "../../components/PredictionOrderEditor/PredictionOrderEditor";
+import { PredictionMarketRoi } from "../../components/PredictionTrading/PredictionMarketRoi";
+import { PredictionMarketStatus } from "../../components/PredictionTrading/PredictionMarketStatus";
 import { PredictionMarketTable } from "../../components/PredictionTrading/PredictionMarketTable";
 import { PredictionOrderBook } from "../../components/PredictionTrading/PredictionOrderBook";
 import { PredictionOrderComposer } from "../../components/PredictionTrading/PredictionOrderComposer";
@@ -23,8 +25,8 @@ import {
   predictionOrderRestrictionMessage,
 } from "../../lib/betting/betting";
 import { allTournamentBetsQueryOptions } from "../../lib/betting/bettingQueries";
-import { formatCoinBalance, formatCoinValue } from "../../lib/coins/coinDisplay";
-import { coinSummaryQueryOptions, updateCachedCoinBalance } from "../../lib/coins/coinQueries";
+import { formatCoinBalance } from "../../lib/coins/coinDisplay";
+import { updateCachedCoinBalance } from "../../lib/coins/coinQueries";
 import { tournamentBracketQueryOptions } from "../../lib/matches/tournamentQueries";
 import {
   patchPredictionMarketState,
@@ -123,10 +125,6 @@ export const PredictionMarketPage = () => {
       ? personalMarketPnlTotal
       : null;
   const activeMarketIndex = marketDefinitions.findIndex((market) => market.id === activeMarketId);
-  const coinQuery = useQuery({
-    ...coinSummaryQueryOptions(username),
-    enabled: isAuthenticated,
-  });
   const awcBracketQuery = useQuery({
     ...tournamentBracketQueryOptions("awc2026"),
     enabled: isAuthenticated && marketGroup?.id === "awc-2026-champion",
@@ -545,45 +543,19 @@ export const PredictionMarketPage = () => {
               <PredictionMarketExplainer />
             </div>
             <div className="predictionMarketMeta">
-              <span
-                className={`predictionStatus predictionStatus--${marketGroupOpen ? "open" : "closed"}`}
-              >
-                {marketGroupOpen ? "Open" : "Closed"}
-              </span>
+              <PredictionMarketStatus
+                density="comfortable"
+                status={marketGroupOpen ? "open" : "closed"}
+              />
               {marketState ? (
                 <span>Closes {formatLocalDateTime(marketState.market.closesAt)}</span>
               ) : null}
               <span>Volume {formatCoinBalance(marketVolume)} coins</span>
+              {personalMarketPnl !== null ? (
+                <PredictionMarketRoi value={personalMarketPnl} />
+              ) : null}
             </div>
           </div>
-          {isAuthenticated ? (
-            <div className="predictionAccountSummary" aria-live="polite">
-              {personalMarketPnl !== null ? (
-                <span className="predictionMarketPnl">
-                  <small>Market P&amp;L</small>
-                  <strong
-                    className={
-                      personalMarketPnl > 0
-                        ? "isPositive"
-                        : personalMarketPnl < 0
-                          ? "isNegative"
-                          : undefined
-                    }
-                  >
-                    {personalMarketPnl > 0 ? "+" : ""}
-                    {formatCoinValue(personalMarketPnl)} coins
-                  </strong>
-                </span>
-              ) : null}
-              <div className="predictionBalance">
-                <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
-                <span>
-                  <small>Available</small>
-                  <strong>{formatCoinBalance(coinQuery.data?.balance ?? 0)}</strong>
-                </span>
-              </div>
-            </div>
-          ) : null}
         </header>
 
         {marketsQuery.error ? (

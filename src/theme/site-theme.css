@@ -46,6 +46,7 @@
   --color-chesscom-icon-front: #6da737;
   --color-chesscom-icon-highlight: #a5d877;
   --color-success: #86efac;
+  --color-success-strong: #5ee5a4;
   --color-warning: #facc15;
   --color-danger: #fca5a5;
   --color-market-yes: #22d3ee;
@@ -179,6 +180,7 @@
   --color-pychess-shadow: rgba(109, 40, 217, 0.14);
   --color-pychess-shadow-hover: rgba(109, 40, 217, 0.2);
   --color-success: #15803d;
+  --color-success-strong: #12844c;
   --color-warning: #a86d00;
   --color-danger: #dc2626;
   --color-market-yes: #0e7490;

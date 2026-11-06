@@ -553,6 +553,17 @@ export const BettingPage = () => {
     ],
   );
   const personalPredictionPnlByMarketId = useMemo(() => predictionPnlByMarketId(myBets), [myBets]);
+  const activePredictionGroupPnl = useMemo(() => {
+    if (!isAuthenticated || !activePredictionGroup) return null;
+
+    const values = activePredictionGroup.markets
+      .map((market) => personalPredictionPnlByMarketId.get(market.id))
+      .filter((value): value is number => value !== undefined);
+    if (!values.length) return null;
+
+    const total = values.reduce((sum, value) => sum + value, 0);
+    return Math.abs(total) >= 0.005 ? total : null;
+  }, [activePredictionGroup, isAuthenticated, personalPredictionPnlByMarketId]);
   const openBetCost = myBets.reduce(
     (total, bet) => total + (bet.status === "open" ? bet.totalCost : 0),
     0,
@@ -977,6 +988,7 @@ export const BettingPage = () => {
                         ) : undefined
                       }
                       path={activePredictionGroup.path}
+                      pnl={activePredictionGroupPnl}
                       showExplainer={false}
                       title={activePredictionGroup.title}
                       volume={formatCoinValue(activePredictionVolume)}
@@ -1121,6 +1133,7 @@ export const BettingPage = () => {
                           isLoading={activePredictionGroupLoading}
                           isOpen={activePredictionGroupOpen}
                           path={group.path}
+                          pnl={activePredictionGroupPnl}
                           title={group.title}
                           volume={formatCoinValue(activePredictionVolume)}
                         />

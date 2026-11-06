@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import type { PredictionMarketState } from "../../lib/predictionMarkets/predictionMarkets";
 import { BettingHistory } from "./BettingHistory";
 import type { BetHistoryEntry } from "./bettingHistoryModel";
 
@@ -25,6 +26,30 @@ const roundOf16Bet: BetHistoryEntry = {
   predictionSelectionCountryCode: "US",
   predictionMarketTitle: "AWC 2026 Round of 16",
 };
+
+const predictionState = (
+  id: string,
+  status: PredictionMarketState["market"]["status"],
+): PredictionMarketState => ({
+  market: {
+    id,
+    question: "Who will win?",
+    resolutionRules: "",
+    resolutionSourceUrl: "https://example.com",
+    closesAt: "2026-11-10T00:00:00Z",
+    status,
+    outcome: status === "resolved" ? "yes" : null,
+    settlementPriceCents: null,
+    settlementReferenceFillId: null,
+    resolvedAt: status === "resolved" ? "2026-11-01T00:00:00Z" : null,
+    sportsbookVolumeCoins: 0,
+    exchangeVolumeCoins: 0,
+  },
+  book: { yes: { bids: [], asks: [] }, no: { bids: [], asks: [] } },
+  fills: [],
+  positions: [],
+  orders: [],
+});
 
 describe("BettingHistory", () => {
   beforeEach(() => {
@@ -126,10 +151,19 @@ describe("BettingHistory", () => {
                 countryCode: "CA",
                 outcomeLabels: { yes: "natso", no: "crepuscular" },
               },
+              {
+                id: "awc-r16-rechesster-renaudmerle",
+                username: "rechesster",
+                countryCode: "AT",
+                outcomeLabels: { yes: "rechesster", no: "renaudmerle" },
+              },
             ],
           },
         ]}
-        predictionMarketStates={[]}
+        predictionMarketStates={[
+          predictionState("awc-r16-natso-crepuscular", "open"),
+          predictionState("awc-r16-rechesster-renaudmerle", "resolved"),
+        ]}
         countryByPlayer={{}}
         myBetsLoading={false}
         allBetsLoading={false}
@@ -142,13 +176,19 @@ describe("BettingHistory", () => {
 
     await user.type(screen.getByLabelText("Bettor"), "buyer");
     await user.selectOptions(screen.getByLabelText("Market"), "awc-r16-natso-crepuscular");
-    await user.selectOptions(screen.getByLabelText("Status"), "won");
+    await user.selectOptions(screen.getByLabelText("Status"), "resolved");
 
     let searchParams = new URLSearchParams(window.location.search);
     expect(searchParams.get("view")).toBe("all");
     expect(searchParams.get("bettor")).toBe("buyer");
-    expect(searchParams.get("strike")).toBe("awc-r16-natso-crepuscular");
-    expect(searchParams.get("status")).toBe("won");
+    expect(searchParams.has("strike")).toBe(false);
+    expect(searchParams.get("status")).toBe("resolved");
+    expect(screen.queryByRole("option", { name: /natso vs crepuscular/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /rechesster vs renaudmerle/i })).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Market"), "awc-r16-rechesster-renaudmerle");
+    searchParams = new URLSearchParams(window.location.search);
+    expect(searchParams.get("strike")).toBe("awc-r16-rechesster-renaudmerle");
 
     await user.selectOptions(screen.getByLabelText("Status"), "open");
     searchParams = new URLSearchParams(window.location.search);

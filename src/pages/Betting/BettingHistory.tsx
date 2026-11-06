@@ -61,9 +61,13 @@ const filterHistoryBets = ({
   bettor?: string;
 }): BetHistoryEntry[] => {
   const normalizedBettor = bettor?.trim().toLowerCase() ?? "";
+  const matchesStatus = (bet: BetHistoryEntry) =>
+    status === "all" ||
+    bet.status === status ||
+    (status === "resolved" && ["won", "lost", "settled"].includes(bet.status));
   return bets.filter(
     (bet) =>
-      (status === "all" || bet.status === status) &&
+      matchesStatus(bet) &&
       (marketId === "all" || bet.marketId === marketId) &&
       (!normalizedBettor || bet.username.toLowerCase().includes(normalizedBettor)),
   );
@@ -192,7 +196,7 @@ type BettingHistoryProps = {
   allBetsError: unknown;
 };
 
-const historyStatusFilters = new Set(["all", "open", "won", "lost", "settled", "refunded"]);
+const historyStatusFilters = new Set(["all", "open", "resolved"]);
 
 type HistoryFilters = {
   bettor: string;
@@ -247,10 +251,12 @@ export const BettingHistory = ({
     const stateByMarketId = new Map(
       predictionMarketStates.map((state) => [state.market.id, state]),
     );
+    const resolvedOnly = filters.status === "resolved";
 
     for (const group of predictionMarketGroups) {
       if (group.id.includes("shield")) continue;
       for (const market of sortPredictionMarketsByChance(group.markets, stateByMarketId)) {
+        if (resolvedOnly && stateByMarketId.get(market.id)?.market.status !== "resolved") continue;
         const strike = market.outcomeLabels
           ? `${market.outcomeLabels.yes} vs ${market.outcomeLabels.no}`
           : market.username;
@@ -259,13 +265,14 @@ export const BettingHistory = ({
     }
 
     for (const market of markets) {
+      if (resolvedOnly && market.status !== "settled") continue;
       if (!options.has(market.id)) {
         options.set(market.id, `${market.roundName} · ${market.label}`);
       }
     }
 
     return [...options].map(([id, label]) => ({ id, label }));
-  }, [markets, predictionMarketGroups, predictionMarketStates]);
+  }, [filters.status, markets, predictionMarketGroups, predictionMarketStates]);
   const visibleMyBets = useMemo(
     () =>
       filterHistoryBets({
@@ -299,6 +306,12 @@ export const BettingHistory = ({
     setOrDelete("status", filters.status, "open");
     window.history.replaceState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
   }, [filters, view]);
+
+  useEffect(() => {
+    if (filters.market === "all") return;
+    if (marketOptions.some((market) => market.id === filters.market)) return;
+    setFilters((current) => ({ ...current, market: "all" }));
+  }, [filters.market, marketOptions]);
 
   const setFilter = (name: keyof HistoryFilters, value: string) => {
     setFilters((current) => ({ ...current, [name]: value }));
@@ -403,10 +416,7 @@ export const BettingHistory = ({
           >
             <option value="all">All statuses</option>
             <option value="open">Open</option>
-            <option value="won">Won</option>
-            <option value="lost">Lost</option>
-            <option value="settled">Settled</option>
-            <option value="refunded">Refunded</option>
+            <option value="resolved">Resolved</option>
           </select>
         </label>
       </div>
