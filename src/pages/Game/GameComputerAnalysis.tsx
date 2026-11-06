@@ -17,7 +17,8 @@ const REVIEWED_CLASSIFICATIONS: MoveClassification[] = ["inaccuracy", "mistake",
 
 const labelFor = (classification: MoveClassification, count: number): string => {
   const label = classification[0]!.toUpperCase() + classification.slice(1);
-  return count === 1 ? label : `${label}s`;
+  if (count === 1) return label;
+  return classification === "inaccuracy" ? "Inaccuracies" : `${label}s`;
 };
 
 const EvaluationGraph = ({
