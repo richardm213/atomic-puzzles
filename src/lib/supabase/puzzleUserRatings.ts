@@ -44,6 +44,17 @@ export type PuzzleRankingTrophyRow = Omit<PuzzleLeaderboardMetricRow, "averageSe
   eligible: true;
 };
 
+export type PuzzleCreatorLeaderboardRow = {
+  rank: number;
+  username: string;
+  puzzlesCreated: number;
+  puzzleKarma: number;
+  upvotesReceived: number;
+  downvotesReceived: number;
+  upvotesGiven: number;
+  downvotesGiven: number;
+};
+
 type PuzzleUserRatingResponseRow = {
   [Key in keyof Omit<StoredPuzzleUserRatingRow, "user_id">]?: StoredPuzzleUserRatingRow[Key] | null;
 };
@@ -75,6 +86,22 @@ const puzzleLeaderboardResponseSchema = z.object({
       correct: z.number(),
       activityAttempts: z.number().optional(),
       averageSeconds: z.number().nullable(),
+    }),
+  ),
+  months: z.array(z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)),
+});
+
+const puzzleCreatorLeaderboardResponseSchema = z.object({
+  rows: z.array(
+    z.object({
+      rank: z.number().int().positive(),
+      username: z.string(),
+      puzzlesCreated: z.number().int().nonnegative(),
+      puzzleKarma: z.number().int(),
+      upvotesReceived: z.number().int().nonnegative(),
+      downvotesReceived: z.number().int().nonnegative(),
+      upvotesGiven: z.number().int().nonnegative(),
+      downvotesGiven: z.number().int().nonnegative(),
     }),
   ),
   months: z.array(z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)),
@@ -161,6 +188,25 @@ export const fetchPuzzleLeaderboard = async (
     months: result.months,
   };
 };
+
+export const fetchPuzzleCreatorLeaderboard = async (
+  period: "monthly" | "all",
+  month: string,
+): Promise<{ rows: PuzzleCreatorLeaderboardRow[]; months: string[] }> =>
+  postApi(
+    "/api/puzzles/rating",
+    {
+      action: "leaderboard",
+      category: "creators",
+      period,
+      ...(period === "monthly" ? { month } : {}),
+    },
+    {
+      schema: puzzleCreatorLeaderboardResponseSchema,
+      errorMessage: "Unable to load puzzle creator rankings.",
+      invalidMessage: "The puzzle creator rankings service returned invalid data.",
+    },
+  );
 
 export const fetchPuzzleRankingTrophies = async (): Promise<PuzzleRankingTrophyRow[]> => {
   const result = await apiRequest("/api/public-data?resource=puzzle-ranking-trophies", {

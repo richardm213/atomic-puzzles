@@ -3,6 +3,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { fetchPrimaryPlayerNicknames } from "../supabase/playerNicknames";
 import { fetchPuzzleProgressRowsForUsername } from "../supabase/puzzleProgress";
 import {
+  fetchPuzzleCreatorLeaderboard,
   fetchPuzzleLeaderboard,
   fetchPuzzleRankingTrophies,
   fetchPuzzleRatingEventsForUsername,
@@ -49,6 +50,13 @@ export const puzzleLeaderboardQueryOptions = (period: "monthly" | "all", month: 
   queryOptions({
     queryKey: ["puzzle-rankings", period, period === "monthly" ? month : "all"] as const,
     queryFn: () => fetchPuzzleLeaderboard(period, month),
+    staleTime: 30_000,
+  });
+
+export const puzzleCreatorLeaderboardQueryOptions = (period: "monthly" | "all", month: string) =>
+  queryOptions({
+    queryKey: ["puzzle-creator-rankings", period, period === "monthly" ? month : "all"] as const,
+    queryFn: () => fetchPuzzleCreatorLeaderboard(period, month),
     staleTime: 30_000,
   });
 

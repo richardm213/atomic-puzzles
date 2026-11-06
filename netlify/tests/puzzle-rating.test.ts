@@ -222,6 +222,71 @@ describe("puzzle-rating function", () => {
     });
   });
 
+  it("loads creator rankings with received and handed-out vote totals", async () => {
+    const rpc = vi.fn((name: string) =>
+      Promise.resolve({
+        data:
+          name === "get_puzzle_creator_leaderboard"
+            ? [
+                {
+                  rank: 1,
+                  username: "Creator",
+                  puzzles_created: 12,
+                  puzzle_karma: 31,
+                  upvotes_received: 36,
+                  downvotes_received: 5,
+                  upvotes_given: 18,
+                  downvotes_given: 2,
+                },
+              ]
+            : [{ month: "2026-10" }],
+        error: null,
+      }),
+    );
+    mocks.createClient.mockReturnValue({ rpc });
+
+    const response = await handler({
+      httpMethod: "POST",
+      body: JSON.stringify({
+        action: "leaderboard",
+        category: "creators",
+        period: "monthly",
+        month: "2026-10",
+      }),
+    });
+
+    expect(rpc).toHaveBeenCalledWith("get_puzzle_creator_leaderboard", {
+      p_period: "monthly",
+      p_month: "2026-10",
+    });
+    expect(rpc).toHaveBeenCalledWith("get_puzzle_creator_leaderboard_months");
+    expect(JSON.parse(response.body)).toEqual({
+      rows: [
+        {
+          rank: 1,
+          username: "creator",
+          puzzlesCreated: 12,
+          puzzleKarma: 31,
+          upvotesReceived: 36,
+          downvotesReceived: 5,
+          upvotesGiven: 18,
+          downvotesGiven: 2,
+        },
+        {
+          rank: 2,
+          username: "admin",
+          puzzlesCreated: 0,
+          puzzleKarma: 0,
+          upvotesReceived: 0,
+          downvotesReceived: 0,
+          upvotesGiven: 0,
+          downvotesGiven: 0,
+        },
+      ],
+      months: ["2026-10"],
+    });
+  });
+
   it("returns pre-aggregated puzzle ranking trophies", async () => {
     const rpc = vi.fn(async () => ({
       data: [

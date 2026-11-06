@@ -17,6 +17,7 @@ const ratingRequestSchema = z.union([
   z.object({ action: z.literal("trophies") }),
   z.object({
     action: z.literal("leaderboard"),
+    category: z.enum(["solvers", "creators"]).default("solvers"),
     period: z.enum(["monthly", "all"]),
     month: z
       .string()
@@ -76,6 +77,76 @@ const loadLeaderboardRows = async (period: "monthly" | "all", month: string | un
   };
 };
 
+const loadCreatorLeaderboardRows = async (period: "monthly" | "all", month: string | undefined) => {
+  if (period === "monthly" && !month) {
+    throw new HttpError(400, "Choose a month for monthly puzzle creator rankings.");
+  }
+  const supabase = createServerSupabase("Puzzle creator leaderboard service");
+  const [{ data: rows, error }, { data: months, error: monthsError }] = await Promise.all([
+    supabase.rpc("get_puzzle_creator_leaderboard", {
+      p_period: period,
+      p_month: period === "monthly" ? month : null,
+    }),
+    supabase.rpc("get_puzzle_creator_leaderboard_months"),
+  ]);
+  if (error) throw new Error(`Unable to load puzzle creator rankings: ${error.message}`);
+  if (monthsError) {
+    throw new Error(`Unable to load puzzle creator ranking months: ${monthsError.message}`);
+  }
+
+  const creatorRows: Array<{
+    rank: number;
+    username: string;
+    puzzlesCreated: number;
+    puzzleKarma: number;
+    upvotesReceived: number;
+    downvotesReceived: number;
+    upvotesGiven: number;
+    downvotesGiven: number;
+  }> = (rows ?? []).map((row: Record<string, unknown>) => ({
+    rank: Number(row.rank),
+    username: String(row.username ?? "")
+      .trim()
+      .toLowerCase(),
+    puzzlesCreated: Number(row.puzzles_created),
+    puzzleKarma: Number(row.puzzle_karma),
+    upvotesReceived: Number(row.upvotes_received),
+    downvotesReceived: Number(row.downvotes_received),
+    upvotesGiven: Number(row.upvotes_given),
+    downvotesGiven: Number(row.downvotes_given),
+  }));
+  if (!creatorRows.some((row) => row.username === "admin")) {
+    creatorRows.push({
+      rank: 0,
+      username: "admin",
+      puzzlesCreated: 0,
+      puzzleKarma: 0,
+      upvotesReceived: 0,
+      downvotesReceived: 0,
+      upvotesGiven: 0,
+      downvotesGiven: 0,
+    });
+  }
+  creatorRows.sort(
+    (left, right) =>
+      right.puzzleKarma - left.puzzleKarma || left.username.localeCompare(right.username),
+  );
+  let previousKarma: number | null = null;
+  let currentRank = 0;
+  creatorRows.forEach((row, index) => {
+    if (row.puzzleKarma !== previousKarma) currentRank = index + 1;
+    row.rank = currentRank;
+    previousKarma = row.puzzleKarma;
+  });
+
+  return {
+    rows: creatorRows,
+    months: (months ?? [])
+      .map((row: Record<string, unknown>) => String(row.month ?? ""))
+      .filter(Boolean),
+  };
+};
+
 const loadPuzzleRankingTrophies = async () => {
   const supabase = createServerSupabase("Puzzle ranking trophy service");
   const { data, error } = await supabase.rpc("get_puzzle_ranking_trophies");
@@ -97,7 +168,12 @@ const loadPuzzleRankingTrophies = async () => {
 export const puzzleRatingRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, ratingRequestSchema, "Invalid puzzle rating request.");
   if ("action" in input && input.action === "leaderboard") {
-    return jsonResponse(200, await loadLeaderboardRows(input.period, input.month));
+    return jsonResponse(
+      200,
+      input.category === "creators"
+        ? await loadCreatorLeaderboardRows(input.period, input.month)
+        : await loadLeaderboardRows(input.period, input.month),
+    );
   }
   if ("action" in input && input.action === "history") {
     const normalizedUsername = input.username.trim().toLocaleLowerCase();
