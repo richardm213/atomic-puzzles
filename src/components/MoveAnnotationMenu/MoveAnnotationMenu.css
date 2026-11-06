@@ -1,9 +1,10 @@
 .moveAnnotationMenu {
   position: fixed;
   z-index: 100;
-  width: 204px;
+  width: fit-content;
   padding: 4px;
-  display: grid;
+  display: inline-grid;
+  grid-auto-flow: column;
   gap: 1px;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-ui);
@@ -12,19 +13,18 @@
 }
 
 .moveAnnotationMenu button {
-  min-height: 34px;
-  padding: 4px 8px;
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
+  width: 40px;
+  min-height: 40px;
+  padding: 4px;
+  display: inline-grid;
+  place-items: center;
   align-items: center;
-  gap: 6px;
   border: 0;
   border-radius: 4px;
   background: transparent;
   color: var(--color-text);
   font: inherit;
   font-size: 13px;
-  text-align: left;
 }
 
 .moveAnnotationMenu button span {
@@ -39,9 +39,7 @@
 }
 
 .moveAnnotationMenu button.danger {
-  margin-top: 3px;
-  border-top: 1px solid var(--color-border);
-  border-radius: 0 0 4px 4px;
+  border-left: 1px solid var(--color-border);
   color: var(--color-danger);
 }
 
@@ -49,9 +47,9 @@
   background: var(--color-danger-soft-bg);
 }
 
-.moveAnnotationMenu button.danger span {
-  color: inherit;
-  font-size: 18px;
+.moveAnnotationMenu button.danger svg {
+  width: 14px;
+  height: 14px;
 }
 
 .moveAnnotationMenu button:focus-visible {

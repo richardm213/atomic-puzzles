@@ -1,5 +1,7 @@
 import "./MoveAnnotationMenu.css";
 
+import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -85,15 +87,21 @@ export const MoveAnnotationMenu = ({
           aria-label={`Annotate with ${annotation}`}
           className={current === annotation ? "active" : ""}
           onClick={() => onSelect(annotation)}
+          title={`Annotate with ${annotation}`}
         >
-          <span>{annotation}</span>
-          Annotate with {annotation}
+          <span aria-hidden="true">{annotation}</span>
         </button>
       ))}
       {onDelete ? (
-        <button type="button" role="menuitem" className="danger" onClick={onDelete}>
-          <span aria-hidden="true">×</span>
-          Delete
+        <button
+          type="button"
+          role="menuitem"
+          className="danger"
+          aria-label="Delete"
+          title="Delete"
+          onClick={onDelete}
+        >
+          <FontAwesomeIcon icon={faTrashCan} aria-hidden="true" />
         </button>
       ) : null}
     </div>,
