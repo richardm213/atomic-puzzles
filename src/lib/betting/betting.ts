@@ -23,7 +23,6 @@ export {
 } from "../../../shared/domain/betting";
 
 export const BET_FEE_RATE = 0.02;
-export const BET_NET_WORTH_LIMIT_RATE = 0.5;
 export const MAX_BET_STAKE = 1000;
 
 export type BettingMarketStatus = "open" | "suspended" | "settled" | "refunded";
@@ -127,23 +126,9 @@ const formatBettingMarketLabel = (value: string): string => {
 
 const roundCoins = (value: number): number => Math.round(value * 1_000_000) / 1_000_000;
 
-export const maxTournamentBetStake = (
-  balance: number,
-  openBetCost = 0,
-  positionBetCost = 0,
-): number => {
+export const maxTournamentBetStake = (balance: number): number => {
   const normalizedBalance = Number.isFinite(balance) ? Math.max(0, balance) : 0;
-  const normalizedOpenBetCost = Number.isFinite(openBetCost) ? Math.max(0, openBetCost) : 0;
-  const normalizedPositionBetCost = Number.isFinite(positionBetCost)
-    ? Math.max(0, positionBetCost)
-    : 0;
-  const netWorth = normalizedBalance + normalizedOpenBetCost;
-  const remainingBetBudget = Math.max(
-    0,
-    netWorth * BET_NET_WORTH_LIMIT_RATE - normalizedPositionBetCost,
-  );
-  const availableCost = Math.min(normalizedBalance, remainingBetBudget);
-  return Math.min(MAX_BET_STAKE, Math.floor(availableCost / (1 + BET_FEE_RATE)));
+  return Math.min(MAX_BET_STAKE, Math.floor(normalizedBalance / (1 + BET_FEE_RATE)));
 };
 
 export const quoteTournamentBet = (stake: number, priceCents: number): BetQuote => {

@@ -20,7 +20,6 @@ import { useAuth } from "../../context/AuthContext";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import {
   AWC_NOT_TO_WIN_MARKET_ID,
-  BET_NET_WORTH_LIMIT_RATE,
   type BettingMarket,
   findCurrentTournamentOpponent,
   isAwcNotToWinSelfBet,
@@ -564,28 +563,7 @@ export const BettingPage = () => {
     const total = values.reduce((sum, value) => sum + value, 0);
     return Math.abs(total) >= 0.005 ? total : null;
   }, [activePredictionGroup, isAuthenticated, personalPredictionPnlByMarketId]);
-  const openBetCost = myBets.reduce(
-    (total, bet) => total + (bet.status === "open" ? bet.totalCost : 0),
-    0,
-  );
-  const netWorth = balance + openBetCost;
-  const betCostLimit = netWorth * BET_NET_WORTH_LIMIT_RATE;
-  const selectedPositionCost = selection
-    ? myBets.reduce(
-        (total, bet) =>
-          total +
-          (bet.status === "open" &&
-          bet.marketId === selection.marketId &&
-          bet.selection.toLowerCase() === selection.player.toLowerCase()
-            ? bet.totalCost
-            : 0),
-        0,
-      )
-    : 0;
-  const remainingPositionBudget = Math.max(0, betCostLimit - selectedPositionCost);
-  const balanceLimitedStake = isAuthenticated
-    ? maxTournamentBetStake(balance, openBetCost, selectedPositionCost)
-    : MAX_BET_STAKE;
+  const balanceLimitedStake = isAuthenticated ? maxTournamentBetStake(balance) : MAX_BET_STAKE;
   const effectiveStakeLimit = Math.min(balanceLimitedStake, marketStakeLimit);
   const bettingUnavailable = isAuthenticated && effectiveStakeLimit < MIN_BET_AMOUNT;
   const selectionIsOpponent =
@@ -596,8 +574,6 @@ export const BettingPage = () => {
     selection && isAuthenticated
       ? isAwcNotToWinSelfBet(selection.marketId, username, selection.player)
       : false;
-  const exceedsPositionLimit =
-    isAuthenticated && validStake && quote.totalCost > remainingPositionBudget;
   const insufficientBalance = isAuthenticated && validStake && quote.totalCost > balance;
 
   useEffect(() => {
@@ -807,14 +783,7 @@ export const BettingPage = () => {
 
   const submitBet = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (
-      !selectedMarket ||
-      !selection ||
-      !validStake ||
-      selectionIsOpponent ||
-      exceedsPositionLimit ||
-      insufficientBalance
-    )
+    if (!selectedMarket || !selection || !validStake || selectionIsOpponent || insufficientBalance)
       return;
     setSuccessMessage("");
     placeBetMutation.mutate({
@@ -850,7 +819,6 @@ export const BettingPage = () => {
               <span>
                 <strong>{formatCoinBalance(balance)}</strong>
                 coins available
-                <small>50% limit per outcome · {formatCoinValue(netWorth)} net worth</small>
               </span>
             </div>
           ) : null}
@@ -1223,27 +1191,11 @@ export const BettingPage = () => {
                               const isSelfNotToWinOutcome =
                                 isAuthenticated &&
                                 isAwcNotToWinSelfBet(market.id, username, outcome.player);
-                              const positionCost = myBets.reduce(
-                                (total, bet) =>
-                                  total +
-                                  (bet.status === "open" &&
-                                  bet.marketId === market.id &&
-                                  bet.selection.toLowerCase() === outcome.player.toLowerCase()
-                                    ? bet.totalCost
-                                    : 0),
-                                0,
-                              );
-                              const positionLimitReached =
-                                isAuthenticated &&
-                                maxTournamentBetStake(balance, openBetCost, positionCost) <
-                                  MIN_BET_AMOUNT;
                               const unavailableReason = isSelfNotToWinOutcome
                                 ? "You can’t bet on yourself not to win AWC."
                                 : isOpponentOutcome
                                   ? "You can’t bet on your opponent."
-                                  : positionLimitReached
-                                    ? "This position has reached 50% of your net worth."
-                                    : undefined;
+                                  : undefined;
                               const countryCode =
                                 countryByPlayer[outcome.player.toLowerCase()] ?? "";
                               return (
@@ -1279,8 +1231,6 @@ export const BettingPage = () => {
                                       <small>Your opponent</small>
                                     ) : isOwnOutcome ? (
                                       <small>Your outcome</small>
-                                    ) : positionLimitReached ? (
-                                      <small>Limit reached</small>
                                     ) : null}
                                   </span>
                                 </button>
@@ -1670,22 +1620,14 @@ export const BettingPage = () => {
                       Enter a whole coin amount from 1 to {formatCoinValue(marketStakeLimit)}.
                     </InlineState>
                   ) : null}
-                  {insufficientBalance && !exceedsPositionLimit ? (
+                  {insufficientBalance ? (
                     <InlineState kind="error">
                       You need {formatCoinValue(quote.totalCost)} coins including the fee.
                     </InlineState>
                   ) : null}
-                  {exceedsPositionLimit ? (
-                    <InlineState kind="error">
-                      One position can use up to 50% of your net worth. You have
-                      {` ${formatCoinValue(remainingPositionBudget)} coins`} left for this outcome,
-                      including the fee.
-                    </InlineState>
-                  ) : null}
                   {bettingUnavailable ? (
                     <InlineState kind="info">
-                      This position has reached its limit. Choose another outcome, earn more coins,
-                      or wait for it to settle.
+                      You do not have enough coins to place this bet.
                     </InlineState>
                   ) : null}
                   {selectionIsOpponent ? (
@@ -1713,7 +1655,6 @@ export const BettingPage = () => {
                       type="submit"
                       disabled={
                         !validStake ||
-                        exceedsPositionLimit ||
                         insufficientBalance ||
                         bettingUnavailable ||
                         selectionIsOpponent ||

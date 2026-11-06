@@ -861,12 +861,6 @@ export const bettingRoute = async (event: FunctionEvent) => {
     p_stake: input.stake,
   });
   if (error) {
-    if (/exceeds 50 percent of net worth/i.test(error.message)) {
-      throw new HttpError(
-        409,
-        "One position can’t exceed 50% of your net worth, including existing bets on that outcome.",
-      );
-    }
     if (/not enough coins/i.test(error.message)) {
       throw new HttpError(409, "You don’t have enough coins for this bet and its 2% fee.");
     }
