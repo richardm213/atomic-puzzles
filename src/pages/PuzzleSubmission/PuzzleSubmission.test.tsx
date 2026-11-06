@@ -88,6 +88,22 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
           >
             Add move to line
           </button>
+          <button
+            type="button"
+            onClick={() =>
+              onStateChange?.({
+                ...c5NavigationState,
+                lineMoves: ["e4", "e5", "Nf3", "d6"],
+                customLines: [["e4", "e5", "Nf3", "d6"]],
+                lineIndex: 4,
+                solutionLineIndex: 0,
+                customLineIndex: 0,
+                viewingSolution: false,
+              })
+            }
+          >
+            Extend main line
+          </button>
           <button type="button" onClick={() => onStateChange?.(c5NavigationState)}>
             Navigate c5 line
           </button>
@@ -434,7 +450,7 @@ describe("PuzzleEditor move tree", () => {
 
     const alternateMove = screen.getByRole("button", { name: "1... c5" });
     fireEvent.contextMenu(alternateMove);
-    await user.click(screen.getByRole("menuitem", { name: "Delete from here" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
 
     const textarea = screen.getByRole("textbox", { name: "Solution PGN" }) as HTMLTextAreaElement;
     await waitFor(() =>
@@ -447,6 +463,21 @@ describe("PuzzleEditor move tree", () => {
     });
     expect(chessboardMocks.navigations.at(-1)).toHaveProperty("pgn");
     expect((chessboardMocks.navigations.at(-1) as { pgn: string }).pgn).not.toContain("c5");
+  });
+
+  it("can add the same line again after deleting it", async () => {
+    const user = userEvent.setup();
+    render(<EditorHarness allowSolutionEditing />);
+
+    await user.click(screen.getByRole("button", { name: "Extend main line" }));
+    await user.click(screen.getByRole("button", { name: "Delete current line" }));
+    await user.click(screen.getByRole("button", { name: "Extend main line" }));
+
+    const textarea = screen.getByRole("textbox", { name: "Solution PGN" }) as HTMLTextAreaElement;
+    await waitFor(() =>
+      expect(lineSet(solutionLinesFromTextarea(textarea))).toContain("e4 e5 Nf3 d6"),
+    );
+    expect(screen.getByRole("button", { name: "d6" })).toBeVisible();
   });
 
   it("keeps every alternate line while navigating and rejects board edits", async () => {

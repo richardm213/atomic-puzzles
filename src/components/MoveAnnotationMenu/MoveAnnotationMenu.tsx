@@ -3,17 +3,7 @@ import "./MoveAnnotationMenu.css";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-export const MOVE_ANNOTATIONS = ["", "!", "?", "!!", "??", "!?", "?!"] as const;
-
-const ANNOTATION_LABELS: Record<(typeof MOVE_ANNOTATIONS)[number], string> = {
-  "": "No annotation",
-  "!": "Good move",
-  "?": "Mistake",
-  "!!": "Brilliant move",
-  "??": "Blunder",
-  "!?": "Interesting move",
-  "?!": "Dubious move",
-};
+export const MOVE_ANNOTATIONS = ["?"] as const;
 
 export type AnnotationMenuPosition = { left: number; top: number; bottom: number };
 
@@ -92,18 +82,18 @@ export const MoveAnnotationMenu = ({
           type="button"
           role="menuitemradio"
           aria-checked={current === annotation}
-          aria-label={`${annotation || "–"} ${ANNOTATION_LABELS[annotation]}`}
+          aria-label={`Annotate with ${annotation}`}
           className={current === annotation ? "active" : ""}
           onClick={() => onSelect(annotation)}
         >
-          <span>{annotation || "–"}</span>
-          {ANNOTATION_LABELS[annotation]}
+          <span>{annotation}</span>
+          Annotate with {annotation}
         </button>
       ))}
       {onDelete ? (
         <button type="button" role="menuitem" className="danger" onClick={onDelete}>
           <span aria-hidden="true">×</span>
-          Delete from here
+          Delete
         </button>
       ) : null}
     </div>,

@@ -21,7 +21,8 @@ describe("PlayedMoves", () => {
     expect(screen.queryByRole("menu", { name: "Move annotation" })).not.toBeInTheDocument();
 
     fireEvent.contextMenu(move);
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "! Good move" }));
-    expect(onAnnotate).toHaveBeenCalledWith(0, "!");
+    expect(screen.getAllByRole("menuitemradio")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Annotate with ?" }));
+    expect(onAnnotate).toHaveBeenCalledWith(0, "?");
   });
 });

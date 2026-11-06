@@ -357,6 +357,7 @@ export const PuzzleEditor = ({
     if (!canEditSolution || !solutionLines[activeLineIndex]) return;
 
     try {
+      savedBoardLineRef.current = "";
       commitSolutionLines(
         solutionLines.filter((_, lineIndex) => lineIndex !== activeLineIndex),
         Math.max(0, activeLineIndex - 1),
@@ -394,6 +395,7 @@ export const PuzzleEditor = ({
     if (!line?.[moveIndex]) return;
 
     try {
+      savedBoardLineRef.current = "";
       const pruned = prunePgnLinesFromMove(solutionLines, lineIndex, moveIndex, sameSolutionMove);
       commitSolutionLines(pruned.lines, pruned.lineIndex, {
         targetPly: pruned.ply,
