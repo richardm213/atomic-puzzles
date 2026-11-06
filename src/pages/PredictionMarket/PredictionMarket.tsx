@@ -172,13 +172,7 @@ export const PredictionMarketPage = () => {
   const estimatedBuyProfit = quantity - estimatedBuyTotal;
   const estimatedSellProceeds = Math.max(0, sellQuote.proceedsCoins - estimatedTakerFee);
   const immediateBuyQuantity = buyQuote.filledQuantity;
-  const restingBidQuantity = buyQuote.restingQuantity;
-  const buyAction =
-    immediateBuyQuantity === 0
-      ? "Place bid"
-      : restingBidQuantity === 0
-        ? "Buy now"
-        : "Buy now + place bid";
+  const buyAction = immediateBuyQuantity > 0 ? "Buy" : "Bid";
   const positionsByOutcome = {
     yes: marketState?.positions.find((entry) => entry.outcome === "yes"),
     no: marketState?.positions.find((entry) => entry.outcome === "no"),
@@ -495,8 +489,8 @@ export const PredictionMarketPage = () => {
                 "Placing order…"
               ) : (
                 <>
-                  {side === "buy" ? buyAction : "Place ask"} ·{" "}
-                  {outcomeLabel(outcome, activeMarketDefinition)}{" "}
+                  {side === "buy" ? buyAction : "Ask"}{" "}
+                  {outcomeLabel(outcome, activeMarketDefinition)} ·{" "}
                   <PredictionPrice cents={validPrice ? price : 0} />
                 </>
               )}

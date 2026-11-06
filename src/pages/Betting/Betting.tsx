@@ -1523,7 +1523,7 @@ export const BettingPage = () => {
                       >
                         {placePredictionMutation.isPending
                           ? "Placing order…"
-                          : `Buy ${selectedPredictionOutcome === "yes" ? "Yes" : "No"} · ${validPredictionPrice ? `${predictionPrice}¢` : "—"}`}
+                          : `${predictionBuyQuote.filledQuantity > 0 ? "Buy" : "Bid"} ${selectedPredictionOutcome === "yes" ? "Yes" : "No"} · ${validPredictionPrice ? `${predictionPrice}¢` : "—"}`}
                       </button>
                     ) : (
                       <button
