@@ -1465,14 +1465,15 @@
   }
 
   .topNavCenter {
+    flex: 1 1 0;
     width: auto;
-    margin-left: auto;
-    justify-content: flex-end;
+    margin-left: 0;
+    justify-content: flex-start;
     flex-wrap: nowrap;
   }
 
   .topNavLinks {
-    flex: 0 1 auto;
+    flex: 1 1 0;
     flex-wrap: nowrap;
   }
 
