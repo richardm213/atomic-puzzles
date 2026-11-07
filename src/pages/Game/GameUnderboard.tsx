@@ -1,11 +1,10 @@
-import { faCheck, faClipboard } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import { WOLFRANDOM_RANDOMIZED_PLIES } from "../../../shared/domain/gameAnalysis";
+import { ShareExportPanel } from "../../components/ShareExportPanel/ShareExportPanel";
 import {
   ChessComProfileIcon,
   LichessProfileIcon,
@@ -15,7 +14,6 @@ import { usePersistedState } from "../../hooks/usePersistedState";
 import type { ArchiveGame } from "../../lib/archive/games";
 import { moveDurationsMilliseconds } from "../../lib/games/moveTimes";
 import { buildChessComGameUrl, buildLichessGameUrl } from "../../lib/matches/routes";
-import { copyTextToClipboard } from "../../utils/clipboard";
 import { GameMatchCrosstable } from "./GameMatchCrosstable";
 
 export type GameUnderboardTab = "analysis" | "move-times" | "crosstable" | "share";
@@ -102,68 +100,6 @@ const formatClockForChart = (milliseconds: number): string => {
 const formatMoveTimeForChart = (milliseconds: number): string => {
   const seconds = milliseconds / 1_000;
   return `${seconds < 10 ? seconds.toFixed(1) : Math.round(seconds)} seconds`;
-};
-
-const CopyButton = ({
-  label,
-  value,
-  compact = false,
-}: {
-  label: string;
-  value: string;
-  compact?: boolean;
-}) => {
-  const [status, setStatus] = useState<"idle" | "copied" | "error">("idle");
-  const statusLabel = status === "copied" ? "Copied" : status === "error" ? "Copy failed" : label;
-  return (
-    <button
-      type="button"
-      className={compact ? "gameShareCopyButton" : undefined}
-      aria-label={statusLabel}
-      title={statusLabel}
-      onClick={() =>
-        void copyTextToClipboard(value).then((copied) => setStatus(copied ? "copied" : "error"))
-      }
-    >
-      {compact ? (
-        <FontAwesomeIcon icon={status === "copied" ? faCheck : faClipboard} />
-      ) : (
-        statusLabel
-      )}
-    </button>
-  );
-};
-
-const ShareDocumentField = ({
-  label,
-  rows,
-  field,
-}: {
-  label: "FEN" | "PGN";
-  rows: number;
-  field: BoardDocument["fen"];
-}) => {
-  const { error, ...textareaProps } = field;
-  return (
-    <div className={`gameShareDocumentRow ${label === "PGN" ? "gameSharePgnRow" : ""}`}>
-      <div className="gameShareDocumentHeader">
-        <span>{label}</span>
-        <CopyButton label={`Copy ${label}`} value={String(field.value ?? "")} compact />
-      </div>
-      <textarea
-        {...textareaProps}
-        rows={rows}
-        spellCheck={false}
-        aria-label={label}
-        aria-invalid={Boolean(error)}
-      />
-      {error ? (
-        <small className="gameShareDocumentError" role="alert">
-          {error}
-        </small>
-      ) : null}
-    </div>
-  );
 };
 
 export const GameUnderboard = ({
@@ -263,7 +199,6 @@ export const GameUnderboard = ({
       : hoveredColor === "white"
         ? 4 + (1 - Math.max(0, hoveredClock) / maximumClock) * 42
         : 96 - (1 - Math.max(0, hoveredClock) / maximumClock) * 42;
-  const pgn = String(document.pgn.value ?? "");
 
   useEffect(() => {
     onActiveTabChange?.(activeTab);
@@ -293,15 +228,6 @@ export const GameUnderboard = ({
   const hideClockTooltip = (): void => {
     setHoveredPly(null);
     setHoveredTooltipX(null);
-  };
-
-  const downloadPgn = (): void => {
-    const url = URL.createObjectURL(new Blob([pgn], { type: "application/x-chess-pgn" }));
-    const link = window.document.createElement("a");
-    link.href = url;
-    link.download = `${game.game_id}.pgn`;
-    link.click();
-    URL.revokeObjectURL(url);
   };
 
   const tabs: Array<{ id: GameUnderboardTab; label: string }> = [
@@ -509,71 +435,67 @@ export const GameUnderboard = ({
         </div>
 
         {activeTab === "share" ? (
-          <div className="gameSharePanel">
-            <div className="gameShareActions">
-              {game.source === "chesscom" ? (
-                <a
-                  className="gameShareSourceLink gameShareChessComLink"
-                  href={buildChessComGameUrl(game.game_id)}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="View on Chess.com"
-                  title="View on Chess.com"
-                >
-                  <ChessComProfileIcon />
-                </a>
-              ) : null}
-              {game.source !== "chesscom" && game.source !== "pychess" ? (
-                <a
-                  className="gameShareSourceLink gameShareLichessLink"
-                  href={buildLichessGameUrl(game.game_id)}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="View on Lichess"
-                  title="View on Lichess"
-                >
-                  <LichessProfileIcon />
-                </a>
-              ) : null}
-              {atomicDbHref ? (
-                <a href={atomicDbHref} target="_blank" rel="noreferrer">
-                  View on AtomicDB
-                </a>
-              ) : atomicDbRequest ? (
-                <button
-                  type="button"
-                  disabled={atomicDbRequest.state === "requested"}
-                  onClick={atomicDbRequest.onRequest}
-                >
-                  {atomicDbRequest.state === "requested"
-                    ? "Analysis requested"
-                    : atomicDbRequest.state === "error"
-                      ? "Retry analysis request"
-                      : "Request analysis"}
-                </button>
-              ) : null}
-              {game.external_match_id ? (
-                <Link
-                  to="/match/$matchId"
-                  params={{ matchId: game.external_match_id }}
-                  aria-label="View match"
-                >
-                  View match
-                </Link>
-              ) : null}
-              <CopyButton label="Copy PGN" value={pgn} />
-              <button type="button" onClick={downloadPgn} disabled={!pgn}>
-                Download PGN
-              </button>
-            </div>
-            {atomicDbRequest?.state === "error" && atomicDbRequest.message ? (
-              <p className="gameShareError" role="alert">
-                {atomicDbRequest.message}
-              </p>
-            ) : null}
-            <ShareDocumentField label="FEN" rows={1} field={document.fen} />
-            <ShareDocumentField label="PGN" rows={4} field={document.pgn} />
-          </div>
+          <ShareExportPanel
+            document={document}
+            fileName={`${game.game_id}.pgn`}
+            {...(atomicDbRequest?.state === "error" && atomicDbRequest.message
+              ? { error: atomicDbRequest.message }
+              : {})}
+            actions={
+              <>
+                {game.source === "chesscom" ? (
+                  <a
+                    className="gameShareSourceLink gameShareChessComLink"
+                    href={buildChessComGameUrl(game.game_id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="View on Chess.com"
+                    title="View on Chess.com"
+                  >
+                    <ChessComProfileIcon />
+                  </a>
+                ) : null}
+                {game.source !== "chesscom" && game.source !== "pychess" ? (
+                  <a
+                    className="gameShareSourceLink gameShareLichessLink"
+                    href={buildLichessGameUrl(game.game_id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="View on Lichess"
+                    title="View on Lichess"
+                  >
+                    <LichessProfileIcon />
+                  </a>
+                ) : null}
+                {atomicDbHref ? (
+                  <a href={atomicDbHref} target="_blank" rel="noreferrer">
+                    View on AtomicDB
+                  </a>
+                ) : atomicDbRequest ? (
+                  <button
+                    type="button"
+                    disabled={atomicDbRequest.state === "requested"}
+                    onClick={atomicDbRequest.onRequest}
+                  >
+                    {atomicDbRequest.state === "requested"
+                      ? "Analysis requested"
+                      : atomicDbRequest.state === "error"
+                        ? "Retry analysis request"
+                        : "Request analysis"}
+                  </button>
+                ) : null}
+                {game.external_match_id ? (
+                  <Link
+                    to="/match/$matchId"
+                    params={{ matchId: game.external_match_id }}
+                    aria-label="View match"
+                  >
+                    View match
+                  </Link>
+                ) : null}
+              </>
+            }
+          />
         ) : null}
       </div>
     </section>

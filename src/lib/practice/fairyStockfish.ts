@@ -51,7 +51,9 @@ type CachedEvaluation = {
   expiresAt: number;
 };
 const candidatesByFen = new Map<string, CachedEvaluation>();
-const EVALUATION_CACHE_TTL_MS = 2 * 60_000;
+// Match the shared AtomicDB repository window so analysis, game, and practice can reuse a recent
+// local evaluation while moving between pages.
+const EVALUATION_CACHE_TTL_MS = 5 * 60_000;
 const MAX_EVALUATION_CACHE_ENTRIES = 128;
 const MIN_CACHED_EVALUATION_DEPTH = 15;
 const MIN_THINK_TIME_MS = 500;
@@ -100,6 +102,21 @@ export const isCacheableFairyStockfishEvaluation = (
   );
 };
 
+export const fairyStockfishEvaluationDepth = (candidates: EngineCandidate[]): number => {
+  const depth = candidates.reduce(
+    (shallowest, candidate) => Math.min(shallowest, candidate.depth ?? 0),
+    Number.POSITIVE_INFINITY,
+  );
+  return depth === Number.POSITIVE_INFINITY ? 0 : depth;
+};
+
+export const isDeeperFairyStockfishEvaluation = (
+  current: EngineCandidate[],
+  candidate: EngineCandidate[],
+): boolean =>
+  candidate.length >= current.length &&
+  fairyStockfishEvaluationDepth(candidate) > fairyStockfishEvaluationDepth(current);
+
 const cacheEvaluationIfDeepEnough = (
   engine: LocalAnalysisEngine,
   fen: string,
@@ -112,6 +129,8 @@ const cacheEvaluationIfDeepEnough = (
     .slice(0, multiPvCount);
 
   const key = evaluationCacheKey(engine, fen);
+  const current = candidatesByFen.get(key);
+  if (current && !isDeeperFairyStockfishEvaluation(current.candidates, completeCandidates)) return;
   candidatesByFen.delete(key);
   candidatesByFen.set(key, {
     candidates: completeCandidates,
@@ -659,10 +678,20 @@ export const analyzeFairyStockfishPosition = async (
   const engine = engineOverride ?? readLocalAnalysisEngine();
   const requestedLineCount = Math.min(MULTIPV_COUNT, Math.max(1, Math.floor(lineCount)));
   const cachedSearch = readCachedEvaluation(engine, fen);
+  let publishedCandidates = cachedSearch?.candidates ?? [];
   const handleProgress = (candidates: EngineCandidate[]): void => {
     cacheEvaluationIfDeepEnough(engine, fen, candidates, requestedLineCount);
-    onProgress?.(candidates);
+    if (
+      publishedCandidates.length === 0 ||
+      isDeeperFairyStockfishEvaluation(publishedCandidates, candidates)
+    ) {
+      publishedCandidates = candidates;
+      onProgress?.(candidates);
+    }
   };
+  if (cachedSearch && cachedSearch.multiPvCount < requestedLineCount) {
+    onProgress?.(cachedSearch.candidates);
+  }
   const candidates =
     cachedSearch && cachedSearch.multiPvCount >= requestedLineCount
       ? cachedSearch.candidates
@@ -681,7 +710,15 @@ export const analyzeFairyStockfishPosition = async (
           )
         ).candidates;
 
-  return [...candidates]
+  const latestCachedSearch = readCachedEvaluation(engine, fen);
+  const preferredCandidates =
+    latestCachedSearch &&
+    (candidates.length < requestedLineCount ||
+      !isDeeperFairyStockfishEvaluation(latestCachedSearch.candidates, candidates))
+      ? latestCachedSearch.candidates
+      : candidates;
+
+  return [...preferredCandidates]
     .sort((left, right) => left.multipv - right.multipv)
     .slice(0, requestedLineCount);
 };

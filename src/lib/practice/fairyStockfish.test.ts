@@ -4,6 +4,7 @@ import {
   chooseEngineCandidate,
   disableFirefoxAtomicsWaitAsync,
   type EngineCandidate,
+  isDeeperFairyStockfishEvaluation,
   isCacheableFairyStockfishEvaluation,
   parseEngineCandidate,
   withEngineRequestTimeout,
@@ -137,6 +138,29 @@ describe("Fairy-Stockfish evaluation cache threshold", () => {
     expect(isCacheableFairyStockfishEvaluation([{ ...candidate(1, 100), depth: 18 }], 2)).toBe(
       false,
     );
+  });
+
+  it("replaces a recent evaluation only after every line reaches a deeper depth", () => {
+    const cached = [
+      { ...candidate(1, 100), depth: 18 },
+      { ...candidate(2, 90), depth: 17 },
+    ];
+
+    expect(
+      isDeeperFairyStockfishEvaluation(cached, [
+        { ...candidate(1, 110), depth: 20 },
+        { ...candidate(2, 95), depth: 17 },
+      ]),
+    ).toBe(false);
+    expect(
+      isDeeperFairyStockfishEvaluation(cached, [{ ...candidate(1, 110), depth: 20 }]),
+    ).toBe(false);
+    expect(
+      isDeeperFairyStockfishEvaluation(cached, [
+        { ...candidate(1, 110), depth: 19 },
+        { ...candidate(2, 95), depth: 18 },
+      ]),
+    ).toBe(true);
   });
 });
 

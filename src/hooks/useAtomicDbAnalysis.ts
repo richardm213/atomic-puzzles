@@ -379,6 +379,10 @@ export const useAtomicDbAnalysis = (
         }
       } catch (error: unknown) {
         if (controller.signal.aborted) return;
+        if (fallbackToEngine) {
+          void publishEngineFallback();
+          return;
+        }
         startTransition(() => {
           setState((current) => ({
             ...current,

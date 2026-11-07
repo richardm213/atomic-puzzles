@@ -11,7 +11,7 @@ const DEFAULT_CLOCK_INCREMENT_SECONDS = 0;
 export type PracticeSide = "white" | "black";
 export type OpponentMode = "frequency" | "random" | "popular";
 export type OpponentSource = "general" | "player";
-export type PlayerContinuation = "general" | "stockfish" | "manual";
+export type PlayerContinuation = "general" | "engine";
 
 type StoredPracticeSettings = {
   side: PracticeSide;
@@ -21,6 +21,7 @@ type StoredPracticeSettings = {
   opponentUsername?: string;
   allowMultiplePlayers: boolean;
   playerContinuation: PlayerContinuation;
+  showPerformance: boolean;
   continueWithGeneralDb?: boolean;
   clockMinutes: number;
   clockIncrementSeconds: number;
@@ -33,7 +34,8 @@ const DEFAULT_SETTINGS: StoredPracticeSettings = {
   opponentSource: "general",
   opponentUsernames: [],
   allowMultiplePlayers: false,
-  playerContinuation: "stockfish",
+  playerContinuation: "engine",
+  showPerformance: false,
   clockMinutes: DEFAULT_CLOCK_MINUTES,
   clockIncrementSeconds: DEFAULT_CLOCK_INCREMENT_SECONDS,
   clockEnabled: true,
@@ -79,12 +81,13 @@ const practiceSettingsSchema = z
       opponentSource: value.opponentSource === "player" ? "player" : "general",
       opponentUsernames: allowMultiplePlayers ? opponentUsernames : opponentUsernames.slice(0, 1),
       allowMultiplePlayers,
+      // Migrate the former Manual and Stockfish choices to the shared engine path. The General DB
+      // preference remains intact for people who already selected it.
       playerContinuation:
-        value.playerContinuation === "manual"
-          ? "manual"
-          : value.playerContinuation === "general" || value.continueWithGeneralDb === true
-            ? "general"
-            : "stockfish",
+        value.playerContinuation === "general" || value.continueWithGeneralDb === true
+          ? "general"
+          : "engine",
+      showPerformance: value.showPerformance === true,
       clockMinutes: normalizeClockValue(value.clockMinutes, DEFAULT_CLOCK_MINUTES, 180),
       clockIncrementSeconds: normalizeClockValue(
         value.clockIncrementSeconds,

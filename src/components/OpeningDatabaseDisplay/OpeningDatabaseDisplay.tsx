@@ -139,7 +139,13 @@ export const OpeningDatabaseDisplay = ({
             <th>Move</th>
             <th>Games</th>
             {showPerformance ? <th>Perf</th> : null}
-            <th>Win rate</th>
+            <th>
+              <span className="analysisExplorerResultsHeading">
+                <span>White</span>
+                <span>Draw</span>
+                <span>Black</span>
+              </span>
+            </th>
           </tr>
         </thead>
         <tbody>

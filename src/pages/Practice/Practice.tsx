@@ -3,9 +3,7 @@ import "./Practice.css";
 import {
   faArrowsRotate,
   faBookOpen,
-  faCheck,
   faDice,
-  faGear,
   faPause,
   faPlay,
   faRobot,
@@ -30,19 +28,24 @@ import {
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import type { OpeningDatabaseMove } from "../../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
 import { Seo } from "../../components/Seo/Seo";
+import { ShareExportPanel } from "../../components/ShareExportPanel/ShareExportPanel";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
+import { AnalysisEngineExplorerPanels } from "../../features/analysisWorkspace/AnalysisEngineExplorerPanels";
 import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
 import {
   AnalysisWorkspaceLayout,
   AnalysisWorkspacePanel,
 } from "../../features/analysisWorkspace/AnalysisWorkspaceLayout";
 import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
-import { OpeningExplorerPanel } from "../../features/analysisWorkspace/OpeningExplorerPanel";
+import {
+  OpeningExplorerCompactHeader,
+  OpeningExplorerPanel,
+} from "../../features/analysisWorkspace/OpeningExplorerPanel";
+import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
-import { useCopyFeedback } from "../../hooks/useCopyFeedback";
 import { type OpeningExplorerRequest, useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
@@ -53,11 +56,6 @@ import {
   getBoardMoveState,
 } from "../../lib/analysis/boardState";
 import { apiRequest } from "../../lib/api/postApi";
-import { findFairyStockfishMove } from "../../lib/practice/fairyStockfish";
-import {
-  localAnalysisEngineLabel,
-  readLocalAnalysisEngine,
-} from "../../lib/practice/localAnalysisEngine";
 import { movePrefix } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
@@ -96,7 +94,6 @@ const buildPracticePgn = (rootFen: string, moveText = ""): string =>
   ].join("\n");
 type PracticeMove = OpeningDatabaseMove;
 
-type PracticeEngineStatus = "idle" | "thinking" | "error";
 type PendingAutoMove = {
   fen: string;
   uci: string;
@@ -210,6 +207,7 @@ export const PracticePage = () => {
     opponentUsernames,
     allowMultiplePlayers,
     playerContinuation,
+    showPerformance,
     clockMinutes,
     clockIncrementSeconds,
     clockEnabled,
@@ -245,14 +243,10 @@ export const PracticePage = () => {
   } = useUsernamePicker("player");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exhaustedFen, setExhaustedFen] = useState<string | null>(null);
-  const [manualContinuationActive, setManualContinuationActive] = useState(false);
   const [movesOpen, setMovesOpen] = usePersistedState(MOVES_OPEN_STORAGE_KEY, z.boolean(), true);
   const [hoveredMoveUci, setHoveredMoveUci] = useState<string | null>(null);
-  const { copy: copyPgn, copyLabel: copyPgnLabel } = useCopyFeedback();
   const [randomPlayerLoading, setRandomPlayerLoading] = useState(false);
   const [randomPlayerError, setRandomPlayerError] = useState("");
-  const [engineStatus, setEngineStatus] = useState<PracticeEngineStatus>("idle");
-  const [engineError, setEngineError] = useState("");
   const [dismissedError, setDismissedError] = useState("");
   const [remainingClockMs, setRemainingClockMs] = useState(clockMinutes * 60_000);
   const [clockExpired, setClockExpired] = useState(false);
@@ -294,24 +288,15 @@ export const PracticePage = () => {
     () =>
       JSON.stringify({
         fen: currentFen,
-        manualContinuationActive,
         opponentSource,
         opponentUsernames,
         opponentSide,
         playerContinuation,
       }),
-    [
-      currentFen,
-      manualContinuationActive,
-      opponentSide,
-      opponentSource,
-      opponentUsernames,
-      playerContinuation,
-    ],
+    [currentFen, opponentSide, opponentSource, opponentUsernames, playerContinuation],
   );
   const requestExplorer = useCallback(
     (signal: AbortSignal) => {
-      if (manualContinuationActive) return null;
       if (!canUsePlayerSource) {
         setExhaustedFen(null);
         return null;
@@ -330,7 +315,6 @@ export const PracticePage = () => {
     [
       canUsePlayerSource,
       currentFen,
-      manualContinuationActive,
       opponentSide,
       opponentSource,
       opponentUsernames,
@@ -345,13 +329,31 @@ export const PracticePage = () => {
   } = useOpeningExplorer({
     fen: currentFen,
     playerColor: opponentSide,
-    showPerformance: opponentSource === "player",
+    showPerformance: opponentSource === "player" && showPerformance,
     request: requestExplorer,
     cacheKey: practiceExplorerCacheKey,
   });
+  const databaseExhausted = exhaustedFen === currentFen;
+  const engineFallbackReady = databaseExhausted && status === "ready";
+  const engineMoveLineCount = Math.min(
+    5,
+    (triedMoveUcisByFenRef.current.get(currentFen)?.size ?? 0) + 1,
+  );
+  const engineMoveAnalysis = useAtomicDbAnalysis(currentFen, {
+    enabled:
+      engineFallbackReady &&
+      currentTurn === opponentSide &&
+      !gamePaused &&
+      navigation === null &&
+      lastAutoFenRef.current !== currentFen,
+    debounceMs: 0,
+    lineCount: engineMoveLineCount,
+    plyCount: 1,
+    fallbackToEngine: true,
+  });
   const popupError =
     (status === "error" ? "Could not load database moves. Try again." : "") ||
-    (engineStatus === "error" ? engineError : "") ||
+    (engineMoveAnalysis.status === "error" ? engineMoveAnalysis.error : "") ||
     randomPlayerError;
   const visiblePopupError = popupError && popupError !== dismissedError ? popupError : "";
 
@@ -359,8 +361,6 @@ export const PracticePage = () => {
     if (!popupError) setDismissedError("");
   }, [popupError]);
 
-  const databaseExhausted = exhaustedFen === currentFen;
-  const engineFallbackReady = databaseExhausted && !manualContinuationActive && status === "ready";
   const selectedPlayerSummary =
     opponentUsernames.length === 0
       ? "Player"
@@ -394,10 +394,6 @@ export const PracticePage = () => {
   const maxPracticePlayers = allowMultiplePlayers ? MAX_PRACTICE_PLAYERS : 1;
   const canAddPracticePlayer = opponentUsernames.length < maxPracticePlayers;
   const canChoosePracticePlayer = allowMultiplePlayers ? canAddPracticePlayer : true;
-
-  const handleCopyPgn = useCallback(async (): Promise<void> => {
-    await copyPgn(currentPracticePgn);
-  }, [copyPgn, currentPracticePgn]);
 
   const queueNavigation = useCallback((nextNavigation: SolutionNavigation): void => {
     navigationRef.current = nextNavigation;
@@ -440,7 +436,6 @@ export const PracticePage = () => {
   const resetOpponentMoveChoices = useCallback((): void => {
     clearAutoMoveState();
     clearTriedMoves();
-    setManualContinuationActive(false);
   }, [clearAutoMoveState, clearTriedMoves]);
 
   const resetPracticeClock = useCallback(
@@ -474,7 +469,7 @@ export const PracticePage = () => {
     currentPly === moveList.length &&
     !navigation &&
     !pendingAutoMove &&
-    (!databaseExhausted || manualContinuationActive);
+    !databaseExhausted;
 
   useEffect(() => {
     if (!clockRunning) return;
@@ -507,7 +502,6 @@ export const PracticePage = () => {
   useEffect(() => {
     if (
       !canUsePlayerSource ||
-      manualContinuationActive ||
       status !== "ready" ||
       databaseExhausted ||
       gamePaused ||
@@ -521,11 +515,9 @@ export const PracticePage = () => {
 
     const autoMove = chooseOpponentMove(getUntriedMoves(currentFen, practiceMoves), opponentMode);
     if (!autoMove) {
-      // The selected player -> optional general database chain is complete.
+      // The selected player -> optional general database chain is complete. The shared AtomicDB
+      // analysis path takes over from here and falls back to Atomic-Stockfish when necessary.
       setExhaustedFen(currentFen);
-      if (opponentSource === "player" && playerContinuation === "manual") {
-        setManualContinuationActive(true);
-      }
       return;
     }
 
@@ -542,7 +534,6 @@ export const PracticePage = () => {
     databaseExhausted,
     gamePaused,
     getUntriedMoves,
-    manualContinuationActive,
     navigation,
     opponentMode,
     opponentSide,
@@ -565,49 +556,29 @@ export const PracticePage = () => {
       navigation ||
       lastAutoFenRef.current === currentFen
     ) {
-      if (!engineFallbackReady || currentTurn !== opponentSide || gamePaused || navigation) {
-        setEngineStatus("idle");
-        setEngineError("");
-      }
+      return;
+    }
+    if (engineMoveAnalysis.status !== "ready" || engineMoveAnalysis.result?.fen !== currentFen) {
       return;
     }
 
-    const controller = new AbortController();
-    setEngineStatus("thinking");
-    setEngineError("");
+    const excludedMoves = triedMoveUcisByFenRef.current.get(currentFen);
+    const uci = engineMoveAnalysis.result.position?.moves.find(
+      (move) => !excludedMoves?.has(move.uci),
+    )?.uci;
+    if (!uci) return;
 
-    void findFairyStockfishMove(
-      currentFen,
-      controller.signal,
-      triedMoveUcisByFenRef.current.get(currentFen),
-    )
-      .then((uci) => {
-        if (controller.signal.aborted) return;
-        if (!uci) {
-          throw new Error(
-            triedMoveUcisByFenRef.current.get(currentFen)?.size
-              ? "No different safe engine move is available"
-              : `${localAnalysisEngineLabel(readLocalAnalysisEngine())} found no legal move`,
-          );
-        }
-
-        lastAutoFenRef.current = currentFen;
-        setEngineStatus("idle");
-        setPendingAutoMove({ fen: currentFen, uci });
-      })
-      .catch((engineFailure) => {
-        if (controller.signal.aborted) return;
-        setEngineStatus("error");
-        setEngineError(
-          getErrorMessage(
-            engineFailure,
-            `${localAnalysisEngineLabel(readLocalAnalysisEngine())} failed`,
-          ),
-        );
-      });
-
-    return () => controller.abort();
-  }, [currentFen, currentTurn, engineFallbackReady, gamePaused, navigation, opponentSide]);
+    lastAutoFenRef.current = currentFen;
+    setPendingAutoMove({ fen: currentFen, uci });
+  }, [
+    currentFen,
+    currentTurn,
+    engineFallbackReady,
+    engineMoveAnalysis,
+    gamePaused,
+    navigation,
+    opponentSide,
+  ]);
 
   useEffect(() => {
     if (!pendingAutoMove || navigation) return;
@@ -703,7 +674,6 @@ export const PracticePage = () => {
   const requestNavigation = useCallback(
     (command: PlaybackCommand): void => {
       clearAutoMoveState();
-      setManualContinuationActive(false);
       if (command === "previous" || command === "start") {
         setGamePaused(true);
       }
@@ -715,7 +685,6 @@ export const PracticePage = () => {
   const navigateToPly = useCallback(
     (plyIndex: number): void => {
       clearAutoMoveState();
-      setManualContinuationActive(false);
       if (plyIndex < currentPly) {
         setGamePaused(true);
       }
@@ -727,7 +696,6 @@ export const PracticePage = () => {
   const navigateToAnalysisMove = useCallback(
     (lineIndex: number, moveIndex: number): void => {
       clearAutoMoveState();
-      setManualContinuationActive(false);
       if (moveIndex + 1 < currentPly) setGamePaused(true);
       const target = lineTargets[lineIndex];
       if (target) queueNavigation(boardLineNavigation(target, moveIndex + 1));
@@ -1075,156 +1043,68 @@ export const PracticePage = () => {
     usernamePickerOpen,
   ]);
 
-  const pageStyle = {
-    "--analysis-board-size": "min(516px, calc(100dvh - var(--nav-height) - 44px))",
-  } as CSSProperties;
-
-  return (
-    <AnalysisWorkspaceLayout className="practicePage" style={pageStyle}>
-      <Seo
-        title={
-          opponentSource === "player" && opponentUsernames.length === 1
-            ? `Practice against ${opponentUsernames[0]}`
-            : "Opening Database Practice"
-        }
-        description={
-          opponentSource === "player" && opponentUsernames.length === 1
-            ? `Practice atomic openings against games played by ${opponentUsernames[0]}.`
-            : "Practice atomic openings against the general database or selected players' games."
-        }
-        path={opponentSource === "player" ? practicePath(opponentUsernames) : "/practice"}
-      />
-
-      <AnalysisWorkspacePanel
-        className={`practicePanel ${settingsOpen ? "dbMovesCollapsed" : ""}`}
-        aria-label="Practice controls"
-      >
-        <div className="practiceSessionControls" role="group" aria-label="Practice session">
-          <div className="practiceHeaderTitle">
-            <h1>Opening Database Practice</h1>
-          </div>
-          <div className="practiceStatus" aria-live="polite">
-            <strong>{totalGames ? `${formatGameCount(totalGames)} games` : "0 games"}</strong>
-          </div>
-
-          <div
-            className={`practiceClock ${clockExpired ? "expired" : ""} ${clockEnabled ? "" : "off"}`}
-            aria-label={
-              clockEnabled
-                ? `Your clock: ${formatClockTime(remainingClockMs)}`
-                : "Practice controls"
+  const practiceOpeningExplorer = !movesOpen ? (
+    <OpeningExplorerPanel
+      className={`practiceMovesPanel ${settingsOpen ? "settingsOpen" : ""}`}
+      ariaLabel="Opening explorer"
+      tableClassName="practiceMoveTableWrap"
+      displayProps={
+        !movesOpen && !settingsOpen
+          ? {
+              moves: practiceMoves,
+              recentGames,
+              status,
+              error,
+              emptyMessage:
+                opponentSource === "player" && opponentUsernames.length === 0
+                  ? "Choose a player or use the general database."
+                  : "No database continuation.",
+              showPerformance: opponentSource === "player" && showPerformance,
+              orientation: side,
+              currentPly,
+              onPlayMove: playPracticeMove,
+              onHoverMove: setHoveredMoveUci,
+              showInlineError: false,
             }
+          : undefined
+      }
+    >
+      <section className="practiceSettings" aria-label="Opponent settings">
+        <OpeningExplorerCompactHeader
+          controlsId="practice-settings-panel"
+          settingsOpen={settingsOpen}
+          settingsTitle="Practice settings"
+          tabListLabel="Opponent source"
+          onSettingsToggle={() => setSettingsOpen((open) => !open)}
+        >
+          <button
+            type="button"
+            role="tab"
+            className={opponentSource === "general" ? "active" : ""}
+            aria-selected={opponentSource === "general"}
+            onClick={showGeneralOpponent}
           >
-            {clockEnabled ? (
-              <strong aria-live="off">{formatClockTime(remainingClockMs)}</strong>
-            ) : null}
-            <div className="practiceClockActions">
-              <button
-                type="button"
-                onClick={toggleGamePaused}
-                disabled={!canRunPractice}
-                aria-label={
-                  gamePaused ? (sessionStarted ? "Resume game" : "Start game") : "Pause game"
-                }
-                title={gamePaused ? "Start or resume game (A)" : "Pause game (A)"}
-              >
-                <FontAwesomeIcon icon={gamePaused ? faPlay : faPause} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                onClick={restartPracticeGame}
-                aria-label="Restart game"
-                title="Restart from the initial position"
-              >
-                <FontAwesomeIcon icon={faRotateLeft} aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-
-          <div className="practiceHeaderActions">
-            <button
-              type="button"
-              className="practiceSideButton"
-              data-side={side}
-              aria-label={`Play as ${opponentSide}`}
-              title={`Playing as ${side}. Switch sides`}
-              onClick={flipPracticeSide}
-            >
-              <FontAwesomeIcon icon={faArrowsRotate} aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-
-        <section className="practiceSettings" aria-label="Opponent settings">
-          <div className="practiceExplorerHeader">
-            <div
-              className="practiceExplorerTabs analysisExplorerTabs"
-              role="tablist"
-              aria-label="Opponent source"
-            >
-              <button
-                type="button"
-                role="tab"
-                className={opponentSource === "general" ? "active" : ""}
-                aria-selected={opponentSource === "general"}
-                onClick={showGeneralOpponent}
-              >
-                <FontAwesomeIcon icon={faBookOpen} />
-                <span>General</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                className={opponentSource === "player" ? "active" : ""}
-                aria-selected={opponentSource === "player"}
-                title={`${selectedPlayerSummary} as ${opponentSide}`}
-                onClick={showPlayerOpponent}
-              >
-                <span className="practiceExplorerPlayerLabel">
-                  <span>{selectedPlayerTabLabel}</span>
-                  <small>{selectedPlayerTabDetail}</small>
-                </span>
-              </button>
-            </div>
-            <div className="practiceExplorerActions">
-              <span className="practiceActionTooltip" data-tooltip="Practice random opponent">
-                <button
-                  type="button"
-                  className="practiceRandomBoppButton"
-                  onClick={selectRandomPlayer}
-                  disabled={randomPlayerLoading || !canChoosePracticePlayer}
-                  aria-label="Practice a random opponent"
-                >
-                  <FontAwesomeIcon icon={faDice} />
-                </button>
-              </span>
-              <span className="practiceActionTooltip" data-tooltip="Swap opponent’s move">
-                <button
-                  type="button"
-                  className="practiceAlternateMoveButton"
-                  onClick={requestAlternateAutoMove}
-                  disabled={status !== "ready"}
-                  aria-label="Choose a different opponent move"
-                >
-                  <FontAwesomeIcon icon={faShuffle} />
-                </button>
-              </span>
-              <button
-                type="button"
-                className={`analysisFilterToggle ${settingsOpen ? "open" : ""}`}
-                aria-label={settingsOpen ? "Close practice settings" : "Open practice settings"}
-                aria-controls="practice-settings-panel"
-                aria-expanded={settingsOpen}
-                title={settingsOpen ? "Close settings" : "Settings"}
-                onClick={() => setSettingsOpen((open) => !open)}
-              >
-                <FontAwesomeIcon icon={settingsOpen ? faXmark : faGear} />
-              </button>
-            </div>
-          </div>
-          {settingsOpen ? (
-            <div className="analysisFilterPanel practiceSettingsPanel" id="practice-settings-panel">
-              {opponentSource === "player" ? (
+            <FontAwesomeIcon icon={faBookOpen} />
+            <span>General</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            className={opponentSource === "player" ? "active" : ""}
+            aria-selected={opponentSource === "player"}
+            title={`${selectedPlayerSummary} as ${opponentSide}`}
+            onClick={showPlayerOpponent}
+          >
+            <span className="analysisExplorerPlayerLabel">
+              <span>{selectedPlayerTabLabel}</span>
+              <small>{selectedPlayerTabDetail}</small>
+            </span>
+          </button>
+        </OpeningExplorerCompactHeader>
+        {settingsOpen ? (
+          <div className="analysisFilterPanel practiceSettingsPanel" id="practice-settings-panel">
+            {opponentSource === "player" ? (
+              <>
                 <div className="analysisPlayerSettings practicePlayerSettings">
                   <span>{allowMultiplePlayers ? "Players" : "Player"}</span>
                   <div
@@ -1271,142 +1151,246 @@ export const PracticePage = () => {
                     </div>
                   ) : null}
                 </div>
-              ) : null}
+                <label className="analysisFilterCheckbox">
+                  <span>Show performance rating</span>
+                  <input
+                    type="checkbox"
+                    checked={showPerformance}
+                    onChange={(event) => updateSettings({ showPerformance: event.target.checked })}
+                  />
+                </label>
+              </>
+            ) : null}
 
+            <div className="practiceSettingGroup">
+              <span>Move choice</span>
+              <div className="practiceModeGrid" role="group" aria-label="Database move selection">
+                <button
+                  type="button"
+                  className={opponentMode === "frequency" ? "active" : ""}
+                  aria-pressed={opponentMode === "frequency"}
+                  onClick={() => updateSettings({ opponentMode: "frequency" })}
+                >
+                  Frequency
+                </button>
+                <button
+                  type="button"
+                  className={opponentMode === "random" ? "active" : ""}
+                  aria-pressed={opponentMode === "random"}
+                  onClick={() => updateSettings({ opponentMode: "random" })}
+                >
+                  Random
+                </button>
+                <button
+                  type="button"
+                  className={opponentMode === "popular" ? "active" : ""}
+                  aria-pressed={opponentMode === "popular"}
+                  onClick={() => updateSettings({ opponentMode: "popular" })}
+                >
+                  Popular
+                </button>
+              </div>
+            </div>
+
+            <label className="practiceCheckbox">
+              <span>Enable clock</span>
+              <input
+                type="checkbox"
+                checked={clockEnabled}
+                onChange={(event) => updateClockEnabled(event.target.checked)}
+              />
+            </label>
+
+            {clockEnabled ? (
               <div className="practiceSettingGroup">
-                <span>Move choice</span>
-                <div className="practiceModeGrid" role="group" aria-label="Database move selection">
+                <span>Time control</span>
+                <div className="practiceTimeControl" aria-label="Practice time control">
+                  <label>
+                    <span>Minutes</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="180"
+                      step="1"
+                      value={clockMinutes}
+                      onChange={(event) => {
+                        const nextMinutes = normalizeClockValue(event.target.value, 0, 180);
+                        updateSettings({ clockMinutes: nextMinutes });
+                        resetPracticeClock(nextMinutes);
+                      }}
+                    />
+                  </label>
+                  <span aria-hidden="true">+</span>
+                  <label>
+                    <span>Increment</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="60"
+                      step="1"
+                      value={clockIncrementSeconds}
+                      onChange={(event) =>
+                        updateSettings({
+                          clockIncrementSeconds: normalizeClockValue(event.target.value, 0, 60),
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+              </div>
+            ) : null}
+
+            <label className="practiceCheckbox">
+              <span>Allow multiple players</span>
+              <input
+                type="checkbox"
+                checked={allowMultiplePlayers}
+                onChange={(event) => updateAllowMultiplePlayers(event.target.checked)}
+              />
+            </label>
+
+            {opponentSource === "player" ? (
+              <div className="practiceSettingGroup">
+                <span>Continue with</span>
+                <div className="practiceSegmented" role="group" aria-label="Player continuation">
                   <button
                     type="button"
-                    className={opponentMode === "frequency" ? "active" : ""}
-                    aria-pressed={opponentMode === "frequency"}
-                    onClick={() => updateSettings({ opponentMode: "frequency" })}
+                    className={playerContinuation === "general" ? "active" : ""}
+                    aria-pressed={playerContinuation === "general"}
+                    onClick={() => {
+                      updateSettings({ playerContinuation: "general" });
+                      resetOpponentMoveChoices();
+                    }}
                   >
-                    Frequency
+                    General DB
                   </button>
                   <button
                     type="button"
-                    className={opponentMode === "random" ? "active" : ""}
-                    aria-pressed={opponentMode === "random"}
-                    onClick={() => updateSettings({ opponentMode: "random" })}
+                    className={playerContinuation === "engine" ? "active" : ""}
+                    aria-pressed={playerContinuation === "engine"}
+                    onClick={() => {
+                      updateSettings({ playerContinuation: "engine" });
+                      resetOpponentMoveChoices();
+                    }}
                   >
-                    Random
-                  </button>
-                  <button
-                    type="button"
-                    className={opponentMode === "popular" ? "active" : ""}
-                    aria-pressed={opponentMode === "popular"}
-                    onClick={() => updateSettings({ opponentMode: "popular" })}
-                  >
-                    Popular
+                    <FontAwesomeIcon icon={faRobot} />
+                    <span>Engine</span>
                   </button>
                 </div>
               </div>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+    </OpeningExplorerPanel>
+  ) : null;
 
-              <label className="practiceCheckbox">
-                <span>Enable clock</span>
-                <input
-                  type="checkbox"
-                  checked={clockEnabled}
-                  onChange={(event) => updateClockEnabled(event.target.checked)}
-                />
-              </label>
+  const pageStyle = {
+    "--analysis-board-size": "min(516px, calc(100dvh - var(--nav-height) - 44px))",
+  } as CSSProperties;
 
-              {clockEnabled ? (
-                <div className="practiceSettingGroup">
-                  <span>Time control</span>
-                  <div className="practiceTimeControl" aria-label="Practice time control">
-                    <label>
-                      <span>Minutes</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="180"
-                        step="1"
-                        value={clockMinutes}
-                        onChange={(event) => {
-                          const nextMinutes = normalizeClockValue(event.target.value, 0, 180);
-                          updateSettings({ clockMinutes: nextMinutes });
-                          resetPracticeClock(nextMinutes);
-                        }}
-                      />
-                    </label>
-                    <span aria-hidden="true">+</span>
-                    <label>
-                      <span>Increment</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="60"
-                        step="1"
-                        value={clockIncrementSeconds}
-                        onChange={(event) =>
-                          updateSettings({
-                            clockIncrementSeconds: normalizeClockValue(event.target.value, 0, 60),
-                          })
-                        }
-                      />
-                    </label>
-                  </div>
-                </div>
-              ) : null}
+  return (
+    <AnalysisWorkspaceLayout className="practicePage" style={pageStyle}>
+      <Seo
+        title={
+          opponentSource === "player" && opponentUsernames.length === 1
+            ? `Practice against ${opponentUsernames[0]}`
+            : "Opening Database Practice"
+        }
+        description={
+          opponentSource === "player" && opponentUsernames.length === 1
+            ? `Practice atomic openings against games played by ${opponentUsernames[0]}.`
+            : "Practice atomic openings against the general database or selected players' games."
+        }
+        path={opponentSource === "player" ? practicePath(opponentUsernames) : "/practice"}
+      />
 
-              <label className="practiceCheckbox">
-                <span>Allow multiple players</span>
-                <input
-                  type="checkbox"
-                  checked={allowMultiplePlayers}
-                  onChange={(event) => updateAllowMultiplePlayers(event.target.checked)}
-                />
-              </label>
+      <AnalysisWorkspacePanel
+        className={`practicePanel ${!movesOpen ? "explorerOpen" : "explorerCollapsed"}`}
+        aria-label="Practice controls"
+      >
+        <div className="practiceSessionControls" role="group" aria-label="Practice session">
+          <div className="practiceHeaderTitle">
+            <h1>Opening Database Practice</h1>
+          </div>
+          <div className="practiceStatus" aria-live="polite">
+            <strong>{totalGames ? `${formatGameCount(totalGames)} games` : "0 games"}</strong>
+          </div>
 
-              {opponentSource === "player" ? (
-                <div className="practiceSettingGroup">
-                  <span>Continue with</span>
-                  <div className="practiceSegmented" role="group" aria-label="Player continuation">
-                    <button
-                      type="button"
-                      className={playerContinuation === "general" ? "active" : ""}
-                      aria-pressed={playerContinuation === "general"}
-                      onClick={() => {
-                        updateSettings({ playerContinuation: "general" });
-                        resetOpponentMoveChoices();
-                      }}
-                    >
-                      General DB
-                    </button>
-                    <button
-                      type="button"
-                      className={playerContinuation === "manual" ? "active" : ""}
-                      aria-pressed={playerContinuation === "manual"}
-                      onClick={() => {
-                        updateSettings({ playerContinuation: "manual" });
-                        resetOpponentMoveChoices();
-                      }}
-                    >
-                      Manual
-                    </button>
-                    <button
-                      type="button"
-                      className={playerContinuation === "stockfish" ? "active" : ""}
-                      aria-pressed={playerContinuation === "stockfish"}
-                      onClick={() => {
-                        updateSettings({ playerContinuation: "stockfish" });
-                        resetOpponentMoveChoices();
-                      }}
-                    >
-                      <FontAwesomeIcon icon={faRobot} />
-                      <span>Stockfish</span>
-                    </button>
-                  </div>
-                </div>
-              ) : null}
+          <div
+            className={`practiceClock ${clockExpired ? "expired" : ""} ${clockEnabled ? "" : "off"}`}
+            aria-label={
+              clockEnabled
+                ? `Your clock: ${formatClockTime(remainingClockMs)}`
+                : "Practice controls"
+            }
+          >
+            {clockEnabled ? (
+              <strong aria-live="off">{formatClockTime(remainingClockMs)}</strong>
+            ) : null}
+            <div className="practiceClockActions">
+              <button
+                type="button"
+                onClick={toggleGamePaused}
+                disabled={!canRunPractice}
+                aria-label={
+                  gamePaused ? (sessionStarted ? "Resume game" : "Start game") : "Pause game"
+                }
+                title={gamePaused ? "Start or resume game (A)" : "Pause game (A)"}
+              >
+                <FontAwesomeIcon icon={gamePaused ? faPlay : faPause} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={restartPracticeGame}
+                aria-label="Restart game"
+                title="Restart from the initial position"
+              >
+                <FontAwesomeIcon icon={faRotateLeft} aria-hidden="true" />
+              </button>
+              <span className="practiceActionTooltip" data-tooltip="Practice random opponent">
+                <button
+                  type="button"
+                  className="practiceRandomBoppButton"
+                  onClick={selectRandomPlayer}
+                  disabled={randomPlayerLoading || !canChoosePracticePlayer}
+                  aria-label="Practice a random opponent"
+                >
+                  <FontAwesomeIcon icon={faDice} />
+                </button>
+              </span>
+              <span className="practiceActionTooltip" data-tooltip="Swap opponent’s move">
+                <button
+                  type="button"
+                  className="practiceAlternateMoveButton"
+                  onClick={requestAlternateAutoMove}
+                  disabled={status !== "ready"}
+                  aria-label="Choose a different opponent move"
+                >
+                  <FontAwesomeIcon icon={faShuffle} />
+                </button>
+              </span>
             </div>
-          ) : null}
-        </section>
+          </div>
 
-        {movesOpen && !settingsOpen ? (
-          <section className="analysisMovePanel practicePlayedMovesPanel" aria-label="Played moves">
+          <div className="practiceHeaderActions">
+            <button
+              type="button"
+              className="practiceSideButton"
+              data-side={side}
+              aria-label={`Play as ${opponentSide}`}
+              title={`Playing as ${side}. Switch sides`}
+              onClick={flipPracticeSide}
+            >
+              <FontAwesomeIcon icon={faArrowsRotate} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+
+        <AnalysisEngineExplorerPanels
+          movePanelAriaLabel="Position analysis and played moves"
+          movePanelClassName="practicePlayedMovesPanel"
+          engine={
             <AtomicDbAnalysisBlock
               fen={atomicDbFen}
               analysis={atomicDbAnalysis}
@@ -1417,65 +1401,36 @@ export const PracticePage = () => {
               onHoverMove={setHoveredMoveUci}
               disabled={atomicDbLinePlaying}
             />
-            <div className="analysisMoveContent">
-              <MoveNotation
-                lines={analysisLines}
-                moves={moveList}
-                currentPly={currentPly}
-                pinnedLineIndex={activeLineIndex}
-                inline
-                onNavigate={navigateToPly}
-                onSelectVariation={navigateToAnalysisMove}
-                onCycleOptions={requestNavigation}
-                onAnnotate={annotateMove}
-              />
-            </div>
-          </section>
-        ) : null}
-
-        {!movesOpen && !settingsOpen ? (
-          <OpeningExplorerPanel
-            className="practiceMovesPanel"
-            ariaLabel="Database moves"
-            tableClassName="practiceMoveTableWrap"
-            displayProps={{
-              moves: practiceMoves,
-              recentGames,
-              status,
-              error,
-              emptyMessage:
-                opponentSource === "player" && opponentUsernames.length === 0
-                  ? "Choose a player or use the general database."
-                  : "No database continuation.",
-              showPerformance: opponentSource === "player",
-              orientation: side,
-              currentPly,
-              onPlayMove: playPracticeMove,
-              onHoverMove: setHoveredMoveUci,
-              showInlineError: false,
-            }}
-          />
-        ) : null}
+          }
+          moveContent={
+            <MoveNotation
+              lines={analysisLines}
+              moves={moveList}
+              currentPly={currentPly}
+              pinnedLineIndex={activeLineIndex}
+              inline
+              onNavigate={navigateToPly}
+              onSelectVariation={navigateToAnalysisMove}
+              onCycleOptions={requestNavigation}
+              onAnnotate={annotateMove}
+            />
+          }
+          explorer={practiceOpeningExplorer}
+        />
 
         <AnalysisToolbar
-          active={!movesOpen && !settingsOpen}
+          active={!movesOpen}
           ariaLabel="Practice navigation"
           canStepBack={canStepBack}
           canStepForward={canStepForward}
           className="practiceToolbar"
           onNavigate={requestNavigation}
           onToggle={() => {
-            if (settingsOpen || movesOpen) {
-              setSettingsOpen(false);
-              setMovesOpen(false);
-            } else {
-              setMovesOpen(true);
-            }
+            setSettingsOpen(false);
+            setMovesOpen((open) => !open);
           }}
-          toggleAriaLabel={movesOpen || settingsOpen ? "Show database moves" : "Show played moves"}
-          toggleTitle={
-            movesOpen || settingsOpen ? "Show database moves (E)" : "Show played moves (E)"
-          }
+          toggleAriaLabel={movesOpen ? "Show database moves" : "Hide database moves"}
+          toggleTitle={movesOpen ? "Show database moves (E)" : "Hide database moves (E)"}
         />
       </AnalysisWorkspacePanel>
 
@@ -1524,22 +1479,41 @@ export const PracticePage = () => {
             orientation={side}
           />
         }
+        boardAfter={
+          <ShareExportPanel
+            className="practiceShareExport"
+            title="Share & export"
+            document={boardDocument}
+            fileName="atomic-practice.pgn"
+            actions={
+              <>
+                <a href={currentLichessAnalysisUrl} target="_blank" rel="noreferrer">
+                  View on Lichess
+                </a>
+                <a
+                  href={
+                    atomicDbAnalysis.result?.position?.key
+                      ? atomicDbPositionUrl(atomicDbAnalysis.result.position.key)
+                      : ATOMIC_DB_HOME_URL
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View on AtomicDB
+                </a>
+              </>
+            }
+          />
+        }
         lichessHref={currentLichessAnalysisUrl}
         atomicDbHref={
           atomicDbAnalysis.result?.position?.key
             ? atomicDbPositionUrl(atomicDbAnalysis.result.position.key)
             : ATOMIC_DB_HOME_URL
         }
-        actionClassName="practiceBoardActions"
-        secondaryAction={
-          <button type="button" className="practiceCopyPgnButton" onClick={handleCopyPgn}>
-            {copyPgnLabel === "Copied" ? (
-              <FontAwesomeIcon className="practiceCopyPgnCheck" icon={faCheck} aria-hidden="true" />
-            ) : null}
-            {copyPgnLabel}
-          </button>
-        }
         document={boardDocument}
+        showActions={false}
+        showDocument={false}
       />
 
       {visiblePopupError ? (

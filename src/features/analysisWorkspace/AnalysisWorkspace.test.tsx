@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { AnalysisToolbar } from "./AnalysisToolbar";
+import { AnalysisEngineExplorerPanels } from "./AnalysisEngineExplorerPanels";
 import { AnalysisWorkspaceLayout, AnalysisWorkspacePanel } from "./AnalysisWorkspaceLayout";
 import { OpeningExplorerPanel, OpeningExplorerResizeHandle } from "./OpeningExplorerPanel";
 
@@ -20,6 +21,21 @@ describe("analysis workspace", () => {
       "analysisPanel",
       "practicePanel",
     );
+  });
+
+  it("keeps the engine and moves before the opening explorer", () => {
+    render(
+      <AnalysisEngineExplorerPanels
+        engine={<div>Engine</div>}
+        moveContent={<div>Played moves</div>}
+        explorer={<section aria-label="Opening explorer">Explorer</section>}
+        movePanelAriaLabel="Position analysis"
+      />,
+    );
+
+    const enginePanel = screen.getByRole("region", { name: "Position analysis" });
+    const explorer = screen.getByRole("region", { name: "Opening explorer" });
+    expect(enginePanel.compareDocumentPosition(explorer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it("shares explorer toggle and playback behavior", () => {

@@ -143,6 +143,39 @@ describe("useAtomicDbAnalysis", () => {
     expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5", "g1f3"]);
   });
 
+  it("falls back to Atomic-Stockfish when AtomicDB is unavailable", async () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 14 32";
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("AtomicDB unavailable")));
+    analyzeWithEngineMock.mockResolvedValue([
+      {
+        move: "d2d4",
+        multipv: 1,
+        scoreType: "cp",
+        score: 64,
+        depth: 17,
+      },
+    ]);
+
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(fen, {
+        debounceMs: 0,
+        fallbackToEngine: true,
+        lineCount: 1,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(analyzeWithEngineMock).toHaveBeenCalledWith(
+      fen,
+      1,
+      expect.any(AbortSignal),
+      expect.any(Function),
+      "atomic-stockfish",
+    );
+    expect(result.current.source).toBe("engine");
+    expect(result.current.result?.position?.moves[0]?.uci).toBe("d2d4");
+  });
+
   it("requests only the number of legal moves when fewer than the line setting exist", async () => {
     const fen = "rn1r4/pp2kR1p/2p5/5P1P/1P6/4P3/P1P5/2K5 b - - 8 27";
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(responseFor(0)));

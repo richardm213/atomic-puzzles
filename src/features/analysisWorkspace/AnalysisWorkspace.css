@@ -414,7 +414,7 @@ body:has(.analysisPage),
   bottom: 2px;
   z-index: 8;
   width: 18px;
-  height: 18px;
+  height: 20px;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -507,10 +507,13 @@ button.analysisLichessLink {
   display: grid;
   grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   gap: 4px;
-  padding-top: 2px;
-  border-top: 1px solid var(--color-border);
+  padding-top: 4px;
   min-height: 0;
   overflow: hidden;
+}
+
+.analysisOpeningExplorer {
+  container-type: inline-size;
 }
 
 .analysisExplorerResizeHandle {
@@ -693,6 +696,31 @@ button.analysisLichessLink {
   font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.analysisFilterCheckbox {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.analysisFilterCheckbox input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.analysisFilterCheckbox input:focus-visible {
+  outline: 2px solid var(--color-primary-soft);
+  outline-offset: 2px;
 }
 
 .analysisPlayerSettingsRow,
@@ -1177,31 +1205,31 @@ button.analysisLichessLink {
 }
 
 .analysisExplorerMoveColumn {
-  width: 24%;
+  width: 11%;
 }
 
 .analysisExplorerGamesColumn {
-  width: 18%;
+  width: 11%;
 }
 
 .analysisExplorerWinRateColumn {
-  width: 58%;
+  width: 78%;
 }
 
 .analysisExplorerTable.withPerformance .analysisExplorerMoveColumn {
-  width: 19%;
+  width: 11%;
 }
 
 .analysisExplorerTable.withPerformance .analysisExplorerGamesColumn {
-  width: 16%;
+  width: 11%;
 }
 
 .analysisExplorerPerformanceColumn {
-  width: 18%;
+  width: 14%;
 }
 
 .analysisExplorerTable.withPerformance .analysisExplorerWinRateColumn {
-  width: 47%;
+  width: 64%;
 }
 
 .analysisExplorerTable th,
@@ -1223,13 +1251,47 @@ button.analysisLichessLink {
   text-align: left;
 }
 
+.analysisExplorerTable th:nth-child(2),
+.analysisExplorerTable td:nth-child(2) {
+  padding-left: 2px;
+  text-align: left;
+}
+
+.analysisExplorerTable.withPerformance th:nth-child(3),
+.analysisExplorerTable.withPerformance td:nth-child(3) {
+  padding-left: 2px;
+  text-align: left;
+}
+
+.analysisExplorerTable th:not(:last-child),
+.analysisExplorerTable td:not(:last-child) {
+  padding-right: 4px;
+}
+
 .analysisExplorerTable th {
   background: var(--color-table-head);
   color: var(--color-subtle);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-transform: none;
+}
+
+.analysisExplorerResultsHeading {
+  width: min(100%, 310px);
+  margin-left: auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  text-align: center;
+}
+
+.analysisExplorerResultsHeading span:first-child {
+  text-align: left;
+}
+
+.analysisExplorerResultsHeading span:last-child {
+  text-align: right;
 }
 
 .analysisExplorerTable tfoot {
@@ -1298,8 +1360,8 @@ button.analysisLichessLink {
   --white-rate: 34%;
   --draw-rate: 0%;
   --black-rate: 66%;
-  width: 100%;
-  min-width: 144px;
+  width: min(100%, 310px);
+  min-width: 0;
   height: 18px;
   display: grid;
   grid-template-columns: var(--white-rate) var(--draw-rate) var(--black-rate);
@@ -1308,6 +1370,7 @@ button.analysisLichessLink {
   border-radius: 5px;
   background: var(--color-panel-strong);
   box-shadow: 0 1px 0 color-mix(in srgb, white 8%, transparent) inset;
+  margin-left: auto;
 }
 
 .analysisWinRateBar span {
@@ -1343,8 +1406,76 @@ button.analysisLichessLink {
 }
 
 .analysisSummaryWinRateBar {
-  height: 20px;
-  min-width: 144px;
+  height: 22px;
+  min-width: 0;
+}
+
+@container (max-width: 280px) {
+  .analysisOpeningExplorer .analysisExplorerTableWrap {
+    overflow-x: auto;
+  }
+
+  .analysisOpeningExplorer .analysisExplorerTable {
+    min-width: 300px;
+  }
+}
+
+@container (min-width: 281px) and (max-width: 480px) {
+  .analysisExplorerMoveColumn {
+    width: 14%;
+  }
+
+  .analysisExplorerGamesColumn {
+    width: 14%;
+  }
+
+  .analysisExplorerWinRateColumn {
+    width: 72%;
+  }
+
+  .analysisExplorerTable.withPerformance .analysisExplorerMoveColumn {
+    width: 14%;
+  }
+
+  .analysisExplorerTable.withPerformance .analysisExplorerGamesColumn {
+    width: 13%;
+  }
+
+  .analysisExplorerPerformanceColumn {
+    width: 16%;
+  }
+
+  .analysisExplorerTable.withPerformance .analysisExplorerWinRateColumn {
+    width: 57%;
+  }
+}
+
+@container (max-width: 440px) {
+  .analysisExplorerTable th,
+  .analysisExplorerTable td {
+    padding-inline: 4px;
+  }
+
+  .analysisWinRateBar {
+    height: 16px;
+    border-radius: 4px;
+  }
+
+  .analysisOpeningExplorer .analysisWinRateBar span {
+    padding: 0 1px;
+    font-size: 9px;
+  }
+
+  .analysisSummaryWinRateBar {
+    height: 18px;
+  }
+}
+
+@container (max-width: 300px) {
+  .analysisOpeningExplorer .analysisWinRateBar span {
+    padding: 0;
+    font-size: 0;
+  }
 }
 
 .analysisSummaryWinRateBar span {

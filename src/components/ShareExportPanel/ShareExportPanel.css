@@ -1,0 +1,161 @@
+.shareExportPanel {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.shareExportPanel > h2 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.shareExportActions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.shareExportActions button,
+.shareExportActions a {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.shareExportActions button:hover:not(:disabled),
+.shareExportActions a:hover {
+  border-color: var(--color-primary-soft);
+  background: var(--color-table-hover);
+}
+
+.shareExportActions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.shareExportActions button:focus-visible,
+.shareExportActions a:focus-visible {
+  position: relative;
+  z-index: 2;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.shareExportActions .gameShareSourceLink {
+  width: 40px;
+  padding: 0;
+  flex: 0 0 40px;
+}
+
+.shareExportError {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 12px;
+}
+
+.shareExportDocumentRow {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 84%, transparent);
+  display: grid;
+  grid-template-rows: auto minmax(0, auto);
+}
+
+.shareExportDocumentHeader {
+  min-height: 38px;
+  padding: 3px 5px 3px 12px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.shareExportDocumentHeader > span {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+}
+
+.shareExportDocumentRow > textarea {
+  width: 100%;
+  min-height: 52px;
+  max-height: 180px;
+  padding: 12px;
+  border: 0;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--color-panel-deep) 18%, transparent);
+  color: var(--color-text);
+  font: 12.5px/1.55 var(--font-mono);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  resize: vertical;
+}
+
+.shareExportPgnRow > textarea {
+  min-height: 126px;
+  max-height: 280px;
+}
+
+.shareExportCopyButton {
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-muted);
+  display: inline-grid;
+  place-items: center;
+  font-size: 14px;
+}
+
+.shareExportCopyButton:hover {
+  border-color: var(--color-primary-soft);
+  background: var(--color-table-hover);
+  color: var(--color-heading);
+}
+
+.shareExportCopyButton:focus-visible {
+  position: relative;
+  z-index: 2;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.shareExportDocumentRow > textarea:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: -2px;
+}
+
+.shareExportDocumentError {
+  padding: 8px 12px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-danger);
+  font-size: 11px;
+  font-weight: 650;
+}

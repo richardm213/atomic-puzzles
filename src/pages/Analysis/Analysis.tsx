@@ -1,4 +1,4 @@
-import { faArrowsRotate, faBookOpen, faGear, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faArrowsRotate, faBookOpen, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
@@ -24,6 +24,7 @@ import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
 import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
+import { AnalysisEngineExplorerPanels } from "../../features/analysisWorkspace/AnalysisEngineExplorerPanels";
 import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
 import {
   AnalysisWorkspaceLayout,
@@ -31,6 +32,7 @@ import {
 } from "../../features/analysisWorkspace/AnalysisWorkspaceLayout";
 import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
 import {
+  OpeningExplorerCompactHeader,
   OpeningExplorerPanel,
   OpeningExplorerResizeHandle,
 } from "../../features/analysisWorkspace/OpeningExplorerPanel";
@@ -140,6 +142,7 @@ const DEFAULT_EXPLORER_SETTINGS = {
   endDate: "",
   username: "",
   opponent: "",
+  showPerformance: false,
 };
 
 type StoredExplorerSettings = typeof DEFAULT_EXPLORER_SETTINGS;
@@ -285,6 +288,7 @@ const explorerSettingsSchema = z
       endDate: validMonthFilter(rawSettings.endDate),
       username: String(rawSettings.username ?? "").trim(),
       opponent: String(rawSettings.opponent ?? "").trim(),
+      showPerformance: rawSettings.showPerformance === true,
     };
   });
 
@@ -471,6 +475,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     endDate,
     username,
     opponent,
+    showPerformance,
   } = explorerSettings;
   const updateExplorerSettings = useCallback(
     (patch: Partial<StoredExplorerSettings>): void =>
@@ -1134,7 +1139,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     debounceMs: 100,
     fen: currentFen,
     playerColor,
-    showPerformance: explorerScope === "player",
+    showPerformance: explorerScope === "player" && showPerformance,
     request: requestExplorer,
     timeoutMessage: "Opening explorer took too long to respond. Try fewer filters or refresh.",
   });
@@ -1257,7 +1262,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                 explorerScope === "player" && !username.trim()
                   ? "Enter a username for player explorer."
                   : "No database games for this position.",
-              showPerformance: explorerScope === "player",
+              showPerformance: explorerScope === "player" && showPerformance,
               orientation,
               currentPly,
               onPlayMove: playExplorerMove,
@@ -1273,99 +1278,102 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           onKeyDown={handleExplorerResizeKeyDown}
         />
       )}
-      <div className="analysisExplorerCompactHeader">
-        <div className="analysisExplorerTabs" role="tablist" aria-label="Opening explorer source">
-          <button
-            type="button"
-            role="tab"
-            className={explorerScope === "general" ? "active" : ""}
-            aria-selected={explorerScope === "general"}
-            onClick={() => {
-              updateExplorerSettings({ explorerScope: "general" });
-              setFiltersOpen(false);
-            }}
-          >
-            <FontAwesomeIcon icon={faBookOpen} />
-            <span>General</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            className={explorerScope === "player" ? "active" : ""}
-            aria-selected={explorerScope === "player"}
-            onClick={(event) =>
-              showPlayerExplorer(event.currentTarget.getAttribute("aria-selected") === "true")
-            }
-          >
-            <span className="analysisExplorerPlayerLabel">
-              <span>
-                {username.trim() || "Player"}
-                {opponent.trim() ? ` vs ${opponent.trim()}` : ""}
-              </span>
-              <small>as {playerColor}</small>
-            </span>
-          </button>
-        </div>
+      <OpeningExplorerCompactHeader
+        controlsId="analysis-explorer-filters"
+        settingsOpen={filtersOpen}
+        onSettingsToggle={() => setFiltersOpen((open) => !open)}
+      >
         <button
           type="button"
-          className={`analysisFilterToggle ${filtersOpen ? "open" : ""}`}
-          aria-expanded={filtersOpen}
-          aria-controls="analysis-explorer-filters"
-          aria-label={filtersOpen ? "Close opening explorer settings" : "Opening explorer settings"}
-          title={filtersOpen ? "Close settings" : "Opening explorer settings"}
-          onClick={() => setFiltersOpen((open) => !open)}
+          role="tab"
+          className={explorerScope === "general" ? "active" : ""}
+          aria-selected={explorerScope === "general"}
+          onClick={() => {
+            updateExplorerSettings({ explorerScope: "general" });
+            setFiltersOpen(false);
+          }}
         >
-          <FontAwesomeIcon icon={filtersOpen ? faXmark : faGear} />
+          <FontAwesomeIcon icon={faBookOpen} />
+          <span>General</span>
         </button>
-      </div>
+        <button
+          type="button"
+          role="tab"
+          className={explorerScope === "player" ? "active" : ""}
+          aria-selected={explorerScope === "player"}
+          onClick={(event) =>
+            showPlayerExplorer(event.currentTarget.getAttribute("aria-selected") === "true")
+          }
+        >
+          <span className="analysisExplorerPlayerLabel">
+            <span>
+              {username.trim() || "Player"}
+              {opponent.trim() ? ` vs ${opponent.trim()}` : ""}
+            </span>
+            <small>as {playerColor}</small>
+          </span>
+        </button>
+      </OpeningExplorerCompactHeader>
       {filtersOpen ? (
         <div className="analysisFilterPanel" id="analysis-explorer-filters">
           {explorerScope === "player" ? (
-            <div className="analysisPlayerSettings">
-              <span>Player</span>
-              <div className="analysisPlayerSettingsRow">
-                <button
-                  type="button"
-                  className="analysisPlayerNameButton"
-                  onClick={() => openUsernamePicker("player")}
-                >
-                  {username.trim() || "Choose player"}
-                </button>
-                <button
-                  type="button"
-                  className="analysisPlayerSideButton"
-                  aria-label={`Switch to ${playerColor === "white" ? "black" : "white"}`}
-                  title="Switch sides"
-                  onClick={switchPlayerColor}
-                >
-                  <FontAwesomeIcon icon={faArrowsRotate} />
-                  <span>as {playerColor}</span>
-                </button>
-              </div>
-              <div className="analysisOpponentField">
-                <span>Opponent</span>
-                <div className="analysisOpponentFieldRow">
+            <>
+              <div className="analysisPlayerSettings">
+                <span>Player</span>
+                <div className="analysisPlayerSettingsRow">
                   <button
                     type="button"
                     className="analysisPlayerNameButton"
-                    onClick={() => openUsernamePicker("opponent")}
+                    onClick={() => openUsernamePicker("player")}
                   >
-                    {opponent.trim() || "Choose opponent"}
+                    {username.trim() || "Choose player"}
                   </button>
-                  {opponent.trim() ? (
+                  <button
+                    type="button"
+                    className="analysisPlayerSideButton"
+                    aria-label={`Switch to ${playerColor === "white" ? "black" : "white"}`}
+                    title="Switch sides"
+                    onClick={switchPlayerColor}
+                  >
+                    <FontAwesomeIcon icon={faArrowsRotate} />
+                    <span>as {playerColor}</span>
+                  </button>
+                </div>
+                <div className="analysisOpponentField">
+                  <span>Opponent</span>
+                  <div className="analysisOpponentFieldRow">
                     <button
                       type="button"
-                      className="analysisOpponentClearButton"
-                      aria-label="Clear opponent"
-                      title="Clear opponent"
-                      onClick={() => updateExplorerSettings({ opponent: "" })}
+                      className="analysisPlayerNameButton"
+                      onClick={() => openUsernamePicker("opponent")}
                     >
-                      <FontAwesomeIcon icon={faXmark} />
+                      {opponent.trim() || "Choose opponent"}
                     </button>
-                  ) : null}
+                    {opponent.trim() ? (
+                      <button
+                        type="button"
+                        className="analysisOpponentClearButton"
+                        aria-label="Clear opponent"
+                        title="Clear opponent"
+                        onClick={() => updateExplorerSettings({ opponent: "" })}
+                      >
+                        <FontAwesomeIcon icon={faXmark} />
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
-            </div>
+              <label className="analysisFilterCheckbox">
+                <span>Show performance rating</span>
+                <input
+                  type="checkbox"
+                  checked={showPerformance}
+                  onChange={(event) =>
+                    updateExplorerSettings({ showPerformance: event.target.checked })
+                  }
+                />
+              </label>
+            </>
           ) : null}
           <div className="analysisFilterGroup">
             <span>Speed</span>
@@ -1478,32 +1486,35 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           style={rightPanelStyle}
           aria-label="Analysis controls"
         >
-          <div className="analysisMovePanel" ref={movePanelRef}>
-            {!game || gameComputerAnalysisEnabled ? (
-              <AtomicDbAnalysisBlock
-                fen={displayedAnalysisFen}
-                analysis={displayedAnalysis}
-                settings={atomicDbEngineSettings}
-                setSettings={setAtomicDbEngineSettings}
-                onDisable={() => {
-                  setHoveredExplorerMoveUci(null);
-                  setThreatMode(false);
-                }}
-                onFlipBoard={flipBoard}
-                onThreatModeChange={setThreatMode}
-                threatAvailable={threatFen !== null}
-                threatMode={effectiveThreatMode}
-                notationInline={notationLayout === "inline"}
-                onToggleNotation={() =>
-                  setNotationLayout((current) => (current === "inline" ? "non-inline" : "inline"))
-                }
-                onPlayLine={playAtomicDbLine}
-                onHoverMove={setHoveredExplorerMoveUci}
-                disabled={atomicDbLinePlaying || effectiveThreatMode}
-                reserveLines={wolfrandomOpening}
-              />
-            ) : null}
-            <div className="analysisMoveContent" ref={moveContentRef}>
+          <AnalysisEngineExplorerPanels
+            movePanelRef={movePanelRef}
+            engine={
+              !game || gameComputerAnalysisEnabled ? (
+                <AtomicDbAnalysisBlock
+                  fen={displayedAnalysisFen}
+                  analysis={displayedAnalysis}
+                  settings={atomicDbEngineSettings}
+                  setSettings={setAtomicDbEngineSettings}
+                  onDisable={() => {
+                    setHoveredExplorerMoveUci(null);
+                    setThreatMode(false);
+                  }}
+                  onFlipBoard={flipBoard}
+                  onThreatModeChange={setThreatMode}
+                  threatAvailable={threatFen !== null}
+                  threatMode={effectiveThreatMode}
+                  notationInline={notationLayout === "inline"}
+                  onToggleNotation={() =>
+                    setNotationLayout((current) => (current === "inline" ? "non-inline" : "inline"))
+                  }
+                  onPlayLine={playAtomicDbLine}
+                  onHoverMove={setHoveredExplorerMoveUci}
+                  disabled={atomicDbLinePlaying || effectiveThreatMode}
+                  reserveLines={wolfrandomOpening}
+                />
+              ) : null
+            }
+            moveContent={
               <MoveNotation
                 lines={analysisLines}
                 moves={moveList}
@@ -1517,10 +1528,10 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                 onDelete={game ? undefined : deleteMove}
                 assessments={game && gameComputerAnalysisEnabled ? gameAssessments : undefined}
               />
-            </div>
-          </div>
-
-          {moveGameExplorerLeft ? null : openingExplorerPanel}
+            }
+            moveContentRef={moveContentRef}
+            explorer={moveGameExplorerLeft ? null : openingExplorerPanel}
+          />
 
           <AnalysisToolbar
             active={explorerOpen}

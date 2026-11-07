@@ -42,13 +42,13 @@
 .gameAnalysisSidebar.withExplorer
   .analysisExplorerTable.withPerformance
   .analysisExplorerMoveColumn {
-  width: 24%;
+  width: 11%;
 }
 
 .gameAnalysisSidebar.withExplorer
   .analysisExplorerTable.withPerformance
   .analysisExplorerGamesColumn {
-  width: 18%;
+  width: 11%;
 }
 
 .gameAnalysisSidebar.withExplorer .analysisExplorerPerformanceColumn,
@@ -64,7 +64,7 @@
 .gameAnalysisSidebar.withExplorer
   .analysisExplorerTable.withPerformance
   .analysisExplorerWinRateColumn {
-  width: 58%;
+  width: 78%;
 }
 
 .gameAnalysisSidebar.withExplorer .analysisWinRateBar {
@@ -589,9 +589,7 @@
 }
 
 .gameUnderboardTabs button:focus-visible,
-.gameMoveTimePair button:focus-visible,
-.gameShareActions button:focus-visible,
-.gameShareActions a:focus-visible {
+.gameMoveTimePair button:focus-visible {
   position: relative;
   z-index: 2;
   outline: 2px solid var(--color-primary-ring);
@@ -1019,57 +1017,6 @@
   outline-offset: 2px;
 }
 
-.gameSharePanel {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
-}
-
-.gameShareActions {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.gameShareActions button,
-.gameShareActions a {
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel-strong);
-  color: var(--color-heading);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    background 160ms ease;
-}
-
-.gameShareActions button:hover:not(:disabled),
-.gameShareActions a:hover {
-  border-color: var(--color-primary-soft);
-  background: var(--color-table-hover);
-}
-
-.gameShareActions button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.gameShareActions .gameShareSourceLink {
-  width: 40px;
-  padding: 0;
-  flex: 0 0 40px;
-}
-
 .gameShareLichessLink svg {
   width: 22px;
   height: 22px;
@@ -1096,106 +1043,6 @@
 
 .gameShareChessComLink .chessComIconHighlight {
   fill: var(--color-chesscom-icon-highlight);
-}
-
-.gameShareError {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: var(--color-danger);
-  font-size: 12px;
-}
-
-.gameShareDocumentRow {
-  grid-column: 1 / -1;
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-panel-strong) 84%, transparent);
-  display: grid;
-  grid-template-rows: auto minmax(0, auto);
-}
-
-.gameShareDocumentHeader {
-  min-height: 38px;
-  padding: 3px 5px 3px 12px;
-  border-bottom: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.gameShareDocumentHeader > span {
-  color: var(--color-muted);
-  font-size: 12px;
-  font-weight: 750;
-  letter-spacing: 0.06em;
-}
-
-.gameShareDocumentRow > textarea {
-  width: 100%;
-  min-height: 52px;
-  max-height: 180px;
-  padding: 12px;
-  border: 0;
-  border-radius: 0;
-  background: color-mix(in srgb, var(--color-panel-deep) 18%, transparent);
-  color: var(--color-text);
-  font: 12.5px/1.55 var(--font-mono);
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-  resize: vertical;
-}
-
-.gameSharePgnRow > textarea {
-  min-height: 126px;
-  max-height: 280px;
-}
-
-.gameShareCopyButton {
-  width: 34px;
-  height: 30px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-muted);
-  display: inline-grid;
-  place-items: center;
-  font-size: 14px;
-  cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    background 160ms ease,
-    color 160ms ease;
-}
-
-.gameShareCopyButton:hover {
-  border-color: var(--color-primary-soft);
-  background: var(--color-table-hover);
-  color: var(--color-heading);
-}
-
-.gameShareCopyButton:focus-visible {
-  position: relative;
-  z-index: 2;
-  outline: 2px solid var(--color-primary-ring);
-  outline-offset: 2px;
-}
-
-.gameShareDocumentRow > textarea:focus-visible {
-  position: relative;
-  z-index: 1;
-  outline: 2px solid var(--color-primary-ring);
-  outline-offset: -2px;
-}
-
-.gameShareDocumentError {
-  padding: 8px 12px;
-  border-top: 1px solid var(--color-border);
-  color: var(--color-danger);
-  font-size: 11px;
-  font-weight: 650;
 }
 
 .gameMatchPlayers a {

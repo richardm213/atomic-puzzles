@@ -139,26 +139,28 @@ export const BoardWorkspace = ({
         {boardOverlay}
       </div>
       {boardAfter}
-      <div className="analysisBoardTextPanel">
-        {showActions ? (
-          <div className={actionClassName ?? "analysisBoardActions"}>
-            {lichessLink}
-            {atomicDbAction}
-            {atomicDbRequest?.state === "error" && atomicDbRequest.message ? (
-              <span className="analysisAtomicDbRequestMessage" role="alert">
-                {atomicDbRequest.message}
-              </span>
-            ) : null}
-            {secondaryAction}
-          </div>
-        ) : null}
-        {showDocument ? (
-          <>
-            <DocumentField label="FEN" rows={2} field={document.fen} />
-            <DocumentField label="PGN" rows={3} field={document.pgn} />
-          </>
-        ) : null}
-      </div>
+      {showActions || showDocument ? (
+        <div className="analysisBoardTextPanel">
+          {showActions ? (
+            <div className={actionClassName ?? "analysisBoardActions"}>
+              {lichessLink}
+              {atomicDbAction}
+              {atomicDbRequest?.state === "error" && atomicDbRequest.message ? (
+                <span className="analysisAtomicDbRequestMessage" role="alert">
+                  {atomicDbRequest.message}
+                </span>
+              ) : null}
+              {secondaryAction}
+            </div>
+          ) : null}
+          {showDocument ? (
+            <>
+              <DocumentField label="FEN" rows={2} field={document.fen} />
+              <DocumentField label="PGN" rows={3} field={document.pgn} />
+            </>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 };
