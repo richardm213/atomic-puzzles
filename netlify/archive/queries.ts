@@ -1,5 +1,9 @@
 import { getArchiveClient } from "./client";
-import { ratingsWithMatchOrientation, timelineWithValidatedLengths } from "./gameTimeline";
+import {
+  decodePackedTimeline,
+  ratingsWithMatchOrientation,
+  timelineWithValidatedLengths,
+} from "./gameTimeline";
 
 type JsonRow = Record<string, unknown>;
 
@@ -19,7 +23,7 @@ const SOURCE_IDS = {
   chesscom: 4,
   pychess: 5,
 } as const;
-type ArchiveSchemaVersion = 2 | 3 | 4 | 5;
+type ArchiveSchemaVersion = 2 | 3 | 4 | 5 | 7;
 let schemaVersionPromise: Promise<ArchiveSchemaVersion> | null = null;
 
 const getSchemaVersion = (): Promise<ArchiveSchemaVersion> => {
@@ -27,7 +31,7 @@ const getSchemaVersion = (): Promise<ArchiveSchemaVersion> => {
     .execute("select value from metadata where key='schema_version'")
     .then((result) => {
       const value = Number(result.rows[0]?.value);
-      return value >= 5 ? 5 : value === 4 ? 4 : value === 3 ? 3 : 2;
+      return value >= 7 ? 7 : value >= 5 ? 5 : value === 4 ? 4 : value === 3 ? 3 : 2;
     });
   return schemaVersionPromise;
 };
@@ -409,8 +413,9 @@ const queryGame = async (params: URLSearchParams) => {
   const gameTimeControlJoin =
     schemaVersion >= 5 ? " join time_controls gtc on gtc.id=g.time_control_id" : "";
   const gameTimeControlSelection = schemaVersion >= 5 ? "gtc.value" : "tc.value";
+  const timelineSelection = schemaVersion >= 7 ? "g.timeline" : "g.moves,g.clocks,g.move_ts";
   const result = await getArchiveClient().execute({
-    sql: `select g.game_id,g.game_index,g.result,g.moves,g.clocks,g.move_ts,g.initial_fen,
+    sql: `select g.game_id,g.game_index,g.result,${timelineSelection},g.initial_fen,
       ${schemaVersion >= 4 ? "g.ratings" : "null ratings"},
       m.match_id external_match_id,${modeNameSql("m.mode")} mode,m.start_ts,
       ${sourceSelection} source,
@@ -427,11 +432,11 @@ const queryGame = async (params: URLSearchParams) => {
   });
   const row = result.rows[0];
   if (!row) return null;
-  const normalized = normalizedRows([row])[0] ?? {};
+  const { timeline, ...normalized } = normalizedRows([row])[0] ?? {};
   const gameRatings = ratingsWithMatchOrientation(row);
   return {
     ...normalized,
-    ...timelineWithValidatedLengths(row),
+    ...(schemaVersion >= 7 ? decodePackedTimeline(timeline) : timelineWithValidatedLengths(row)),
     ratings_are_per_game: gameRatings !== null,
     p1_before_rating: gameRatings?.p1_before_rating ?? null,
     p1_after_rating: gameRatings?.p1_after_rating ?? null,

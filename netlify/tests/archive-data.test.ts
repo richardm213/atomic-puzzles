@@ -167,6 +167,7 @@ describe("archive-data function", () => {
 
     expect(response.statusCode).toBe(200);
     expect(mocks.execute.mock.calls[1]?.[0]).toMatchObject({ args: ["108184353"] });
+    expect(mocks.execute.mock.calls[1]?.[0].sql).toContain("g.moves,g.clocks,g.move_ts");
     expect(mocks.execute.mock.calls[1]?.[0].sql).toContain("g.ratings");
     expect(JSON.parse(response.body)).toMatchObject({
       game_id: "108184353",
@@ -179,6 +180,41 @@ describe("archive-data function", () => {
       p2_before_rating: 2401.9,
       p2_after_rating: 2393.9,
     });
+  });
+
+  it.each([
+    {
+      label: "aligned moves, clocks, and timestamps",
+      // Produced by the archive builder's pack_timeline codec.
+      timeline: "544c31070306c605f70b0c0708f8fd0abcfd0ab9160a80af95a49b34da01a60d",
+      moves: ["g1h3", "h7h6", "e2e4"],
+      clocks: [179960, 179900, 178523],
+      move_ts: [1794030000000, 1794030000218, 1794030001920],
+    },
+    {
+      label: "moves with no timing data",
+      timeline: "544c31010102c605",
+      moves: ["g1h3"],
+      clocks: null,
+      move_ts: null,
+    },
+    { label: "no stored timeline", timeline: null, moves: null, clocks: null, move_ts: null },
+  ])("serves schema-v7 game data with $label", async ({ timeline, label: _label, ...expected }) => {
+    mocks.execute.mockResolvedValueOnce({ rows: [{ value: "7" }] }).mockResolvedValueOnce({
+      rows: [{ game_id: "v7-game", timeline: timeline && Buffer.from(timeline, "hex") }],
+    });
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({
+      queryStringParameters: { resource: "game", gameId: "v7-game" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const query = mocks.execute.mock.calls[1]?.[0];
+    expect(query.sql).toContain("g.timeline");
+    expect(query.sql).not.toMatch(/g\.(moves|clocks|move_ts)\b/);
+    const game = JSON.parse(response.body);
+    expect(game).toMatchObject(expected);
+    expect(game).not.toHaveProperty("timeline");
   });
 
   it("returns the stored Atomic960 starting FEN for an archived game", async () => {

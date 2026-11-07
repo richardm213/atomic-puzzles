@@ -3,7 +3,7 @@ type BlobValue = ArrayBuffer | Uint8Array | number[] | string | Record<string, u
 const bytesFromBase64 = (value: string): Uint8Array =>
   Uint8Array.from(Buffer.from(value, "base64"));
 
-export const toBlobBytes = (value: BlobValue): Uint8Array | null => {
+export const toBlobBytes = (value: unknown): Uint8Array | null => {
   if (value === null || value === undefined) return null;
   if (value instanceof Uint8Array) return value;
   if (value instanceof ArrayBuffer) return new Uint8Array(value);
@@ -85,7 +85,7 @@ export const decodePackedMoveTimestamps = (value: BlobValue): number[] | null =>
 };
 
 export const ratingsWithMatchOrientation = (row: Record<string, unknown>) => {
-  const bytes = toBlobBytes(row.ratings as BlobValue);
+  const bytes = toBlobBytes(row.ratings);
   if (bytes === null) return null;
   if (bytes.length !== 8) throw new Error("Invalid packed rating payload");
 
@@ -121,4 +121,49 @@ export const timelineWithValidatedLengths = (row: Record<string, unknown>) => {
     clocks: clocks && clocks.length > 0 && clocks.length <= moves.length ? clocks : null,
     move_ts: moveTimestamps?.length === moves.length ? moveTimestamps : null,
   };
+};
+
+export const decodePackedTimeline = (value: unknown) => {
+  const bytes = toBlobBytes(value);
+  if (bytes === null) return { moves: null, clocks: null, move_ts: null };
+
+  // TL1: magic, presence flags, ply count, then a length-prefixed blob for each present field.
+  if (bytes[0] !== 0x54 || bytes[1] !== 0x4c || bytes[2] !== 0x31) {
+    throw new Error("Unsupported timeline payload");
+  }
+  const flags = bytes[3];
+  if (!flags || flags > 7) throw new Error("Invalid timeline flags");
+
+  let offset = 4;
+  const readSize = (): number => {
+    let size = 0;
+    for (let shift = 0; offset < bytes.length; shift += 7) {
+      const byte = bytes[offset++] ?? 0;
+      size += (byte & 0x7f) * 2 ** shift;
+      if (size > bytes.length || shift > 49) throw new Error("Invalid timeline size");
+      if ((byte & 0x80) === 0) return size;
+    }
+    throw new Error("Truncated timeline size");
+  };
+  const plyCount = readSize();
+  if (plyCount === 0) throw new Error("Invalid timeline ply count");
+
+  const readPart = (flag: number): Uint8Array | null => {
+    if ((flags & flag) === 0) return null;
+    const length = readSize();
+    const end = offset + length;
+    if (end > bytes.length) throw new Error("Truncated timeline field");
+    const part = bytes.subarray(offset, end);
+    offset = end;
+    return part;
+  };
+
+  const moves = decodePackedMoves(readPart(1));
+  const clocks = decodePackedClocks(readPart(2));
+  const move_ts = decodePackedMoveTimestamps(readPart(4));
+  if (offset !== bytes.length) throw new Error("Unexpected trailing timeline data");
+  if ([moves, clocks, move_ts].some((part) => part !== null && part.length !== plyCount)) {
+    throw new Error("Timeline fields are not aligned");
+  }
+  return { moves, clocks, move_ts };
 };
