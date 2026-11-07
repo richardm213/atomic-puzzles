@@ -2,6 +2,17 @@ import {
   analyzeFairyStockfishPosition,
   type EngineCandidate,
 } from "../../src/lib/practice/fairyStockfish";
+import {
+  isLocalAnalysisEngine,
+  type LocalAnalysisEngine,
+  localAnalysisEngineLabel,
+} from "../../src/lib/practice/localAnalysisEngine";
+
+const params = new URLSearchParams(window.location.search);
+const requestedEngine = params.get("engine");
+const engine: LocalAnalysisEngine = isLocalAnalysisEngine(requestedEngine)
+  ? requestedEngine
+  : "fairy-stockfish-14";
 
 const SEARCH_TIME_MS = 3_000;
 const LINE_COUNT = 3;
@@ -27,7 +38,7 @@ type PositionResult = {
 
 type BenchmarkResult = {
   schemaVersion: 1;
-  benchmark: "fairy-stockfish-14-analysis";
+  benchmark: `${LocalAnalysisEngine}-analysis`;
   createdAt: string;
   config: { searchTimeMs: number; lineCount: number; uniquePositions: number };
   environment: {
@@ -46,13 +57,16 @@ type BenchmarkResult = {
 };
 
 const runButton = document.querySelector<HTMLButtonElement>("#run");
+const heading = document.querySelector<HTMLHeadingElement>("h1");
 const status = document.querySelector<HTMLElement>("#status");
 const resultsBody = document.querySelector<HTMLTableSectionElement>("#results");
 const jsonOutput = document.querySelector<HTMLElement>("#json");
 
-if (!runButton || !status || !resultsBody || !jsonOutput) {
+if (!runButton || !heading || !status || !resultsBody || !jsonOutput) {
   throw new Error("Benchmark page is missing required elements");
 }
+
+heading.textContent = document.title = `${localAnalysisEngineLabel(engine)} benchmark`;
 
 const formatMs = (value: number): string => `${Math.round(value).toLocaleString()} ms`;
 const formatInteger = (value: number | null): string => value?.toLocaleString() ?? "—";
@@ -122,6 +136,7 @@ const run = async (): Promise<void> => {
         () => {
           firstResultMs ??= performance.now() - startedAt;
         },
+        engine,
       );
       const totalMs = performance.now() - startedAt;
       completed.push({
@@ -137,7 +152,7 @@ const run = async (): Promise<void> => {
     const warmResults = completed.slice(1);
     const result: BenchmarkResult = {
       schemaVersion: 1,
-      benchmark: "fairy-stockfish-14-analysis",
+      benchmark: `${engine}-analysis`,
       createdAt: new Date().toISOString(),
       config: {
         searchTimeMs: SEARCH_TIME_MS,
@@ -175,5 +190,11 @@ const run = async (): Promise<void> => {
 };
 
 renderRows([], null);
-runButton.addEventListener("click", () => void run(), { once: true });
-if (new URLSearchParams(window.location.search).get("autorun") === "1") void run();
+if (requestedEngine !== null && !isLocalAnalysisEngine(requestedEngine)) {
+  status.textContent = `Unknown engine: ${requestedEngine}`;
+  runButton.disabled = true;
+} else if (params.get("autorun") === "1") {
+  void run();
+} else {
+  runButton.addEventListener("click", () => void run(), { once: true });
+}

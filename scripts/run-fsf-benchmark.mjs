@@ -9,6 +9,12 @@ const PORT = 4174;
 const HOST = "127.0.0.1";
 const RESULT_ROUTE = "/__fsf-benchmark-result";
 const noOpen = process.argv.includes("--no-open");
+const engine =
+  process.argv.find((arg) => arg.startsWith("--engine="))?.slice("--engine=".length) ??
+  "fairy-stockfish-14";
+if (engine !== "fairy-stockfish-14" && engine !== "atomic-stockfish") {
+  throw new Error("Use --engine=fairy-stockfish-14 or --engine=atomic-stockfish");
+}
 
 let finish;
 const received = new Promise((resolveResult) => {
@@ -24,6 +30,9 @@ const collectorPlugin = {
       request.on("end", () => {
         try {
           const result = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+          if (result.benchmark !== `${engine}-analysis`) {
+            throw new Error("Result came from a different engine");
+          }
           response.statusCode = 204;
           response.end();
           finish(result);
@@ -50,8 +59,8 @@ const server = await createServer({
 
 await server.listen();
 const runId = Date.now();
-const url = `http://${HOST}:${PORT}/benchmarks/fairy-stockfish/?autorun=1&run=${runId}`;
-console.log(`Fairy-Stockfish benchmark ready:\n${url}`);
+const url = `http://${HOST}:${PORT}/benchmarks/fairy-stockfish/?autorun=1&engine=${engine}&run=${runId}`;
+console.log(`${engine} benchmark ready:\n${url}`);
 
 if (!noOpen) {
   const browser = spawn(firefoxBinary(), ["--new-window", url], {

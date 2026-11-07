@@ -1,0 +1,585 @@
+diff --git a/src/data/training_data_generator.cpp b/src/data/training_data_generator.cpp
+index e3e93789..a7e3282c 100644
+--- a/src/data/training_data_generator.cpp
++++ b/src/data/training_data_generator.cpp
+@@ -1121,7 +1121,7 @@ class Generator {
+                 failure = std::move(message);
+         }
+         finished.store(true, std::memory_order_relaxed);
+-        threads.stop = true;
++        threads.request_stop();
+     }
+ 
+     const std::string& next_opening() {
+@@ -1252,7 +1252,7 @@ class Generator {
+             if (index >= params.count)
+             {
+                 finished.store(true, std::memory_order_relaxed);
+-                threads.stop = true;
++                threads.request_stop();
+                 return true;
+             }
+ 
+@@ -1261,7 +1261,7 @@ class Generator {
+             {
+                 failure = result.message;
+                 finished.store(true, std::memory_order_relaxed);
+-                threads.stop = true;
++                threads.request_stop();
+                 return true;
+             }
+ 
+@@ -1282,7 +1282,7 @@ class Generator {
+             if (done >= params.count)
+             {
+                 finished.store(true, std::memory_order_relaxed);
+-                threads.stop = true;
++                threads.request_stop();
+                 return true;
+             }
+         }
+@@ -2166,7 +2166,7 @@ class AtomicV3Generator {
+         }
+ 
+         cancelled.store(true, std::memory_order_relaxed);
+-        threads.stop = true;
++        threads.request_stop();
+         pendingCv.notify_all();
+         for (usize i = 0; i < workerCount; ++i)
+             threads.wait_on_thread(i);
+diff --git a/src/engine.cpp b/src/engine.cpp
+index 134a8df5..ee899bf3 100644
+--- a/src/engine.cpp
++++ b/src/engine.cpp
+@@ -164,7 +164,7 @@ bool Engine::go(Search::LimitsType& limits) {
+     threads.start_thinking(options, pos, states, limits);
+     return true;
+ }
+-void Engine::stop() { threads.stop = true; }
++void Engine::stop() { threads.request_stop(); }
+ 
+ void Engine::search_clear() {
+     wait_for_search_finished();
+@@ -261,7 +261,7 @@ void Engine::set_tt_size(usize mb) {
+     tt.resize(mb, threads);
+ }
+ 
+-void Engine::set_ponderhit(bool b) { threads.main_manager()->ponder = b; }
++void Engine::set_ponderhit(bool b) { threads.set_ponder(b); }
+ 
+ // network related
+ 
+diff --git a/src/search.cpp b/src/search.cpp
+index 40ac4cec..4dc974b7 100644
+--- a/src/search.cpp
++++ b/src/search.cpp
+@@ -316,12 +316,11 @@ void Search::Worker::start_searching() {
+     // the UCI protocol states that we shouldn't print the best move before the
+     // GUI sends a "stop" or "ponderhit" command. We therefore simply wait here
+     // until the GUI sends one of those commands.
+-    while (!threads.stop && (main_manager()->ponder || limits.infinite))
+-    {}  // Busy wait for a stop or a ponder reset
++    threads.wait_for_search_release(limits.infinite);
+ 
+     // Stop the threads if not already stopped (also raise the stop if
+     // "ponderhit" just reset threads.ponder)
+-    threads.stop = true;
++    threads.request_stop();
+ 
+     // Wait until all threads have finished
+     threads.wait_for_search_finished();
+@@ -873,7 +872,7 @@ bool Search::Worker::iterative_deepening() {
+         // Have we found a "mate in x" after a completed iteration?
+         if (limits.mate && !threads.stop && is_mate_or_mated(rootMoves[0].score)
+             && VALUE_MATE - std::abs(rootMoves[0].score) <= 2 * limits.mate)
+-            threads.stop = true;
++            threads.request_stop();
+ 
+         if (!mainThread)
+             continue;
+@@ -930,7 +929,7 @@ bool Search::Worker::iterative_deepening() {
+                 if (mainThread->ponder)
+                     mainThread->stopOnPonderhit = true;
+                 else
+-                    threads.stop = true;
++                    threads.request_stop();
+             }
+             else
+                 threads.increaseDepth = mainThread->ponder || elapsedTime <= totalTime * 0.50;
+@@ -2489,7 +2488,7 @@ void SearchManager::check_time(Search::Worker& worker) {
+     if ((worker.limits.use_time_management() && (elapsed > tm.maximum() || stopOnPonderhit))
+         || (worker.limits.movetime && elapsed >= worker.limits.movetime)
+         || (worker.limits.nodes && worker.threads.nodes_searched() >= worker.limits.nodes))
+-        worker.threads.stop = true;
++        worker.threads.request_stop();
+ }
+ 
+ // Used to correct and extend PVs for moves that have a TB (but not a mate) score.
+diff --git a/src/thread.cpp b/src/thread.cpp
+index a93d095a..4ffc0219 100644
+--- a/src/thread.cpp
++++ b/src/thread.cpp
+@@ -417,6 +417,34 @@ void ThreadPool::start_searching() {
+             th->start_searching();
+ }
+ 
++// The main worker has finished its iterations but the GUI still owns the
++// decision to release bestmove. Updates and the wait share a mutex so a
++// stop/ponderhit arriving just before the worker parks cannot be lost.
++void ThreadPool::wait_for_search_release(bool infinite) {
++    const auto released = [&] { return stop || (!infinite && !main_manager()->ponder); };
++    if (!released())
++    {
++        std::unique_lock lock(searchReleaseMutex);
++        searchReleaseCv.wait(lock, released);
++    }
++}
++
++void ThreadPool::request_stop() {
++    {
++        std::lock_guard lock(searchReleaseMutex);
++        stop = true;
++    }
++    searchReleaseCv.notify_one();
++}
++
++void ThreadPool::set_ponder(bool enabled) {
++    {
++        std::lock_guard lock(searchReleaseMutex);
++        main_manager()->ponder = enabled;
++    }
++    if (!enabled)
++        searchReleaseCv.notify_one();
++}
+ 
+ // Wait for non-main threads
+ void ThreadPool::wait_for_search_finished() const {
+diff --git a/src/thread.h b/src/thread.h
+index 6b750171..fd21ba60 100644
+--- a/src/thread.h
++++ b/src/thread.h
+@@ -147,6 +147,9 @@ class ThreadPool {
+     Thread*                get_best_thread() const;
+     void                   start_searching();
+     void                   wait_for_search_finished() const;
++    void                   wait_for_search_release(bool infinite);
++    void                   request_stop();
++    void                   set_ponder(bool enabled);
+ 
+     std::vector<usize> get_bound_thread_to_numa_node() const;
+     std::vector<usize> get_bound_thread_count_by_numa_node() const;
+@@ -154,6 +157,8 @@ class ThreadPool {
+ 
+     void ensure_network_replicated();
+ 
++    // While workers are running, set stop through request_stop() so the
++    // main worker wakes even if it has already finished searching.
+     std::atomic_bool stop, increaseDepth;
+ 
+     auto cbegin() const noexcept { return threads.cbegin(); }
+@@ -164,6 +169,8 @@ class ThreadPool {
+     auto empty() const noexcept { return threads.empty(); }
+ 
+    private:
++    std::mutex                          searchReleaseMutex;
++    std::condition_variable             searchReleaseCv;
+     StateListPtr                         setupStates;
+     std::vector<std::unique_ptr<Thread>> threads;
+     std::vector<NumaIndex>               boundThreadToNumaNode;
+diff --git a/tests/wasm-browser/atomic-stockfish.worker.js b/tests/wasm-browser/atomic-stockfish.worker.js
+index b1ffdf0a..e324f850 100644
+--- a/tests/wasm-browser/atomic-stockfish.worker.js
++++ b/tests/wasm-browser/atomic-stockfish.worker.js
+@@ -9,8 +9,8 @@
+ //
+ //   requests                                   responses
+ //   { type: 'initialize', networkUrl,          { type: 'downloadProgress', loaded, total }
+-//     expectedSha256, threads?, hashMiB?,      { type: 'ready', ... }
+-//     multiPv? }                               { type: 'search', searchId, command }
++//     expectedSha256, expectedBytes?, threads?,      { type: 'ready', ... }
++//     hashMiB?, multiPv? }                     { type: 'search', searchId, command }
+ //   { type: 'command', command }               { type: 'line', line, searchId? }
+ //   { type: 'stop', searchId }                 { type: 'error', message, code, fatal }
+ //   { type: 'dispose' }                        { type: 'disposed' }
+@@ -26,7 +26,7 @@ const MAX_HASH_MIB = @MAX_HASH_MIB@;
+ const MAX_NETWORK_BYTES = @MAX_NETWORK_BYTES@;
+ const MAX_MULTIPV = 256;
+ const NETWORK_DIRECTORY = '/nnue';
+-const INTERNAL_TIMEOUT_MS = 120000;
++const STARTUP_TIMEOUT_MS = 60000;
+ const PROGRESS_INTERVAL_MS = 50;
+ 
+ // Smallest module using a 128-bit SIMD instruction (wasm-feature-detect).
+@@ -38,7 +38,7 @@ const SIMD_PROBE = new Uint8Array([
+ let state = 'new'; // new | initializing | ready | failed | disposing | disposed
+ let engine = null; // the Emscripten module
+ let engineAlive = false; // false once 'quit' destroyed the C++ engine
+-let disposeRequested = false;
++let startupController = null;
+ let engineInfo = null;
+ let collector = null; // pending internal command
+ let active = null; // { id, stopSent } of the search whose bestmove is pending
+@@ -72,6 +72,7 @@ function postError(error, fallbackCode = 'internal-error') {
+ // ---------------------------------------------------------------- engine I/O
+ 
+ function onEngineLine(line, stream) {
++  if (state === 'failed' || state === 'disposed') return;
+   if (collector) {
+     collector.lines.push(line);
+     if (collector.until && collector.until.test(line)) finishCollector(collector);
+@@ -106,32 +107,23 @@ function callEngine(command) {
+   if (command === 'quit') engineAlive = false;
+ }
+ 
+-function finishCollector(c) {
+-  if (c.done) return;
+-  c.done = true;
+-  clearTimeout(c.timer);
+-  if (collector === c) collector = null;
+-  c.resolve(c.lines);
++function finishCollector(c, error) {
++  if (collector !== c) return;
++  collector = null;
++  if (error) c.reject(error);
++  else c.resolve(c.lines);
+ }
+ 
+ // Run a command whose output belongs to the worker, not to the caller.
+-function internal(command, until = null, timeoutMs = INTERNAL_TIMEOUT_MS) {
++// The startup deadline also bounds any asynchronous reply to these commands.
++function internal(command, until = null) {
+   return new Promise((resolve, reject) => {
+-    const c = { until, lines: [], resolve, done: false };
+-    c.timer = setTimeout(() => {
+-      if (c.done) return;
+-      c.done = true;
+-      if (collector === c) collector = null;
+-      reject(new WorkerError('engine-timeout', `the engine did not answer '${command}'`, true));
+-    }, timeoutMs);
++    const c = { until, lines: [], resolve, reject };
+     collector = c;
+     try {
+       callEngine(command);
+     } catch (error) {
+-      c.done = true;
+-      clearTimeout(c.timer);
+-      collector = null;
+-      reject(error);
++      finishCollector(c, error);
+       return;
+     }
+     if (!until) finishCollector(c);
+@@ -150,8 +142,10 @@ function whenIdle(timeoutMs) {
+ }
+ 
+ function fail(error) {
+-  if (state === 'failed' || state === 'disposed') return;
++  if (state === 'failed' || state === 'disposing' || state === 'disposed') return;
+   state = 'failed';
++  startupController?.abort(error);
++  if (collector) finishCollector(collector, error);
+   queue.length = 0;
+   active = null;
+   for (const resolve of idleWaiters.splice(0)) resolve();
+@@ -346,10 +340,10 @@ function hex(buffer) {
+   return Array.from(new Uint8Array(buffer), (b) => b.toString(16).padStart(2, '0')).join('');
+ }
+ 
+-async function downloadNetwork(url, expectedSha256) {
++async function downloadNetwork(url, expectedSha256, expectedBytes, signal) {
+   let response;
+   try {
+-    response = await fetch(url, { credentials: 'same-origin' });
++    response = await fetch(url, { credentials: 'same-origin', signal });
+   } catch (error) {
+     throw new WorkerError('network-download', `the network download failed: ${error.message}`, true);
+   }
+@@ -362,8 +356,8 @@ async function downloadNetwork(url, expectedSha256) {
+ 
+   const encoding = response.headers.get('content-encoding');
+   const lengthHeader = response.headers.get('content-length');
+-  let total = null;
+-  if ((!encoding || encoding === 'identity') && lengthHeader && /^\d+$/.test(lengthHeader))
++  let total = expectedBytes;
++  if (total === null && (!encoding || encoding === 'identity') && lengthHeader && /^\d+$/.test(lengthHeader))
+     total = Number(lengthHeader);
+   if (total !== null && total > MAX_NETWORK_BYTES)
+     throw new WorkerError('network-invalid', `the network is larger than ${MAX_NETWORK_BYTES} bytes`, true);
+@@ -375,16 +369,12 @@ async function downloadNetwork(url, expectedSha256) {
+   let loaded = 0;
+   let lastProgress = 0;
+   for (;;) {
+-    if (disposeRequested) {
+-      await reader.cancel();
+-      throw new WorkerError('disposed', 'disposed during initialization', true);
+-    }
+     const { done, value } = await reader.read();
+     if (done) break;
+-    if (loaded + value.byteLength > MAX_NETWORK_BYTES) {
+-      await reader.cancel();
++    if (expectedBytes !== null && loaded + value.byteLength > expectedBytes)
++      throw new WorkerError('network-invalid', `the network is larger than the expected ${expectedBytes} bytes`, true);
++    if (loaded + value.byteLength > MAX_NETWORK_BYTES)
+       throw new WorkerError('network-invalid', `the network is larger than ${MAX_NETWORK_BYTES} bytes`, true);
+-    }
+     if (buffer && loaded + value.byteLength <= buffer.byteLength) buffer.set(value, loaded);
+     else {
+       if (buffer) {
+@@ -400,6 +390,8 @@ async function downloadNetwork(url, expectedSha256) {
+       post({ type: 'downloadProgress', loaded, total });
+     }
+   }
++  if (expectedBytes !== null && loaded !== expectedBytes)
++    throw new WorkerError('network-invalid', `the network has ${loaded} bytes; expected ${expectedBytes}`, true);
+   post({ type: 'downloadProgress', loaded, total });
+ 
+   let bytes;
+@@ -416,6 +408,7 @@ async function downloadNetwork(url, expectedSha256) {
+   chunks = null;
+   if (loaded === 0) throw new WorkerError('network-invalid', 'the network file is empty', true);
+ 
++  signal.throwIfAborted();
+   const actual = hex(await crypto.subtle.digest('SHA-256', bytes));
+   if (actual !== expectedSha256)
+     throw new WorkerError(
+@@ -426,8 +419,9 @@ async function downloadNetwork(url, expectedSha256) {
+   return bytes;
+ }
+ 
+-async function startEngine() {
++async function startEngine(signal) {
+   const { default: createAtomicStockfish } = await import('./atomic-stockfish.mjs');
++  signal.throwIfAborted();
+   const module = await createAtomicStockfish({
+     print: (line) => onEngineLine(line, 'stdout'),
+     printErr: (line) => onEngineLine(line, 'stderr'),
+@@ -436,105 +430,104 @@ async function startEngine() {
+   return module;
+ }
+ 
++async function prepareEngine(request, signal) {
++  checkEnvironment();
++  if (typeof request.networkUrl !== 'string' || !request.networkUrl)
++    throw new WorkerError('invalid-request', 'networkUrl is required', true);
++  const expectedSha256 = String(request.expectedSha256 ?? '').toLowerCase();
++  if (!/^[0-9a-f]{64}$/.test(expectedSha256))
++    throw new WorkerError('invalid-request', 'expectedSha256 must be 64 hexadecimal digits', true);
++  const threads = integerSetting(request.threads, 'threads', 1, PTHREAD_POOL_SIZE, 1);
++  const hashMiB = integerSetting(request.hashMiB, 'hashMiB', 1, MAX_HASH_MIB, 16);
++  const multiPv = integerSetting(request.multiPv, 'multiPv', 1, MAX_MULTIPV, 1);
++
++  const expectedBytes = integerSetting(request.expectedBytes, 'expectedBytes', 1, MAX_NETWORK_BYTES, null);
++
++  // Both tasks run in parallel; either failing cancels startup immediately.
++  let bytes;
++  [engine, bytes] = await Promise.all([
++    startEngine(signal),
++    downloadNetwork(request.networkUrl, expectedSha256, expectedBytes, signal),
++  ]);
++  signal.throwIfAborted();
++  engineAlive = true;
++  const bytesLength = bytes.byteLength;
++
++  const name = networkFileName(request.networkUrl, expectedSha256);
++  const path = `${NETWORK_DIRECTORY}/${name}`;
++  try {
++    engine.FS.mkdir(NETWORK_DIRECTORY);
++  } catch {
++    // already present
++  }
++  // canOwn hands the verified buffer to the in-memory filesystem without a copy.
++  engine.FS.writeFile(path, bytes, { canOwn: true });
++  bytes = null;
++
++  const uciLines = await internal('uci', /^uciok$/);
++  for (const line of uciLines) parseOptionLine(line);
++  await internal(`setoption name EvalFile value ${path}`);
++  await internal(`setoption name Threads value ${threads}`);
++  await internal(`setoption name Hash value ${hashMiB}`);
++  await internal(`setoption name MultiPV value ${multiPv}`);
++  await internal('isready', /^readyok$/);
++
++  // Prove the network is usable: the engine refuses to search without a
++  // compatible network and says why.
++  await internal('position startpos');
++  const probe = await internal('go depth 1', /^bestmove /);
++  const errors = probe.filter((line) => /\bERROR\b/.test(line));
++  const bestmove = probe[probe.length - 1] ?? '';
++  if (errors.length || !/^bestmove [a-h][1-8][a-h][1-8]/.test(bestmove))
++    throw new WorkerError(
++      'network-incompatible',
++      `the network was rejected by the engine${errors.length ? ': ' + errors.join(' ') : ''}`,
++      true,
++    );
++  const description =
++    probe
++      .find((line) => /^info string .*NNUE/i.test(line))
++      ?.replace(/^info string /, '') ?? null;
++  await internal('ucinewgame');
++  await internal('isready', /^readyok$/);
++
++  // The network now lives in WASM memory; drop the filesystem copy.
++  engine.FS.unlink(path);
++
++  return {
++    type: 'ready',
++    engine: engineInfo,
++    network: { path, bytes: bytesLength, sha256: expectedSha256, description },
++    threads,
++    hashMiB,
++    multiPv,
++    maxThreads: PTHREAD_POOL_SIZE,
++    maxHashMiB: MAX_HASH_MIB,
++  };
++}
++
+ async function initialize(request) {
+   if (state !== 'new') throw new WorkerError('invalid-request', 'initialize may be sent only once per worker');
+   state = 'initializing';
+-  let enginePromise = null;
++  const startup = new AbortController();
++  startupController = startup;
++  const { signal } = startup;
++  const cancelled = new Promise((_, reject) => {
++    signal.addEventListener('abort', () => reject(signal.reason), { once: true });
++  });
++  const deadline = setTimeout(() => {
++    startup.abort(new WorkerError('startup-timeout', 'Atomic-Stockfish initialization timed out', true));
++  }, STARTUP_TIMEOUT_MS);
+   try {
+-    checkEnvironment();
+-    if (typeof request.networkUrl !== 'string' || !request.networkUrl)
+-      throw new WorkerError('invalid-request', 'networkUrl is required', true);
+-    const expectedSha256 = String(request.expectedSha256 ?? '').toLowerCase();
+-    if (!/^[0-9a-f]{64}$/.test(expectedSha256))
+-      throw new WorkerError('invalid-request', 'expectedSha256 must be 64 hexadecimal digits', true);
+-    const threads = integerSetting(request.threads, 'threads', 1, PTHREAD_POOL_SIZE, 1);
+-    const hashMiB = integerSetting(request.hashMiB, 'hashMiB', 1, MAX_HASH_MIB, 16);
+-    const multiPv = integerSetting(request.multiPv, 'multiPv', 1, MAX_MULTIPV, 1);
+-
+-    // The runtime and the network download proceed together.
+-    enginePromise = startEngine();
+-    enginePromise.catch(() => {});
+-    let bytes = await downloadNetwork(request.networkUrl, expectedSha256);
+-    const bytesLength = bytes.byteLength;
+-    engine = await enginePromise;
+-    engineAlive = true;
+-    if (disposeRequested) throw new WorkerError('disposed', 'disposed during initialization', true);
+-
+-    const name = networkFileName(request.networkUrl, expectedSha256);
+-    const path = `${NETWORK_DIRECTORY}/${name}`;
+-    try {
+-      engine.FS.mkdir(NETWORK_DIRECTORY);
+-    } catch {
+-      // already present
+-    }
+-    // canOwn hands the verified buffer to the in-memory filesystem without a copy.
+-    engine.FS.writeFile(path, bytes, { canOwn: true });
+-    bytes = null;
+-
+-    const uciLines = await internal('uci', /^uciok$/);
+-    for (const line of uciLines) parseOptionLine(line);
+-    await internal(`setoption name EvalFile value ${path}`);
+-    await internal(`setoption name Threads value ${threads}`);
+-    await internal(`setoption name Hash value ${hashMiB}`);
+-    await internal(`setoption name MultiPV value ${multiPv}`);
+-    await internal('isready', /^readyok$/);
+-
+-    // Prove the network is usable: the engine refuses to search without a
+-    // compatible network and says why.
+-    await internal('position startpos');
+-    const probe = await internal('go depth 1', /^bestmove /);
+-    const errors = probe.filter((line) => /\bERROR\b/.test(line));
+-    const bestmove = probe[probe.length - 1] ?? '';
+-    if (errors.length || !/^bestmove [a-h][1-8][a-h][1-8]/.test(bestmove))
+-      throw new WorkerError(
+-        'network-incompatible',
+-        `the network was rejected by the engine${errors.length ? ': ' + errors.join(' ') : ''}`,
+-        true,
+-      );
+-    const description =
+-      probe
+-        .find((line) => /^info string .*NNUE/i.test(line))
+-        ?.replace(/^info string /, '') ?? null;
+-    await internal('ucinewgame');
+-    await internal('isready', /^readyok$/);
+-
+-    // The network now lives in WASM memory; drop the filesystem copy.
+-    engine.FS.unlink(path);
+-
+-    if (disposeRequested) throw new WorkerError('disposed', 'disposed during initialization', true);
++    const ready = await Promise.race([prepareEngine(request, signal), cancelled]);
++    if (state !== 'initializing') return;
+     state = 'ready';
+-    post({
+-      type: 'ready',
+-      engine: engineInfo,
+-      network: { path, bytes: bytesLength, sha256: expectedSha256, description },
+-      threads,
+-      hashMiB,
+-      multiPv,
+-      maxThreads: PTHREAD_POOL_SIZE,
+-      maxHashMiB: MAX_HASH_MIB,
+-    });
++    post(ready);
+   } catch (error) {
+-    if (!engine && enginePromise) {
+-      try {
+-        engine = await enginePromise;
+-        engineAlive = true;
+-      } catch {
+-        // the runtime failed to start
+-      }
+-    }
+-    if (state !== 'failed') {
+-      state = 'failed';
+-      if (!(error instanceof WorkerError && error.code === 'disposed')) postError(error);
+-    }
+-    if (engine && engineAlive) {
+-      try {
+-        collector = null;
+-        callEngine('quit');
+-      } catch {
+-        // already gone
+-      }
+-    }
+-    if (disposeRequested) await dispose();
++    if (state === 'initializing') fail(error);
++  } finally {
++    clearTimeout(deadline);
++    startupController = null;
+   }
+ }
+ 
+@@ -542,22 +535,19 @@ async function initialize(request) {
+ 
+ async function dispose() {
+   if (state === 'disposing' || state === 'disposed') return;
+-  if (state === 'initializing') {
+-    disposeRequested = true;
+-    return;
+-  }
++  const wasReady = state === 'ready';
+   state = 'disposing';
++  const error = new WorkerError('disposed', 'disposed during initialization', true);
++  startupController?.abort(error);
++  if (collector) finishCollector(collector, error);
+   queue.length = 0;
+-  if (engine && engineAlive) {
++  if (wasReady && engine && engineAlive) {
+     try {
+-      if (active) {
+-        stopActive();
+-        await whenIdle(10000);
+-      }
+-      collector = null;
+-      callEngine('quit'); // joins every search thread
++      if (active) stopActive();
++      // Do not enter a blocking join after a search has already failed to stop.
++      if (await whenIdle(10000)) callEngine('quit');
+     } catch {
+-      // the runtime is gone already
++      // Closing the worker also covers an aborted runtime.
+     }
+   }
+   engine = null;
