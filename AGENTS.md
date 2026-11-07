@@ -1,5 +1,12 @@
 # Repository Instructions
 
+## AWC 2026 result checklist
+
+Whenever the user reports a new AWC 2026 result, follow
+`docs/awc-2026-result-checklist.md`. A result update is not complete until the bracket, match link,
+Atomic Tour points, every applicable betting system, bettor payouts, and resolution notifications
+have all been handled and verified.
+
 ## How instructions are organized
 
 - Keep this root `AGENTS.md` limited to rules that apply broadly or must always be discovered.
