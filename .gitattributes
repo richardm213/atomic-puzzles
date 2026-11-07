@@ -1,1 +1,2 @@
-public/engines/atomic-stockfish/**/atomic-stockfish.mjs -text
+public/engines/atomic-stockfish/**/atomic-stockfish.mjs -text -whitespace
+public/engines/atomic-stockfish/**/source.patch -whitespace
