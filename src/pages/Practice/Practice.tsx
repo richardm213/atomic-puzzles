@@ -1,7 +1,6 @@
 import "./Practice.css";
 
 import {
-  faArrowsRotate,
   faBookOpen,
   faDice,
   faPause,
@@ -15,11 +14,16 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
-import type { CSSProperties } from "react";
+import type {
+  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
+import { BoardClock } from "../../components/BoardClock/BoardClock";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
 import {
   isTextEntryTarget,
@@ -40,6 +44,7 @@ import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDb
 import {
   OpeningExplorerCompactHeader,
   OpeningExplorerPanel,
+  OpeningExplorerResizeHandle,
 } from "../../features/analysisWorkspace/OpeningExplorerPanel";
 import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
@@ -106,6 +111,10 @@ const formatClockTime = (milliseconds: number): string => {
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 };
+
+const MIN_PRACTICE_MOVE_PANEL_HEIGHT = 0;
+const MIN_PRACTICE_EXPLORER_HEIGHT = 12;
+const EXPLORER_RESIZE_STEP = 24;
 
 const oppositeSide = (side: PracticeSide): PracticeSide => (side === "white" ? "black" : "white");
 
@@ -225,6 +234,8 @@ export const PracticePage = () => {
     [navigate],
   );
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
+  const practicePanelRef = useRef<HTMLElement | null>(null);
+  const movePanelRef = useRef<HTMLDivElement | null>(null);
   const remainingClockMsRef = useRef(clockMinutes * 60_000);
   const lastAutoFenRef = useRef("");
   const navigationRef = useRef<SolutionNavigation | null>(null);
@@ -241,9 +252,11 @@ export const PracticePage = () => {
     remember: rememberUsername,
     removeRecent: removeRecentUsername,
   } = useUsernamePicker("player");
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [exhaustedFen, setExhaustedFen] = useState<string | null>(null);
   const [movesOpen, setMovesOpen] = usePersistedState(MOVES_OPEN_STORAGE_KEY, z.boolean(), true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [movePanelHeight, setMovePanelHeight] = useState<number | null>(null);
+  const [explorerResizing, setExplorerResizing] = useState(false);
   const [hoveredMoveUci, setHoveredMoveUci] = useState<string | null>(null);
   const [randomPlayerLoading, setRandomPlayerLoading] = useState(false);
   const [randomPlayerError, setRandomPlayerError] = useState("");
@@ -1043,14 +1056,276 @@ export const PracticePage = () => {
     usernamePickerOpen,
   ]);
 
+  const clampMovePanelHeight = useCallback((nextHeight: number): number | null => {
+    const panel = practicePanelRef.current;
+    if (!panel) return null;
+
+    const panelStyles = window.getComputedStyle(panel);
+    const panelContentHeight =
+      panel.clientHeight -
+      (Number.parseFloat(panelStyles.paddingTop) || 0) -
+      (Number.parseFloat(panelStyles.paddingBottom) || 0);
+    const rowGap = Number.parseFloat(panelStyles.rowGap) || 0;
+    const sessionControls = panel.querySelector<HTMLElement>(".practiceSessionControls");
+    const toolbar = panel.querySelector<HTMLElement>(".analysisBottomToolbar");
+    const reservedHeight =
+      (sessionControls?.getBoundingClientRect().height ?? 0) +
+      (toolbar?.getBoundingClientRect().height ?? 0) +
+      rowGap * 3;
+    const maxHeight = Math.max(
+      MIN_PRACTICE_MOVE_PANEL_HEIGHT,
+      panelContentHeight - reservedHeight - MIN_PRACTICE_EXPLORER_HEIGHT,
+    );
+    return Math.round(Math.min(Math.max(nextHeight, MIN_PRACTICE_MOVE_PANEL_HEIGHT), maxHeight));
+  }, []);
+
+  const adjustExplorerSplit = useCallback(
+    (delta: number): void => {
+      const fallbackHeight =
+        movePanelRef.current?.getBoundingClientRect().height ?? MIN_PRACTICE_MOVE_PANEL_HEIGHT;
+      const nextHeight = clampMovePanelHeight((movePanelHeight ?? fallbackHeight) + delta);
+      if (nextHeight !== null) setMovePanelHeight(nextHeight);
+    },
+    [clampMovePanelHeight, movePanelHeight],
+  );
+
+  const handleExplorerResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (!practicePanelRef.current) return;
+
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setExplorerResizing(true);
+
+    const ownerDocument = event.currentTarget.ownerDocument;
+    const startY = event.clientY;
+    const startHeight =
+      movePanelHeight ??
+      movePanelRef.current?.getBoundingClientRect().height ??
+      MIN_PRACTICE_MOVE_PANEL_HEIGHT;
+    const finishResize = (): void => {
+      setExplorerResizing(false);
+      ownerDocument.removeEventListener("pointermove", handlePointerMove);
+      ownerDocument.removeEventListener("pointerup", finishResize);
+      ownerDocument.removeEventListener("pointercancel", finishResize);
+    };
+    const handlePointerMove = (pointerEvent: PointerEvent): void => {
+      pointerEvent.preventDefault();
+      const nextHeight = clampMovePanelHeight(startHeight + pointerEvent.clientY - startY);
+      if (nextHeight !== null) setMovePanelHeight(nextHeight);
+    };
+
+    ownerDocument.addEventListener("pointermove", handlePointerMove);
+    ownerDocument.addEventListener("pointerup", finishResize);
+    ownerDocument.addEventListener("pointercancel", finishResize);
+  };
+
+  const handleExplorerResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      adjustExplorerSplit(-EXPLORER_RESIZE_STEP);
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      adjustExplorerSplit(EXPLORER_RESIZE_STEP);
+    }
+  };
+
+  const explorerSplitValue =
+    movePanelHeight === null
+      ? 40
+      : Math.round(
+          (movePanelHeight / Math.max(1, practicePanelRef.current?.clientHeight ?? 1)) * 100,
+        );
+
+  const practiceSettingsContent = (
+    <div className="analysisFilterPanel practiceSettingsPanel" id="practice-settings-panel">
+      {opponentSource === "player" ? (
+        <>
+          <div className="analysisPlayerSettings practicePlayerSettings">
+            <span>{allowMultiplePlayers ? "Players" : "Player"}</span>
+            <div
+              className={`practicePlayerChooserRow ${allowMultiplePlayers ? "multiple" : "single"}`}
+            >
+              <button
+                type="button"
+                className="analysisPlayerNameButton"
+                onClick={openUsernamePicker}
+                disabled={!canChoosePracticePlayer}
+              >
+                {canChoosePracticePlayer
+                  ? allowMultiplePlayers
+                    ? "Add player"
+                    : opponentUsernames[0] || "Choose player"
+                  : "Player limit reached"}
+              </button>
+              {allowMultiplePlayers && opponentUsernames.length ? (
+                <button
+                  type="button"
+                  className="analysisOpponentClearButton"
+                  aria-label={allowMultiplePlayers ? "Clear players" : "Clear player"}
+                  title={allowMultiplePlayers ? "Clear players" : "Clear player"}
+                  onClick={clearSelectedPlayers}
+                >
+                  <FontAwesomeIcon icon={faXmark} />
+                </button>
+              ) : null}
+            </div>
+            {allowMultiplePlayers && opponentUsernames.length ? (
+              <div className="practicePlayerChipList" aria-label="Selected players">
+                {opponentUsernames.map((opponentUsername) => (
+                  <span className="practicePlayerChip" key={opponentUsername}>
+                    <span>{opponentUsername}</span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${opponentUsername}`}
+                      onClick={() => removeOpponentUsername(opponentUsername)}
+                    >
+                      <FontAwesomeIcon icon={faXmark} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <label className="analysisFilterCheckbox">
+            <span>Show performance rating</span>
+            <input
+              type="checkbox"
+              checked={showPerformance}
+              onChange={(event) => updateSettings({ showPerformance: event.target.checked })}
+            />
+          </label>
+        </>
+      ) : null}
+
+      <div className="practiceSettingGroup">
+        <span>Move choice</span>
+        <div className="practiceModeGrid" role="group" aria-label="Database move selection">
+          <button
+            type="button"
+            className={opponentMode === "frequency" ? "active" : ""}
+            aria-pressed={opponentMode === "frequency"}
+            onClick={() => updateSettings({ opponentMode: "frequency" })}
+          >
+            Frequency
+          </button>
+          <button
+            type="button"
+            className={opponentMode === "random" ? "active" : ""}
+            aria-pressed={opponentMode === "random"}
+            onClick={() => updateSettings({ opponentMode: "random" })}
+          >
+            Random
+          </button>
+          <button
+            type="button"
+            className={opponentMode === "popular" ? "active" : ""}
+            aria-pressed={opponentMode === "popular"}
+            onClick={() => updateSettings({ opponentMode: "popular" })}
+          >
+            Popular
+          </button>
+        </div>
+      </div>
+
+      <label className="practiceCheckbox">
+        <span>Enable clock</span>
+        <input
+          type="checkbox"
+          checked={clockEnabled}
+          onChange={(event) => updateClockEnabled(event.target.checked)}
+        />
+      </label>
+
+      {clockEnabled ? (
+        <div className="practiceSettingGroup">
+          <span>Time control</span>
+          <div className="practiceTimeControl" aria-label="Practice time control">
+            <label>
+              <span>Minutes</span>
+              <input
+                type="number"
+                min="0"
+                max="180"
+                step="1"
+                value={clockMinutes}
+                onChange={(event) => {
+                  const nextMinutes = normalizeClockValue(event.target.value, 0, 180);
+                  updateSettings({ clockMinutes: nextMinutes });
+                  resetPracticeClock(nextMinutes);
+                }}
+              />
+            </label>
+            <span aria-hidden="true">+</span>
+            <label>
+              <span>Increment</span>
+              <input
+                type="number"
+                min="0"
+                max="60"
+                step="1"
+                value={clockIncrementSeconds}
+                onChange={(event) =>
+                  updateSettings({
+                    clockIncrementSeconds: normalizeClockValue(event.target.value, 0, 60),
+                  })
+                }
+              />
+            </label>
+          </div>
+        </div>
+      ) : null}
+
+      <label className="practiceCheckbox">
+        <span>Allow multiple players</span>
+        <input
+          type="checkbox"
+          checked={allowMultiplePlayers}
+          onChange={(event) => updateAllowMultiplePlayers(event.target.checked)}
+        />
+      </label>
+
+      {opponentSource === "player" ? (
+        <div className="practiceSettingGroup">
+          <span>Continue with</span>
+          <div className="practiceSegmented" role="group" aria-label="Player continuation">
+            <button
+              type="button"
+              className={playerContinuation === "general" ? "active" : ""}
+              aria-pressed={playerContinuation === "general"}
+              onClick={() => {
+                updateSettings({ playerContinuation: "general" });
+                resetOpponentMoveChoices();
+              }}
+            >
+              General DB
+            </button>
+            <button
+              type="button"
+              className={playerContinuation === "engine" ? "active" : ""}
+              aria-pressed={playerContinuation === "engine"}
+              onClick={() => {
+                updateSettings({ playerContinuation: "engine" });
+                resetOpponentMoveChoices();
+              }}
+            >
+              <FontAwesomeIcon icon={faRobot} />
+              <span>Engine</span>
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+
   const practiceOpeningExplorer = !movesOpen ? (
     <OpeningExplorerPanel
       className={`practiceMovesPanel ${settingsOpen ? "settingsOpen" : ""}`}
       ariaLabel="Opening explorer"
       tableClassName="practiceMoveTableWrap"
       displayProps={
-        !movesOpen && !settingsOpen
-          ? {
+        settingsOpen
+          ? undefined
+          : {
               moves: practiceMoves,
               recentGames,
               status,
@@ -1066,9 +1341,13 @@ export const PracticePage = () => {
               onHoverMove: setHoveredMoveUci,
               showInlineError: false,
             }
-          : undefined
       }
     >
+      <OpeningExplorerResizeHandle
+        valueNow={explorerSplitValue}
+        onPointerDown={handleExplorerResizePointerDown}
+        onKeyDown={handleExplorerResizeKeyDown}
+      />
       <section className="practiceSettings" aria-label="Opponent settings">
         <OpeningExplorerCompactHeader
           controlsId="practice-settings-panel"
@@ -1101,186 +1380,7 @@ export const PracticePage = () => {
             </span>
           </button>
         </OpeningExplorerCompactHeader>
-        {settingsOpen ? (
-          <div className="analysisFilterPanel practiceSettingsPanel" id="practice-settings-panel">
-            {opponentSource === "player" ? (
-              <>
-                <div className="analysisPlayerSettings practicePlayerSettings">
-                  <span>{allowMultiplePlayers ? "Players" : "Player"}</span>
-                  <div
-                    className={`practicePlayerChooserRow ${allowMultiplePlayers ? "multiple" : "single"}`}
-                  >
-                    <button
-                      type="button"
-                      className="analysisPlayerNameButton"
-                      onClick={openUsernamePicker}
-                      disabled={!canChoosePracticePlayer}
-                    >
-                      {canChoosePracticePlayer
-                        ? allowMultiplePlayers
-                          ? "Add player"
-                          : opponentUsernames[0] || "Choose player"
-                        : "Player limit reached"}
-                    </button>
-                    {allowMultiplePlayers && opponentUsernames.length ? (
-                      <button
-                        type="button"
-                        className="analysisOpponentClearButton"
-                        aria-label={allowMultiplePlayers ? "Clear players" : "Clear player"}
-                        title={allowMultiplePlayers ? "Clear players" : "Clear player"}
-                        onClick={clearSelectedPlayers}
-                      >
-                        <FontAwesomeIcon icon={faXmark} />
-                      </button>
-                    ) : null}
-                  </div>
-                  {allowMultiplePlayers && opponentUsernames.length ? (
-                    <div className="practicePlayerChipList" aria-label="Selected players">
-                      {opponentUsernames.map((opponentUsername) => (
-                        <span className="practicePlayerChip" key={opponentUsername}>
-                          <span>{opponentUsername}</span>
-                          <button
-                            type="button"
-                            aria-label={`Remove ${opponentUsername}`}
-                            onClick={() => removeOpponentUsername(opponentUsername)}
-                          >
-                            <FontAwesomeIcon icon={faXmark} />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                <label className="analysisFilterCheckbox">
-                  <span>Show performance rating</span>
-                  <input
-                    type="checkbox"
-                    checked={showPerformance}
-                    onChange={(event) => updateSettings({ showPerformance: event.target.checked })}
-                  />
-                </label>
-              </>
-            ) : null}
-
-            <div className="practiceSettingGroup">
-              <span>Move choice</span>
-              <div className="practiceModeGrid" role="group" aria-label="Database move selection">
-                <button
-                  type="button"
-                  className={opponentMode === "frequency" ? "active" : ""}
-                  aria-pressed={opponentMode === "frequency"}
-                  onClick={() => updateSettings({ opponentMode: "frequency" })}
-                >
-                  Frequency
-                </button>
-                <button
-                  type="button"
-                  className={opponentMode === "random" ? "active" : ""}
-                  aria-pressed={opponentMode === "random"}
-                  onClick={() => updateSettings({ opponentMode: "random" })}
-                >
-                  Random
-                </button>
-                <button
-                  type="button"
-                  className={opponentMode === "popular" ? "active" : ""}
-                  aria-pressed={opponentMode === "popular"}
-                  onClick={() => updateSettings({ opponentMode: "popular" })}
-                >
-                  Popular
-                </button>
-              </div>
-            </div>
-
-            <label className="practiceCheckbox">
-              <span>Enable clock</span>
-              <input
-                type="checkbox"
-                checked={clockEnabled}
-                onChange={(event) => updateClockEnabled(event.target.checked)}
-              />
-            </label>
-
-            {clockEnabled ? (
-              <div className="practiceSettingGroup">
-                <span>Time control</span>
-                <div className="practiceTimeControl" aria-label="Practice time control">
-                  <label>
-                    <span>Minutes</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="180"
-                      step="1"
-                      value={clockMinutes}
-                      onChange={(event) => {
-                        const nextMinutes = normalizeClockValue(event.target.value, 0, 180);
-                        updateSettings({ clockMinutes: nextMinutes });
-                        resetPracticeClock(nextMinutes);
-                      }}
-                    />
-                  </label>
-                  <span aria-hidden="true">+</span>
-                  <label>
-                    <span>Increment</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="60"
-                      step="1"
-                      value={clockIncrementSeconds}
-                      onChange={(event) =>
-                        updateSettings({
-                          clockIncrementSeconds: normalizeClockValue(event.target.value, 0, 60),
-                        })
-                      }
-                    />
-                  </label>
-                </div>
-              </div>
-            ) : null}
-
-            <label className="practiceCheckbox">
-              <span>Allow multiple players</span>
-              <input
-                type="checkbox"
-                checked={allowMultiplePlayers}
-                onChange={(event) => updateAllowMultiplePlayers(event.target.checked)}
-              />
-            </label>
-
-            {opponentSource === "player" ? (
-              <div className="practiceSettingGroup">
-                <span>Continue with</span>
-                <div className="practiceSegmented" role="group" aria-label="Player continuation">
-                  <button
-                    type="button"
-                    className={playerContinuation === "general" ? "active" : ""}
-                    aria-pressed={playerContinuation === "general"}
-                    onClick={() => {
-                      updateSettings({ playerContinuation: "general" });
-                      resetOpponentMoveChoices();
-                    }}
-                  >
-                    General DB
-                  </button>
-                  <button
-                    type="button"
-                    className={playerContinuation === "engine" ? "active" : ""}
-                    aria-pressed={playerContinuation === "engine"}
-                    onClick={() => {
-                      updateSettings({ playerContinuation: "engine" });
-                      resetOpponentMoveChoices();
-                    }}
-                  >
-                    <FontAwesomeIcon icon={faRobot} />
-                    <span>Engine</span>
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        {settingsOpen ? practiceSettingsContent : null}
       </section>
     </OpeningExplorerPanel>
   ) : null;
@@ -1306,7 +1406,13 @@ export const PracticePage = () => {
       />
 
       <AnalysisWorkspacePanel
-        className={`practicePanel ${!movesOpen ? "explorerOpen" : "explorerCollapsed"}`}
+        ref={practicePanelRef}
+        className={`practicePanel ${!movesOpen ? "explorerOpen" : "explorerCollapsed"} ${movePanelHeight !== null ? "customExplorerSplit" : ""} ${movePanelHeight === MIN_PRACTICE_MOVE_PANEL_HEIGHT ? "movesCollapsed" : ""} ${explorerResizing ? "explorerResizing" : ""}`}
+        style={
+          movePanelHeight !== null
+            ? ({ "--practice-move-panel-height": `${movePanelHeight}px` } as CSSProperties)
+            : undefined
+        }
         aria-label="Practice controls"
       >
         <div className="practiceSessionControls" role="group" aria-label="Practice session">
@@ -1317,77 +1423,53 @@ export const PracticePage = () => {
             <strong>{totalGames ? `${formatGameCount(totalGames)} games` : "0 games"}</strong>
           </div>
 
-          <div
-            className={`practiceClock ${clockExpired ? "expired" : ""} ${clockEnabled ? "" : "off"}`}
-            aria-label={
-              clockEnabled
-                ? `Your clock: ${formatClockTime(remainingClockMs)}`
-                : "Practice controls"
-            }
-          >
-            {clockEnabled ? (
-              <strong aria-live="off">{formatClockTime(remainingClockMs)}</strong>
-            ) : null}
-            <div className="practiceClockActions">
-              <button
-                type="button"
-                onClick={toggleGamePaused}
-                disabled={!canRunPractice}
-                aria-label={
-                  gamePaused ? (sessionStarted ? "Resume game" : "Start game") : "Pause game"
-                }
-                title={gamePaused ? "Start or resume game (A)" : "Pause game (A)"}
-              >
-                <FontAwesomeIcon icon={gamePaused ? faPlay : faPause} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                onClick={restartPracticeGame}
-                aria-label="Restart game"
-                title="Restart from the initial position"
-              >
-                <FontAwesomeIcon icon={faRotateLeft} aria-hidden="true" />
-              </button>
-              <span className="practiceActionTooltip" data-tooltip="Practice random opponent">
-                <button
-                  type="button"
-                  className="practiceRandomBoppButton"
-                  onClick={selectRandomPlayer}
-                  disabled={randomPlayerLoading || !canChoosePracticePlayer}
-                  aria-label="Practice a random opponent"
-                >
-                  <FontAwesomeIcon icon={faDice} />
-                </button>
-              </span>
-              <span className="practiceActionTooltip" data-tooltip="Swap opponent’s move">
-                <button
-                  type="button"
-                  className="practiceAlternateMoveButton"
-                  onClick={requestAlternateAutoMove}
-                  disabled={status !== "ready"}
-                  aria-label="Choose a different opponent move"
-                >
-                  <FontAwesomeIcon icon={faShuffle} />
-                </button>
-              </span>
-            </div>
-          </div>
-
-          <div className="practiceHeaderActions">
+          <div className="practiceClockActions" role="group" aria-label="Practice controls">
             <button
               type="button"
-              className="practiceSideButton"
-              data-side={side}
-              aria-label={`Play as ${opponentSide}`}
-              title={`Playing as ${side}. Switch sides`}
-              onClick={flipPracticeSide}
+              onClick={toggleGamePaused}
+              disabled={!canRunPractice}
+              aria-label={
+                gamePaused ? (sessionStarted ? "Resume game" : "Start game") : "Pause game"
+              }
+              title={gamePaused ? "Start or resume game (A)" : "Pause game (A)"}
             >
-              <FontAwesomeIcon icon={faArrowsRotate} aria-hidden="true" />
+              <FontAwesomeIcon icon={gamePaused ? faPlay : faPause} aria-hidden="true" />
             </button>
+            <button
+              type="button"
+              onClick={restartPracticeGame}
+              aria-label="Restart game"
+              title="Restart from the initial position"
+            >
+              <FontAwesomeIcon icon={faRotateLeft} aria-hidden="true" />
+            </button>
+            <span className="practiceActionTooltip" data-tooltip="Practice random opponent">
+              <button
+                type="button"
+                className="practiceRandomBoppButton"
+                onClick={selectRandomPlayer}
+                disabled={randomPlayerLoading || !canChoosePracticePlayer}
+                aria-label="Practice a random opponent"
+              >
+                <FontAwesomeIcon icon={faDice} />
+              </button>
+            </span>
+            <span className="practiceActionTooltip" data-tooltip="Swap opponent’s move">
+              <button
+                type="button"
+                className="practiceAlternateMoveButton"
+                onClick={requestAlternateAutoMove}
+                disabled={status !== "ready"}
+                aria-label="Choose a different opponent move"
+              >
+                <FontAwesomeIcon icon={faShuffle} />
+              </button>
+            </span>
           </div>
         </div>
 
         <AnalysisEngineExplorerPanels
+          movePanelRef={movePanelRef}
           movePanelAriaLabel="Position analysis and played moves"
           movePanelClassName="practicePlayedMovesPanel"
           engine={
@@ -1397,6 +1479,7 @@ export const PracticePage = () => {
               settings={atomicDbEngineSettings}
               setSettings={setAtomicDbEngineSettings}
               onDisable={() => setHoveredMoveUci(null)}
+              onFlipBoard={flipPracticeSide}
               onPlayLine={playAtomicDbLine}
               onHoverMove={setHoveredMoveUci}
               disabled={atomicDbLinePlaying}
@@ -1480,30 +1563,40 @@ export const PracticePage = () => {
           />
         }
         boardAfter={
-          <ShareExportPanel
-            className="practiceShareExport"
-            title="Share & export"
-            document={boardDocument}
-            fileName="atomic-practice.pgn"
-            actions={
-              <>
-                <a href={currentLichessAnalysisUrl} target="_blank" rel="noreferrer">
-                  View on Lichess
-                </a>
-                <a
-                  href={
-                    atomicDbAnalysis.result?.position?.key
-                      ? atomicDbPositionUrl(atomicDbAnalysis.result.position.key)
-                      : ATOMIC_DB_HOME_URL
-                  }
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  View on AtomicDB
-                </a>
-              </>
-            }
-          />
+          <>
+            {clockEnabled ? (
+              <BoardClock
+                value={formatClockTime(remainingClockMs)}
+                ariaLabel={`Your clock: ${formatClockTime(remainingClockMs)}`}
+                active={clockRunning}
+                expired={clockExpired}
+              />
+            ) : null}
+            <ShareExportPanel
+              className="practiceShareExport"
+              title="Share & export"
+              document={boardDocument}
+              fileName="atomic-practice.pgn"
+              actions={
+                <>
+                  <a href={currentLichessAnalysisUrl} target="_blank" rel="noreferrer">
+                    View on Lichess
+                  </a>
+                  <a
+                    href={
+                      atomicDbAnalysis.result?.position?.key
+                        ? atomicDbPositionUrl(atomicDbAnalysis.result.position.key)
+                        : ATOMIC_DB_HOME_URL
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View on AtomicDB
+                  </a>
+                </>
+              }
+            />
+          </>
         }
         lichessHref={currentLichessAnalysisUrl}
         atomicDbHref={

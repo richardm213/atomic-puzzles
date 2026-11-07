@@ -14,10 +14,26 @@
   grid-template-rows: auto minmax(150px, 0.8fr) minmax(120px, 1.2fr) auto;
 }
 
+.practicePanel.explorerOpen.customExplorerSplit {
+  grid-template-rows:
+    auto minmax(0, var(--practice-move-panel-height)) minmax(0, 1fr)
+    auto;
+}
+
+.practicePanel.explorerResizing {
+  cursor: row-resize;
+  user-select: none;
+}
+
+.practicePanel.movesCollapsed .analysisExplorerResizeHandle::before {
+  background: color-mix(in srgb, var(--color-heading) 64%, var(--color-primary) 36%);
+  opacity: 1;
+}
+
 .practiceSessionControls {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
 }
@@ -34,45 +50,6 @@
   border: 0;
 }
 
-.practiceHeaderActions {
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.practiceSideButton {
-  width: 42px;
-  min-width: 42px;
-  min-height: 42px;
-  padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-panel-strong) 88%, transparent);
-  color: var(--color-heading);
-  display: grid;
-  place-items: center;
-  font-size: 15px;
-  cursor: pointer;
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-heading) 5%, transparent) inset;
-  transition:
-    transform 140ms ease,
-    border-color 140ms ease,
-    background 140ms ease,
-    box-shadow 140ms ease;
-}
-
-.practiceSideButton:hover {
-  transform: translateY(-1px);
-  border-color: var(--color-accent-soft-border);
-  background: color-mix(in srgb, var(--color-panel-strong) 82%, var(--color-primary) 18%);
-  box-shadow: 0 4px 10px color-mix(in srgb, var(--color-primary) 12%, transparent);
-}
-
-.practiceSideButton:active {
-  transform: translateY(0);
-}
-
 .practiceStatus {
   min-width: 0;
   min-height: 42px;
@@ -83,37 +60,6 @@
   align-content: center;
   justify-items: start;
   gap: 2px;
-}
-
-.practiceClock {
-  width: auto;
-  min-width: 0;
-  min-height: 42px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.practiceClock strong {
-  min-width: 50px;
-  padding: 0 5px;
-  color: var(--color-heading);
-  font-size: 18px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
-}
-
-.practiceClock.expired strong {
-  color: var(--color-danger);
-}
-
-.practiceClock.off {
-  justify-content: center;
 }
 
 .practiceClockActions {
@@ -175,32 +121,22 @@
   font-size: 12px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .practiceSettings {
   min-width: 0;
   display: grid;
   gap: 8px;
-  padding-bottom: 8px;
 }
 
 .practiceSettingsPanel {
   min-height: 0;
   gap: 10px;
-  padding: 6px 8px 10px;
-}
-
-.practiceMovesPanel.settingsOpen .practiceSettings {
-  min-height: 0;
-  grid-template-rows: auto minmax(0, 1fr);
-  overflow: hidden;
-}
-
-.practiceMovesPanel.settingsOpen .practiceSettingsPanel {
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
-  padding-right: 6px;
+  padding: 6px 6px 10px 8px;
 }
 
 .practiceSettingGroup > span {
@@ -490,13 +426,34 @@
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 4px;
   overflow: hidden;
 }
 
+.practiceMovesPanel:not(.settingsOpen) .practiceSettings {
+  min-height: 33px;
+  overflow: hidden;
+}
+
+.practiceMovesPanel .analysisExplorerCompactHeader {
+  position: relative;
+  z-index: 2;
+  background: var(--color-panel-strong);
+}
+
+.practiceMovesPanel > .analysisExplorerResizeHandle::before {
+  transform: translateY(2px);
+}
+
 .practiceMovesPanel.settingsOpen {
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.practiceMovesPanel.settingsOpen .practiceSettings {
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .practiceMoveTableWrap {
@@ -574,7 +531,6 @@
   color: var(--color-heading);
 }
 
-.practiceSideButton:focus-visible,
 .practiceRandomBoppButton:focus-visible,
 .practiceAlternateMoveButton:focus-visible,
 .practiceSegmented button:focus-visible,
@@ -604,16 +560,6 @@
   .practicePanel.explorerOpen {
     grid-template-rows: none;
   }
-
-  .practiceMovesPanel.settingsOpen .practiceSettings {
-    grid-template-rows: none;
-    overflow: visible;
-  }
-
-  .practiceMovesPanel.settingsOpen .practiceSettingsPanel {
-    overflow-y: visible;
-    padding-right: 2px;
-  }
 }
 
 @media (max-width: 520px) {
@@ -626,12 +572,6 @@
     gap: 4px;
   }
 
-  .practiceSideButton {
-    width: 44px;
-    min-width: 44px;
-    min-height: 44px;
-  }
-
   .practiceStatus {
     min-height: 44px;
     padding-inline: 2px;
@@ -641,15 +581,6 @@
   .practiceStatus strong {
     width: auto;
     flex: 0 0 auto;
-  }
-
-  .practiceClock {
-    min-height: 44px;
-    gap: 4px;
-  }
-
-  .practiceClock strong {
-    font-size: 17px;
   }
 
   .practiceClockActions button {
@@ -691,14 +622,6 @@
 }
 
 @media (max-width: 340px) {
-  .practiceClock {
-    width: 134px;
-  }
-
-  .practiceSideButton {
-    min-width: 44px;
-  }
-
   .practiceStatus strong {
     font-size: 11px;
   }

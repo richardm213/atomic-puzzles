@@ -4,8 +4,9 @@ import {
   chooseEngineCandidate,
   disableFirefoxAtomicsWaitAsync,
   type EngineCandidate,
-  isDeeperFairyStockfishEvaluation,
+  fairyStockfishEvaluationCacheKey,
   isCacheableFairyStockfishEvaluation,
+  isDeeperFairyStockfishEvaluation,
   parseEngineCandidate,
   withEngineRequestTimeout,
 } from "./fairyStockfish";
@@ -152,15 +153,23 @@ describe("Fairy-Stockfish evaluation cache threshold", () => {
         { ...candidate(2, 95), depth: 17 },
       ]),
     ).toBe(false);
-    expect(
-      isDeeperFairyStockfishEvaluation(cached, [{ ...candidate(1, 110), depth: 20 }]),
-    ).toBe(false);
+    expect(isDeeperFairyStockfishEvaluation(cached, [{ ...candidate(1, 110), depth: 20 }])).toBe(
+      false,
+    );
     expect(
       isDeeperFairyStockfishEvaluation(cached, [
         { ...candidate(1, 110), depth: 19 },
         { ...candidate(2, 95), depth: 18 },
       ]),
     ).toBe(true);
+  });
+
+  it("isolates single-line and multi-line evaluations in the cache", () => {
+    const fen = "r3k2r/pp4pp/2p1b3/3p2q1/8/5PPB/1P2Q2P/R3K1NR w KQkq - 4 14";
+
+    expect(fairyStockfishEvaluationCacheKey("atomic-stockfish", fen, 1)).not.toBe(
+      fairyStockfishEvaluationCacheKey("atomic-stockfish", fen, 5),
+    );
   });
 });
 

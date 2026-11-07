@@ -1,0 +1,31 @@
+.boardClockRow {
+  width: 100%;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.boardClock {
+  min-width: 52px;
+  padding: 3px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface-inset-strong);
+  color: var(--color-heading);
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
+}
+
+.boardClockRow.active .boardClock {
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-inset-strong));
+}
+
+.boardClockRow.expired .boardClock {
+  border-color: color-mix(in srgb, var(--color-danger) 42%, var(--color-border));
+  color: var(--color-danger);
+}

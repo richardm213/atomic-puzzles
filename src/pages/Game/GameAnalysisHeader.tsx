@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
+import { BoardClock } from "../../components/BoardClock/BoardClock";
 import { lichessIcons } from "../../components/PlayerHoverCard/lichessIcons";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { modeLabels } from "../../constants/matches";
@@ -101,14 +102,11 @@ export const GameBoardClock = ({
   const active = (currentPly % 2 === 0 ? "white" : "black") === color;
 
   return (
-    <div className={`gameBoardClockRow${active ? " active" : ""}`}>
-      <time
-        className="gameAnalysisClock"
-        aria-label={`${username} clock, ${active ? "to move" : "waiting"}`}
-      >
-        {formatClock(clock)}
-      </time>
-    </div>
+    <BoardClock
+      value={formatClock(clock)}
+      ariaLabel={`${username} clock, ${active ? "to move" : "waiting"}`}
+      active={active}
+    />
   );
 };
 

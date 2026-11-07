@@ -47,10 +47,9 @@ const configuredMultiPvCounts: Record<LocalAnalysisEngine, number> = {
 };
 type CachedEvaluation = {
   candidates: EngineCandidate[];
-  multiPvCount: number;
   expiresAt: number;
 };
-const candidatesByFen = new Map<string, CachedEvaluation>();
+const evaluationCache = new Map<string, CachedEvaluation>();
 // Match the shared AtomicDB repository window so analysis, game, and practice can reuse a recent
 // local evaluation while moving between pages.
 const EVALUATION_CACHE_TTL_MS = 5 * 60_000;
@@ -71,21 +70,28 @@ const CANDIDATE_WEIGHTS = [0.4, 0.25, 0.15, 0.12, 0.08] as const;
 const randomThinkTimeMs = (): number =>
   Math.floor(Math.random() * (MAX_THINK_TIME_MS - MIN_THINK_TIME_MS + 1)) + MIN_THINK_TIME_MS;
 
-const evaluationCacheKey = (engine: LocalAnalysisEngine, fen: string): string => `${engine}:${fen}`;
+// MultiPV width is part of the request. Keeping it in the key prevents a deep one-line result
+// from satisfying a later request for several independent lines.
+export const fairyStockfishEvaluationCacheKey = (
+  engine: LocalAnalysisEngine,
+  fen: string,
+  multiPvCount: number,
+): string => `${engine}:${multiPvCount}:${fen}`;
 
 const readCachedEvaluation = (
   engine: LocalAnalysisEngine,
   fen: string,
+  multiPvCount: number,
 ): CachedEvaluation | null => {
-  const key = evaluationCacheKey(engine, fen);
-  const cached = candidatesByFen.get(key);
+  const key = fairyStockfishEvaluationCacheKey(engine, fen, multiPvCount);
+  const cached = evaluationCache.get(key);
   if (!cached) return null;
   if (cached.expiresAt <= Date.now()) {
-    candidatesByFen.delete(key);
+    evaluationCache.delete(key);
     return null;
   }
-  candidatesByFen.delete(key);
-  candidatesByFen.set(key, cached);
+  evaluationCache.delete(key);
+  evaluationCache.set(key, cached);
   return cached;
 };
 
@@ -114,7 +120,7 @@ export const isDeeperFairyStockfishEvaluation = (
   current: EngineCandidate[],
   candidate: EngineCandidate[],
 ): boolean =>
-  candidate.length >= current.length &&
+  candidate.length === current.length &&
   fairyStockfishEvaluationDepth(candidate) > fairyStockfishEvaluationDepth(current);
 
 const cacheEvaluationIfDeepEnough = (
@@ -128,17 +134,16 @@ const cacheEvaluationIfDeepEnough = (
     .sort((left, right) => left.multipv - right.multipv)
     .slice(0, multiPvCount);
 
-  const key = evaluationCacheKey(engine, fen);
-  const current = candidatesByFen.get(key);
+  const key = fairyStockfishEvaluationCacheKey(engine, fen, multiPvCount);
+  const current = evaluationCache.get(key);
   if (current && !isDeeperFairyStockfishEvaluation(current.candidates, completeCandidates)) return;
-  candidatesByFen.delete(key);
-  candidatesByFen.set(key, {
+  evaluationCache.delete(key);
+  evaluationCache.set(key, {
     candidates: completeCandidates,
-    multiPvCount,
     expiresAt: Date.now() + EVALUATION_CACHE_TTL_MS,
   });
-  if (candidatesByFen.size > MAX_EVALUATION_CACHE_ENTRIES) {
-    candidatesByFen.delete(candidatesByFen.keys().next().value!);
+  if (evaluationCache.size > MAX_EVALUATION_CACHE_ENTRIES) {
+    evaluationCache.delete(evaluationCache.keys().next().value!);
   }
 };
 
@@ -677,7 +682,7 @@ export const analyzeFairyStockfishPosition = async (
 ): Promise<EngineCandidate[]> => {
   const engine = engineOverride ?? readLocalAnalysisEngine();
   const requestedLineCount = Math.min(MULTIPV_COUNT, Math.max(1, Math.floor(lineCount)));
-  const cachedSearch = readCachedEvaluation(engine, fen);
+  const cachedSearch = readCachedEvaluation(engine, fen, requestedLineCount);
   let publishedCandidates = cachedSearch?.candidates ?? [];
   const handleProgress = (candidates: EngineCandidate[]): void => {
     cacheEvaluationIfDeepEnough(engine, fen, candidates, requestedLineCount);
@@ -689,32 +694,27 @@ export const analyzeFairyStockfishPosition = async (
       onProgress?.(candidates);
     }
   };
-  if (cachedSearch && cachedSearch.multiPvCount < requestedLineCount) {
-    onProgress?.(cachedSearch.candidates);
-  }
-  const candidates =
-    cachedSearch && cachedSearch.multiPvCount >= requestedLineCount
-      ? cachedSearch.candidates
-      : (
-          await queueFairyStockfishSearch(
-            (requestSignal) =>
-              searchFairyStockfish(
-                engine,
-                fen,
-                requestSignal,
-                MAX_THINK_TIME_MS,
-                requestedLineCount,
-                handleProgress,
-              ),
-            signal,
-          )
-        ).candidates;
+  const candidates = cachedSearch
+    ? cachedSearch.candidates
+    : (
+        await queueFairyStockfishSearch(
+          (requestSignal) =>
+            searchFairyStockfish(
+              engine,
+              fen,
+              requestSignal,
+              MAX_THINK_TIME_MS,
+              requestedLineCount,
+              handleProgress,
+            ),
+          signal,
+        )
+      ).candidates;
 
-  const latestCachedSearch = readCachedEvaluation(engine, fen);
+  const latestCachedSearch = readCachedEvaluation(engine, fen, requestedLineCount);
   const preferredCandidates =
     latestCachedSearch &&
-    (candidates.length < requestedLineCount ||
-      !isDeeperFairyStockfishEvaluation(latestCachedSearch.candidates, candidates))
+    isDeeperFairyStockfishEvaluation(candidates, latestCachedSearch.candidates)
       ? latestCachedSearch.candidates
       : candidates;
 
@@ -729,17 +729,17 @@ export const findFairyStockfishMove = (
   excludedMoves: ReadonlySet<string> = new Set(),
 ): Promise<string | null> => {
   const engine = readLocalAnalysisEngine();
-  const cachedSearch = readCachedEvaluation(engine, fen);
+  const requestedLineCount = Math.min(
+    MULTIPV_COUNT,
+    Math.max(PRACTICE_MULTIPV_COUNT, excludedMoves.size + 1),
+  );
+  const cachedSearch = readCachedEvaluation(engine, fen, requestedLineCount);
   if (cachedSearch) {
     return Promise.resolve(
       chooseEngineCandidate(cachedSearch.candidates, Math.random, excludedMoves)?.move ?? null,
     );
   }
 
-  const requestedLineCount = Math.min(
-    MULTIPV_COUNT,
-    Math.max(PRACTICE_MULTIPV_COUNT, excludedMoves.size + 1),
-  );
   return queueFairyStockfishSearch(async (requestSignal) => {
     const result = await searchFairyStockfish(
       engine,

@@ -1186,8 +1186,9 @@ button.analysisLichessLink {
 }
 
 .analysisToolbarButton.active {
-  background: color-mix(in srgb, var(--color-primary) 74%, var(--color-cyan) 26%);
-  color: var(--color-on-primary);
+  background: color-mix(in srgb, var(--color-panel-strong) 82%, var(--color-primary) 18%);
+  color: color-mix(in srgb, var(--color-primary-soft) 76%, var(--color-heading) 24%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 38%, var(--color-border)) inset;
 }
 
 .analysisToolbarButton:disabled {

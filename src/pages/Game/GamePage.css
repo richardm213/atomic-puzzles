@@ -212,31 +212,6 @@
   padding: 2px 0;
 }
 
-.gameBoardClockRow {
-  width: 100%;
-  min-height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.gameBoardClockRow .gameAnalysisClock {
-  min-width: 52px;
-  padding: 3px 6px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-surface-inset-strong);
-  color: var(--color-heading);
-  font-size: 13px;
-  line-height: 1;
-}
-
-.gameBoardClockRow.active .gameAnalysisClock {
-  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
-  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-inset-strong));
-  color: var(--color-heading);
-}
-
 .gameAnalysisPlayerName {
   min-width: 0;
   overflow: hidden;
@@ -295,15 +270,6 @@
 
 .gameAnalysisRatingChange.neutral {
   color: var(--color-subtle);
-}
-
-.gameAnalysisClock {
-  min-width: 51px;
-  color: var(--color-heading);
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 700;
-  text-align: right;
 }
 
 .gameAnalysisMeta {
@@ -1262,14 +1228,14 @@
     order: -3;
   }
 
-  .gameBoardClockRow:first-child {
+  .boardClockRow:first-child {
     grid-column: 1;
     order: -4;
     justify-self: center;
     width: min(100%, var(--analysis-board-size, 520px));
   }
 
-  .gameBoardClockRow:nth-child(3) {
+  .boardClockRow:nth-child(3) {
     grid-column: 1;
     order: -2;
     justify-self: center;
