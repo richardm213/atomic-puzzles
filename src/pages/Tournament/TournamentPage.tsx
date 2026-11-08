@@ -20,6 +20,12 @@ import { modeLabels } from "../../constants/matches";
 import { TournamentFairPlayFlag } from "../../features/tournaments/TournamentFairPlayFlag";
 import { useUnderscoreUsernameCutoff } from "../../hooks/useUnderscoreUsernameCutoff";
 import {
+  formatMatchKickoff,
+  getMatchKickoff,
+  hasTournamentMatchResult,
+} from "../../lib/matches/matchSchedule";
+import {
+  AWC_BRACKET_REFRESH_MS,
   tournamentBracketQueryOptions,
   tournamentCatalogQueryOptions,
 } from "../../lib/matches/tournamentQueries";
@@ -50,7 +56,9 @@ import {
   clampZoom,
   COLUMN_GAP,
   DEFAULT_STAGE_ZOOM,
+  getAwcCurrentRound,
   getRoundShortLabel,
+  getRoundSlug,
   getStageRoundShortLabel,
   getStageStartRound,
   getStageTrophyMatchId,
@@ -71,31 +79,26 @@ import { WolfarenaTournamentPage } from "./WolfarenaTournamentPage";
 type StageKey = string;
 
 const TOURNAMENT_TAB_KEYS = new Set(["main", "losers", "qualifying", SEEDS_STAGE_KEY]);
+const SCHEDULE_DISPLAY_GRACE_MS = 60 * 60 * 1000;
+const MAX_TIMEOUT_MS = 2_147_483_647;
 
-const scheduledMatchTimeFormat = new Intl.DateTimeFormat("en-GB", {
-  month: "short",
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "UTC",
-  timeZoneName: "short",
-});
+const useMatchSchedule = (match: TournamentMatch) => {
+  const [now, setNow] = useState(Date.now);
+  const kickoff = hasTournamentMatchResult(match) ? null : getMatchKickoff(match);
+  const expiresAt = kickoff === null ? null : kickoff + SCHEDULE_DISPLAY_GRACE_MS;
+  const showStartTime = expiresAt !== null && now < expiresAt;
 
-const scheduledMatchTime = (match: TournamentMatch): string => {
-  if (
-    !match.scheduled_at ||
-    !match.p1 ||
-    !match.p2 ||
-    match.match_id ||
-    match.played_on ||
-    match.outcome_type ||
-    match.s1 ||
-    match.s2
-  ) {
-    return "";
-  }
-  const timestamp = Date.parse(match.scheduled_at);
-  return Number.isFinite(timestamp) ? scheduledMatchTimeFormat.format(timestamp) : "";
+  useEffect(() => {
+    if (expiresAt === null || now >= expiresAt) return;
+    const delay = Math.max(0, Math.min(expiresAt - Date.now(), MAX_TIMEOUT_MS));
+    const timer = window.setTimeout(() => setNow(Date.now()), delay);
+    return () => window.clearTimeout(timer);
+  }, [expiresAt, now]);
+
+  return {
+    hasSchedule: kickoff !== null,
+    startTime: kickoff !== null && showStartTime ? formatMatchKickoff(kickoff) : "",
+  };
 };
 
 const normalizeTournamentTab = (value: string | undefined): string => {
@@ -507,7 +510,7 @@ const TournamentMatchCard = ({
   const shouldShowTrophy = showTrophy && Boolean(trophyAssetPath);
   const isDoubleBye = isTournamentDoubleByeMatch(match);
   const byeAdvancePlayer = byeAdvancePlayerName(match);
-  const startTime = scheduledMatchTime(match);
+  const { hasSchedule, startTime } = useMatchSchedule(match);
   const representedLosers = new Set(
     [match.p1, match.p2]
       .filter((playerName) => !isEmptyPlayer(playerName))
@@ -582,7 +585,7 @@ const TournamentMatchCard = ({
 
   return (
     <div
-      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage ? " isClickable" : ""}${shouldShowTrophy ? " hasTrophy" : ""}${shouldShowTrophy && placeTrophyOnSide ? " hasSideTrophy" : ""}${match.replacement_for ? " hasReplacementHistory" : ""}${startTime ? " hasScheduledTime" : ""}`}
+      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage || hasSchedule ? " isClickable" : ""}${shouldShowTrophy ? " hasTrophy" : ""}${shouldShowTrophy && placeTrophyOnSide ? " hasSideTrophy" : ""}${match.replacement_for ? " hasReplacementHistory" : ""}${startTime ? " hasScheduledTime" : ""}`}
       style={{
         left: `${match.x}px`,
         top: `${match.y}px`,
@@ -606,6 +609,14 @@ const TournamentMatchCard = ({
             onClick={handleOpenMatchClick}
           ></Link>
         )
+      ) : hasSchedule ? (
+        <Link
+          className="tournamentMatchCardOpenLink"
+          to="/match/scheduled/$tournamentId/$fixtureId"
+          params={{ tournamentId: getTournamentRouteId(match.tournament), fixtureId: match.id }}
+          aria-label={openMatchLabel}
+          onClick={handleOpenMatchClick}
+        ></Link>
       ) : null}
       {shouldShowTrophy ? (
         <img
@@ -793,6 +804,7 @@ const TournamentStageSection = ({
   zoomLevel,
   isDragging,
   startRoundName,
+  automaticStartRoundName,
   topSeedMap,
   entryMarkers,
   seedCount,
@@ -815,6 +827,7 @@ const TournamentStageSection = ({
   zoomLevel: number;
   isDragging: boolean;
   startRoundName: string;
+  automaticStartRoundName: string | undefined;
   topSeedMap: Map<string, number>;
   entryMarkers: Map<string, TournamentEntryMarker>;
   seedCount: number;
@@ -833,7 +846,7 @@ const TournamentStageSection = ({
   loserSourcesByMatchId: Map<string, LoserSource[]>;
 }) => {
   const [groupViews, setGroupViews] = useState<Record<string, "standings" | "matches">>({});
-  const startRoundOptions = getStartRoundOptions(stage);
+  const startRoundOptions = getStartRoundOptions(stage, automaticStartRoundName, startRoundName);
   const trophyMatchId = trophyAssetPath ? getStageTrophyMatchId(stage, decisiveMatchId) : "";
   const roundRobinGroups = isRoundRobinQualifyingStage(stage) ? buildRoundRobinGroups(stage) : null;
 
@@ -1088,9 +1101,11 @@ const TournamentStageSection = ({
 const BracketTournamentPage = ({
   tournamentId,
   tournamentTab,
+  tournamentRound,
 }: {
   tournamentId: string;
   tournamentTab?: string | undefined;
+  tournamentRound?: string | undefined;
 }) => {
   const navigate = useNavigate();
   const catalogQuery = useQuery(tournamentCatalogQueryOptions());
@@ -1101,13 +1116,14 @@ const BracketTournamentPage = ({
   const bracketQuery = useQuery({
     ...tournamentBracketQueryOptions(tournamentId),
     enabled: Boolean(tournamentId),
+    refetchInterval: tournamentId === "awc2026" ? AWC_BRACKET_REFRESH_MS : false,
   });
   const bracket: TournamentBracket | null = bracketQuery.data ?? null;
   const bracketLoading = bracketQuery.isPending;
-  const bracketError = bracketQuery.error
-    ? getErrorMessage(bracketQuery.error, "Unable to load tournament")
-    : "";
-  const [startRounds, setStartRounds] = useState<Record<string, string>>({});
+  const bracketError =
+    !bracket && bracketQuery.error
+      ? getErrorMessage(bracketQuery.error, "Unable to load tournament")
+      : "";
   const [zoomLevels, setZoomLevels] = useState<Record<string, number>>({});
   const [activeStageKey, setActiveStageKey] = useState<string>("main");
   const [draggingStage, setDraggingStage] = useState<string>("");
@@ -1115,10 +1131,42 @@ const BracketTournamentPage = ({
   const suppressNextMatchClickRef = useRef(false);
   const scrollerRefs = useRef<Record<string, HTMLDivElement>>({});
   const headerTrackRefs = useRef<Record<string, HTMLDivElement>>({});
+  const restoredViewKeyRef = useRef<string | null>(null);
+  const previousStartRoundsRef = useRef<Record<string, string>>({});
   const pendingRestoreRef = useRef<{
     scrollPositions: Record<string, { left?: number; top?: number }>;
     pageScrollY: number;
   } | null>(null);
+
+  const automaticStartRounds = useMemo<Record<string, string>>(
+    () =>
+      bracket?.id === "awc2026"
+        ? Object.fromEntries(
+            bracket.stages
+              .filter((stage) => stage.key === "main" || stage.key === "losers")
+              .map((stage) => [stage.key, getAwcCurrentRound(stage)]),
+          )
+        : {},
+    [bracket],
+  );
+  const displayedStartRounds = useMemo(() => {
+    const rounds = {
+      ...buildStartRoundState(bracket?.stages, bracket?.defaultMainBracketStartRound),
+      ...automaticStartRounds,
+    };
+    if (tournamentRound && bracket) {
+      const stage =
+        bracket.stages.find((entry) => entry.key === normalizeTournamentTab(tournamentTab)) ??
+        (!tournamentTab
+          ? (bracket.stages.find((entry) => entry.key === "main") ?? bracket.stages[0])
+          : undefined);
+      const round = stage?.rounds.find(
+        (entry) => getRoundSlug(entry.roundName) === tournamentRound,
+      );
+      if (stage && round) rounds[stage.key] = round.roundName;
+    }
+    return rounds;
+  }, [automaticStartRounds, bracket, tournamentRound, tournamentTab]);
 
   const saveViewState = useCallback(() => {
     if (!bracket || typeof window === "undefined") return;
@@ -1140,22 +1188,22 @@ const BracketTournamentPage = ({
       "session",
       getTournamentViewStorageKey(bracket.id),
       JSON.stringify({
-        startRounds,
+        startRounds: displayedStartRounds,
         zoomLevels,
         activeStageKey,
         scrollPositions,
         pageScrollY: window.scrollY || 0,
       }),
     );
-  }, [activeStageKey, bracket, startRounds, zoomLevels]);
+  }, [activeStageKey, bracket, displayedStartRounds, zoomLevels]);
 
   useEffect(() => {
     if (!bracket) return;
 
-    const defaultStartRounds = buildStartRoundState(
-      bracket.stages || [],
-      bracket.defaultMainBracketStartRound,
-    );
+    const viewKey = `${bracket.id}:${tournamentTab ?? ""}`;
+    if (restoredViewKeyRef.current === viewKey) return;
+    restoredViewKeyRef.current = viewKey;
+
     const savedView = readSavedTournamentView(bracket.id);
     const availableStageKeys = new Set((bracket.stages || []).map((stage) => stage.key));
     if (Object.keys(bracket.seedMap || {}).length) {
@@ -1169,16 +1217,19 @@ const BracketTournamentPage = ({
     const nextActiveStageKey =
       requestedStageKey && availableStageKeys.has(requestedStageKey)
         ? requestedStageKey
-        : savedActiveStageKey && availableStageKeys.has(savedActiveStageKey)
+        : !tournamentRound && savedActiveStageKey && availableStageKeys.has(savedActiveStageKey)
           ? savedActiveStageKey
           : defaultActiveStageKey;
 
-    setStartRounds({ ...defaultStartRounds, ...(savedView?.startRounds || {}) });
     setZoomLevels(buildZoomState(bracket.stages || [], savedView?.zoomLevels || {}));
     setActiveStageKey(nextActiveStageKey);
     pendingRestoreRef.current = savedView
       ? {
-          scrollPositions: savedView.scrollPositions || {},
+          scrollPositions: Object.fromEntries(
+            Object.entries(savedView.scrollPositions || {}).filter(
+              ([key]) => savedView.startRounds?.[key] === displayedStartRounds[key],
+            ),
+          ),
           pageScrollY: Number(savedView.pageScrollY) || 0,
         }
       : null;
@@ -1190,10 +1241,24 @@ const BracketTournamentPage = ({
           tournamentId: getTournamentRouteId(bracket.id),
           tournamentTab: nextActiveStageKey,
         },
+        search: { round: tournamentRound },
+        hash: true,
         replace: true,
       });
     }
-  }, [bracket, navigate, tournamentTab]);
+  }, [bracket, displayedStartRounds, navigate, tournamentRound, tournamentTab]);
+
+  useEffect(() => {
+    const previousRounds = previousStartRoundsRef.current;
+    previousStartRoundsRef.current = displayedStartRounds;
+    for (const [key, round] of Object.entries(displayedStartRounds)) {
+      if (!previousRounds[key] || previousRounds[key] === round) continue;
+      const scroller = scrollerRefs.current[key];
+      if (!scroller) continue;
+      scroller.scrollTo({ left: 0, top: 0, behavior: "auto" });
+      syncRoundHeaderTrack(key, 0);
+    }
+  }, [displayedStartRounds]);
 
   useEffect(() => {
     if (!bracket || !pendingRestoreRef.current || typeof window === "undefined") return;
@@ -1218,7 +1283,7 @@ const BracketTournamentPage = ({
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [bracket, startRounds, zoomLevels]);
+  }, [bracket, displayedStartRounds, zoomLevels]);
 
   useEffect(() => {
     if (!bracket || typeof window === "undefined") return undefined;
@@ -1234,10 +1299,10 @@ const BracketTournamentPage = ({
     return new Map(
       bracket.stages.map((stage) => [
         stage.key,
-        buildStageTreeLayout(stage, getStageStartRound(stage, startRounds)),
+        buildStageTreeLayout(stage, getStageStartRound(stage, displayedStartRounds)),
       ]),
     );
-  }, [bracket, startRounds]);
+  }, [bracket, displayedStartRounds]);
 
   const topSeedMap = useMemo(() => new Map(Object.entries(bracket?.seedMap || {})), [bracket]);
   const countryMap = useMemo(() => new Map(Object.entries(bracket?.countryMap || {})), [bracket]);
@@ -1358,6 +1423,7 @@ const BracketTournamentPage = ({
         tournamentId: getTournamentRouteId(bracket.id),
         tournamentTab: stageKey,
       },
+      search: {},
     });
 
     // The view-state effect cleans up after the tab change; persist afterward so its
@@ -1373,18 +1439,16 @@ const BracketTournamentPage = ({
   };
 
   const setStageStartRound = (stageKey: string, roundName: string): void => {
-    setStartRounds((current) => ({
-      ...current,
-      [stageKey]: roundName,
-    }));
+    if (!bracket) return;
 
-    if (typeof window === "undefined") return;
-
-    window.requestAnimationFrame(() => {
-      const scroller = scrollerRefs.current[stageKey];
-      if (!scroller) return;
-      scroller.scrollTo({ left: 0, top: 0, behavior: "auto" });
-      syncRoundHeaderTrack(stageKey, 0);
+    void navigate({
+      to: "/tournaments/$tournamentId/$tournamentTab",
+      params: {
+        tournamentId: getTournamentRouteId(bracket.id),
+        tournamentTab: stageKey,
+      },
+      search: { round: getRoundSlug(roundName) },
+      resetScroll: false,
     });
   };
 
@@ -1399,7 +1463,13 @@ const BracketTournamentPage = ({
     if (!commentsSection) return;
 
     event.preventDefault();
-    window.history.replaceState(null, "", "#tournament-comments");
+    void navigate({
+      search: true,
+      hash: "tournament-comments",
+      replace: true,
+      resetScroll: false,
+      hashScrollIntoView: false,
+    });
     commentsSection.scrollIntoView({
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
       block: "start",
@@ -1642,7 +1712,7 @@ const BracketTournamentPage = ({
       <div className="tournamentStages">
         {visibleStages.map((stage) => {
           const zoomLevel = clampZoom(zoomLevels[stage.key] || DEFAULT_STAGE_ZOOM);
-          const startRoundName = getStageStartRound(stage, startRounds);
+          const startRoundName = getStageStartRound(stage, displayedStartRounds);
 
           return (
             <TournamentStageSection
@@ -1652,6 +1722,7 @@ const BracketTournamentPage = ({
               zoomLevel={zoomLevel}
               isDragging={draggingStage === stage.key}
               startRoundName={startRoundName}
+              automaticStartRoundName={automaticStartRounds[stage.key]}
               topSeedMap={topSeedMap}
               entryMarkers={entryMarkers}
               seedCount={topSeedMap.size}
@@ -1686,9 +1757,11 @@ const BracketTournamentPage = ({
 export const TournamentPage = ({
   tournamentId,
   tournamentTab,
+  tournamentRound,
 }: {
   tournamentId: string;
   tournamentTab?: string | undefined;
+  tournamentRound?: string | undefined;
 }) => {
   if (tournamentId === "wolfarena2026" || tournamentId === "wr-arena2026") {
     return <WolfarenaTournamentPage />;
@@ -1699,5 +1772,12 @@ export const TournamentPage = ({
   if (tournamentId === "acl-s2" || tournamentId === "atomicchessleague" || tournamentId === "acl") {
     return <AtomicChessLeaguePage key="acl-s2" seasonNumber={2} />;
   }
-  return <BracketTournamentPage tournamentId={tournamentId} tournamentTab={tournamentTab} />;
+  return (
+    <BracketTournamentPage
+      key={tournamentId === "awc2026" ? tournamentId : undefined}
+      tournamentId={tournamentId}
+      tournamentTab={tournamentTab}
+      tournamentRound={tournamentRound}
+    />
+  );
 };

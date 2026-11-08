@@ -1,0 +1,62 @@
+.scheduledMatchPlayer {
+  overflow-wrap: anywhere;
+}
+
+.scheduledMatchCountdown {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-4);
+  width: min(660px, 100%);
+  min-height: clamp(208px, 32vw, 292px);
+  margin-inline: auto;
+  padding: var(--space-8) var(--space-2);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.scheduledMatchCountdown h2 {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.scheduledMatchTimer {
+  display: flex;
+  justify-content: center;
+  gap: clamp(var(--space-1), 1.5vw, var(--space-3));
+}
+
+.scheduledMatchTimerUnit {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+}
+
+.scheduledMatchTimerValue,
+.scheduledMatchTimerSeparator {
+  font-size: clamp(2rem, 9vw, 4.25rem);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.scheduledMatchTimerValue {
+  color: var(--color-heading);
+}
+
+.scheduledMatchTimerSeparator {
+  color: var(--color-muted);
+}
+
+.scheduledMatchTimerLabel {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}
+
+.scheduledMatchWatchLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}

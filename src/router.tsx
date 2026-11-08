@@ -42,6 +42,10 @@ const CommunityUsersPage = lazyRouteComponent(
 );
 const H2HPage = lazyRouteComponent(() => import("./pages/H2H/H2H"), "H2HPage");
 const MatchPage = lazyRouteComponent(() => import("./pages/Match/MatchPage"), "MatchPage");
+const ScheduledMatchPage = lazyRouteComponent(
+  () => import("./pages/Match/ScheduledMatchPage"),
+  "ScheduledMatchPage",
+);
 const NotificationsPage = lazyRouteComponent(
   () => import("./pages/Notifications/Notifications"),
   "NotificationsPage",
@@ -420,9 +424,15 @@ const tournamentPlayerRoute = createRoute({
   },
 });
 
+const validateTournamentSearch = (search: Record<string, unknown>) => ({
+  round:
+    typeof search.round === "string" ? search.round.trim().toLowerCase() || undefined : undefined,
+});
+
 const tournamentRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/tournaments/$tournamentId",
+  validateSearch: validateTournamentSearch,
   loader: ({ context, params }) => {
     void import("./lib/matches/tournamentQueries").then(({ tournamentBracketQueryOptions }) =>
       context.queryClient.prefetchQuery(tournamentBracketQueryOptions(params.tournamentId)),
@@ -430,13 +440,15 @@ const tournamentRoute = createRoute({
   },
   component: function TournamentRoute() {
     const { tournamentId } = useParams({ strict: false });
-    return <TournamentPage tournamentId={tournamentId} />;
+    const { round } = tournamentRoute.useSearch();
+    return <TournamentPage tournamentId={tournamentId} tournamentRound={round} />;
   },
 });
 
 const tournamentTabRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/tournaments/$tournamentId/$tournamentTab",
+  validateSearch: validateTournamentSearch,
   loader: ({ context, params }) => {
     void import("./lib/matches/tournamentQueries").then(({ tournamentBracketQueryOptions }) =>
       context.queryClient.prefetchQuery(tournamentBracketQueryOptions(params.tournamentId)),
@@ -444,7 +456,14 @@ const tournamentTabRoute = createRoute({
   },
   component: function TournamentTabRoute() {
     const { tournamentId, tournamentTab } = useParams({ strict: false });
-    return <TournamentPage tournamentId={tournamentId} tournamentTab={tournamentTab} />;
+    const { round } = tournamentTabRoute.useSearch();
+    return (
+      <TournamentPage
+        tournamentId={tournamentId}
+        tournamentTab={tournamentTab}
+        tournamentRound={round}
+      />
+    );
   },
 });
 
@@ -488,6 +507,12 @@ const matchRoute = createRoute({
     );
   },
   component: MatchPage,
+});
+
+const scheduledMatchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/match/scheduled/$tournamentId/$fixtureId",
+  component: ScheduledMatchPage,
 });
 
 const legacyMatchDetailRoute = createRoute({
@@ -833,6 +858,7 @@ const routeTree = rootRoute.addChildren([
   h2hRoute,
   h2hMatchupRoute,
   matchRoute,
+  scheduledMatchRoute,
   legacyMatchDetailRoute,
   legacyMatchRoute,
   matchesAliasRoute,

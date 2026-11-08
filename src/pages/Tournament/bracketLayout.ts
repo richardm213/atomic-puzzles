@@ -1,4 +1,5 @@
 import {
+  isTournamentByeMatch,
   isTournamentDoubleByeMatch,
   type TournamentBracketStage,
   type TournamentMatch,
@@ -35,8 +36,37 @@ const hiddenStartRoundsByStage: Record<string, Set<string>> = {
 
 export const getStartRoundOptions = (
   stage: TournamentBracketStage,
+  ...visibleRoundNames: (string | undefined)[]
 ): TournamentBracketStage["rounds"] =>
-  stage.rounds.filter((round) => !hiddenStartRoundsByStage[stage.key]?.has(round.roundName));
+  stage.rounds.filter(
+    (round) =>
+      visibleRoundNames.includes(round.roundName) ||
+      !hiddenStartRoundsByStage[stage.key]?.has(round.roundName),
+  );
+
+export const getRoundSlug = (roundName: string): string =>
+  roundName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+const isDecidedMatch = (match: TournamentMatch): boolean =>
+  isTournamentByeMatch(match) ||
+  Boolean(match.p1 && match.p2 && (match.s1 > match.s2 || match.s2 > match.s1));
+
+export const getAwcCurrentRound = (stage: TournamentBracketStage): string => {
+  const grandFinal = stage.rounds.find((round) => round.roundName === "Grand Final")?.matches[0];
+  // The first Grand Final only forces a reset if the losers-bracket finalist (p2) wins.
+  const resetRequired = Boolean(grandFinal && grandFinal.s2 > grandFinal.s1);
+  const rounds = stage.rounds.filter(
+    (round) => round.roundName !== "Grand Final Reset" || resetRequired,
+  );
+  return (
+    rounds.find((round) => round.matches.some((match) => !isDecidedMatch(match)))?.roundName ??
+    rounds.at(-1)?.roundName ??
+    ""
+  );
+};
 
 const roundShortLabels: Record<string, string> = {
   "First Round": "Q1",

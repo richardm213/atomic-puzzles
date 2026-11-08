@@ -76,10 +76,11 @@ export const MatchPage = () => {
                   </div>
                   <div
                     className="matchPageHeaderScore"
+                    role="group"
                     aria-label={`Score ${match.scoreA} to ${match.scoreB}`}
                   >
                     <strong>{formatScore(match.scoreA)}</strong>
-                    <span>-</span>
+                    <span aria-hidden="true">–</span>
                     <strong>{formatScore(match.scoreB)}</strong>
                   </div>
                   <div className="matchPageHeaderPlayerSummary matchPageHeaderPlayerSummaryRight">

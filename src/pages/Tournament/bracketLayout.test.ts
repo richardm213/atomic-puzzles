@@ -2,6 +2,7 @@ import type { TournamentBracketStage, TournamentMatch } from "../../lib/matches/
 import {
   buildStageTreeLayout,
   buildStartRoundState,
+  getAwcCurrentRound,
   getStageRoundShortLabel,
   getStartRoundOptions,
   getVisibleRounds,
@@ -65,6 +66,44 @@ describe("bracket layout", () => {
       "Finals",
     ]);
     expect(buildStartRoundState([stage], "Finals")).toEqual({ main: "Finals" });
+  });
+
+  it("follows the oldest unfinished AWC round even when a later match has been played", () => {
+    const lastR16 = match("r16-last");
+    const awc = {
+      ...stage,
+      rounds: [
+        { roundName: "Round of 32", matches: [{ ...match("bye"), p2: "bye" }] },
+        { roundName: "Round of 16", matches: [{ ...match("r16-first"), s1: 6 }, lastR16] },
+        {
+          roundName: "Quarterfinals",
+          matches: [
+            { ...match("qf-first"), s2: 6 },
+            { ...match("qf-waiting"), p2: "" },
+          ],
+        },
+      ],
+    };
+    expect(getAwcCurrentRound(awc)).toBe("Round of 16");
+    lastR16.s2 = 6;
+    expect(getAwcCurrentRound(awc)).toBe("Quarterfinals");
+  });
+
+  it("follows a grand final reset only if the losers-bracket finalist wins the first set", () => {
+    const grandFinal = { ...match("grand-final"), s1: 6, s2: 4 };
+    const awc = {
+      ...stage,
+      rounds: [
+        { roundName: "Grand Final", matches: [grandFinal] },
+        { roundName: "Grand Final Reset", matches: [match("reset")] },
+      ],
+    };
+    expect(getAwcCurrentRound(awc)).toBe("Grand Final");
+    grandFinal.s2 = 7;
+    expect(getAwcCurrentRound(awc)).toBe("Grand Final Reset");
+    expect(getStartRoundOptions(awc, "Grand Final Reset").map((round) => round.roundName)).toEqual([
+      "Grand Final Reset",
+    ]);
   });
 
   it("labels a single qualifying round Q1 instead of Q2", () => {

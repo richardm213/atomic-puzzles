@@ -316,6 +316,15 @@ const tournamentSeedsCache = new Map<string, Promise<Record<string, number>>>();
 const tournamentBracketCache = new Map<string, Promise<TournamentBracket | null>>();
 const tournamentCatalogCache = new Map<string, Promise<TournamentMeta[]>>();
 
+const requestBracketData = <T>(
+  tournamentId: string,
+  cache: Map<string, Promise<T>>,
+  key: string,
+  request: () => Promise<T>,
+): Promise<T> =>
+  // AWC 2026 follows live results; let the query layer own freshness for its bracket.
+  tournamentId === "awc2026" ? request() : cachedRequest(cache, [key, tournamentId], request);
+
 type CsvRow = Record<string, string>;
 
 const roundDisplayOrder: Record<string, string[]> = {
@@ -435,7 +444,7 @@ const normalizeMatchRow = (row: TournamentMatchRowFromDb): TournamentMatch => ({
   id: String(row?.id ?? "").trim(),
   match_id: String(row?.match_id ?? "").trim(),
   played_on: String(row?.played_on ?? "").trim(),
-  scheduled_at: row.scheduled_at?.trim() || undefined,
+  scheduled_at: String(row?.scheduled_at ?? "").trim(),
   p1: String(row?.p1 ?? "").trim(),
   p2: String(row?.p2 ?? "").trim(),
   s1: Number(row?.s1),
@@ -1031,22 +1040,24 @@ export const addEmptyMainBracketRounds = (
 };
 
 const fetchTournamentMatchRows = async (tournamentId: string): Promise<TournamentMatch[]> =>
-  cachedRequest(tournamentMatchesCache, ["tournamentMatches", tournamentId], async () => {
+  requestBracketData(tournamentId, tournamentMatchesCache, "tournamentMatches", async () => {
     if (shouldUseLocalTournamentCsv()) {
       return fetchLocalTournamentRows(tournamentId);
     }
 
     const supabase = getSupabaseClient();
-    const buildQuery = () =>
-      supabase
-        .from(TOURNAMENT_MATCHES_TABLE)
-        .select(TOURNAMENT_BRACKET_SELECT_COLUMNS)
-        .eq("tournament", tournamentId);
+    const buildQuery = (columns: string) => () =>
+      supabase.from(TOURNAMENT_MATCHES_TABLE).select(columns).eq("tournament", tournamentId);
 
-    const rows = await fetchAllSupabaseRows<TournamentMatchRowFromDb>(
-      TOURNAMENT_MATCHES_TABLE,
-      buildQuery,
-    );
+    const loadRows = (columns: string) =>
+      fetchAllSupabaseRows<TournamentMatchRowFromDb>(TOURNAMENT_MATCHES_TABLE, buildQuery(columns));
+    const rows = await loadRows(TOURNAMENT_BRACKET_SELECT_COLUMNS).catch((error: unknown) => {
+      // Preserve the bracket while the schedule migration is pending.
+      if (error instanceof Error && error.message.includes("scheduled_at")) {
+        return loadRows(TOURNAMENT_MATCHES_SELECT_COLUMNS);
+      }
+      throw error;
+    });
     return rows.map(normalizeMatchRow);
   });
 
@@ -1320,7 +1331,7 @@ export const getTournamentChampion = (
 export const getTournamentBracket = async (
   tournamentId: string,
 ): Promise<TournamentBracket | null> =>
-  cachedRequest(tournamentBracketCache, ["tournamentBracket", tournamentId], async () => {
+  requestBracketData(tournamentId, tournamentBracketCache, "tournamentBracket", async () => {
     const meta = await getTournamentMeta(tournamentId);
     if (!meta) return null;
 

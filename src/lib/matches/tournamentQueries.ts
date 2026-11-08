@@ -25,11 +25,13 @@ export const tournamentCatalogQueryOptions = () =>
     staleTime: 10 * 60 * 1_000,
   });
 
+export const AWC_BRACKET_REFRESH_MS = 60_000;
+
 export const tournamentBracketQueryOptions = (tournamentId: string) =>
   queryOptions({
     queryKey: tournamentQueryKeys.bracket(tournamentId),
     queryFn: () => getTournamentBracket(tournamentId),
-    staleTime: 5 * 60 * 1_000,
+    staleTime: tournamentId === "awc2026" ? AWC_BRACKET_REFRESH_MS : 5 * 60 * 1_000,
   });
 
 export const tournamentPlayerQueryOptions = (usernames: string[]) =>
