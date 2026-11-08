@@ -919,10 +919,6 @@ export const TopNav = () => {
                     onChange={(event) => {
                       const nextTheme = event.target.value as Theme;
                       if (nextTheme === "amethyst" && !canUseAmethystTheme) return;
-                      if (nextTheme === "amethyst" && boardTheme === "blue") {
-                        setBoardTheme("purple");
-                        setBoardColorOverrideTheme("");
-                      }
                       setTheme(nextTheme);
                     }}
                   >

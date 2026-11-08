@@ -15,16 +15,22 @@ const parseStoredValue = (value: string): unknown => {
   }
 };
 
+export const readPersistedState = <T>(storageKey: string, schema: Schema<T>): T | undefined => {
+  const storedValue = getBrowserStorageItem("local", storageKey);
+  if (storedValue === null) return undefined;
+  const parsed = schema.safeParse(parseStoredValue(storedValue));
+  return parsed.success ? parsed.data : undefined;
+};
+
 export const usePersistedState = <T>(
   storageKey: string,
   schema: Schema<T>,
-  defaultValue: T,
+  defaultValue: T | (() => T),
 ): [T, Dispatch<SetStateAction<T>>] => {
   const [value, setValue] = useState<T>(() => {
-    const storedValue = getBrowserStorageItem("local", storageKey);
-    if (storedValue === null) return defaultValue;
-    const parsed = schema.safeParse(parseStoredValue(storedValue));
-    return parsed.success ? parsed.data : defaultValue;
+    const storedValue = readPersistedState(storageKey, schema);
+    if (storedValue !== undefined) return storedValue;
+    return typeof defaultValue === "function" ? (defaultValue as () => T)() : defaultValue;
   });
 
   const setPersistedValue = useCallback<Dispatch<SetStateAction<T>>>(

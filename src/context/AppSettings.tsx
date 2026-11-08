@@ -15,7 +15,7 @@ import {
   defaultProfileRatingSlotPreferences,
   type ProfileRatingSlotPreferences,
 } from "../features/profile/profileRatingModes";
-import { usePersistedState } from "../hooks/usePersistedState";
+import { readPersistedState, usePersistedState } from "../hooks/usePersistedState";
 import {
   BOARD_SOUND_SETS,
   type BoardSoundSet,
@@ -29,13 +29,7 @@ import {
 
 const STORAGE_KEYS = {
   theme: "atomic-puzzles.theme",
-  pieceSet: "atomic-puzzles.piece-set",
-  boardTheme: "atomic-puzzles.board-theme",
-  customLightSquare: "atomic-puzzles.custom-light-square",
-  customDarkSquare: "atomic-puzzles.custom-dark-square",
-  boardColorOverrideTheme: "atomic-puzzles.board-color-override-theme",
-  boardOverrideLightSquare: "atomic-puzzles.board-override-light-square",
-  boardOverrideDarkSquare: "atomic-puzzles.board-override-dark-square",
+  boardAppearanceByTheme: "atomic-puzzles.board.appearance-by-theme",
   showBoardCoordinates: "atomic-puzzles.board.show-coordinates",
   enableBoardPremoves: "atomic-puzzles.board.enable-premoves",
   boardSoundsEnabled: "atomic-puzzles.board.sounds-enabled",
@@ -239,10 +233,97 @@ const isValidHexColor = (value: unknown): value is string =>
   typeof value === "string" && /^#([0-9a-f]{6})$/i.test(value);
 const isImageBoardTheme = (value: string): boolean => IMAGE_BOARD_THEMES.includes(value);
 const themeSchema = z.enum(THEMES);
-const pieceSetSchema = z.string().refine(isValidPieceSet);
-const boardThemeSchema = z.string().refine(isValidBoardTheme);
 const hexColorSchema = z.string().refine(isValidHexColor);
-const boardColorOverrideSchema = z.string();
+const boardAppearanceSchema = z.object({
+  pieceSet: z.string().refine(isValidPieceSet),
+  boardTheme: z.string().refine(isValidBoardTheme),
+  customLightSquare: hexColorSchema,
+  customDarkSquare: hexColorSchema,
+  boardColorOverrideTheme: z.string(),
+  boardOverrideLightSquare: hexColorSchema,
+  boardOverrideDarkSquare: hexColorSchema,
+});
+const boardAppearanceByThemeSchema = z.record(themeSchema, boardAppearanceSchema);
+type BoardAppearance = z.infer<typeof boardAppearanceSchema>;
+type BoardAppearanceByTheme = z.infer<typeof boardAppearanceByThemeSchema>;
+
+const getDefaultBoardAppearance = (theme: Theme): BoardAppearance => ({
+  pieceSet: DEFAULT_PIECE_SET,
+  boardTheme: theme === "amethyst" ? "purple" : DEFAULT_BOARD_THEME,
+  customLightSquare: DEFAULT_CUSTOM_LIGHT_SQUARE,
+  customDarkSquare: DEFAULT_CUSTOM_DARK_SQUARE,
+  boardColorOverrideTheme: "",
+  boardOverrideLightSquare: DEFAULT_CUSTOM_LIGHT_SQUARE,
+  boardOverrideDarkSquare: DEFAULT_CUSTOM_DARK_SQUARE,
+});
+
+const loadLegacyBoardAppearances = (): BoardAppearanceByTheme => {
+  const schemas = boardAppearanceSchema.shape;
+  const legacy = {
+    pieceSet: readPersistedState("atomic-puzzles.piece-set", schemas.pieceSet),
+    boardTheme: readPersistedState("atomic-puzzles.board-theme", schemas.boardTheme),
+    customLightSquare: readPersistedState("atomic-puzzles.custom-light-square", hexColorSchema),
+    customDarkSquare: readPersistedState("atomic-puzzles.custom-dark-square", hexColorSchema),
+    boardColorOverrideTheme: readPersistedState(
+      "atomic-puzzles.board-color-override-theme",
+      schemas.boardColorOverrideTheme,
+    ),
+    boardOverrideLightSquare: readPersistedState(
+      "atomic-puzzles.board-override-light-square",
+      hexColorSchema,
+    ),
+    boardOverrideDarkSquare: readPersistedState(
+      "atomic-puzzles.board-override-dark-square",
+      hexColorSchema,
+    ),
+  };
+  // Use the previous shared appearance as each mode's starting point.
+  const stored = Object.fromEntries(
+    Object.entries(legacy).filter(([, value]) => value !== undefined),
+  );
+  return {
+    dark: { ...getDefaultBoardAppearance("dark"), ...stored },
+    light: { ...getDefaultBoardAppearance("light"), ...stored },
+    amethyst: { ...getDefaultBoardAppearance("amethyst"), ...stored },
+  };
+};
+
+const useBoardAppearance = (theme: Theme) => {
+  const [appearances, setAppearances] = usePersistedState(
+    STORAGE_KEYS.boardAppearanceByTheme,
+    boardAppearanceByThemeSchema,
+    loadLegacyBoardAppearances,
+  );
+  const actions = useMemo(() => {
+    const setter =
+      <K extends keyof BoardAppearance>(field: K): Dispatch<SetStateAction<BoardAppearance[K]>> =>
+      (next) => {
+        setAppearances((current) => ({
+          ...current,
+          [theme]: {
+            ...current[theme],
+            [field]: typeof next === "function" ? next(current[theme][field]) : next,
+          },
+        }));
+      };
+    return {
+      setters: {
+        setPieceSet: setter("pieceSet"),
+        setBoardTheme: setter("boardTheme"),
+        setCustomLightSquare: setter("customLightSquare"),
+        setCustomDarkSquare: setter("customDarkSquare"),
+        setBoardColorOverrideTheme: setter("boardColorOverrideTheme"),
+        setBoardOverrideLightSquare: setter("boardOverrideLightSquare"),
+        setBoardOverrideDarkSquare: setter("boardOverrideDarkSquare"),
+      },
+      resetBoardAppearance: () => {
+        setAppearances((current) => ({ ...current, [theme]: getDefaultBoardAppearance(theme) }));
+      },
+    };
+  }, [setAppearances, theme]);
+  return [appearances[theme], actions] as const;
+};
+
 const boardSoundSetSchema = z.custom<BoardSoundSet>(isBoardSoundSet);
 const profileRatingSlotSchema = z.enum([
   "auto",
@@ -288,41 +369,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     themeSchema,
     DEFAULT_THEME,
   );
-  const [pieceSet, setPieceSet] = usePersistedState<string>(
-    STORAGE_KEYS.pieceSet,
-    pieceSetSchema,
-    DEFAULT_PIECE_SET,
-  );
-  const [boardTheme, setBoardTheme] = usePersistedState<string>(
-    STORAGE_KEYS.boardTheme,
-    boardThemeSchema,
-    DEFAULT_BOARD_THEME,
-  );
-  const [customLightSquare, setCustomLightSquare] = usePersistedState<string>(
-    STORAGE_KEYS.customLightSquare,
-    hexColorSchema,
-    DEFAULT_CUSTOM_LIGHT_SQUARE,
-  );
-  const [customDarkSquare, setCustomDarkSquare] = usePersistedState<string>(
-    STORAGE_KEYS.customDarkSquare,
-    hexColorSchema,
-    DEFAULT_CUSTOM_DARK_SQUARE,
-  );
-  const [boardColorOverrideTheme, setBoardColorOverrideTheme] = usePersistedState<string>(
-    STORAGE_KEYS.boardColorOverrideTheme,
-    boardColorOverrideSchema,
-    "",
-  );
-  const [boardOverrideLightSquare, setBoardOverrideLightSquare] = usePersistedState<string>(
-    STORAGE_KEYS.boardOverrideLightSquare,
-    hexColorSchema,
-    DEFAULT_CUSTOM_LIGHT_SQUARE,
-  );
-  const [boardOverrideDarkSquare, setBoardOverrideDarkSquare] = usePersistedState<string>(
-    STORAGE_KEYS.boardOverrideDarkSquare,
-    hexColorSchema,
-    DEFAULT_CUSTOM_DARK_SQUARE,
-  );
+  const [boardAppearance, { resetBoardAppearance, setters: boardAppearanceSetters }] =
+    useBoardAppearance(theme);
   const [showBoardCoordinates, setShowBoardCoordinates] = usePersistedState(
     STORAGE_KEYS.showBoardCoordinates,
     z.boolean(),
@@ -424,27 +472,13 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const resetDisplaySettings = useCallback(() => {
-    setTheme(DEFAULT_THEME);
-    setPieceSet(DEFAULT_PIECE_SET);
-    setBoardTheme(DEFAULT_BOARD_THEME);
-    setCustomLightSquare(DEFAULT_CUSTOM_LIGHT_SQUARE);
-    setCustomDarkSquare(DEFAULT_CUSTOM_DARK_SQUARE);
-    setBoardColorOverrideTheme("");
-    setBoardOverrideLightSquare(DEFAULT_CUSTOM_LIGHT_SQUARE);
-    setBoardOverrideDarkSquare(DEFAULT_CUSTOM_DARK_SQUARE);
+    resetBoardAppearance();
     setShowBoardCoordinates(false);
     setEnableBoardPremoves(true);
     setBoardSoundsEnabled(false);
     setBoardSoundSet(DEFAULT_BOARD_SOUND_SET);
   }, [
-    setTheme,
-    setPieceSet,
-    setBoardTheme,
-    setCustomLightSquare,
-    setCustomDarkSquare,
-    setBoardColorOverrideTheme,
-    setBoardOverrideLightSquare,
-    setBoardOverrideDarkSquare,
+    resetBoardAppearance,
     setShowBoardCoordinates,
     setEnableBoardPremoves,
     setBoardSoundsEnabled,
@@ -468,22 +502,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     () => ({
       theme,
       setTheme,
-      pieceSet,
-      setPieceSet,
+      ...boardAppearance,
+      ...boardAppearanceSetters,
       pieceSets: LICHESS_PIECE_SETS,
-      boardTheme,
-      setBoardTheme,
       boardThemes: LICHESS_BOARD_THEMES,
-      customLightSquare,
-      setCustomLightSquare,
-      customDarkSquare,
-      setCustomDarkSquare,
-      boardColorOverrideTheme,
-      setBoardColorOverrideTheme,
-      boardOverrideLightSquare,
-      setBoardOverrideLightSquare,
-      boardOverrideDarkSquare,
-      setBoardOverrideDarkSquare,
       showBoardCoordinates,
       setShowBoardCoordinates,
       enableBoardPremoves,
@@ -528,20 +550,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     [
       theme,
       setTheme,
-      pieceSet,
-      setPieceSet,
-      boardTheme,
-      setBoardTheme,
-      customLightSquare,
-      setCustomLightSquare,
-      customDarkSquare,
-      setCustomDarkSquare,
-      boardColorOverrideTheme,
-      setBoardColorOverrideTheme,
-      boardOverrideLightSquare,
-      setBoardOverrideLightSquare,
-      boardOverrideDarkSquare,
-      setBoardOverrideDarkSquare,
+      boardAppearance,
+      boardAppearanceSetters,
       showBoardCoordinates,
       setShowBoardCoordinates,
       enableBoardPremoves,
