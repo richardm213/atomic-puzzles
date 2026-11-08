@@ -129,7 +129,7 @@ const LICHESS_BOARD_THEMES: LabeledOption[] = [
   { value: "purple", label: "Purple" },
   { value: "amethyst", label: "Amethyst" },
   { value: "ruby", label: "Red Charcoal" },
-  { value: "emerald", label: "Forest" },
+  { value: "emerald", label: "Forest Green" },
   { value: "pink", label: "Pink" },
   { value: "ic", label: "IC" },
   { value: "custom", label: "Custom" },

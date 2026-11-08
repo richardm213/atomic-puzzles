@@ -916,7 +916,7 @@ export const TopNav = () => {
                         CUSTOM_THEMES.map((palette) => (
                           <option key={palette} value={palette}>
                             {palette === "emerald"
-                              ? "Forest"
+                              ? "Forest Green"
                               : palette === "ruby"
                                 ? "Red Charcoal"
                                 : palette.charAt(0).toUpperCase() + palette.slice(1)}
