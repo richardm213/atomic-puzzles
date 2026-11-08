@@ -185,16 +185,22 @@
   --gem-surface-chroma: 0.022;
   --gem-page-top-lightness: 23%;
   --gem-wash: 21%;
-  --color-page-top: oklch(var(--gem-page-top-lightness) var(--gem-canvas-chroma) var(--gem-hue));
-  --color-page-bottom: oklch(15% var(--gem-canvas-chroma) var(--gem-hue));
-  --color-panel-strong: oklch(21.2% var(--gem-surface-chroma) var(--gem-hue));
-  --color-panel-deep: oklch(15.5% var(--gem-surface-chroma) var(--gem-hue));
+  --color-page-top: oklch(
+    var(--gem-page-top-lightness) var(--gem-canvas-chroma) var(--gem-material-hue, var(--gem-hue))
+  );
+  --color-page-bottom: oklch(15% var(--gem-canvas-chroma) var(--gem-material-hue, var(--gem-hue)));
+  --color-panel-strong: oklch(
+    21.2% var(--gem-surface-chroma) var(--gem-material-hue, var(--gem-hue))
+  );
+  --color-panel-deep: oklch(
+    15.5% var(--gem-surface-chroma) var(--gem-material-hue, var(--gem-hue))
+  );
   --theme-panel-ink: var(--color-panel-strong);
   --theme-nav-ink: var(--color-panel-deep);
   --brand-mark-color: oklch(78% var(--gem-nav-chroma, 0.22) var(--gem-nav-hue));
   --brand-mark-tile: color-mix(in srgb, var(--color-nav-badge) 8%, var(--theme-nav-ink));
-  --theme-inset-ink: oklch(13% var(--gem-surface-chroma) var(--gem-hue));
-  --theme-raised-ink: oklch(21% var(--gem-surface-chroma) var(--gem-hue));
+  --theme-inset-ink: oklch(13% var(--gem-surface-chroma) var(--gem-material-hue, var(--gem-hue)));
+  --theme-raised-ink: oklch(21% var(--gem-surface-chroma) var(--gem-material-hue, var(--gem-hue)));
   --color-table-hover: color-mix(in srgb, var(--color-primary-soft) 8%, transparent);
   --page-background:
     radial-gradient(
@@ -205,12 +211,16 @@
     linear-gradient(180deg, var(--color-page-top), var(--color-page-bottom));
 }
 
-/* Keep Ruby's color in its accents, not in the dark canvas. */
+/* Ruby uses charcoal materials with a faint crimson tint. */
 :root[data-theme="dark"][data-palette="ruby"] {
-  --gem-page-top-lightness: 22%;
-  --gem-canvas-chroma: 0.016;
-  --gem-surface-chroma: 0.016;
-  --gem-wash: 9%;
+  --gem-hue: 27;
+  --gem-nav-hue: 27;
+  --gem-material-hue: 260;
+  --gem-page-top-lightness: 23%;
+  --gem-canvas-chroma: 0.008;
+  --gem-surface-chroma: 0.008;
+  --gem-wash: 3%;
+  --brand-mark-color: #ff4545;
 }
 
 /* Light gemstones inherit Default Light's surfaces, text and borders. */

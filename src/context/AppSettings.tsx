@@ -158,7 +158,7 @@ const BOARD_THEME_PALETTE: Record<string, BoardSquareColors> = {
   olive: { light: "#e7e6c8", dark: "#8b8d56" },
   newspaper: { light: "#f4eed9", dark: "#b4a789" },
   purple: { light: "#eadcf7", dark: "#8460b5" },
-  ruby: { light: "#f7f1f2", dark: "#9b5b67" },
+  ruby: { light: "#eee3d2", dark: "#9e4444" },
   emerald: { light: "#d7eee4", dark: "#4b8c77" },
   "purple-diag": { light: "#efe1fb", dark: "#76549d" },
   pink: { light: "#f8dbe4", dark: "#c86a8d" },
