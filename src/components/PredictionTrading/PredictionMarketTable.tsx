@@ -74,11 +74,6 @@ export const PredictionMarketTable = ({
       flush ? " predictionSharedMarketTable--flush" : ""
     }`}
   >
-    <div className="predictionSharedMarketTableHeader" aria-hidden="true">
-      <span />
-      <span>Chance</span>
-      <span />
-    </div>
     {sortPredictionMarketsByChance(definitions, states).map((definition) => {
       const state = states.get(definition.id);
       const isResolved = state?.market.status === "resolved";

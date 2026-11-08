@@ -278,21 +278,11 @@
   margin-inline: -18px;
 }
 
-.predictionSharedMarketTableHeader,
 .predictionSharedMarketRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 84px minmax(196px, 280px);
   gap: 18px;
   align-items: center;
-}
-
-.predictionSharedMarketTableHeader {
-  padding: 7px 18px;
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-subtle);
-  font-size: 10px;
-  text-align: center;
-  text-transform: uppercase;
 }
 
 .predictionSharedMarketRow {
@@ -301,7 +291,7 @@
   border-top: 1px solid var(--color-border);
 }
 
-.predictionSharedMarketTableHeader + .predictionSharedMarketRow {
+.predictionSharedMarketRow:first-child {
   border-top: 0;
 }
 
@@ -494,10 +484,6 @@
     gap: 10px 14px;
   }
 
-  .predictionSharedMarketTableHeader {
-    display: none;
-  }
-
   .predictionSharedMarketToggle,
   .predictionSharedMarketPrices,
   .predictionSharedMarketResolved {
@@ -515,10 +501,6 @@
   .predictionSharedMarketToggle {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px 14px;
-  }
-
-  .predictionSharedMarketTableHeader {
-    display: none;
   }
 
   .predictionSharedMarketToggle,
@@ -973,4 +955,18 @@
     height: 44px;
     margin-left: 0;
   }
+}
+
+.predictionSharedResolvedBets {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.predictionSharedResolvedBets:hover strong {
+  color: var(--color-primary-soft);
 }

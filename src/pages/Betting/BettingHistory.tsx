@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { z } from "zod";
 
 import { InlineState } from "../../components/InlineState/InlineState";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUnderscoreUsernameCutoff } from "../../hooks/useUnderscoreUsernameCutoff";
 import type { BettingMarket } from "../../lib/betting/betting";
 import { formatCoinValue } from "../../lib/coins/coinDisplay";
@@ -73,19 +75,98 @@ const filterHistoryBets = ({
   );
 };
 
-const BetHistoryTable = ({
+const returnDisplaySchema = z.enum(["return", "pnl"]);
+type ReturnDisplay = z.infer<typeof returnDisplaySchema>;
+
+type BetSortColumn = "selection" | "bettor" | "price" | "cost" | "pnl";
+const betSortValue = (bet: BetHistoryEntry, column: BetSortColumn): string | number => {
+  switch (column) {
+    case "selection":
+      return (bet.predictionSelectionLabel ?? bet.selection).toLowerCase();
+    case "bettor":
+      return bet.username.toLowerCase();
+    case "price":
+      return bet.priceCents;
+    case "cost":
+      return bet.totalCost;
+    case "pnl":
+      return (bet.status === "open" ? bet.potentialPayout : bet.payout) - bet.totalCost;
+  }
+};
+
+export const BetHistoryTable = ({
   bets,
   markets,
   countryByPlayer,
   emptyMessage,
   showUsername = false,
+  returnDisplay,
+  priceLabel = "Price",
+  showStatus = true,
+  showMarket = true,
+  sortable = false,
+  showUnits = true,
 }: {
   bets: BetHistoryEntry[];
   markets: BettingMarket[];
   countryByPlayer: Record<string, string>;
   emptyMessage: string;
   showUsername?: boolean;
+  returnDisplay: ReturnDisplay;
+  priceLabel?: string;
+  showStatus?: boolean;
+  showMarket?: boolean;
+  sortable?: boolean;
+  showUnits?: boolean;
 }) => {
+  const [sort, setSort] = useState<{
+    column: BetSortColumn;
+    direction: "ascending" | "descending";
+  }>({ column: "cost", direction: "descending" });
+  const sortedBets = sortable
+    ? [...bets].sort((left, right) => {
+        const a = betSortValue(left, sort.column);
+        const b = betSortValue(right, sort.column);
+        const comparison =
+          typeof a === "string" && typeof b === "string"
+            ? a.localeCompare(b)
+            : Number(a) - Number(b);
+        return sort.direction === "ascending" ? comparison : -comparison;
+      })
+    : bets;
+  const columnHeader = (column: BetSortColumn, label: string) => (
+    <th
+      scope="col"
+      aria-sort={sortable ? (sort.column === column ? sort.direction : "none") : undefined}
+    >
+      {sortable ? (
+        <button
+          type="button"
+          className="betHistorySortButton"
+          onClick={() =>
+            setSort((current) => ({
+              column,
+              direction:
+                current.column === column
+                  ? current.direction === "ascending"
+                    ? "descending"
+                    : "ascending"
+                  : column === "selection" || column === "bettor"
+                    ? "ascending"
+                    : "descending",
+            }))
+          }
+        >
+          {label}
+          <span aria-hidden="true">
+            {sort.column === column ? (sort.direction === "ascending" ? "↑" : "↓") : null}
+          </span>
+        </button>
+      ) : (
+        label
+      )}
+    </th>
+  );
   if (!bets.length) return <InlineState kind="empty">{emptyMessage}</InlineState>;
 
   return (
@@ -94,16 +175,16 @@ const BetHistoryTable = ({
         <caption className="betHistoryCaption">{showUsername ? "All bets" : "My bets"}</caption>
         <thead>
           <tr>
-            <th scope="col">Selection</th>
-            {showUsername ? <th scope="col">Bettor</th> : null}
-            <th scope="col">Price</th>
-            <th scope="col">Cost</th>
-            <th scope="col">Return</th>
-            <th scope="col">Status</th>
+            {columnHeader("selection", "Selection")}
+            {showUsername ? columnHeader("bettor", "Bettor") : null}
+            {columnHeader("price", priceLabel)}
+            {columnHeader("cost", "Cost")}
+            {columnHeader("pnl", returnDisplay === "pnl" ? "P&L" : "Return")}
+            {showStatus ? <th scope="col">Status</th> : null}
           </tr>
         </thead>
         <tbody>
-          {bets.map((bet) => {
+          {sortedBets.map((bet) => {
             const isPrediction = bet.kind === "prediction";
             const market = markets.find((candidate) => candidate.id === bet.marketId);
             const selectionLabel = bet.predictionSelectionLabel ?? bet.selection;
@@ -116,6 +197,16 @@ const BetHistoryTable = ({
               countryByPlayer[selectionLabel.toLowerCase()] ??
               "";
             const payout = bet.status === "open" ? bet.potentialPayout : bet.payout;
+            const pnl = Math.round((payout - bet.totalCost) * 100) / 100 || 0;
+            const showPnl = returnDisplay === "pnl";
+            const result =
+              showPnl || bet.status !== "open"
+                ? pnl > 0
+                  ? "gain"
+                  : pnl < 0
+                    ? "loss"
+                    : undefined
+                : undefined;
             return (
               <tr key={bet.historyKey ?? `${bet.kind ?? "tournament"}-${bet.id}`}>
                 <th className="betHistorySelection" scope="row">
@@ -138,38 +229,60 @@ const BetHistoryTable = ({
                       ) : null}
                     </strong>
                   </span>
-                  <span className="betHistoryMarket">
-                    {isPrediction
-                      ? (bet.predictionMarketTitle ?? "Prediction market")
-                      : market?.label || bet.marketId}
-                    {round ? <small> · {abbreviateRound(round)}</small> : null}
-                  </span>
+                  {showMarket ? (
+                    <span className="betHistoryMarket">
+                      {isPrediction
+                        ? (bet.predictionMarketTitle ?? "Prediction market")
+                        : market?.label || bet.marketId}
+                      {round ? <small> · {abbreviateRound(round)}</small> : null}
+                    </span>
+                  ) : null}
                 </th>
                 {showUsername ? (
                   <td className="betHistoryBettor" data-label="Bettor">
                     <BetHistoryBettorLink username={bet.username} />
                   </td>
                 ) : null}
-                <td className="betHistoryNumber" data-label="Price">
+                <td className="betHistoryNumber" data-label={priceLabel}>
                   <strong>
-                    {bet.priceCents}
+                    {formatCoinValue(bet.priceCents)}
                     <span className="betHistoryPriceSuffix">%</span>
                   </strong>
                 </td>
                 <td className="betHistoryNumber" data-label="Cost">
                   <strong>{formatCoinValue(bet.totalCost)}</strong>
-                  <small>coins</small>
+                  {showUnits ? <small>coins</small> : null}
                 </td>
-                <td className="betHistoryNumber betHistoryReturn" data-label="Return">
-                  <strong>{formatCoinValue(payout)}</strong>
-                  <small>{bet.status === "open" ? "possible" : "paid"}</small>
+                <td
+                  className="betHistoryNumber betHistoryReturn"
+                  data-label={showPnl ? "P&L" : "Return"}
+                  data-result={result}
+                >
+                  <strong>
+                    {showPnl
+                      ? `${pnl > 0 ? "+" : ""}${formatCoinValue(pnl)}`
+                      : formatCoinValue(payout)}
+                  </strong>
+                  {showUnits ? (
+                    <small
+                      className={
+                        showPnl && pnl !== 0 && bet.status !== "open"
+                          ? "betHistoryPnlUnit"
+                          : undefined
+                      }
+                    >
+                      {bet.status === "open" ? "possible" : showPnl ? "coins" : "paid"}
+                    </small>
+                  ) : null}
                 </td>
-                <td className="betHistoryState" data-label="Status">
-                  <span className={`betStatus betStatus--${bet.status}`}>
-                    {bet.status === "open" ? "Open" : bet.status}
-                  </span>
-                  <time dateTime={bet.placedAt}>{formatLocalDateTime(bet.placedAt)}</time>
-                </td>
+                {showStatus ? (
+                  <td className="betHistoryState" data-label="Status">
+                    <span className={`betStatus betStatus--${bet.status}`}>
+                      {bet.status === "open" ? "Open" : bet.status}
+                    </span>
+                    <time dateTime={bet.placedAt}>{formatLocalDateTime(bet.placedAt)}</time>
+                  </td>
+                ) : null}
               </tr>
             );
           })}
@@ -243,6 +356,11 @@ export const BettingHistory = ({
   myBetsError,
   allBetsError,
 }: BettingHistoryProps) => {
+  const [returnDisplay, setReturnDisplay] = usePersistedState(
+    "betting.history.returnDisplay",
+    returnDisplaySchema,
+    "pnl",
+  );
   const [filters, setFilters] = useState(() =>
     historyFiltersFromSearch(view, typeof window === "undefined" ? "" : window.location.search),
   );
@@ -257,17 +375,23 @@ export const BettingHistory = ({
     for (const group of predictionMarketGroups) {
       if (group.id.includes("shield")) continue;
       for (const market of sortPredictionMarketsByChance(group.markets, stateByMarketId)) {
-        if (resolvedOnly) {
-          const state = stateByMarketId.get(market.id);
-          if (state?.market.status !== "resolved") continue;
-          if (
-            state.market.sportsbookVolumeCoins <= 0 &&
-            state.market.exchangeVolumeCoins <= 0 &&
-            state.fills.length === 0 &&
-            !marketsWithBets.has(market.id)
-          )
-            continue;
-        }
+        const state = stateByMarketId.get(market.id);
+        if (resolvedOnly && state?.market.status !== "resolved") continue;
+        if (
+          filters.status === "open" &&
+          state &&
+          ["resolved", "refunded"].includes(state.market.status)
+        )
+          continue;
+        if (
+          state &&
+          state.market.status !== "open" &&
+          state.market.sportsbookVolumeCoins <= 0 &&
+          state.market.exchangeVolumeCoins <= 0 &&
+          state.fills.length === 0 &&
+          !marketsWithBets.has(market.id)
+        )
+          continue;
         const strike = market.outcomeLabels
           ? `${market.outcomeLabels.yes} vs ${market.outcomeLabels.no}`
           : market.username;
@@ -276,7 +400,11 @@ export const BettingHistory = ({
     }
 
     for (const market of markets) {
+      // Prediction catalog entries may also appear in the legacy market list.
+      if (stateByMarketId.has(market.id)) continue;
       if (resolvedOnly && market.status !== "settled") continue;
+      const settled = ["settled", "refunded"].includes(market.status);
+      if (settled && (filters.status === "open" || !marketsWithBets.has(market.id))) continue;
       if (!options.has(market.id)) {
         options.set(market.id, `${market.roundName} · ${market.label}`);
       }
@@ -349,6 +477,7 @@ export const BettingHistory = ({
   } else if (view === "mine") {
     content = (
       <BetHistoryTable
+        returnDisplay={returnDisplay}
         bets={visibleMyBets}
         markets={markets}
         countryByPlayer={countryByPlayer}
@@ -368,6 +497,7 @@ export const BettingHistory = ({
   } else {
     content = (
       <BetHistoryTable
+        returnDisplay={returnDisplay}
         bets={visibleAllBets}
         markets={markets}
         countryByPlayer={countryByPlayer}
@@ -428,6 +558,16 @@ export const BettingHistory = ({
             <option value="all">All statuses</option>
             <option value="open">Open</option>
             <option value="resolved">Resolved</option>
+          </select>
+        </label>
+        <label>
+          <span>Display</span>
+          <select
+            value={returnDisplay}
+            onChange={(event) => setReturnDisplay(returnDisplaySchema.parse(event.target.value))}
+          >
+            <option value="return">Return</option>
+            <option value="pnl">P&amp;L</option>
           </select>
         </label>
       </div>

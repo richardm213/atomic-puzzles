@@ -78,11 +78,13 @@ export const buildBetHistory = ({
   predictionPositions,
   predictionMarketGroups,
   predictionMarketStates,
+  minimumPositionCost = 1,
 }: {
   tournamentBets: TournamentBet[];
   predictionPositions: PredictionHistoryPosition[];
   predictionMarketGroups: PredictionMarketGroup[];
   predictionMarketStates: PredictionMarketState[];
+  minimumPositionCost?: number;
 }): BetHistoryEntry[] => {
   const stateByMarketId = new Map(predictionMarketStates.map((state) => [state.market.id, state]));
   const predictionMarketById = new Map<
@@ -107,7 +109,7 @@ export const buildBetHistory = ({
     const { definition, title } = predictionMarket;
     const state = stateByMarketId.get(position.marketId);
     const totalCost = roundCoins((position.averagePriceCents * position.quantity) / 100);
-    if (totalCost < 1) return [];
+    if (totalCost < minimumPositionCost) return [];
     const hasNamedOutcomes = Boolean(definition.outcomeLabels);
     return [
       {

@@ -54,6 +54,7 @@ const predictionState = (
 
 describe("BettingHistory", () => {
   beforeEach(() => {
+    window.localStorage.clear();
     window.history.replaceState({}, "", "/betting?view=all");
   });
 
@@ -127,6 +128,58 @@ describe("BettingHistory", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("switches returns to net P&L including fees and potential profit", async () => {
+    const user = userEvent.setup();
+    const bets = (["open", "won", "lost", "refunded"] as const).map((status, index) => ({
+      ...roundOf16Bet,
+      id: index + 1,
+      status,
+      predictionSelectionLabel: status,
+      stake: 295,
+      fee: 5,
+      totalCost: 300,
+      potentialPayout: 600,
+      payout: status === "won" ? 450 : status === "refunded" ? 300 : 0,
+    }));
+    render(
+      <BettingHistory
+        view="mine"
+        isAuthenticated
+        authLoading={false}
+        onLogin={() => undefined}
+        myBets={bets}
+        allBets={[]}
+        markets={[]}
+        predictionMarketGroups={[]}
+        predictionMarketStates={[]}
+        countryByPlayer={{}}
+        myBetsLoading={false}
+        allBetsLoading={false}
+        myBetsError={null}
+        allBetsError={null}
+      />,
+    );
+    expect(screen.getByRole("columnheader", { name: "Status" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "P&L" })).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Display"), "return");
+    expect(screen.getByRole("columnheader", { name: "Return" })).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Display"), "pnl");
+    expect(screen.getByRole("columnheader", { name: "P&L" })).toBeInTheDocument();
+    const open = screen.getByRole("row", { name: /open/i });
+    expect(within(open).getByText("+300")).toBeInTheDocument();
+    expect(within(open).getByText("possible")).toBeInTheDocument();
+    const won = screen.getByRole("row", { name: /won/i });
+    const lost = screen.getByRole("row", { name: /lost/i });
+    const refunded = screen.getByRole("row", { name: /refunded/i });
+    expect(within(won).getByText("+150")).toBeInTheDocument();
+    expect(within(lost).getByText("-300")).toBeInTheDocument();
+    expect(within(refunded).getByText("0")).toBeInTheDocument();
+    expect(window.localStorage.getItem("betting.history.returnDisplay")).toBe('"pnl"');
+    await user.selectOptions(screen.getByLabelText("Display"), "return");
+    expect(within(won).getByText("450")).toBeInTheDocument();
+    expect(within(open).getByText("600")).toBeInTheDocument();
+  });
+
   it("keeps all-bets filters in the URL", async () => {
     const user = userEvent.setup();
     render(
@@ -147,6 +200,8 @@ describe("BettingHistory", () => {
             displayOrder: 1,
             markets: [
               { id: "goro-ban", username: "goro to get banned", countryCode: "" },
+              { id: "closed-empty", username: "closed without bets", countryCode: "" },
+              { id: "closed-active", username: "closed awaiting settlement", countryCode: "" },
               {
                 id: "awc-r16-natso-crepuscular",
                 username: "natso",
@@ -166,6 +221,8 @@ describe("BettingHistory", () => {
           predictionState("awc-r16-natso-crepuscular", "open"),
           predictionState("awc-r16-rechesster-renaudmerle", "resolved", 10),
           predictionState("goro-ban", "resolved"),
+          predictionState("closed-empty", "closed"),
+          predictionState("closed-active", "closed", 10),
         ]}
         countryByPlayer={{}}
         myBetsLoading={false}
@@ -197,5 +254,22 @@ describe("BettingHistory", () => {
     await user.selectOptions(screen.getByLabelText("Status"), "open");
     searchParams = new URLSearchParams(window.location.search);
     expect(searchParams.has("status")).toBe(false);
+    expect(
+      screen.queryByRole("option", { name: /rechesster vs renaudmerle/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Market")).toHaveValue("all");
+
+    for (const status of ["all", "open", "resolved"]) {
+      await user.selectOptions(screen.getByLabelText("Status"), status);
+      expect(screen.queryByRole("option", { name: /goro to get banned/i })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: /closed without bets/i }),
+      ).not.toBeInTheDocument();
+      if (status !== "resolved") {
+        expect(
+          screen.getByRole("option", { name: /closed awaiting settlement/i }),
+        ).toBeInTheDocument();
+      }
+    }
   });
 });

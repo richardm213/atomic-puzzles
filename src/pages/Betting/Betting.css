@@ -822,6 +822,7 @@
 
 .betHistoryFilters {
   display: flex;
+  flex-wrap: wrap;
   align-items: end;
   gap: var(--space-3);
   margin-bottom: var(--space-4);
@@ -1123,6 +1124,18 @@
 
 .betHistoryReturn strong {
   color: var(--color-primary-pale);
+}
+
+.betHistoryPnlUnit {
+  padding-inline-start: var(--space-2);
+}
+
+.betHistoryReturn[data-result="gain"] strong {
+  color: var(--color-success);
+}
+
+.betHistoryReturn[data-result="loss"] strong {
+  color: var(--color-danger);
 }
 
 .betHistoryState time {

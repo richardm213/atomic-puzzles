@@ -9,6 +9,7 @@ import type {
 import { predictionOutcomeLabel } from "../../lib/predictionMarkets/predictionMarkets";
 import { PredictionMarketIdentity } from "./PredictionMarketIdentity";
 import { PredictionPositionHoldings } from "./PredictionPositionHoldings";
+import { PredictionStrikeBets } from "./PredictionStrikeBets";
 
 type PredictionResolvedMarketProps = {
   definition: PredictionMarketDefinition;
@@ -43,9 +44,9 @@ export const PredictionResolvedMarket = ({
   return (
     <div className="predictionSharedResolvedMarket">
       <span className="predictionSharedResolvedIdentity">
-        <span className="predictionSharedMarketIdentity">
+        <PredictionStrikeBets definition={definition} className="predictionSharedResolvedBets">
           <PredictionMarketIdentity definition={definition} density={density} />
-        </span>
+        </PredictionStrikeBets>
         {visiblePnl !== undefined ? (
           <span
             className={`predictionSharedMarketPnl${
