@@ -109,6 +109,13 @@ export const predictionDisplayedOrderPrice = (
   outcome: PredictionOutcome,
 ): number => (order.outcome === outcome ? order.priceCents : 100 - order.priceCents);
 
+export const isPendingPredictionOrder = (
+  order: Pick<PredictionOrder, "status" | "remainingQuantity" | "expiresAt">,
+): boolean =>
+  (order.status === "open" || order.status === "partial") &&
+  order.remainingQuantity > 0 &&
+  (!order.expiresAt || Date.parse(order.expiresAt) > Date.now());
+
 export const predictionOrderAppearsAtLevel = (
   order: PredictionOrder,
   outcome: PredictionOutcome,
@@ -125,8 +132,7 @@ export const predictionOrderAppearsAtLevel = (
         : "bid";
 
   return (
-    order.remainingQuantity > 0 &&
-    (order.status === "open" || order.status === "partial") &&
+    isPendingPredictionOrder(order) &&
     displayedSide === bookSide &&
     predictionDisplayedOrderPrice(order, outcome) === priceCents
   );
@@ -257,6 +263,7 @@ const orderSchema = z
     status: z.enum(["open", "partial", "filled", "cancelled"]),
     created_at: z.string(),
     updated_at: z.string(),
+    expires_at: z.string().nullable().optional(),
   })
   .transform((order) => ({
     id: order.id,
@@ -270,6 +277,7 @@ const orderSchema = z
     status: order.status,
     createdAt: order.created_at,
     updatedAt: order.updated_at,
+    ...(order.expires_at !== undefined ? { expiresAt: order.expires_at } : {}),
   }));
 
 const fillSchema = z

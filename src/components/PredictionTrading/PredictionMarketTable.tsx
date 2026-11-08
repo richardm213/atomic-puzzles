@@ -16,6 +16,7 @@ import {
   suggestedPredictionPrice,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { PredictionMarketIdentity } from "./PredictionMarketIdentity";
+import { PredictionPendingOrders } from "./PredictionPendingOrders";
 import { PredictionPositionHoldings } from "./PredictionPositionHoldings";
 import { PredictionPrice } from "./PredictionPrice";
 import { PredictionResolvedMarket } from "./PredictionResolvedMarket";
@@ -99,27 +100,32 @@ export const PredictionMarketTable = ({
               state={state}
             />
           ) : (
-            <button
-              type="button"
-              className="predictionSharedMarketToggle"
-              aria-expanded={isExpanded}
-              aria-controls={drawerId}
-              onClick={() => onToggleMarket(definition)}
-            >
-              <span className="predictionSharedMarketIdentity">
-                <PredictionMarketIdentity definition={definition} density={density} />
-                {isAuthenticated ? (
-                  <PredictionPositionHoldings
-                    definition={definition}
-                    density={density}
-                    positions={state?.positions ?? []}
-                  />
-                ) : null}
-              </span>
-              <span className="predictionSharedMarketChance">
-                <strong>{chance === undefined ? "—" : `${chance}%`}</strong>
-              </span>
-            </button>
+            <div className="predictionSharedMarketSummary">
+              <button
+                type="button"
+                className="predictionSharedMarketToggle"
+                aria-expanded={isExpanded}
+                aria-controls={drawerId}
+                onClick={() => onToggleMarket(definition)}
+              >
+                <span className="predictionSharedMarketIdentity">
+                  <PredictionMarketIdentity definition={definition} density={density} />
+                  {isAuthenticated ? (
+                    <PredictionPositionHoldings
+                      definition={definition}
+                      density={density}
+                      positions={state?.positions ?? []}
+                    />
+                  ) : null}
+                </span>
+                <span className="predictionSharedMarketChance">
+                  <strong>{chance === undefined ? "—" : `${chance}%`}</strong>
+                </span>
+              </button>
+              {isAuthenticated ? (
+                <PredictionPendingOrders definition={definition} orders={state?.orders ?? []} />
+              ) : null}
+            </div>
           )}
 
           {!isResolved ? (

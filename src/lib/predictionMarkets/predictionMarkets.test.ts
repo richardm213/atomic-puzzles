@@ -4,6 +4,7 @@ import {
   formatPredictionAveragePrice,
   formatPredictionChance,
   formatPredictionShares,
+  isPendingPredictionOrder,
   netPredictionPositions,
   predictionBuyOrderCost,
   type PredictionMarketState,
@@ -14,6 +15,21 @@ import {
   quotePredictionSell,
   sortPredictionMarketsByChance,
 } from "./predictionMarkets";
+
+it("marks only live orders with unfilled contracts as pending", () => {
+  const partial = {
+    status: "partial" as const,
+    remainingQuantity: 80,
+    expiresAt: "2099-01-01T00:00:00Z",
+  };
+  const orders = [
+    partial,
+    { ...partial, status: "cancelled" as const },
+    { ...partial, expiresAt: "2000-01-01T00:00:00Z" },
+    { ...partial, remainingQuantity: 0 },
+  ];
+  expect(orders.filter((order) => isPendingPredictionOrder(order))).toEqual([partial]);
+});
 
 describe("formatPredictionChance", () => {
   it("formats sportsbook prices as implied percentages", () => {

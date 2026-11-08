@@ -280,7 +280,7 @@
 
 .predictionSharedMarketRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 84px minmax(196px, 280px);
+  grid-template-columns: minmax(0, 1fr) 112px minmax(196px, 280px);
   gap: 18px;
   align-items: center;
 }
@@ -302,7 +302,7 @@
 .predictionSharedMarketToggle {
   display: grid;
   grid-column: 1 / 3;
-  grid-template-columns: minmax(0, 1fr) 84px;
+  grid-template-columns: minmax(0, 1fr) 112px;
   gap: 18px;
   align-items: center;
   width: 100%;
@@ -313,6 +313,12 @@
   background: transparent;
   color: inherit;
   text-align: left;
+}
+
+.predictionSharedMarketSummary {
+  position: relative;
+  grid-column: 1 / 3;
+  min-width: 0;
 }
 
 .predictionSharedMarketToggle:hover .predictionSharedIdentity strong {
@@ -336,8 +342,102 @@
 }
 
 .predictionSharedMarketChance {
+  position: relative;
   display: block;
+  min-width: 112px;
   text-align: center;
+}
+
+.predictionPendingOrderIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--color-muted);
+  border-radius: 50%;
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+  font-size: 14px;
+}
+
+.predictionPendingOrdersButton {
+  position: absolute;
+  top: 50%;
+  right: 80px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.predictionPendingOrdersButton:hover .predictionPendingOrderIcon {
+  background: var(--color-panel-deep);
+}
+
+.predictionPendingOrdersButton:focus-visible,
+.predictionPendingOrdersTable button:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.predictionPendingOrdersBody {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.predictionPendingOrdersBody p {
+  margin: 0;
+}
+
+.predictionPendingOrdersTable {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--color-heading);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.predictionPendingOrdersTable th,
+.predictionPendingOrdersTable td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+}
+
+.predictionPendingOrdersTable th:first-child {
+  text-align: left;
+}
+
+.predictionPendingOrdersTable thead {
+  color: var(--color-muted);
+}
+
+.predictionPendingOrdersTable button {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+}
+
+.predictionPendingOrdersTable button:hover:not(:disabled) {
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+}
+
+.predictionPendingOrdersTable button:disabled {
+  cursor: wait;
+  opacity: 0.5;
 }
 
 .predictionSharedMarketChance strong {
