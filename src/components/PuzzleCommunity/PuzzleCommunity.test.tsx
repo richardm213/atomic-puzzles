@@ -59,6 +59,8 @@ vi.mock("../PlayerLink/PlayerLink", () => ({
 
 describe("PuzzleCommunity", () => {
   beforeEach(() => {
+    window.localStorage.clear();
+    window.history.replaceState(null, "", "/");
     mocks.isAuthenticated = true;
     mocks.fetchCommunityDiscussion.mockResolvedValue({ comments: [] });
     mocks.fetchPuzzleCommunity.mockResolvedValue({
@@ -385,7 +387,7 @@ describe("PuzzleCommunity", () => {
     expect(screen.getAllByRole("listitem")[0]).toHaveTextContent("Older top comment");
   });
 
-  it("collapses only the selected branch and keeps nested disclosure state and keyboard focus", async () => {
+  it("remembers nested collapse choices without blocking direct comment links", async () => {
     const user = userEvent.setup();
     const comment = (id: number, username: string, parent_id: number | null, body: string) => ({
       id,
@@ -398,7 +400,7 @@ describe("PuzzleCommunity", () => {
       score: 0,
       viewer_vote: 0,
     });
-    mocks.fetchCommunityDiscussion.mockResolvedValueOnce({
+    mocks.fetchCommunityDiscussion.mockResolvedValue({
       comments: [
         comment(1, "alice", null, "First thread"),
         comment(2, "bob", 1, "Nested reply"),
@@ -406,7 +408,8 @@ describe("PuzzleCommunity", () => {
         comment(4, "dana", null, "Separate thread"),
       ],
     });
-    render(<CommunityDiscussion target={{ type: "tournament", id: "awc2026" }} />);
+    const discussion = <CommunityDiscussion target={{ type: "tournament", id: "awc2026" }} />;
+    const firstVisit = render(discussion);
 
     await user.click(await screen.findByRole("button", { name: "Collapse thread by bob" }));
     const parentToggle = screen.getByRole("button", { name: "Collapse thread by alice" });
@@ -416,16 +419,29 @@ describe("PuzzleCommunity", () => {
     expect(parentToggle).toHaveAccessibleName("Expand thread by alice");
     expect(parentToggle).toHaveAttribute("aria-expanded", "false");
     expect(parentToggle).toHaveFocus();
-    expect(screen.getByText("2 replies hidden")).toBeVisible();
+    expect(screen.queryByText(/repl(?:y|ies) hidden/)).not.toBeInTheDocument();
     expect(screen.getByText("First thread")).not.toBeVisible();
     expect(screen.queryByText("Nested reply")).not.toBeInTheDocument();
     expect(screen.getByText("Separate thread")).toBeVisible();
 
+    firstVisit.unmount();
+    window.history.replaceState(null, "", "/#comment-3");
+    const linkedVisit = render(discussion);
+    expect(await screen.findByText("Deep reply")).toBeVisible();
+    linkedVisit.unmount();
+    window.history.replaceState(null, "", "/");
+
+    const returnVisit = render(discussion);
+    const restoredToggle = await screen.findByRole("button", { name: "Expand thread by alice" });
+    restoredToggle.focus();
     await user.keyboard(" ");
-    expect(parentToggle).toHaveAttribute("aria-expanded", "true");
-    expect(parentToggle).toHaveFocus();
+    expect(restoredToggle).toHaveFocus();
     await user.click(screen.getByRole("button", { name: "Expand thread by bob" }));
     expect(screen.getByText("Deep reply")).toBeVisible();
+    returnVisit.unmount();
+
+    render(discussion);
+    expect(await screen.findByText("Deep reply")).toBeVisible();
   });
 
   it("moves the composer directly under the comment being replied to", async () => {

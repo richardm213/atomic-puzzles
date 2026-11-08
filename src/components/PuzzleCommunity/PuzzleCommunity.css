@@ -419,13 +419,8 @@
   white-space: nowrap;
 }
 
-.puzzleCommentMeta time,
-.collapsedCommentReplies {
+.puzzleCommentMeta time {
   white-space: nowrap;
-}
-
-.collapsedCommentReplies {
-  color: var(--color-primary-soft);
 }
 
 .puzzleCommentContent {

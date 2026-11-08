@@ -11,10 +11,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { z } from "zod";
 
 import type { VoteValue } from "../../../shared/domain/voting";
 import { useAuth } from "../../context/AuthContext";
 import { useMinuteClock } from "../../hooks/useMinuteClock";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import {
   communityDiscussionQueryOptions,
   communityQueryKeys,
@@ -34,6 +36,7 @@ import { formatCommentAge, formatLocalDateTime } from "../../utils/formatters";
 import { CommentMarkdown } from "../CommentMarkdown/CommentMarkdown";
 
 const MENTION_SEARCH_DELAY_MS = 180;
+const collapsedCommentsSchema = z.array(z.number().int().positive());
 
 type ActiveMention = {
   start: number;
@@ -108,7 +111,15 @@ export const CommunityDiscussion = ({
   );
   const editInputRef = useRef<HTMLTextAreaElement>(null);
   const editCommentId = editDraft?.id;
-  const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set());
+  const [collapsedIds, setCollapsedIds] = usePersistedState(
+    "community:collapsed-comments:v1",
+    collapsedCommentsSchema,
+    [],
+  );
+  const collapsed = useMemo(() => new Set(collapsedIds), [collapsedIds]);
+  const [overriddenLinkBranches, setOverriddenLinkBranches] = useState<Set<number>>(
+    () => new Set(),
+  );
   const [commentSort, setCommentSort] = useState<CommentSort>(() =>
     targetType === "tournament" || !allowCommentVotes ? "recent" : "top",
   );
@@ -329,7 +340,7 @@ export const CommunityDiscussion = ({
   }, [voteTargetId]);
 
   useEffect(() => {
-    setCollapsed(new Set());
+    setOverriddenLinkBranches(new Set());
     setReplyingTo(null);
     setEditDraft(null);
     setCommentBody("");
@@ -412,13 +423,30 @@ export const CommunityDiscussion = ({
     return children;
   }, [commentSort, community?.comments]);
 
+  const commentAnchor =
+    typeof window === "undefined" ? undefined : window.location.hash.match(/^#comment-(\d+)$/)?.[1];
+  const linkedBranch = useMemo(() => {
+    const path = new Set<number>();
+    if (!commentAnchor || !community) return path;
+    const byId = new Map(community.comments.map((comment) => [comment.id, comment]));
+    let comment = byId.get(Number(commentAnchor));
+    while (comment && !path.has(comment.id)) {
+      path.add(comment.id);
+      comment = comment.parent_id === null ? undefined : byId.get(comment.parent_id);
+    }
+    return path;
+  }, [commentAnchor, community]);
+
   useEffect(() => {
-    if (!community || !window.location.hash.startsWith("#comment-")) return;
-    const targetId = window.location.hash.slice(1);
-    window.requestAnimationFrame(() => {
-      document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!community || !commentAnchor) return;
+    const frameId = window.requestAnimationFrame(() => {
+      document.getElementById(`comment-${commentAnchor}`)?.scrollIntoView?.({
+        behavior: "smooth",
+        block: "center",
+      });
     });
-  }, [community]);
+    return () => window.cancelAnimationFrame(frameId);
+  }, [commentAnchor, community]);
 
   useEffect(() => {
     if (!replyingTo) return;
@@ -464,18 +492,14 @@ export const CommunityDiscussion = ({
     commentVoteMutation.mutate({ commentId: comment.id, vote: nextVote });
   };
 
-  const toggleCollapsed = (commentId: number) => {
-    setCollapsed((current) => {
-      const next = new Set(current);
-      if (next.has(commentId)) next.delete(commentId);
-      else next.add(commentId);
-      return next;
+  const toggleCollapsed = (commentId: number, isCollapsed: boolean) => {
+    if (linkedBranch.has(commentId)) {
+      setOverriddenLinkBranches((current) => new Set(current).add(commentId));
+    }
+    setCollapsedIds((current) => {
+      if (isCollapsed) return current.filter((id) => id !== commentId);
+      return current.includes(commentId) ? current : [...current, commentId];
     });
-  };
-
-  const countDescendants = (commentId: number): number => {
-    const directReplies = childrenByParent.get(commentId) ?? [];
-    return directReplies.reduce((total, reply) => total + 1 + countDescendants(reply.id), 0);
   };
 
   const renderCommentComposer = (isReply: boolean) => {
@@ -586,14 +610,16 @@ export const CommunityDiscussion = ({
 
   const renderComment = (comment: PuzzleComment, depth: number) => {
     const replies = childrenByParent.get(comment.id) ?? [];
-    const isCollapsed = collapsed.has(comment.id);
-    const hiddenReplyCount = isCollapsed ? countDescendants(comment.id) : 0;
+    const hasReplies = replies.length > 0;
+    const isCollapsed =
+      hasReplies &&
+      collapsed.has(comment.id) &&
+      (!linkedBranch.has(comment.id) || overriddenLinkBranches.has(comment.id));
     const draft = editDraft?.id === comment.id ? editDraft : null;
     const canEdit =
       isAuthenticated &&
       comment.id > 0 &&
       user?.username?.toLowerCase() === comment.username.toLowerCase();
-    const hasReplies = replies.length > 0;
     const contentId = `comment-content-${comment.id}`;
     const repliesId = `comment-replies-${comment.id}`;
 
@@ -610,7 +636,7 @@ export const CommunityDiscussion = ({
               aria-label={`${isCollapsed ? "Expand" : "Collapse"} thread by ${comment.username}`}
               aria-controls={`${contentId} ${repliesId}`}
               aria-expanded={!isCollapsed}
-              onClick={() => toggleCollapsed(comment.id)}
+              onClick={() => toggleCollapsed(comment.id, isCollapsed)}
             >
               <span className="commentBranchIcon">
                 <FontAwesomeIcon icon={isCollapsed ? faPlus : faMinus} aria-hidden="true" />
@@ -624,11 +650,6 @@ export const CommunityDiscussion = ({
             <time dateTime={comment.created_at} title={formatLocalDateTime(comment.created_at)}>
               {formatCommentAge(comment.created_at, commentClock)}
             </time>
-            {isCollapsed ? (
-              <span className="collapsedCommentReplies">
-                {hiddenReplyCount} {hiddenReplyCount === 1 ? "reply" : "replies"} hidden
-              </span>
-            ) : null}
           </header>
           <div className="puzzleCommentContent" id={contentId} hidden={isCollapsed}>
             {draft && canEdit ? (
