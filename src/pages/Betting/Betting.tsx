@@ -86,8 +86,9 @@ type PredictionSelection = { marketId: string; outcome: PredictionOutcome };
 const bettingViews: readonly BettingView[] = ["markets", "mine", "all", "suggestions"];
 const predictionDisplayModeSchema = z.enum(["book", "market"]);
 const predictionDisplayModeStorageKey = "betting:prediction-display-mode";
-const defaultMarketCategory = "AWC Round of 16";
+const defaultMarketCategory = "AWC Quarterfinals";
 const predictionMarketCategories = [
+  "AWC Quarterfinals",
   "AWC Round of 16",
   "2026 AWC Champion",
   "Ban",
@@ -95,6 +96,7 @@ const predictionMarketCategories = [
   "2027 AWC",
 ] as const;
 const predictionGroupIdByCategory: Record<PredictionMarketCategory, string> = {
+  "AWC Quarterfinals": "awc-2026-quarterfinals",
   "AWC Round of 16": "awc-2026-round-of-16",
   "2026 AWC Champion": "awc-2026-champion",
   "2027 AWC": "awc-2027-champion",
@@ -316,10 +318,10 @@ export const BettingPage = () => {
           .map((market) => [market.category, market.categoryOrder]),
       ).keys(),
     );
-    const awcRoundOf16Category = categories.find((category) => category === defaultMarketCategory);
+    const defaultCategory = categories.find((category) => category === defaultMarketCategory);
     return Array.from(
       new Set([
-        ...(awcRoundOf16Category ? [awcRoundOf16Category] : []),
+        ...(defaultCategory ? [defaultCategory] : []),
         ...predictionMarketCategories,
         ...categories.filter(
           (category) =>
@@ -911,7 +913,8 @@ export const BettingPage = () => {
                 {activePredictionGroup && activePredictionDisplayMode === "book" ? (
                   <section
                     className={`bettingMarketGroup bettingPredictionBookGroup${
-                      activePredictionGroup.id === "awc-2026-round-of-16"
+                      activePredictionGroup.id === "awc-2026-round-of-16" ||
+                      activePredictionGroup.id === "awc-2026-quarterfinals"
                         ? " bettingPredictionBookGroup--singleColumn"
                         : ""
                     }`}
@@ -1057,7 +1060,11 @@ export const BettingPage = () => {
                                       decoding="async"
                                       aria-hidden="true"
                                     />
-                                    <span>{entryLabel}</span>
+                                    <span>
+                                      {entryLabel.toLowerCase() === "maxwellssilvrhammer"
+                                        ? "Max"
+                                        : entryLabel}
+                                    </span>
                                   </span>
                                   <span className="bettingOutcomeQuote">
                                     <strong>{formatPredictionChance(entryPrice)}</strong>
@@ -1297,7 +1304,7 @@ export const BettingPage = () => {
                                 ? predictionSelection.outcome === "yes"
                                   ? "banned"
                                   : "not banned"
-                                : selectedPredictionGroup?.id === "awc-2026-round-of-16" ||
+                                : selectedPredictionDefinition?.outcomeLabels ||
                                     predictionSelection.outcome === "yes"
                                   ? "to win"
                                   : "not to win"}

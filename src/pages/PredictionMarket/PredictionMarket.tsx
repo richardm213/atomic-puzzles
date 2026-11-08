@@ -251,7 +251,10 @@ export const PredictionMarketPage = () => {
         else if (bet.marketId === AWC_NOT_TO_WIN_MARKET_ID) legacyOutcome = "no";
       } else if (marketGroup?.id === "ban-2026" && bet.marketId.startsWith("lichess-ban-2026-")) {
         legacyOutcome = "yes";
-      } else if (marketGroup?.id === "awc-2026-round-of-16") {
+      } else if (
+        marketGroup?.id === "awc-2026-round-of-16" ||
+        marketGroup?.id === "awc-2026-quarterfinals"
+      ) {
         const matchup = definitionById.get(bet.marketId);
         legacyOutcome =
           predictionOutcomes.find(
