@@ -1,5 +1,8 @@
 # AWC 2026 GitHub forum worker
 
+This older result/bracket workflow is disabled. The active scheduling-only
+replacement is documented in [AWC scheduling worker](awc-2026-schedule-worker.md).
+
 GitHub Actions checks the AWC results thread from page 18 through the last page
 at 12:07 a.m., 4:07 a.m., 8:07 a.m., 12:07 p.m., 4:07 p.m., and 8:07 p.m. Pacific.
 From November 8 through November 9, 2026 (UTC), it checks at seven minutes past

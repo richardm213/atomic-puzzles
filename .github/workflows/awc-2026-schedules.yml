@@ -1,0 +1,61 @@
+name: AWC 2026 schedule sync
+
+on:
+  schedule:
+    - cron: "17 */4 * * *"
+      timezone: UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Preview scheduling changes without publishing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: awc-2026-schedule-sync
+  cancel-in-progress: false
+
+jobs:
+  window:
+    if: github.repository == 'richardm213/atomic-puzzles' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    outputs:
+      active: ${{ steps.window.outputs.active }}
+    steps:
+      - name: Check the one-month scheduling window
+        id: window
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ $(date -u +%F) < "2026-12-09" ]]; then
+            echo "active=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "The AWC scheduling worker ended on December 8, 2026 UTC." >> "$GITHUB_STEP_SUMMARY"
+            gh workflow disable awc-2026-schedules.yml --repo "$GITHUB_REPOSITORY"
+          fi
+  sync:
+    needs: window
+    if: needs.window.outputs.active == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+      - name: Publish verified AWC kickoff announcements
+        env:
+          AWC_SUPABASE_URL: ${{ vars.AWC_SUPABASE_URL }}
+          AWC_SUPABASE_ANON_KEY: ${{ vars.AWC_SUPABASE_ANON_KEY }}
+          AWC_SCHEDULE_TOKEN: ${{ secrets.AWC_SCHEDULE_TOKEN }}
+          AWC_SCHEDULE_PUBLISH: ${{ github.event_name == 'schedule' || inputs.dry_run == false }}
+        run: node scripts/sync-awc-2026-schedules.mjs
