@@ -26,6 +26,10 @@ have all been handled and verified.
 - Always use Firefox when running SQL for this project. Do not use Chrome or another browser for SQL workflows.
 - Always use the new/current database. Never query, modify, or otherwise use the old/legacy database.
 
+## Prediction market liquidity
+
+- Place liquidity orders using `prediction_admin`, never `admin`.
+
 ## Testing protocol
 
 - Default to the smallest relevant test scope. Do not run full-project tests, lint, type checks,
