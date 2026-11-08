@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
+import { BetShareSlip } from "../../components/BetShareSlip/BetShareSlip";
 import { InlineState } from "../../components/InlineState/InlineState";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
@@ -119,6 +120,9 @@ export const BetHistoryTable = ({
   sortable?: boolean;
   showUnits?: boolean;
 }) => {
+  const [sharedBet, setSharedBet] = useState<BetHistoryEntry | null>(null);
+  const table = useRef<HTMLTableElement>(null);
+  const shareable = showStatus;
   const [sort, setSort] = useState<{
     column: BetSortColumn;
     direction: "ascending" | "descending";
@@ -134,6 +138,23 @@ export const BetHistoryTable = ({
         return sort.direction === "ascending" ? comparison : -comparison;
       })
     : bets;
+  useEffect(() => {
+    const element = table.current;
+    if (!shareable || !element) return;
+    const openRow = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || target.closest("a, button, input, select")) return;
+      const row = target.closest<HTMLElement>("tr[data-share-index]");
+      if (!row) return;
+      const bet = sortedBets[Number(row.dataset.shareIndex)];
+      if (bet) {
+        row.querySelector<HTMLButtonElement>(".betHistorySlipTrigger")?.focus();
+        setSharedBet(bet);
+      }
+    };
+    element.addEventListener("click", openRow);
+    return () => element.removeEventListener("click", openRow);
+  }, [shareable, sortedBets]);
   const columnHeader = (column: BetSortColumn, label: string) => (
     <th
       scope="col"
@@ -170,125 +191,165 @@ export const BetHistoryTable = ({
   if (!bets.length) return <InlineState kind="empty">{emptyMessage}</InlineState>;
 
   return (
-    <div className={`betHistoryTableWrap${showUsername ? " betHistoryTableWrap--all" : ""}`}>
-      <table className="betHistoryTable">
-        <caption className="betHistoryCaption">{showUsername ? "All bets" : "My bets"}</caption>
-        <thead>
-          <tr>
-            {columnHeader("selection", "Selection")}
-            {showUsername ? columnHeader("bettor", "Bettor") : null}
-            {columnHeader("price", priceLabel)}
-            {columnHeader("cost", "Cost")}
-            {columnHeader("pnl", returnDisplay === "pnl" ? "P&L" : "Return")}
-            {showStatus ? <th scope="col">Status</th> : null}
-          </tr>
-        </thead>
-        <tbody>
-          {sortedBets.map((bet) => {
-            const isPrediction = bet.kind === "prediction";
-            const market = markets.find((candidate) => candidate.id === bet.marketId);
-            const selectionLabel = bet.predictionSelectionLabel ?? bet.selection;
-            const round =
-              !isPrediction && market?.marketKind !== "outright"
-                ? (market?.roundName ?? "AWC 2026")
-                : "";
-            const countryCode =
-              bet.predictionSelectionCountryCode ??
-              countryByPlayer[selectionLabel.toLowerCase()] ??
-              "";
-            const payout = bet.status === "open" ? bet.potentialPayout : bet.payout;
-            const pnl = Math.round((payout - bet.totalCost) * 100) / 100 || 0;
-            const showPnl = returnDisplay === "pnl";
-            const result =
-              showPnl || bet.status !== "open"
-                ? pnl > 0
-                  ? "gain"
-                  : pnl < 0
-                    ? "loss"
-                    : undefined
-                : undefined;
-            return (
-              <tr key={bet.historyKey ?? `${bet.kind ?? "tournament"}-${bet.id}`}>
-                <th className="betHistorySelection" scope="row">
-                  <span className="betHistoryPlayer">
-                    <img
-                      src={countryCodeToFlagUrl(countryCode)}
-                      alt={countryCode ? `${countryCode} flag` : "Country unavailable"}
-                      crossOrigin="anonymous"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    <strong>
-                      <BetHistoryUsername
-                        username={isPrediction ? selectionLabel.toLowerCase() : selectionLabel}
-                      />
-                      {isPrediction && bet.predictionOutcome && !bet.predictionSelectionLabel ? (
-                        <span className="betHistoryOutcome">
-                          · {bet.predictionOutcome === "yes" ? "Yes" : "No"}
-                        </span>
-                      ) : null}
-                    </strong>
-                  </span>
-                  {showMarket ? (
-                    <span className="betHistoryMarket">
-                      {isPrediction
-                        ? (bet.predictionMarketTitle ?? "Prediction market")
-                        : market?.label || bet.marketId}
-                      {round ? <small> · {abbreviateRound(round)}</small> : null}
+    <>
+      <div className={`betHistoryTableWrap${showUsername ? " betHistoryTableWrap--all" : ""}`}>
+        <table ref={table} className="betHistoryTable">
+          <caption className="betHistoryCaption">{showUsername ? "All bets" : "My bets"}</caption>
+          <thead>
+            <tr>
+              {columnHeader("selection", "Selection")}
+              {showUsername ? columnHeader("bettor", "Bettor") : null}
+              {columnHeader("price", priceLabel)}
+              {columnHeader("cost", "Cost")}
+              {columnHeader("pnl", returnDisplay === "pnl" ? "P&L" : "Return")}
+              {showStatus ? <th scope="col">Status</th> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {sortedBets.map((bet, index) => {
+              const isPrediction = bet.kind === "prediction";
+              const market = markets.find((candidate) => candidate.id === bet.marketId);
+              const selectionLabel = bet.predictionSelectionLabel ?? bet.selection;
+              const round =
+                !isPrediction && market?.marketKind !== "outright"
+                  ? (market?.roundName ?? "AWC 2026")
+                  : "";
+              const countryCode =
+                bet.predictionSelectionCountryCode ??
+                countryByPlayer[selectionLabel.toLowerCase()] ??
+                "";
+              const payout = bet.status === "open" ? bet.potentialPayout : bet.payout;
+              const pnl = Math.round((payout - bet.totalCost) * 100) / 100 || 0;
+              const showPnl = returnDisplay === "pnl";
+              const result =
+                showPnl || bet.status !== "open"
+                  ? pnl > 0
+                    ? "gain"
+                    : pnl < 0
+                      ? "loss"
+                      : undefined
+                  : undefined;
+              const selectionContents = (
+                <>
+                  <BetHistoryUsername
+                    username={isPrediction ? selectionLabel.toLowerCase() : selectionLabel}
+                  />
+                  {isPrediction && bet.predictionOutcome && !bet.predictionSelectionLabel ? (
+                    <span className="betHistoryOutcome">
+                      · {bet.predictionOutcome === "yes" ? "Yes" : "No"}
                     </span>
                   ) : null}
-                </th>
-                {showUsername ? (
-                  <td className="betHistoryBettor" data-label="Bettor">
-                    <BetHistoryBettorLink username={bet.username} />
-                  </td>
-                ) : null}
-                <td className="betHistoryNumber" data-label={priceLabel}>
-                  <strong>
-                    {formatCoinValue(bet.priceCents)}
-                    <span className="betHistoryPriceSuffix">%</span>
-                  </strong>
-                </td>
-                <td className="betHistoryNumber" data-label="Cost">
-                  <strong>{formatCoinValue(bet.totalCost)}</strong>
-                  {showUnits ? <small>coins</small> : null}
-                </td>
-                <td
-                  className="betHistoryNumber betHistoryReturn"
-                  data-label={showPnl ? "P&L" : "Return"}
-                  data-result={result}
+                </>
+              );
+              return (
+                <tr
+                  key={bet.historyKey ?? `${bet.kind ?? "tournament"}-${bet.id}`}
+                  className={shareable ? "betHistoryShareRow" : undefined}
+                  data-share-index={shareable ? index : undefined}
                 >
-                  <strong>
-                    {showPnl
-                      ? `${pnl > 0 ? "+" : ""}${formatCoinValue(pnl)}`
-                      : formatCoinValue(payout)}
-                  </strong>
-                  {showUnits ? (
-                    <small
-                      className={
-                        showPnl && pnl !== 0 && bet.status !== "open"
-                          ? "betHistoryPnlUnit"
-                          : undefined
-                      }
-                    >
-                      {bet.status === "open" ? "possible" : showPnl ? "coins" : "paid"}
-                    </small>
-                  ) : null}
-                </td>
-                {showStatus ? (
-                  <td className="betHistoryState" data-label="Status">
-                    <span className={`betStatus betStatus--${bet.status}`}>
-                      {bet.status === "open" ? "Open" : bet.status}
+                  <th className="betHistorySelection" scope="row">
+                    <span className="betHistoryPlayer">
+                      <img
+                        src={countryCodeToFlagUrl(countryCode)}
+                        alt={countryCode ? `${countryCode} flag` : "Country unavailable"}
+                        crossOrigin="anonymous"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                      <strong>
+                        {shareable ? (
+                          <button
+                            type="button"
+                            className="betHistorySlipTrigger"
+                            aria-label={`Share bet on ${selectionLabel} by ${bet.username}`}
+                            onClick={() => setSharedBet(bet)}
+                          >
+                            {selectionContents}
+                          </button>
+                        ) : (
+                          selectionContents
+                        )}
+                      </strong>
                     </span>
-                    <time dateTime={bet.placedAt}>{formatLocalDateTime(bet.placedAt)}</time>
+                    {showMarket ? (
+                      <span className="betHistoryMarket">
+                        {isPrediction
+                          ? (bet.predictionMarketTitle ?? "Prediction market")
+                          : market?.label || bet.marketId}
+                        {round ? <small> · {abbreviateRound(round)}</small> : null}
+                      </span>
+                    ) : null}
+                  </th>
+                  {showUsername ? (
+                    <td className="betHistoryBettor" data-label="Bettor">
+                      <BetHistoryBettorLink username={bet.username} />
+                    </td>
+                  ) : null}
+                  <td className="betHistoryNumber" data-label={priceLabel}>
+                    <strong>
+                      {formatCoinValue(bet.priceCents)}
+                      <span className="betHistoryPriceSuffix">%</span>
+                    </strong>
                   </td>
-                ) : null}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                  <td className="betHistoryNumber" data-label="Cost">
+                    <strong>{formatCoinValue(bet.totalCost)}</strong>
+                    {showUnits ? <small>coins</small> : null}
+                  </td>
+                  <td
+                    className="betHistoryNumber betHistoryReturn"
+                    data-label={showPnl ? "P&L" : "Return"}
+                    data-result={result}
+                  >
+                    <strong>
+                      {showPnl
+                        ? `${pnl > 0 ? "+" : ""}${formatCoinValue(pnl)}`
+                        : formatCoinValue(payout)}
+                    </strong>
+                    {showUnits ? (
+                      <small
+                        className={
+                          showPnl && pnl !== 0 && bet.status !== "open"
+                            ? "betHistoryPnlUnit"
+                            : undefined
+                        }
+                      >
+                        {bet.status === "open" ? "possible" : showPnl ? "coins" : "paid"}
+                      </small>
+                    ) : null}
+                  </td>
+                  {showStatus ? (
+                    <td className="betHistoryState" data-label="Status">
+                      <span className={`betStatus betStatus--${bet.status}`}>
+                        {bet.status === "open" ? "Open" : bet.status}
+                      </span>
+                      <time dateTime={bet.placedAt}>{formatLocalDateTime(bet.placedAt)}</time>
+                    </td>
+                  ) : null}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {sharedBet ? (
+        <BetShareSlip
+          bet={sharedBet}
+          countryCode={
+            sharedBet.predictionSelectionCountryCode ??
+            countryByPlayer[
+              (sharedBet.predictionSelectionLabel ?? sharedBet.selection).toLowerCase()
+            ] ??
+            ""
+          }
+          marketTitle={
+            sharedBet.predictionMarketTitle ??
+            markets.find((market) => market.id === sharedBet.marketId)?.label ??
+            sharedBet.marketId
+          }
+          onClose={() => setSharedBet(null)}
+        />
+      ) : null}
+    </>
   );
 };
 

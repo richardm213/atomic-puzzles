@@ -335,6 +335,7 @@
 }
 
 .predictionTradeParties a {
+  align-self: baseline;
   color: var(--color-primary-pale);
   font-weight: 650;
   overflow-wrap: anywhere;

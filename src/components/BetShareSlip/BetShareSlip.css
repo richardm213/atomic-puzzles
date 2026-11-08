@@ -1,0 +1,79 @@
+.betShareSlipDialog {
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100svh - 32px);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  box-shadow: var(--shadow-strong);
+}
+
+.betShareSlipDialog::backdrop {
+  background: color-mix(in srgb, var(--color-panel-deep) 76%, transparent);
+}
+
+.betShareSlipDialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.betShareSlipDialog h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.betShareSlipDialog > header button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-inset);
+  color: var(--color-text);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.betShareSlipDialog > header button:hover {
+  background: var(--color-table-hover);
+}
+
+.betShareSlipImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-ui);
+}
+
+.betShareSlipImage[hidden] {
+  display: none;
+}
+
+.betShareSlipDownload {
+  width: 100%;
+  min-height: 44px;
+  margin-top: var(--space-4);
+  background: var(--color-primary);
+  box-shadow: none;
+}
+
+.betHistoryShareRow {
+  cursor: pointer;
+}
+
+.betHistorySlipTrigger {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}

@@ -974,6 +974,18 @@
   width: 28%;
 }
 
+.bettingHistory .betHistoryTableWrap--all .betHistoryTable thead th:first-child {
+  width: 22%;
+}
+
+.bettingHistory .betHistoryTableWrap--all .betHistoryTable thead th:nth-child(2) {
+  width: 22%;
+}
+
+.bettingHistory .betHistoryTableWrap--all .betHistorySelection .betHistoryUsernameCutoff {
+  max-width: 14ch;
+}
+
 .betHistoryTable thead th:last-child {
   width: 18%;
 }
@@ -1069,7 +1081,8 @@
 }
 
 .betHistoryBettor a {
-  display: block;
+  display: inline-block;
+  max-width: 100%;
   overflow: hidden;
   color: var(--link-color);
   font-weight: 650;

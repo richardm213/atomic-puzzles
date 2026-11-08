@@ -551,6 +551,7 @@ export const BettingPage = () => {
       username,
     ],
   );
+  const myPendingBetCount = myBets.filter((bet) => bet.status === "open").length;
   const personalPredictionPnlByMarketId = useMemo(() => predictionPnlByMarketId(myBets), [myBets]);
   const activePredictionGroupPnl = useMemo(() => {
     if (!isAuthenticated || !activePredictionGroup) return null;
@@ -839,7 +840,7 @@ export const BettingPage = () => {
             aria-selected={view === "mine"}
             onClick={() => selectView("mine")}
           >
-            My bets{myBets.length ? ` (${myBets.length})` : ""}
+            My bets{myPendingBetCount ? ` (${myPendingBetCount})` : ""}
           </button>
           <button
             type="button"
