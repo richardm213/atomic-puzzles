@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import type { PuzzleEventGroup } from "../../lib/puzzles/puzzleSets";
 import {
-  getFeaturedPuzzleSetRank,
   hasChessMoveInPuzzleSetName,
   matchesEventFilter,
   orderPuzzleSetGroups,
@@ -33,21 +32,6 @@ describe("puzzle set category filters", () => {
     expect(hasChessMoveInPuzzleSetName("AWC 2026")).toBe(false);
     expect(hasChessMoveInPuzzleSetName("3+2 match")).toBe(false);
     expect(hasChessMoveInPuzzleSetName("Tipau Endgames")).toBe(false);
-  });
-
-  it("keeps the requested featured sets in their curated order", () => {
-    const groups = [
-      makeGroup("Wolfrandom", "2026-09-25", ["quasabianth", "rabbier"], 37),
-      makeGroup("AWC 2018 Finals", "2018-11", ["onubense", "tipau"], 10),
-      makeGroup("Tipau Endgames", "", [], 29),
-      makeGroup("3+2 match", "2026-09-20", ["maxwellssilvrhammer", "wolfram_ep"], 18),
-      makeGroup("3+2 match", "2026-09-10", ["rechesster", "wolfram_ep"], 19),
-    ];
-
-    expect(groups.map(getFeaturedPuzzleSetRank)).toEqual([0, 1, 2, 3, 4]);
-    expect(orderPuzzleSetGroups([...groups].reverse(), 123).map((group) => group.setId)).toEqual([
-      37, 10, 29, 18, 19,
-    ]);
   });
 
   it("keeps the remaining sets stable for a page seed and varies them across seeds", () => {

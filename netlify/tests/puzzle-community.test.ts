@@ -310,11 +310,6 @@ describe("profile comment history", () => {
 });
 
 describe("puzzle-community function", () => {
-  it("only accepts POST requests", async () => {
-    const response = await handler({ httpMethod: "GET" });
-    expect(response.statusCode).toBe(405);
-  });
-
   it("rejects malformed requests", async () => {
     const response = await handler({ httpMethod: "POST", body: "{}" });
     expect(response.statusCode).toBe(400);

@@ -36,6 +36,10 @@ const jsonResponse = (route: Route, body: unknown, status = 200) =>
   });
 
 const installApiMocks = async (page: Page) => {
+  // Feature-specific mocks take precedence. Never let an unmocked API request hit the backend.
+  await page.route("**/api/**", (route) =>
+    jsonResponse(route, { error: "No browser-test fixture for this API request." }, 404),
+  );
   await page.route("**/api/auth/session", (route) =>
     jsonResponse(route, { user: { username: "e2e-player" } }),
   );

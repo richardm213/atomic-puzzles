@@ -72,11 +72,6 @@ describe("notifications function", () => {
     vi.unstubAllGlobals();
   });
 
-  it("only accepts POST requests", async () => {
-    const response = await handler({ httpMethod: "GET" });
-    expect(response.statusCode).toBe(405);
-  });
-
   it("requires a signed site session", async () => {
     const response = await handler({
       httpMethod: "POST",

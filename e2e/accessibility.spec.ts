@@ -8,7 +8,6 @@ const accessiblePages = [
   { path: "/tournaments", name: "tournament archive" },
   { path: "/solve/101", name: "puzzle solver" },
   { path: "/analysis", name: "analysis board", theme: "light" },
-  { path: "/practice", name: "practice board", theme: "light" },
 ] as const;
 
 for (const appPage of accessiblePages) {
@@ -20,6 +19,9 @@ for (const appPage of accessiblePages) {
     }
     await page.goto(appPage.path);
     await expect(page.locator("#main-content")).toBeVisible();
+    if (appPage.name === "puzzle solver") {
+      await expect(page.getByRole("heading", { name: "Puzzle 101" })).toBeVisible();
+    }
 
     const results = await new AxeBuilder({ page })
       .include("#main-content")

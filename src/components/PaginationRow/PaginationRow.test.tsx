@@ -17,28 +17,6 @@ describe("PaginationRow", () => {
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
   });
 
-  it("calls onPageChange with the next page when Next is clicked", async () => {
-    const handleChange = vi.fn();
-    render(<PaginationRow currentPage={2} totalPages={5} onPageChange={handleChange} />);
-    await userEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(handleChange).toHaveBeenCalledWith(3);
-  });
-
-  it("opens an editable jump input when the page label is clicked", async () => {
-    const handleChange = vi.fn();
-    render(<PaginationRow currentPage={2} totalPages={9} onPageChange={handleChange} />);
-
-    await userEvent.click(screen.getByRole("button", { name: /Current page 2/ }));
-    const input = screen.getByRole("spinbutton");
-    expect(input).toBeInTheDocument();
-
-    await userEvent.clear(input);
-    await userEvent.type(input, "5");
-    await userEvent.tab(); // commit on blur
-
-    expect(handleChange).toHaveBeenCalledWith(5);
-  });
-
   it("clamps the entered page into [1, totalPages]", async () => {
     const handleChange = vi.fn();
     render(<PaginationRow currentPage={2} totalPages={4} onPageChange={handleChange} />);

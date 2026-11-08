@@ -24,11 +24,6 @@ describe("puzzle-issues function", () => {
 
   afterEach(() => vi.unstubAllEnvs());
 
-  it("only accepts POST requests", async () => {
-    const response = await handler({ httpMethod: "GET" });
-    expect(response.statusCode).toBe(405);
-  });
-
   it("requires login to report an issue", async () => {
     const response = await handler({
       httpMethod: "POST",

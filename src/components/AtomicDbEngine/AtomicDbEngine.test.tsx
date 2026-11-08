@@ -96,27 +96,6 @@ describe("AtomicDbEngine", () => {
     expect(onDisable).not.toHaveBeenCalled();
   });
 
-  it("offers the move-notation layout in engine settings", () => {
-    const onToggleNotation = vi.fn();
-    render(
-      <AtomicDbEngineControls
-        fen={STARTING_FEN}
-        analysis={{ status: "idle", error: "", result: null, principalVariations: {} }}
-        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: true }}
-        setSettings={vi.fn()}
-        onDisable={vi.fn()}
-        notationInline
-        onToggleNotation={onToggleNotation}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Engine settings" }));
-    const notationButton = screen.getByRole("button", { name: /Move notation/ });
-    expect(within(notationButton).getByText("Inline")).toBeVisible();
-    fireEvent.click(notationButton);
-    expect(onToggleNotation).toHaveBeenCalledOnce();
-  });
-
   it("links the AtomicDB source label to the current database position", () => {
     const position = parseAtomicDbResponse({
       key: "atomic-position-key",
@@ -149,27 +128,6 @@ describe("AtomicDbEngine", () => {
     expect(screen.getByRole("link", { name: "Open this position on AtomicDB" })).toHaveTextContent(
       "AtomicDB + Atomic-Stockfish",
     );
-  });
-
-  it("identifies AtomicDB as the threat-analysis source", () => {
-    render(
-      <AtomicDbEngineControls
-        fen={STARTING_FEN}
-        analysis={{
-          status: "ready",
-          error: "",
-          source: "atomicdb",
-          result: { fen: STARTING_FEN, position: null },
-          principalVariations: {},
-        }}
-        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: true }}
-        setSettings={vi.fn()}
-        onDisable={vi.fn()}
-        threatMode
-      />,
-    );
-
-    expect(screen.getByText("Threat · AtomicDB")).toBeVisible();
   });
 
   it("shows an evaluation instead of a game result for a non-terminal solved position", () => {

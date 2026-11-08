@@ -28,6 +28,10 @@ have all been handled and verified.
 
 ## Testing protocol
 
+- Default to the smallest relevant test scope. Do not run full-project tests, lint, type checks,
+  or builds by default; broaden validation only when requested, required by a task-specific
+  playbook, or justified by concrete regression risk that narrower checks cannot cover.
+- At the end of each task, report what you ran and which broader checks you intentionally skipped.
 - Before adding, expanding, or substantially rewriting tests, read and follow `docs/testing-protocol.md`.
 - Tests are not required for every change. Add coverage only when it protects a meaningful invariant or realistic regression.
 - Prefer extending an existing test over adding another test for the same behavior at a different layer, route, viewport, role, or data value.

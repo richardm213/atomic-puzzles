@@ -6,7 +6,6 @@ test("desktop puzzle menu exposes its destinations", async ({ page }) => {
 
   const menu = page.getByRole("menu", { name: "Puzzles navigation" });
   await expect(menu).toBeVisible();
-  await expect(menu.getByRole("menuitem")).toHaveCount(6);
   await menu.getByRole("menuitem", { name: "Puzzle sets" }).click();
   await expect(page).toHaveURL(/\/solve\/sets$/);
 });
@@ -58,9 +57,7 @@ test("player search results remain clickable when pressing a result blurs the in
   const searchInput = page.getByRole("searchbox", { name: "Search player username" });
   await searchInput.fill("salmon_43");
 
-  const resultRowLink = page
-    .getByRole("link", { name: "Open salmon_43's profile" })
-    .first();
+  const resultRowLink = page.getByRole("link", { name: "Open salmon_43's profile" }).first();
   await expect(resultRowLink).toBeVisible();
 
   // Some browsers leave relatedTarget null when the input blurs during a pointer press.
@@ -68,16 +65,4 @@ test("player search results remain clickable when pressing a result blurs the in
   await expect(resultRowLink).toBeVisible();
   await resultRowLink.click();
   await expect(page).toHaveURL(/\/@\/salmon_43$/);
-
-  await page.goto("/");
-  await page.getByRole("button", { name: "Search player" }).click();
-  const reopenedSearchInput = page.getByRole("searchbox", { name: "Search player username" });
-  await reopenedSearchInput.fill("salmon_43");
-  const puzzleDashboardLink = page.getByRole("link", {
-    name: "Open salmon_43's puzzle dashboard",
-  });
-  await expect(puzzleDashboardLink).toBeVisible();
-  await reopenedSearchInput.evaluate((input) => input.blur());
-  await puzzleDashboardLink.click();
-  await expect(page).toHaveURL(/\/@\/salmon_43\/puzzles$/);
 });

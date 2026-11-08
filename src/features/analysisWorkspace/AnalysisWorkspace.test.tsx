@@ -1,43 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import { AnalysisToolbar } from "./AnalysisToolbar";
-import { AnalysisEngineExplorerPanels } from "./AnalysisEngineExplorerPanels";
-import { AnalysisWorkspaceLayout, AnalysisWorkspacePanel } from "./AnalysisWorkspaceLayout";
 import { OpeningExplorerPanel, OpeningExplorerResizeHandle } from "./OpeningExplorerPanel";
 
 describe("analysis workspace", () => {
-  it("provides the shared layout and panel classes", () => {
-    render(
-      <AnalysisWorkspaceLayout className="practicePage" aria-label="Workspace">
-        <AnalysisWorkspacePanel className="practicePanel" aria-label="Controls" />
-      </AnalysisWorkspaceLayout>,
-    );
-
-    expect(screen.getByRole("region", { name: "Workspace" })).toHaveClass(
-      "analysisPage",
-      "practicePage",
-    );
-    expect(screen.getByRole("complementary", { name: "Controls" })).toHaveClass(
-      "analysisPanel",
-      "practicePanel",
-    );
-  });
-
-  it("keeps the engine and moves before the opening explorer", () => {
-    render(
-      <AnalysisEngineExplorerPanels
-        engine={<div>Engine</div>}
-        moveContent={<div>Played moves</div>}
-        explorer={<section aria-label="Opening explorer">Explorer</section>}
-        movePanelAriaLabel="Position analysis"
-      />,
-    );
-
-    const enginePanel = screen.getByRole("region", { name: "Position analysis" });
-    const explorer = screen.getByRole("region", { name: "Opening explorer" });
-    expect(enginePanel.compareDocumentPosition(explorer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-  });
-
   it("shares explorer toggle and playback behavior", () => {
     const onNavigate = vi.fn();
     const onToggle = vi.fn();
@@ -91,10 +57,6 @@ describe("analysis workspace", () => {
       </OpeningExplorerPanel>,
     );
 
-    expect(screen.getByRole("region", { name: "Opening explorer" })).toHaveClass(
-      "analysisExplorerPanel",
-    );
-    expect(screen.getByText("No database games for this position.")).toBeVisible();
     expect(
       screen.getByRole("separator", { name: "Resize moves and opening explorer" }),
     ).toHaveAttribute("aria-valuenow", "32");

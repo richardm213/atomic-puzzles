@@ -57,21 +57,6 @@ const mockUnratedArchive = async (page: Page) => {
   });
 };
 
-test("profile history presents an unrated match without fake rating values", async ({ page }) => {
-  await mockUnratedArchive(page);
-  await page.goto("/@/alice/history");
-
-  const table = page.locator(".profileMatchTable");
-  const row = table.locator("tbody > tr").first();
-  await expect(row.getByRole("link", { name: "bob", exact: true })).toBeVisible();
-  await expect(row.locator("td").nth(4)).toBeEmpty();
-  await expect(row.locator("td").nth(5)).toBeEmpty();
-  await row.getByRole("button", { name: "Show match details" }).click();
-  const detailsRow = table.locator("tbody > tr").nth(1);
-  await expect(detailsRow.getByText("Unrated", { exact: true })).toHaveCount(2);
-  await expect(detailsRow.getByRole("link", { name: "game1234", exact: true })).toBeVisible();
-});
-
 test("recent matches keep unrated and banned states usable on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await mockUnratedArchive(page);

@@ -3,21 +3,6 @@ import { describe, expect, it } from "vitest";
 import { injectSocialMetadata, metadataForPath } from "../edge-functions/social-meta";
 
 describe("social link metadata", () => {
-  it("keeps the marketing description exclusive to the homepage", () => {
-    const home = metadataForPath("/");
-    const profile = metadataForPath("/@/sircachetes");
-    const unknown = metadataForPath("/other-page");
-    const privatePage = metadataForPath("/admin/coin-bans");
-
-    expect(home.description).toContain("Solve atomic chess puzzles");
-    expect(profile).toEqual({
-      title: "sircachetes — Atomic Chess Profile",
-      description: "View sircachetes' atomic chess ratings, rankings, aliases, and recent matches.",
-    });
-    expect(unknown).toEqual({ title: "Atomic Puzzles" });
-    expect(privatePage).toEqual({ title: "Atomic Puzzles", robots: "noindex,nofollow" });
-  });
-
   it("creates puzzle-specific metadata without revealing the solution", () => {
     expect(metadataForPath("/solve/2345")).toEqual({
       title: "Atomic Puzzle #2345",

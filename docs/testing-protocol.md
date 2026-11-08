@@ -86,10 +86,17 @@ test should cover only the integration risk around it.
 
 ## Verification workflow
 
-1. Run the narrowest affected test file while iterating.
-2. Run lint on changed test files.
-3. Run the full relevant runner before delivery when practical.
-4. Report genuine failures; never delete a high-value failing test merely to make the suite green.
+1. Start with the smallest check that covers the change: a specific test case, an individual test
+   file, or an affected test group. If no automated test is relevant, use a focused manual or
+   documentation check instead.
+2. When fixing a failing test, rerun only that test until it passes. Scope lint and other checks
+   to changed files or affected behavior where possible.
+3. Expand only for concrete risks, such as changes to shared utilities, public APIs, or cross-cutting
+   behavior. Run the full suite only when explicitly requested or when targeted validation cannot
+   give sufficient confidence. Honor task-specific verification requirements without repeatedly
+   running comprehensive checks during iteration.
+4. In the completion report, list the tests or checks run and which broader checks were intentionally
+   skipped. Report genuine failures; never delete a high-value failing test merely to make the suite green.
 
 The default is a small suite of durable tests. More tests are justified only by more risk—not by more
 code.

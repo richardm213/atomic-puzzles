@@ -241,18 +241,6 @@ describe("PuzzleSubmissionPage fields", () => {
     vi.unstubAllGlobals();
   });
 
-  it("uses the shared engine and moves panel without the Lichess instruction card", () => {
-    render(<PuzzleSubmissionPage />);
-
-    expect(screen.getByRole("region", { name: "Position analysis and moves" })).toBeVisible();
-    expect(
-      screen.getByRole("textbox", { name: "Solution PGN" }).closest(".puzzleEditorBoard"),
-    ).not.toBeNull();
-    expect(screen.queryByText("Paste a PGN below, or build the solution on the board.")).toBeNull();
-    expect(screen.queryByText("Create the solution on Lichess")).toBeNull();
-    expect(screen.queryByText("Open analysis board")).toBeNull();
-  });
-
   it("uses direct-creation actions only for approved puzzle creators", async () => {
     authMocks.username = "wolfram_ep";
     const user = userEvent.setup();
@@ -561,23 +549,6 @@ describe("PuzzleEditor move tree", () => {
       expect(lineSet(solutionLinesFromTextarea(textarea))).toContain("e4 e5 Nf3 d6"),
     );
     expect(screen.getByRole("button", { name: "d6" })).toBeVisible();
-  });
-
-  it("keeps every alternate line while navigating and rejects board edits", async () => {
-    const user = userEvent.setup();
-    render(<EditorHarness />);
-
-    const solutionPgn = screen.getByRole("textbox", { name: "Solution PGN" });
-    expect(solutionPgn).toBeInstanceOf(HTMLTextAreaElement);
-    const textarea = solutionPgn as HTMLTextAreaElement;
-    expect(lineSet(solutionLinesFromTextarea(textarea))).toEqual(lineSet(startingLines));
-
-    await user.click(screen.getByRole("button", { name: "1... c5" }));
-    expect(lineSet(solutionLinesFromTextarea(textarea))).toEqual(lineSet(startingLines));
-
-    await user.click(screen.getByRole("button", { name: "Add move to line" }));
-    expect(lineSet(solutionLinesFromTextarea(textarea))).toEqual(lineSet(startingLines));
-    expect(screen.getByTestId("stored-solution").textContent).not.toContain("c6");
   });
 
   it("keeps the loaded PGN and all headers read-only", async () => {

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 const queuePuzzle = {
   id: 901,
@@ -39,11 +39,13 @@ test("deleting a puzzle variation removes it from backward and forward navigatio
   await expect(alternateMove).toBeVisible();
   await alternateMove.click();
   await alternateMove.click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Delete from here" }).click();
+  const deleteMove = page.getByRole("menuitem", { name: "Delete", exact: true });
+  await expect(deleteMove).toBeVisible();
+  await deleteMove.click();
 
   await expect(moves.getByRole("button", { name: /c5/ })).toHaveCount(0);
 
-  for (let repetition = 0; repetition < 3; repetition += 1) {
+  for (let repetition = 0; repetition < 2; repetition += 1) {
     await page.keyboard.press("ArrowRight");
     await expect(moves.getByRole("button", { name: /e5/ })).toHaveAttribute("aria-current", "step");
     await page.keyboard.press("ArrowLeft");

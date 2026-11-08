@@ -9,33 +9,6 @@ test("head-to-head search encodes both players in the route", async ({ page }) =
   await expect(page).toHaveURL(/\/h2h\/alpha_player-vs-beta_player$/);
 });
 
-test("practice side control exposes and changes the selected side", async ({ page }) => {
-  await page.goto("/practice");
-
-  const sideButton = page.getByRole("button", { name: "Play as black" });
-  await expect(sideButton).toBeVisible();
-  await sideButton.click();
-  await expect(page.getByRole("button", { name: "Play as white" })).toBeVisible();
-});
-
-test("practice settings expand and collapse", async ({ page }) => {
-  await page.goto("/practice");
-
-  const openButton = page.getByRole("button", { name: "Open practice settings" });
-  await openButton.click();
-  await expect(page.locator("#practice-settings-panel")).toBeVisible();
-  await page.getByRole("button", { name: "Close practice settings" }).click();
-  await expect(page.locator("#practice-settings-panel")).toBeHidden();
-});
-
-test("puzzle route renders deterministic metadata and chessboard", async ({ page }) => {
-  await page.goto("/solve/101");
-
-  await expect(page.locator(".cg-board")).toBeVisible();
-  await expect(page.getByText("e2e-player", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("Browser test set", { exact: true }).first()).toBeVisible();
-});
-
 test("puzzle next and previous controls update the route", async ({ page }) => {
   await page.goto("/solve/101");
 

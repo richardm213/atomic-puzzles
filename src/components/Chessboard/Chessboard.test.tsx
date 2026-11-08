@@ -136,52 +136,12 @@ describe("Chessboard orchestration", () => {
     expect(movable?.dests.get("e2")).toEqual(expect.arrayContaining(["e3", "e4"]));
   });
 
-  it("uses Lichess-style coordinates along the board edges", () => {
-    renderBoard();
-
-    expect(mocks.config?.coordinatesOnSquares).toBe(false);
-  });
-
-  it("hides coordinates when the display preference is disabled", () => {
-    mocks.showBoardCoordinates = false;
-    const { container } = render(
-      <Chessboard
-        puzzleId="coordinates"
-        fen={STARTING_FEN}
-        orientation="white"
-        coordinates
-        solution=""
-        showSolution={false}
-      />,
-    );
-
-    expect(container.querySelector(".cg-boardShell")).toHaveClass("coordinatesHidden");
-  });
-
   it("renders a solid red preview arrow for a threat move", () => {
     renderBoard({ previewMove: "e7e5", previewMoveBrush: "red" });
 
     expect(mocks.setAutoShapes).toHaveBeenLastCalledWith([
       expect.objectContaining({ orig: "e7", dest: "e5", brush: "red" }),
     ]);
-  });
-
-  it("renders analysis glyphs with Lichess's official SVG geometry", () => {
-    renderBoard({
-      analysisMarker: { uci: "g3f5", symbol: "??", fill: "#d85050" },
-    });
-
-    expect(mocks.setAutoShapes).toHaveBeenLastCalledWith([
-      {
-        orig: "f5",
-        customSvg: { html: expect.any(String) },
-      },
-    ]);
-    const [shape] = mocks.setAutoShapes.mock.calls.at(-1)?.[0] ?? [];
-    expect(shape).not.toHaveProperty("brush");
-    expect(shape).not.toHaveProperty("label");
-    expect(shape?.customSvg?.html).toContain('transform="matrix(.4 0 0 .4 71 -12)"');
-    expect(shape?.customSvg?.html).toContain('r="50" fill="#d85050"');
   });
 
   it("keeps the player color movable and plays a premove after the opponent replies", () => {

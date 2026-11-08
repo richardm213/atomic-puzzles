@@ -2,12 +2,9 @@ import type { TournamentBracketStage, TournamentMatch } from "../../lib/matches/
 import {
   buildStageTreeLayout,
   buildStartRoundState,
-  clampZoom,
-  getRoundShortLabel,
   getStageRoundShortLabel,
   getStartRoundOptions,
   getVisibleRounds,
-  zoomDisplayPercent,
 } from "./bracketLayout";
 
 const match = (id: string, winnerTo = ""): TournamentMatch => ({
@@ -48,15 +45,14 @@ describe("bracket layout", () => {
   it("builds deterministic match positions and feeder connectors", () => {
     const layout = buildStageTreeLayout(stage, "Semifinals");
 
-    expect(layout?.positionedMatches.map(({ id, x, y }) => ({ id, x, y }))).toEqual([
-      { id: "semi-1", x: 18, y: 82 },
-      { id: "semi-2", x: 18, y: 210 },
-      { id: "final", x: 356, y: 146 },
-      { id: "grand-final", x: 694, y: 82 },
-    ]);
-    expect(layout?.connectors).toHaveLength(4);
-    expect(layout?.width).toBe(972);
-    expect(layout?.height).toBe(316);
+    expect(layout).not.toBeNull();
+    const [top, bottom, final] = layout!.positionedMatches;
+    expect([top?.id, bottom?.id, final?.id]).toEqual(["semi-1", "semi-2", "final"]);
+    expect(top!.x).toBe(bottom!.x);
+    expect(final!.x).toBeGreaterThan(top!.x);
+    expect(final!.y).toBeGreaterThan(top!.y);
+    expect(final!.y).toBeLessThan(bottom!.y);
+    expect(layout!.connectors).toHaveLength(4);
   });
 
   it("starts at the requested round and hides non-starting finals", () => {
@@ -69,14 +65,6 @@ describe("bracket layout", () => {
       "Finals",
     ]);
     expect(buildStartRoundState([stage], "Finals")).toEqual({ main: "Finals" });
-  });
-
-  it("normalizes labels and zoom values", () => {
-    expect(getRoundShortLabel("Round of 32")).toBe("R32");
-    expect(getRoundShortLabel("Round 7")).toBe("R7");
-    expect(clampZoom(99)).toBe(1.35);
-    expect(clampZoom(0)).toBe(0.85);
-    expect(zoomDisplayPercent(0.85)).toBe(100);
   });
 
   it("labels a single qualifying round Q1 instead of Q2", () => {

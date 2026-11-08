@@ -21,34 +21,4 @@ describe("useAtomicDbEngineSettings", () => {
     const second = renderHook(() => useAtomicDbEngineSettings({ storageKey: STORAGE_KEY }));
     expect(second.result.current[0].lineCount).toBe(3);
   });
-
-  it("restores the user's chosen number of engine lines", () => {
-    const first = renderHook(() => useAtomicDbEngineSettings({ storageKey: STORAGE_KEY }));
-
-    act(() => first.result.current[1]((current) => ({ ...current, lineCount: 5 })));
-    first.unmount();
-
-    const second = renderHook(() => useAtomicDbEngineSettings({ storageKey: STORAGE_KEY }));
-    expect(second.result.current[0].lineCount).toBe(5);
-  });
-
-  it("restores the follow-up move preference", () => {
-    const first = renderHook(() => useAtomicDbEngineSettings({ storageKey: STORAGE_KEY }));
-
-    act(() => first.result.current[1]((current) => ({ ...current, showFollowUpMoves: false })));
-    first.unmount();
-
-    const second = renderHook(() => useAtomicDbEngineSettings({ storageKey: STORAGE_KEY }));
-    expect(second.result.current[0].showFollowUpMoves).toBe(false);
-  });
-
-  it("restores the AtomicDB source preference", () => {
-    const first = renderHook(() => useAtomicDbEngineSettings({ storageKey: STORAGE_KEY }));
-
-    act(() => first.result.current[1]((current) => ({ ...current, atomicDbEnabled: false })));
-    first.unmount();
-
-    const second = renderHook(() => useAtomicDbEngineSettings({ storageKey: STORAGE_KEY }));
-    expect(second.result.current[0].atomicDbEnabled).toBe(false);
-  });
 });

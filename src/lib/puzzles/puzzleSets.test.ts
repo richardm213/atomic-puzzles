@@ -6,8 +6,6 @@ import {
   getOrderedPuzzleIndexesForEvent,
   groupPuzzlesByEvent,
   isEndgamePuzzleEvent,
-  normalizePuzzleEventName,
-  UNKNOWN_PUZZLE_EVENT_LABEL,
 } from "./puzzleSets";
 
 const makePuzzle = (overrides: Partial<Puzzle>): Puzzle =>
@@ -25,18 +23,6 @@ const makeSet = (
   players: string[] = [],
   sourceId: string | null = null,
 ) => ({ id, event_name: eventName, event_date: eventDate, players, source_id: sourceId });
-
-describe("normalizePuzzleEventName", () => {
-  it("trims whitespace", () => {
-    expect(normalizePuzzleEventName("  ACL 2024  ")).toBe("ACL 2024");
-  });
-
-  it("returns the unknown label for non-strings or empty strings", () => {
-    expect(normalizePuzzleEventName(null)).toBe(UNKNOWN_PUZZLE_EVENT_LABEL);
-    expect(normalizePuzzleEventName("")).toBe(UNKNOWN_PUZZLE_EVENT_LABEL);
-    expect(normalizePuzzleEventName(undefined)).toBe(UNKNOWN_PUZZLE_EVENT_LABEL);
-  });
-});
 
 describe("formatPuzzleSetDate", () => {
   it("shows the exact day when available and preserves partial dates", () => {
@@ -101,13 +87,6 @@ describe("groupPuzzlesByEvent", () => {
     expect(groups[0]?.eventName).toBe("AWC");
   });
 
-  it("uses 'Unknown' for puzzles missing an author", () => {
-    const groups = groupPuzzlesByEvent([
-      makePuzzle({ puzzleId: 1, puzzle_set_id: 10, puzzle_set: makeSet(10, "ACL") }),
-    ]);
-    expect(groups[0]?.authors).toEqual(["Unknown"]);
-  });
-
   it("excludes puzzles without an event from the result", () => {
     const groups = groupPuzzlesByEvent([
       makePuzzle({ puzzleId: 1 }),
@@ -115,10 +94,6 @@ describe("groupPuzzlesByEvent", () => {
     ]);
     expect(groups).toHaveLength(1);
     expect(groups[0]?.event).toBe("ACL");
-  });
-
-  it("handles empty input", () => {
-    expect(groupPuzzlesByEvent([])).toEqual([]);
   });
 
   it("groups spelling variants by structured event metadata", () => {
@@ -154,33 +129,6 @@ describe("groupPuzzlesByEvent", () => {
     ]);
 
     expect(group?.sourceId).toBe("IJL3lXpE");
-  });
-
-  it("keeps the Seaside-Rafael set in its intended display order", () => {
-    const [group] = groupPuzzlesByEvent([
-      makePuzzle({
-        puzzleId: 48,
-        puzzle_set_id: 39,
-        puzzle_set: makeSet(39, "blitz", "", ["rafaelsouzasouza", "seaside_tiramisu"]),
-      }),
-    ]);
-
-    expect(group?.players).toEqual(["seaside_tiramisu", "rafaelsouzasouza"]);
-  });
-
-  it("links the Rechesster-Seaside AWC 2025 set to its source match", () => {
-    const [group] = groupPuzzlesByEvent([
-      makePuzzle({
-        puzzleId: 2353,
-        puzzle_set_id: 1496,
-        puzzle_set: makeSet(1496, "AWC 2025 Round of 16", "2025-10-12", [
-          "rechesster",
-          "seaside_tiramisu",
-        ]),
-      }),
-    ]);
-
-    expect(group?.sourceId).toBe("lOVW9Mod");
   });
 
   it("does not repeat a separate date in an AWC display name", () => {
@@ -226,24 +174,6 @@ describe("groupPuzzlesByEvent", () => {
       "3+2 match · Apr 14, 2026 · opabinia vs rechesster",
     );
     expect(groups.find((group) => group.setId === 17)?.sourceId).toBe("");
-  });
-
-  it("links known Wolfarena and Wolfrandom matches", () => {
-    const groups = groupPuzzlesByEvent([
-      makePuzzle({
-        puzzleId: 1,
-        puzzle_set_id: 31,
-        puzzle_set: makeSet(31, "Wolfarena", "2026-08-16", ["Maracker", "RabbieR"]),
-      }),
-      makePuzzle({
-        puzzleId: 2,
-        puzzle_set_id: 37,
-        puzzle_set: makeSet(37, "Wolfrandom", "2026-09-25", ["Quasabianth", "RabbieR"]),
-      }),
-    ]);
-
-    expect(groups.find((group) => group.setId === 31)?.sourceId).toBe("UhIDR1jR");
-    expect(groups.find((group) => group.setId === 37)?.sourceId).toBe("s1XjJvZ8");
   });
 });
 

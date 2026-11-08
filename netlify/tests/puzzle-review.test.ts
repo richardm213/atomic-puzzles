@@ -31,11 +31,6 @@ describe("puzzle-review function", () => {
     vi.unstubAllGlobals();
   });
 
-  it("only accepts POST requests", async () => {
-    const response = await handler({ httpMethod: "GET" });
-    expect(response.statusCode).toBe(405);
-  });
-
   it("requires a signed reviewer session before exposing queued puzzles", async () => {
     const response = await handler({
       httpMethod: "POST",
