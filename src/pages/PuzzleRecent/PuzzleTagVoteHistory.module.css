@@ -1,0 +1,83 @@
+.history {
+  margin-top: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-soft);
+}
+
+.history > summary {
+  min-height: var(--control-height-touch);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-heading);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.history > summary:hover {
+  background: var(--color-surface-inset);
+}
+
+.history > summary:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.content {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4) var(--space-4);
+}
+
+.events {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--color-border);
+  list-style: none;
+}
+
+.events > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.vote {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.vote strong {
+  color: var(--color-heading);
+  font-size: 14px;
+}
+
+.vote a {
+  color: var(--color-text);
+  text-underline-offset: 3px;
+}
+
+.incorrect {
+  color: var(--color-motif-unconfirmed);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.action {
+  min-height: var(--control-height-touch);
+}
+
+@media (max-width: 480px) {
+  .events > li {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+    gap: var(--space-2);
+  }
+}

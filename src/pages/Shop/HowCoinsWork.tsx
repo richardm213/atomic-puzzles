@@ -38,7 +38,7 @@ export const HowCoinsWorkPage = () => (
   <div className="page coinGuidePage">
     <Seo
       title="How to Earn Coins"
-      description="Learn how to earn Atomic Coins by creating and solving puzzles."
+      description="Learn how to earn Atomic Coins by creating, solving, and tagging puzzles."
       path="/shop/how-coins-work"
     />
 
@@ -149,6 +149,27 @@ export const HowCoinsWorkPage = () => (
                 </table>
               </div>
             </section>
+          </section>
+
+          <section className="coinRewardGroup" aria-labelledby="tag-puzzle-rewards">
+            <div className="coinRewardGroupHeader">
+              <h2 id="tag-puzzle-rewards">Tag puzzles</h2>
+            </div>
+            <dl className="coinRuleList">
+              <div>
+                <dt>Propose a new tag that becomes visible</dt>
+                <dd>
+                  <CoinAmount amount={0.25} />
+                </dd>
+              </div>
+              <div>
+                <dt>Cast your first vote on a tag with a positive score</dt>
+                <dd>
+                  <CoinAmount amount={0.1} />
+                </dd>
+              </div>
+            </dl>
+            <p>One reward per puzzle and tag. Changing or removing a vote doesn’t earn coins.</p>
           </section>
         </div>
 

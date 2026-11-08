@@ -1,3 +1,7 @@
+import {
+  puzzleTagVoteEventsPageSchema,
+  puzzleTagVoteReviewSchema,
+} from "../../../shared/domain/puzzles/puzzleTagVotes";
 import { createPostApi } from "../api/postApi";
 import type { PuzzleSubmissionValue } from "../puzzles/puzzleSubmission";
 import type { PuzzleProgressWithUsernameRow } from "./types";
@@ -42,6 +46,26 @@ export const fetchAdminPuzzle = (
     ...(puzzleId === undefined ? {} : { puzzleId }),
     direction,
   });
+
+export const fetchAdminPuzzleTagVotes = (
+  puzzleId: number,
+  beforeId: number | null,
+  signal: AbortSignal,
+) =>
+  adminRequest(
+    { action: "tag-votes", puzzleId, ...(beforeId === null ? {} : { beforeId }) },
+    {
+      schema: puzzleTagVoteEventsPageSchema,
+      signal,
+      errorMessage: "Unable to load tag vote history.",
+    },
+  );
+
+export const markAdminPuzzleTagVoteIncorrect = (puzzleId: number, voteId: number) =>
+  adminRequest(
+    { action: "mark-tag-vote-incorrect", puzzleId, voteId },
+    { schema: puzzleTagVoteReviewSchema, errorMessage: "Unable to mark tag vote incorrect." },
+  );
 
 export const updateAdminPuzzle = (
   puzzleId: number,

@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  puzzleTagVoteEventsPageSchema,
+  puzzleTagVoteReviewSchema,
+} from "../../../../shared/domain/puzzles/puzzleTagVotes";
 import { HttpError } from "../../../platform/errors";
 
 const PUZZLE_COLUMNS =
@@ -107,6 +111,33 @@ export class PuzzleAdminRepository {
       newerPuzzleId: newerResult.data ? Number(newerResult.data.id) : null,
       attempts: attemptsResult.data ?? [],
     };
+  }
+
+  async listTagVoteEvents(puzzleId: number, beforeId?: number) {
+    const pageSize = 25;
+    let query = this.supabase
+      .from("puzzle_tag_vote_events")
+      .select("id,tag,voter,direction,occurred_at,reviewed_at")
+      .eq("puzzle_id", puzzleId);
+    if (beforeId !== undefined) query = query.lt("id", beforeId);
+    const { data, error } = await query.order("id", { ascending: false }).limit(pageSize + 1);
+    if (error) throw new Error(`Unable to load tag vote history: ${error.message}`);
+    const rows = data ?? [];
+    return puzzleTagVoteEventsPageSchema.parse({
+      events: rows.slice(0, pageSize),
+      nextBeforeId: rows.length > pageSize ? rows[pageSize - 1]?.id : null,
+    });
+  }
+
+  async markTagVoteIncorrect(puzzleId: number, voteId: number, reviewer: string) {
+    const { data, error } = await this.supabase.rpc("mark_puzzle_tag_vote_incorrect", {
+      p_puzzle_id: puzzleId,
+      p_vote_id: voteId,
+      p_reviewer: reviewer,
+    });
+    if (error) throw new Error(`Unable to mark tag vote incorrect: ${error.message}`);
+    if (data === null) throw new HttpError(404, "Tag vote not found.");
+    return puzzleTagVoteReviewSchema.parse({ reviewedAt: data });
   }
 
   async update(puzzleId: number, puzzle: AdminPuzzleUpdate) {

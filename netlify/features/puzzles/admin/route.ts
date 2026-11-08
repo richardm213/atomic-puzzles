@@ -34,6 +34,8 @@ const bodySchema = z.discriminatedUnion("action", [
     opaStyle: z.boolean().default(false),
     tags: z.array(z.string()).max(30).default([]),
   }),
+  z.object({ action: z.literal("tag-votes"), puzzleId, beforeId: puzzleId.optional() }),
+  z.object({ action: z.literal("mark-tag-vote-incorrect"), puzzleId, voteId: puzzleId }),
   z.object({ action: z.literal("delete"), puzzleId }),
   z.object({ action: z.literal("restore"), puzzleId }),
 ]);

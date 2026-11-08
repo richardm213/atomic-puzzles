@@ -326,7 +326,8 @@ export const coinsRoute = async (event: FunctionEvent) => {
     let query = supabase
       .from("coin_transactions")
       .select("id,username,amount,reason,metadata,created_at", { count: "exact" });
-    if (input.reasons) query = query.in("reason", input.reasons);
+    // This feed is public; private moderation debits are not public transaction reasons.
+    query = query.in("reason", input.reasons ?? [...COIN_TRANSACTION_REASONS]);
     if (input.username) query = query.eq("username", input.username.toLowerCase());
     const { data, error, count } = await query
       .order("created_at", { ascending: false })

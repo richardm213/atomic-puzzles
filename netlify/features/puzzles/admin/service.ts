@@ -24,6 +24,8 @@ export type PuzzleAdminAction =
       opaStyle: boolean;
       tags: string[];
     }
+  | { action: "tag-votes"; puzzleId: number; beforeId?: number }
+  | { action: "mark-tag-vote-incorrect"; puzzleId: number; voteId: number }
   | { action: "delete"; puzzleId: number }
   | { action: "restore"; puzzleId: number };
 
@@ -36,6 +38,14 @@ export class PuzzleAdminService {
   async execute(input: PuzzleAdminAction) {
     if (input.action === "get") {
       return this.repository.get(input.puzzleId, input.direction);
+    }
+
+    if (input.action === "tag-votes") {
+      return this.repository.listTagVoteEvents(input.puzzleId, input.beforeId);
+    }
+
+    if (input.action === "mark-tag-vote-incorrect") {
+      return this.repository.markTagVoteIncorrect(input.puzzleId, input.voteId, this.username);
     }
 
     if (input.action === "delete") {

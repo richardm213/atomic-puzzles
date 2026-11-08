@@ -34,6 +34,7 @@ import type { PuzzleProgressWithUsernameRow } from "../../lib/supabase/types";
 import { getErrorMessage } from "../../utils/errors";
 import { normalizeUsername } from "../../utils/playerNames";
 import { PuzzleEditor } from "../PuzzleSubmission/PuzzleEditor";
+import { PuzzleTagVoteHistory } from "./PuzzleTagVoteHistory";
 
 const ADMIN = "seaside_tiramisu";
 
@@ -436,6 +437,7 @@ export const PuzzleRecentPage = () => {
             )}
           </div>
 
+          <PuzzleTagVoteHistory key={puzzle.id} puzzleId={puzzle.id} />
           <Attempts rows={response?.attempts ?? []} />
         </div>
       ) : error ? (

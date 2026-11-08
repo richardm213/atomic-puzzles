@@ -31,15 +31,35 @@ describe("puzzle-admin function", () => {
 
   afterEach(() => vi.unstubAllEnvs());
 
-  it("does not expose puzzle administration to other signed-in users", async () => {
+  it("does not let other signed-in users penalize a tag vote", async () => {
     const response = await handler({
       httpMethod: "POST",
       headers: authHeaders("someone_else"),
-      body: JSON.stringify({ action: "get", direction: "latest" }),
+      body: JSON.stringify({ action: "mark-tag-vote-incorrect", puzzleId: 42, voteId: 17 }),
     });
 
     expect(response.statusCode).toBe(403);
     expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+
+  it("marks only the selected vote using the authenticated administrator", async () => {
+    const reviewedAt = "2026-11-07T18:00:00Z";
+    const rpc = vi.fn(async () => ({ data: reviewedAt, error: null }));
+    mocks.createClient.mockReturnValue({ rpc });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders("seaside_tiramisu"),
+      body: JSON.stringify({ action: "mark-tag-vote-incorrect", puzzleId: 42, voteId: 17 }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({ reviewedAt });
+    expect(rpc).toHaveBeenCalledWith("mark_puzzle_tag_vote_incorrect", {
+      p_puzzle_id: 42,
+      p_vote_id: 17,
+      p_reviewer: "seaside_tiramisu",
+    });
   });
 
   it("passes the authenticated administrator into reversible deletion", async () => {
