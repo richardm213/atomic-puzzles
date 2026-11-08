@@ -12,13 +12,14 @@ import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
+import { useMinuteClock } from "../../hooks/useMinuteClock";
 import { siteCommunityCommentsQueryOptions } from "../../lib/community/communityQueries";
 import {
   type CommunityCommentTargetFilter,
   type ProfileCommentSort,
 } from "../../lib/community/puzzleCommunity";
 import { getErrorMessage } from "../../utils/errors";
-import { formatLocalDateTime } from "../../utils/formatters";
+import { formatCommentAge, formatLocalDateTime } from "../../utils/formatters";
 
 const pageSize = 25;
 const targetFilterOptions: Array<{ value: CommunityCommentTargetFilter; label: string }> = [
@@ -41,6 +42,7 @@ export const CommentsPage = () => {
     placeholderData: keepPreviousData,
   });
   const comments = commentsQuery.data?.comments ?? [];
+  const commentClock = useMinuteClock(comments.length > 0);
   const total = commentsQuery.data?.total ?? 0;
   const loading = commentsQuery.isFetching;
   const error = commentsQuery.error
@@ -170,8 +172,11 @@ export const CommentsPage = () => {
                       <span className={`siteCommentTarget ${comment.target_type}`}>
                         <CommunityCommentTargetLink {...comment} />
                       </span>
-                      <time dateTime={comment.created_at}>
-                        {formatLocalDateTime(comment.created_at)}
+                      <time
+                        dateTime={comment.created_at}
+                        title={formatLocalDateTime(comment.created_at)}
+                      >
+                        {formatCommentAge(comment.created_at, commentClock)}
                       </time>
                     </div>
                     {comment.content_hidden ? (
