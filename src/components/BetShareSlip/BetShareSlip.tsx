@@ -22,6 +22,10 @@ export const BetShareSlip = ({
   const { colorMode, theme } = useAppSettings();
   const pane = useRef<HTMLDialogElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const [frame] = useState(() => ({
+    style: Math.floor(Math.random() * 4),
+    reversed: Math.random() < 0.5,
+  }));
   const [ready, setReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -109,45 +113,65 @@ export const BetShareSlip = ({
       const background = styles.backgroundColor;
       const heading = color("--color-heading");
       const muted = color("--color-muted");
+      const outline = new Path2D();
+      outline.moveTo(12, 0);
+      outline.lineTo(408, 0);
+      outline.quadraticCurveTo(420, 0, 420, 12);
+      outline.lineTo(420, height - 8);
+      for (let tooth = 1; tooth <= 60; tooth++) {
+        outline.lineTo(420 - tooth * 7, height - (tooth % 2 === 0 ? 8 : 0));
+      }
+      outline.lineTo(0, 12);
+      outline.quadraticCurveTo(0, 0, 12, 0);
+      outline.closePath();
+      context.clip(outline);
       context.fillStyle = background;
       context.fillRect(0, 0, 420, height);
-      // Broad, overlapping pools of color give the exported card depth without
-      // placing hard gradient bands behind the bet details.
-      const glow = (x: number, y: number, radius: number, token: string, opacity: number) => {
-        const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
-        gradient.addColorStop(0, color(token));
-        gradient.addColorStop(0.35, color(token));
-        gradient.addColorStop(1, "transparent");
-        context.globalAlpha = opacity;
-        context.fillStyle = gradient;
-        context.fillRect(0, 0, 420, height);
-      };
-      const light = colorMode === "light";
-      glow(210, -170, 620, "--color-primary", light ? 0.28 : 0.86);
-      glow(490, -75, 410, "--color-cyan", light ? 0.18 : 0.65);
-      glow(-250, height + 280, 550, "--color-primary-soft", light ? 0.1 : 0.2);
-      // A narrow satin reflection across the color field adds a little finish.
-      const sheen = context.createLinearGradient(0, 0, 420, height * 0.6);
-      sheen.addColorStop(0, "transparent");
-      sheen.addColorStop(0.38, "transparent");
-      sheen.addColorStop(0.51, color("--color-heading"));
-      sheen.addColorStop(0.64, "transparent");
-      sheen.addColorStop(1, "transparent");
-      context.globalAlpha = light ? 0.025 : 0.035;
-      context.fillStyle = sheen;
+      const directions: [number, number, number, number][] = [
+        [0, 0, 420, height], // Classic
+        [0, 0, 420, 0], // Horizontal
+        [0, height, 420, 0], // Ribbon
+        [0, 0, 0, height], // Vertical
+      ];
+      const stops: [number, string][][] = [
+        [
+          [0, "--color-primary"],
+          [0.5, "--color-primary-soft"],
+          [1, "--color-cyan"],
+        ],
+        [
+          [0, "--color-primary"],
+          [0.55, "--color-cyan"],
+          [1, "--color-primary-soft"],
+        ],
+        [
+          [0, "--color-cyan"],
+          [0.42, "--color-primary"],
+          [0.58, "--color-primary-soft"],
+          [1, "--color-primary"],
+        ],
+        [
+          [0, "--color-primary-soft"],
+          [0.6, "--color-primary"],
+          [1, "--color-cyan"],
+        ],
+      ];
+      const [x, y, endX, endY] = directions[frame.style]!;
+      const gradient = frame.reversed
+        ? context.createLinearGradient(endX, endY, x, y)
+        : context.createLinearGradient(x, y, endX, endY);
+      stops[frame.style]!.forEach(([position, token]) =>
+        gradient.addColorStop(position, color(token)),
+      );
+      context.fillStyle = gradient;
       context.fillRect(0, 0, 420, height);
-      context.globalAlpha = 1;
-      const edge = context.createLinearGradient(0, 0, 420, height);
-      edge.addColorStop(0, color("--color-primary-soft"));
-      edge.addColorStop(0.5, color("--color-border"));
-      edge.addColorStop(1, color("--color-cyan"));
-      context.strokeStyle = edge;
-      context.globalAlpha = light ? 0.3 : 0.45;
+      const inner = new Path2D();
+      inner.roundRect(12, 12, 396, height - 24, frame.style === 2 ? 14 : 12);
+      context.fillStyle = background;
+      context.fill(inner);
+      context.strokeStyle = color("--color-border");
       context.lineWidth = 1;
-      context.beginPath();
-      context.roundRect(0.5, 0.5, 419, height - 1, 12);
-      context.stroke();
-      context.globalAlpha = 1;
+      context.stroke(outline);
       const brand = document.createElement("canvas");
       brand.width = logo.naturalWidth;
       brand.height = logo.naturalHeight;
@@ -230,6 +254,7 @@ export const BetShareSlip = ({
     };
   }, [
     bet,
+    frame,
     colorMode,
     theme,
     marketTitle,

@@ -45,7 +45,7 @@
   display: block;
   width: 100%;
   height: auto;
-  border-radius: var(--radius-ui);
+  border-radius: var(--radius-ui) var(--radius-ui) 0 0;
 }
 
 .betShareSlipImage[hidden] {
