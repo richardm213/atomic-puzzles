@@ -149,166 +149,115 @@
 
 .homeSpotlightGrid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
 }
 
 .homeSpotlightCard {
-  --home-card-category-accent: var(--color-primary-soft);
-  --home-card-accent: color-mix(
-    in srgb,
-    var(--color-feature-card-accent, var(--home-card-category-accent)) 88%,
-    var(--home-card-category-accent)
-  );
-
-  position: relative;
   min-width: 0;
-  min-height: 176px;
-  grid-column: span 3;
   display: grid;
-  align-content: start;
-  gap: var(--space-3);
-  padding: var(--space-6);
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--home-card-accent) 18%, var(--color-border));
-  border-radius: var(--radius-ui);
-  background: color-mix(
-    in srgb,
-    var(--home-card-accent) var(--feature-card-tint, 4%),
-    var(--color-panel)
-  );
-  color: inherit;
+  grid-template-columns: 72px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+  color: var(--color-text);
   text-decoration: none;
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-panel-deep) 20%, transparent);
   transition:
-    border-color 180ms ease,
-    background 180ms ease,
-    box-shadow 180ms ease,
-    transform 180ms ease;
+    border-color 160ms ease,
+    background 160ms ease;
 }
 
-.homeSpotlightCard:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--home-card-accent) 40%, var(--color-border));
-  background: color-mix(
-    in srgb,
-    var(--home-card-accent) var(--feature-card-hover-tint, 5%),
-    var(--color-surface-elevated-strong)
-  );
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-panel-deep) 28%, transparent);
+.homeSpotlightCard:hover,
+.homeSpotlightCard:focus-visible {
+  border-color: var(--color-primary-soft);
+  background: var(--color-surface-elevated);
 }
 
 .homeSpotlightCard:active {
-  transform: translateY(0);
+  background: var(--color-surface-inset-strong);
 }
 
-.homeSpotlightCard > h2 {
-  max-width: 23ch;
-  margin: 0;
+.homeSpotlightCard:last-child:nth-child(even) {
+  grid-column: 1 / -1;
+}
+
+.homeCardCopy {
+  min-width: 0;
+}
+
+.homeCardArtwork {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  min-height: 88px;
+  border-right: 1px solid var(--color-border);
+  padding-right: var(--space-4);
+  color: var(--color-primary-soft);
+  font-size: 24px;
+}
+
+.homeCardArtwork img {
+  width: 56px;
+  height: 80px;
+  object-fit: contain;
+}
+
+.homeCardCopy h2 {
+  margin: 0 0 var(--space-2);
   color: var(--color-heading);
-  font-size: clamp(20px, 2.4vw, 24px);
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
   overflow-wrap: anywhere;
 }
 
-.homeSpotlightCard > p {
-  max-width: 46ch;
+.homeCardCopy p {
   margin: 0;
   color: var(--color-muted);
   font-size: 14px;
   line-height: 1.55;
 }
 
-.homeTrophyShortcut,
-.homeArenaShortcut {
-  padding-right: 120px;
-}
-
-.homeTrophyShortcut {
-  --home-card-category-accent: var(--color-gold);
-}
-
-.homeTrophyShortcut > img {
-  position: absolute;
-  right: var(--space-5);
-  top: 50%;
-  width: auto;
-  max-width: 76px;
-  max-height: 112px;
-  object-fit: contain;
-  filter: drop-shadow(0 8px 12px color-mix(in srgb, black 20%, transparent));
-  transform: translateY(-50%);
-  transition: transform 180ms ease;
-}
-
-.homeTrophyShortcut:hover > img {
-  transform: translateY(calc(-50% - 2px));
-}
-
-.homeRecentMatchesShortcut {
-  --home-card-category-accent: var(--color-danger);
-}
-
-.homeBettingShortcut {
-  --home-card-category-accent: var(--color-gold);
-}
-
-.homeYearlyRankingsShortcut,
-.homePuzzleLeaderboardShortcut {
-  --home-card-category-accent: var(--color-cyan-bright);
-}
-
-.homeCommentsShortcut {
-  --home-card-category-accent: var(--color-primary-pale);
-
-  grid-column: span 4;
-}
-
-.homePuzzleSetsShortcut {
-  --home-card-category-accent: var(--color-success);
-
-  grid-column: span 2;
-}
-
-.homeArenaShortcut {
-  --home-card-category-accent: var(--color-accent-warm);
-
-  grid-column: span 4;
-}
-
-.homeYearlyRankingsShortcut {
-  grid-column: span 2;
-}
-
-.homeArenaArtwork {
-  position: absolute;
-  right: var(--space-5);
-  top: 50%;
-  width: 68px;
-  height: 68px;
-  display: grid;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, var(--color-accent-warm) 36%, var(--color-border));
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-panel-strong) 88%, var(--color-accent-warm) 12%);
-  color: var(--color-accent-warm);
-  transform: translateY(-50%);
+.homeCardArrow {
+  color: var(--color-subtle);
+  font-size: 14px;
   transition:
-    border-color 180ms ease,
-    transform 180ms ease;
-  pointer-events: none;
+    transform 160ms ease,
+    color 160ms ease;
 }
 
-.homeArenaArtwork img {
-  width: 58px;
-  height: 64px;
-  object-fit: contain;
+.homeSpotlightCard:hover .homeCardArrow,
+.homeSpotlightCard:focus-visible .homeCardArrow {
+  transform: translateX(3px);
+  color: var(--color-primary-soft);
 }
 
-.homeArenaShortcut:hover .homeArenaArtwork {
-  border-color: color-mix(in srgb, var(--color-accent-warm) 58%, var(--color-border));
-  transform: translateY(calc(-50% - 2px));
+.homeSpotlightCard:first-child {
+  grid-column: 1 / -1;
+  grid-template-columns: 144px minmax(0, 1fr) 24px;
+  min-height: 188px;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-8);
+  background: var(--color-panel-strong);
+}
+
+.homeSpotlightCard:first-child .homeCardArtwork img {
+  width: 100px;
+  height: 128px;
+}
+
+.homeSpotlightCard:first-child h2 {
+  font-size: 26px;
+  letter-spacing: -0.025em;
+}
+
+.homeSpotlightCard:first-child p {
+  max-width: 48ch;
+  font-size: 16px;
 }
 
 @media (max-width: 820px) {
@@ -331,13 +280,7 @@
   }
 
   .homeSpotlightGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .homeSpotlightCard {
-    min-height: 0;
-    grid-column: span 1;
-    padding: var(--space-5);
+    grid-template-columns: 1fr;
   }
 
   .homePuzzlePreview {
@@ -355,17 +298,34 @@
     width: 188px;
     height: 188px;
   }
-
-  .homeTrophyShortcut,
-  .homeArenaShortcut {
-    min-height: 152px;
-    padding-right: 108px;
-  }
 }
 
 @media (max-width: 520px) {
-  .homeSpotlightGrid {
-    grid-template-columns: 1fr;
+  .homeSpotlightCard,
+  .homeSpotlightCard:first-child {
+    grid-template-columns: 56px minmax(0, 1fr) 14px;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    min-height: 0;
+  }
+
+  .homeCardArtwork {
+    padding-right: var(--space-3);
+    font-size: 20px;
+  }
+
+  .homeCardArtwork img,
+  .homeSpotlightCard:first-child .homeCardArtwork img {
+    width: 44px;
+    height: 72px;
+  }
+
+  .homeSpotlightCard:first-child h2 {
+    font-size: 20px;
+  }
+
+  .homeCardCopy p {
+    font-size: 16px;
   }
 
   .homeHeroActions {
@@ -403,8 +363,7 @@
   .homePrimaryCta,
   .homeSecondaryCta,
   .homeSpotlightCard,
-  .homeTrophyShortcut > img,
-  .homeArenaArtwork {
+  .homeCardArrow {
     transition-duration: 0.01ms;
   }
 }
