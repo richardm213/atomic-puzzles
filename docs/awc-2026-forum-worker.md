@@ -5,8 +5,10 @@ at 12:07 a.m., 4:07 a.m., 8:07 a.m., 12:07 p.m., 4:07 p.m., and 8:07 p.m. Pacifi
 The script uses no AI or Codex. GitHub may delay scheduled runs; a late announcement
 can still miss the next run before kickoff.
 
-The worker publishes clear knockout results from players or the director, advances
-both players where applicable, and links the complete archived match. If the game
+The worker reads each original forum post, excluding quoted text. It accepts scores
+and kickoff times only from HowlinD, AtomicWorldChamp, or a player in that matchup.
+It writes clear knockout results to Supabase, advances both players where applicable,
+and links the complete archived match. If the game
 is public but its match is not yet archived, the worker can record the score and
 pick up the archive link in a later run. It publishes future kickoffs from explicit
 UTC/GMT announcements and writes the same `scheduled_at` field read by the bracket's
