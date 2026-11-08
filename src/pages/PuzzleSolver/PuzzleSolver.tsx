@@ -547,8 +547,8 @@ export const PuzzleSolverPage = () => {
   );
   const canManagePuzzleRating = normalizeUsername(user?.username) === PUZZLE_RATING_EDITOR;
   const activePuzzleRating = useMemo(() => puzzleRatingFromRow(activePuzzle), [activePuzzle]);
-  const normalizedAuthor = normalizeUsername(author);
-  const canManagePuzzleExplanation =
+  const normalizedAuthor = normalizeUsername(activePuzzle?.author);
+  const isPuzzleExplanationEditor =
     Boolean(normalizedUsername) &&
     (normalizedUsername === normalizedAuthor ||
       (normalizedUsername === PUZZLE_EXPLANATION_LEGACY_EDITOR &&
@@ -678,9 +678,15 @@ export const PuzzleSolverPage = () => {
     isCustomSetRoute || isDashboardSetSolveMode
       ? SOLVED_BEFORE_BADGE_LABEL
       : ATTEMPTED_PUZZLE_BADGE_LABEL;
+  // A creator's unrated solve still unlocks editing in analysis, including on revisit.
+  const canManagePuzzleExplanation =
+    isPuzzleExplanationEditor &&
+    isAnalysisMode &&
+    (hasAttemptedActivePuzzle || (hasUnratedAttempt && puzzleSession.attempt === "solved"));
   const canViewExplanation =
-    (hasExplanation || canManagePuzzleExplanation) &&
-    (hasAttemptedActivePuzzle || puzzleSession.attempt === "wrong");
+    canManagePuzzleExplanation ||
+    ((hasExplanation || isPuzzleExplanationEditor) &&
+      (hasAttemptedActivePuzzle || puzzleSession.attempt === "wrong"));
   const showSolution = activePuzzleInfoTab === "solution";
   const showExplanation = activePuzzleInfoTab === "explanation";
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
@@ -1508,12 +1514,12 @@ export const PuzzleSolverPage = () => {
         onToggle: handleSelectSolutionTab,
       }}
       explanation={{
-        available: hasExplanation || canManagePuzzleExplanation,
+        available: hasExplanation || isPuzzleExplanationEditor,
         canView: canViewExplanation,
         canManage: canManagePuzzleExplanation,
         hasContent: hasExplanation,
         content: explanation,
-        editorOpen: explanationEditorOpen,
+        editorOpen: canManagePuzzleExplanation && explanationEditorOpen,
         draft: explanationDraft,
         puzzleId: activePuzzleId,
         saveStatus: explanationSaveStatus,

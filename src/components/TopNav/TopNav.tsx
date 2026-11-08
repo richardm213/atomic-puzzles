@@ -26,8 +26,9 @@ import { type ChangeEvent, useCallback, useEffect, useRef, useState } from "reac
 import { atomic960Enabled, modeLabels, publicModeOptions } from "../../constants/matches";
 import {
   type ColorMode,
-  GEMSTONE_THEMES,
+  CUSTOM_THEMES,
   getBoardThemeColors,
+  isDarkOnlyTheme,
   type Theme,
   useAppSettings,
 } from "../../context/AppSettings";
@@ -202,8 +203,9 @@ export const TopNav = () => {
     setShowCoinChangePopups,
   } = useAppSettings();
   const normalizedAuthUsername = normalizeUsername(user?.username);
-  const canUseGemstoneThemes =
+  const canUseCustomThemes =
     normalizedAuthUsername === "admin" || normalizedAuthUsername === "seaside_tiramisu";
+  const darkOnlyTheme = canUseCustomThemes && isDarkOnlyTheme(theme);
   const isProfilePage = /^\/@\/[^/]+\/?$/.test(pathname);
   const [profileUsername, setProfileUsername] = useState(() =>
     getStoredProfileUsername(user?.username),
@@ -271,10 +273,10 @@ export const TopNav = () => {
   }, [normalizedAuthUsername, profileMenuOpen]);
 
   useEffect(() => {
-    if (!isLoading && theme !== "default" && !canUseGemstoneThemes) {
+    if (!isLoading && theme !== "default" && !canUseCustomThemes) {
       setTheme("default");
     }
-  }, [canUseGemstoneThemes, isLoading, setTheme, theme]);
+  }, [canUseCustomThemes, isLoading, setTheme, theme]);
 
   const resolvedProfileUsername = profileUsername || normalizedAuthUsername;
 
@@ -902,18 +904,18 @@ export const TopNav = () => {
                     </label>
                     <select
                       id="site-theme-select"
-                      value={canUseGemstoneThemes ? theme : "default"}
+                      value={canUseCustomThemes ? theme : "default"}
                       onChange={(event) => {
                         const nextTheme = event.target.value as Theme;
-                        if (nextTheme !== "default" && !canUseGemstoneThemes) return;
+                        if (nextTheme !== "default" && !canUseCustomThemes) return;
                         setTheme(nextTheme);
                       }}
                     >
                       <option value="default">Default</option>
-                      {canUseGemstoneThemes &&
-                        GEMSTONE_THEMES.map((gem) => (
-                          <option key={gem} value={gem}>
-                            {gem.charAt(0).toUpperCase() + gem.slice(1)}
+                      {canUseCustomThemes &&
+                        CUSTOM_THEMES.map((palette) => (
+                          <option key={palette} value={palette}>
+                            {palette.charAt(0).toUpperCase() + palette.slice(1)}
                           </option>
                         ))}
                     </select>
@@ -925,10 +927,11 @@ export const TopNav = () => {
                     <select
                       id="site-color-mode-select"
                       value={colorMode}
+                      disabled={darkOnlyTheme}
                       onChange={(event) => setColorMode(event.target.value as ColorMode)}
                     >
-                      <option value="dark">Dark</option>
-                      <option value="light">Light</option>
+                      <option value="dark">{darkOnlyTheme ? "Dark only" : "Dark"}</option>
+                      {darkOnlyTheme ? null : <option value="light">Light</option>}
                     </select>
                   </div>
                 </div>

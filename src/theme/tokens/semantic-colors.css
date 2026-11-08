@@ -86,8 +86,8 @@
   --color-warning-soft-border: rgba(143, 101, 0, 0.22);
 }
 
-/* Gemstone secondary accents are decorative; analysis keeps its own signal. */
-:root[data-theme="dark"][data-gemstone-theme] {
+/* Custom palette accents are decorative; analysis keeps its own signal. */
+:root[data-theme="dark"]:is([data-gemstone-theme], [data-palette="black"]) {
   --color-analysis-good: #52c7e8;
 }
 
