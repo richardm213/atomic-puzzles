@@ -902,7 +902,7 @@ export const TopNav = () => {
                     </label>
                     <select
                       id="site-theme-select"
-                      value={theme}
+                      value={canUseGemstoneThemes ? theme : "default"}
                       onChange={(event) => {
                         const nextTheme = event.target.value as Theme;
                         if (nextTheme !== "default" && !canUseGemstoneThemes) return;
@@ -910,12 +910,12 @@ export const TopNav = () => {
                       }}
                     >
                       <option value="default">Default</option>
-                      {GEMSTONE_THEMES.map((gem) => (
-                        <option key={gem} value={gem} disabled={!canUseGemstoneThemes}>
-                          {gem.charAt(0).toUpperCase() + gem.slice(1)}
-                          {canUseGemstoneThemes ? "" : " — Locked"}
-                        </option>
-                      ))}
+                      {canUseGemstoneThemes &&
+                        GEMSTONE_THEMES.map((gem) => (
+                          <option key={gem} value={gem}>
+                            {gem.charAt(0).toUpperCase() + gem.slice(1)}
+                          </option>
+                        ))}
                     </select>
                   </div>
                   <div className="navSettingsField">
