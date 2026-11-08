@@ -820,8 +820,9 @@ describe("PuzzleSolverPage solution options", () => {
     performanceNow.mockRestore();
   });
 
-  it("shows the author an explanation editor only after attempting the puzzle", async () => {
-    mocks.username = "admin";
+  it("lets a regular author add an explanation after solving their puzzle", async () => {
+    mocks.username = "puzzle_author";
+    mocks.puzzleAuthor = "Puzzle_Author";
     mocks.attemptedPuzzleIds = new Set();
     mocks.puzzleExplanation = "";
     const user = userEvent.setup();
@@ -833,9 +834,9 @@ describe("PuzzleSolverPage solution options", () => {
     act(() => {
       mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
         puzzleId: 1369,
-        puzzleCorrect: false,
-        incorrectMove: "1... Kd7",
-        correctMove: null,
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: "12... O-O",
       });
     });
 
@@ -856,6 +857,30 @@ describe("PuzzleSolverPage solution options", () => {
     );
     expect(await screen.findByText("Explanation saved.")).toBeInTheDocument();
     expect(screen.getByText("The king move escapes the atomic threat.")).toBeInTheDocument();
+  });
+
+  it("lets an author edit an explanation when revisiting an unrated solve in analysis", async () => {
+    mocks.username = "puzzle_author";
+    mocks.puzzleAuthor = "puzzle_author";
+    mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValue([
+      {
+        puzzle_id: "1369",
+        first_attempt_at: "2026-01-01T00:00:00.000Z",
+        puzzle_correct: true,
+        rated: false,
+      },
+    ]);
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    const explanationTab = await screen.findByRole("tab", { name: "Explanation" });
+    await waitFor(() => expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true));
+    expect(explanationTab).toBeEnabled();
+    await user.click(explanationTab);
+    await user.click(screen.getByRole("button", { name: "Edit", exact: true }));
+    expect(screen.getByRole("textbox", { name: "Puzzle explanation" })).toHaveValue(
+      mocks.puzzleExplanation,
+    );
   });
 
   it("locks other attempts until the current user has attempted the puzzle", async () => {
