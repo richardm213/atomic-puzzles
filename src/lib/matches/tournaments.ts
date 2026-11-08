@@ -325,8 +325,6 @@ const requestBracketData = <T>(
   // AWC 2026 follows live results; let the query layer own freshness for its bracket.
   tournamentId === "awc2026" ? request() : cachedRequest(cache, [key, tournamentId], request);
 
-type CsvRow = Record<string, string>;
-
 const roundDisplayOrder: Record<string, string[]> = {
   qualifying: ["First Round", "Second Round", "Qualifying Round"],
   main: [
@@ -520,127 +518,6 @@ export const normalizeTournamentMetaRow = (row: TournamentMetaRowFromDb): Tourna
     ...(trophyAssetPath ? { trophyAssetPath } : {}),
     ...(Number.isFinite(homeFeatureOrder) ? { homeFeatureOrder } : {}),
   };
-};
-
-const parseCsvLine = (line: string): string[] => {
-  const values: string[] = [];
-  let currentValue = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const character = line[index];
-    const nextCharacter = line[index + 1];
-
-    if (character === '"' && inQuotes && nextCharacter === '"') {
-      currentValue += '"';
-      index += 1;
-      continue;
-    }
-
-    if (character === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (character === "," && !inQuotes) {
-      values.push(currentValue.trim());
-      currentValue = "";
-      continue;
-    }
-
-    currentValue += character;
-  }
-
-  values.push(currentValue.trim());
-  return values;
-};
-
-const parseCsvRows = (csv: string): CsvRow[] => {
-  const lines = csv
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  const [headerLine, ...dataLines] = lines;
-  if (!headerLine) return [];
-
-  const headers = parseCsvLine(headerLine);
-  return dataLines.map((line) => {
-    const values = parseCsvLine(line);
-    return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]));
-  });
-};
-
-const shouldUseLocalTournamentCsv = (): boolean => import.meta.env.DEV;
-
-const fetchLocalTournamentCsv = async (fileName: string): Promise<string> => {
-  const response = await fetch(`/data/tournaments/${fileName}`);
-  if (!response.ok) {
-    throw new Error(`Unable to load local tournament CSV: ${fileName}`);
-  }
-  return response.text();
-};
-
-const fetchLocalTournamentRows = async (tournamentId: string): Promise<TournamentMatch[]> => {
-  const tournamentMatchesCsv = await fetchLocalTournamentCsv("tournament_matches.csv");
-
-  return parseCsvRows(tournamentMatchesCsv)
-    .filter((row) => row.tournament === tournamentId)
-    .map(normalizeMatchRow);
-};
-
-const fetchLocalTournamentRowsByMatchId = async (matchId: string): Promise<TournamentMatch[]> => {
-  const tournamentMatchesCsv = await fetchLocalTournamentCsv("tournament_matches.csv");
-
-  return parseCsvRows(tournamentMatchesCsv)
-    .filter((row) => String(row.match_id ?? "").trim() === matchId)
-    .map(normalizeMatchRow);
-};
-
-const fetchLocalAllTournamentRows = async (): Promise<TournamentMatch[]> => {
-  const tournamentMatchesCsv = await fetchLocalTournamentCsv("tournament_matches.csv");
-  return parseCsvRows(tournamentMatchesCsv).map(normalizeMatchRow);
-};
-
-const fetchLocalAllTournamentSeedMaps = async (): Promise<
-  Record<string, Record<string, number>>
-> => {
-  const tournamentSeedsCsv = await fetchLocalTournamentCsv("tournament-seeds.csv");
-  return buildTournamentSeedMaps(parseCsvRows(tournamentSeedsCsv));
-};
-
-const fetchLocalPlayerCountryMap = async (): Promise<Record<string, string>> => {
-  const playerCountriesCsv = await fetchLocalTournamentCsv("player-countries.csv");
-
-  return parseCsvRows(playerCountriesCsv).reduce<Record<string, string>>((accumulator, row) => {
-    const playerName = String(row.player_name ?? "")
-      .trim()
-      .toLowerCase();
-    const countryCode = String(row.country_code ?? "")
-      .trim()
-      .toUpperCase();
-    if (!playerName || !countryCode) return accumulator;
-    accumulator[playerName] = countryCode;
-    return accumulator;
-  }, {});
-};
-
-const fetchLocalTournamentSeedMap = async (
-  tournamentId: string,
-): Promise<Record<string, number>> => {
-  const tournamentSeedsCsv = await fetchLocalTournamentCsv("tournament-seeds.csv");
-
-  return parseCsvRows(tournamentSeedsCsv)
-    .filter((row) => row.tournament === tournamentId)
-    .reduce<Record<string, number>>((accumulator, row) => {
-      const playerName = String(row.player_name ?? "")
-        .trim()
-        .toLowerCase();
-      const seed = Number(row.seed);
-      if (!playerName || !Number.isInteger(seed) || seed < 1 || seed > 16) return accumulator;
-      accumulator[playerName] = seed;
-      return accumulator;
-    }, {});
 };
 
 const winnerName = (match: TournamentMatch): string => {
@@ -1041,10 +918,6 @@ export const addEmptyMainBracketRounds = (
 
 const fetchTournamentMatchRows = async (tournamentId: string): Promise<TournamentMatch[]> =>
   requestBracketData(tournamentId, tournamentMatchesCache, "tournamentMatches", async () => {
-    if (shouldUseLocalTournamentCsv()) {
-      return fetchLocalTournamentRows(tournamentId);
-    }
-
     const supabase = getSupabaseClient();
     const buildQuery = (columns: string) => () =>
       supabase.from(TOURNAMENT_MATCHES_TABLE).select(columns).eq("tournament", tournamentId);
@@ -1071,24 +944,18 @@ export const fetchTournamentPlayerAppearances = async (
   return cachedRequest(tournamentPlayerHistoryCache, [cacheKey], async () => {
     const [catalog, allMatches, seedMapsByTournament] = await Promise.all([
       fetchTournamentCatalog(),
-      shouldUseLocalTournamentCsv()
-        ? fetchLocalAllTournamentRows()
-        : fetchAllSupabaseRows<TournamentMatchRowFromDb>(TOURNAMENT_MATCHES_TABLE, () =>
-            getSupabaseClient()
-              .from(TOURNAMENT_MATCHES_TABLE)
-              .select(TOURNAMENT_MATCHES_SELECT_COLUMNS),
-          ).then((rows) => rows.map(normalizeMatchRow)),
-      shouldUseLocalTournamentCsv()
-        ? fetchLocalAllTournamentSeedMaps()
-        : fetchAllSupabaseRows<{
-            tournament?: string | null;
-            player_name?: string | null;
-            seed?: number | string | null;
-          }>(TOURNAMENT_SEEDS_TABLE, () =>
-            getSupabaseClient()
-              .from(TOURNAMENT_SEEDS_TABLE)
-              .select(TOURNAMENT_SEEDS_SELECT_COLUMNS),
-          ).then(buildTournamentSeedMaps),
+      fetchAllSupabaseRows<TournamentMatchRowFromDb>(TOURNAMENT_MATCHES_TABLE, () =>
+        getSupabaseClient()
+          .from(TOURNAMENT_MATCHES_TABLE)
+          .select(TOURNAMENT_MATCHES_SELECT_COLUMNS),
+      ).then((rows) => rows.map(normalizeMatchRow)),
+      fetchAllSupabaseRows<{
+        tournament?: string | null;
+        player_name?: string | null;
+        seed?: number | string | null;
+      }>(TOURNAMENT_SEEDS_TABLE, () =>
+        getSupabaseClient().from(TOURNAMENT_SEEDS_TABLE).select(TOURNAMENT_SEEDS_SELECT_COLUMNS),
+      ).then(buildTournamentSeedMaps),
     ]);
     return buildTournamentPlayerAppearances(
       catalog,
@@ -1101,10 +968,6 @@ export const fetchTournamentPlayerAppearances = async (
 
 export const fetchPlayerCountryMap = async (): Promise<Record<string, string>> =>
   cachedRequest(playerCountriesCache, ["playerCountries"], async () => {
-    if (shouldUseLocalTournamentCsv()) {
-      return fetchLocalPlayerCountryMap();
-    }
-
     const supabase = getSupabaseClient();
     const buildQuery = () =>
       supabase.from(PLAYER_COUNTRIES_TABLE).select(PLAYER_COUNTRIES_SELECT_COLUMNS);
@@ -1128,10 +991,6 @@ export const fetchPlayerCountryMap = async (): Promise<Record<string, string>> =
 
 const fetchTournamentSeedMap = async (tournamentId: string): Promise<Record<string, number>> =>
   cachedRequest(tournamentSeedsCache, ["tournamentSeeds", tournamentId], async () => {
-    if (shouldUseLocalTournamentCsv()) {
-      return fetchLocalTournamentSeedMap(tournamentId);
-    }
-
     const supabase = getSupabaseClient();
     const buildQuery = () =>
       supabase
@@ -1260,15 +1119,13 @@ export const getTournamentMatchLocation = async (
     tournamentMatchLocationCache,
     ["tournamentMatchLocation", normalizedMatchId],
     async () => {
-      const rows = shouldUseLocalTournamentCsv()
-        ? await fetchLocalTournamentRowsByMatchId(normalizedMatchId)
-        : await loadSupabaseRows<TournamentMatchRowFromDb>(
-            TOURNAMENT_MATCHES_TABLE,
-            getSupabaseClient()
-              .from(TOURNAMENT_MATCHES_TABLE)
-              .select(TOURNAMENT_MATCHES_SELECT_COLUMNS)
-              .eq("match_id", normalizedMatchId),
-          );
+      const rows = await loadSupabaseRows<TournamentMatchRowFromDb>(
+        TOURNAMENT_MATCHES_TABLE,
+        getSupabaseClient()
+          .from(TOURNAMENT_MATCHES_TABLE)
+          .select(TOURNAMENT_MATCHES_SELECT_COLUMNS)
+          .eq("match_id", normalizedMatchId),
+      );
 
       const match =
         rows

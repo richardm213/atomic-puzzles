@@ -1,6 +1,8 @@
 # Atomic Chess Tour Rankings
 
-The Atomic Tour is a rolling points ranking backed by Supabase.
+The Atomic Tour is a rolling points ranking backed by Supabase in both production and localhost.
+Localhost uses the same Supabase-backed ranking snapshots and event entries as production;
+there is no development-only local data source.
 
 ## Event tiers
 

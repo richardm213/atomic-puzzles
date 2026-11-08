@@ -88,6 +88,10 @@ The dev server will print a local URL, usually `http://localhost:5173`.
 Supabase stores authentication-related records and mutable puzzle/community data. This app is a
 frontend for an existing dataset, not a schema-migration project.
 
+Tournament catalogs, brackets, seeds, winners, country data, arena archives, and Atomic Tour
+rankings also use the current Supabase database in both production and local development.
+Tournament CSV files are offline import/export artifacts, not runtime data sources.
+
 ### Minimum puzzle row shape
 
 The puzzle loader expects rows similar to:

@@ -1,13 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const sourceMocks = vi.hoisted(() => ({ from: vi.fn() }));
+vi.mock("../supabase/client", () => ({ getSupabaseClient: () => sourceMocks }));
 
 import {
   addEmptyMainBracketRounds,
   addImplicitByeMatches,
   buildTournamentPlayerAppearances,
   compareTournamentStartDates,
+  fetchPlayerCountryMap,
+  fetchTournamentPlayerAppearances,
   getAdjacentTournamentMetas,
+  getTournamentBracket,
   getTournamentChampion,
   getTournamentDecisiveMatch,
+  getTournamentMatchLocation,
   normalizeTournamentMetaRow,
   type TournamentMatch,
   type TournamentMeta,
@@ -577,5 +584,75 @@ describe("main bracket completion", () => {
     expect(completed.find((candidate) => candidate.id === "ahc2026-r32-m8")?.winner_to).toBe(
       "ahc2026-r16-m4",
     );
+  });
+});
+
+describe("tournament data sources in development", () => {
+  it("loads brackets, player history, seeds and countries from Supabase without local file fallbacks", async () => {
+    const rowsByTable: Record<string, unknown[]> = {
+      tournament_catalog: [
+        {
+          id: "database-cup",
+          series_key: "test",
+          series_name: "Database Cup",
+          title: "Database Cup",
+          year: 2026,
+          status: "available",
+        },
+      ],
+      tournament_matches: [
+        match({
+          tournament: "database-cup",
+          round: "Finals",
+          id: "database-final",
+          match_id: "remote-match",
+          s1: 3,
+          s2: 1,
+        }),
+      ],
+      tournament_seeds: [{ tournament: "database-cup", player_name: "alpha", seed: 1 }],
+      player_countries: [{ player_name: "alpha", country_code: "US" }],
+    };
+    sourceMocks.from.mockImplementation((table: string) => {
+      const query = Object.assign(
+        Promise.resolve({ data: rowsByTable[table] ?? [], error: null }),
+        {
+          select: vi.fn(),
+          eq: vi.fn(),
+          order: vi.fn(),
+          gte: vi.fn(),
+          lte: vi.fn(),
+          range: vi.fn(),
+        },
+      );
+      for (const method of [
+        query.select,
+        query.eq,
+        query.order,
+        query.gte,
+        query.lte,
+        query.range,
+      ])
+        method.mockReturnValue(query);
+      return query;
+    });
+    const fetch = vi.fn().mockRejectedValue(new Error("Local files must not be requested"));
+    vi.stubGlobal("fetch", fetch);
+    try {
+      const bracket = await getTournamentBracket("database-cup");
+      expect(bracket?.matches[0]?.match_id).toBe("remote-match");
+      expect(bracket?.seedMap.alpha).toBe(1);
+      expect(await fetchPlayerCountryMap()).toEqual({ alpha: "US" });
+      expect((await fetchTournamentPlayerAppearances(["alpha"]))[0]?.tournament.id).toBe(
+        "database-cup",
+      );
+      expect((await getTournamentMatchLocation("remote-match"))?.match.id).toBe("database-final");
+      expect(sourceMocks.from.mock.calls.map(([table]) => table)).toEqual(
+        expect.arrayContaining(["tournament_matches", "tournament_seeds", "player_countries"]),
+      );
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

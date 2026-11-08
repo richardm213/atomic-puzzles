@@ -3,7 +3,7 @@
 Use this checklist whenever the user reports an AWC 2026 result.
 
 1. **Record the result**
-   - Update the exact `awc2026` row in production Supabase and the local tournament CSV.
+   - Update the exact `awc2026` row in the current Supabase database.
    - Store the exact score, match date, and outcome type.
    - Confirm the winner advances to `winner_to` and the loser appears at `loser_to` when applicable.
 

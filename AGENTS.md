@@ -50,17 +50,18 @@ For creating or reseeding a knockout bracket, follow `docs/tournament-bracket-se
 
 ### Source of truth
 
-- Production brackets read from the Supabase `tournament_matches` table.
-- Development brackets read from `data/tournaments/tournament_matches.csv`.
+- Production and localhost both read tournament data from the current Supabase database.
+- Brackets read from `tournament_matches`; catalogs, seeds, winners, country data, archives,
+  and Atomic Tour rankings also use Supabase. Do not add development-only local data fallbacks.
 - The tournament catalog and bracket-generation rules live in `src/lib/matches/tournaments.ts`.
 - Match pages read archived matches through the server-only Turso archive API, filtered by the tournament's `matchMode`.
-- Tournament CSV files are intentionally gitignored. Update them for local parity, but do not mistake a clean `git status` for a failed edit.
+- Tournament CSV files are offline import/export artifacts only; they are not a runtime data source.
 
 ### Fast workflow
 
 1. **Identify the tournament and mode**
    - Read its entry in `src/lib/matches/tournaments.ts`.
-   - Read the tournament's existing rows from the local CSV and Supabase before changing anything.
+   - Read the tournament's existing rows from Supabase before changing anything.
 
 2. **Fetch the complete result thread**
    - Download every pagination page, not only page 1.
@@ -85,9 +86,8 @@ For creating or reseeding a knockout bracket, follow `docs/tournament-bracket-se
    - Encode a withdrawal as `1–0` or `0–1` with no `match_id`; the UI renders this as an advancement/withdrawal instead of a played score.
    - Let `addEmptyMainBracketRounds` infer downstream players and `winner_to` when the current tournament is configured to do so. Do not add speculative future matches.
 
-5. **Update both stores with the smallest safe write**
-   - Add or update the local CSV row.
-   - For Supabase, first query the exact bracket row ID.
+5. **Update Supabase with the smallest safe write**
+   - First query the exact bracket row ID.
    - If absent, `POST` only the new row.
    - If present, `PATCH` only that row with `?id=eq.<row-id>`.
    - Do not replace or delete the whole `tournament_matches` table for a routine result update.
