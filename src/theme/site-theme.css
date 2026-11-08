@@ -268,19 +268,24 @@
   --analysis-workspace-cyan-bright: #076d80;
 }
 
-/* Gemstones share a restrained surface ramp. Status, market and rating colors
-   stay independent so the active theme cannot change the meaning of a signal. */
+/* Palettes define the accent hues; color mode owns the neutral surfaces.
+   Status, market and rating colors keep their existing meaning across palettes. */
 :root[data-palette="amethyst"] {
-  --gem-hue: 292;
-  --gem-nav-hue: 322;
+  --gem-hue: 308;
+  --gem-nav-hue: 320;
+  --gem-action-chroma: 0.17;
+  --gem-accent-chroma: 0.13;
 }
 
 :root[data-palette="ruby"] {
   --gem-hue: 20;
-  --gem-action-chroma: 0.19;
+  --gem-action-chroma: 0.18;
   --gem-accent-chroma: 0.16;
   --gem-accent-dark-lightness: 72%;
-  --gem-nav-hue: 23;
+  --gem-nav-hue: 20;
+  --gem-nav-chroma: 0.2;
+  --gem-mark-dark-lightness: 62%;
+  --gem-mark-dark-chroma: 0.18;
 }
 
 :root[data-palette="emerald"] {
@@ -288,36 +293,15 @@
   --gem-nav-hue: 157;
 }
 
+/* Gemstone accents are shared across modes. */
 :root[data-gemstone-strength] {
-  --gem-surface-chroma: 0.035;
-  --gem-page-top-lightness: 23%;
-  --gem-page-bottom-lightness: 15%;
-  --gem-panel-lightness: 25%;
-  --gem-deep-lightness: 14%;
-  --gem-elevated-lightness: 27%;
-  --gem-heading-lightness: 98%;
-  --gem-text-lightness: 93%;
-  --gem-muted-lightness: 80%;
-  --gem-subtle-lightness: 70%;
+  --gem-selection-tint: 11%;
+  --gem-emphasis-tint: 17%;
   --gem-action-lightness: 48%;
   --gem-action-hover-lightness: 52%;
   --gem-accent-lightness: var(--gem-accent-dark-lightness, 79%);
   --gem-accent-pale-lightness: 91%;
-  --gem-wash: 21%;
-  --gem-input-border-strength: 50%;
-  --color-page-top: oklch(var(--gem-page-top-lightness) var(--gem-surface-chroma) var(--gem-hue));
-  --color-page-bottom: oklch(
-    var(--gem-page-bottom-lightness) var(--gem-surface-chroma) var(--gem-hue)
-  );
-  --color-panel-strong: oklch(var(--gem-panel-lightness) var(--gem-surface-chroma) var(--gem-hue));
-  --color-panel-deep: oklch(var(--gem-deep-lightness) var(--gem-surface-chroma) var(--gem-hue));
-  --color-panel: color-mix(in srgb, var(--color-panel-strong) 94%, transparent);
-  --color-nav: color-mix(in srgb, var(--color-page-bottom) 94%, transparent);
-  --color-nav-badge: oklch(50% 0.22 var(--gem-nav-hue));
-  --color-heading: oklch(var(--gem-heading-lightness) 0.015 var(--gem-hue));
-  --color-text: oklch(var(--gem-text-lightness) 0.018 var(--gem-hue));
-  --color-muted: oklch(var(--gem-muted-lightness) 0.027 var(--gem-hue));
-  --color-subtle: oklch(var(--gem-subtle-lightness) 0.035 var(--gem-hue));
+  --color-nav-badge: oklch(50% var(--gem-nav-chroma, 0.22) var(--gem-nav-hue));
   --color-primary: oklch(var(--gem-action-lightness) var(--gem-action-chroma, 0.14) var(--gem-hue));
   --color-primary-hover: oklch(
     var(--gem-action-hover-lightness) var(--gem-action-chroma, 0.14) var(--gem-hue)
@@ -330,9 +314,61 @@
   --color-on-primary: oklch(98% 0.01 var(--gem-hue));
   --color-action-fill: var(--color-primary);
   --color-action-fill-hover: var(--color-primary-hover);
-  --color-analysis-good: #52c7e8;
   --color-cyan: var(--color-primary);
   --color-cyan-bright: var(--color-primary-soft);
+  --color-accent-soft-bg: color-mix(
+    in srgb,
+    var(--color-primary-soft) var(--gem-selection-tint),
+    transparent
+  );
+  --color-accent-soft-bg-strong: color-mix(
+    in srgb,
+    var(--color-primary-soft) var(--gem-emphasis-tint),
+    transparent
+  );
+  --color-accent-soft-border: color-mix(in srgb, var(--color-primary-soft) 34%, transparent);
+  --color-accent-soft-text: var(--color-primary-pale);
+  --color-table-hover: var(--color-accent-soft-bg);
+  --color-primary-ring: var(--color-primary-soft);
+  --brand-wordmark-gradient: linear-gradient(
+    180deg,
+    var(--color-heading),
+    var(--color-primary-pale)
+  );
+  --brand-wordmark-color: var(--color-primary-pale);
+  --brand-wordmark-shadow: none;
+  --brand-mark-color: oklch(
+    var(--gem-mark-dark-lightness, 73%) var(--gem-mark-dark-chroma, 0.21) var(--gem-nav-hue)
+  );
+}
+
+/* Dark mode also tints the canvas and panels. */
+:root[data-theme="dark"][data-gemstone-strength] {
+  --gem-surface-chroma: 0.035;
+  --gem-page-top-lightness: 23%;
+  --gem-page-bottom-lightness: 15%;
+  --gem-panel-lightness: 25%;
+  --gem-deep-lightness: 14%;
+  --gem-elevated-lightness: 27%;
+  --gem-heading-lightness: 98%;
+  --gem-text-lightness: 93%;
+  --gem-muted-lightness: 80%;
+  --gem-subtle-lightness: 70%;
+  --gem-wash: 21%;
+  --gem-input-border-strength: 50%;
+  --color-page-top: oklch(var(--gem-page-top-lightness) var(--gem-surface-chroma) var(--gem-hue));
+  --color-page-bottom: oklch(
+    var(--gem-page-bottom-lightness) var(--gem-surface-chroma) var(--gem-hue)
+  );
+  --color-panel-strong: oklch(var(--gem-panel-lightness) var(--gem-surface-chroma) var(--gem-hue));
+  --color-panel-deep: oklch(var(--gem-deep-lightness) var(--gem-surface-chroma) var(--gem-hue));
+  --color-panel: color-mix(in srgb, var(--color-panel-strong) 94%, transparent);
+  --color-nav: color-mix(in srgb, var(--color-page-bottom) 94%, transparent);
+  --color-heading: oklch(var(--gem-heading-lightness) 0.015 var(--gem-hue));
+  --color-text: oklch(var(--gem-text-lightness) 0.018 var(--gem-hue));
+  --color-muted: oklch(var(--gem-muted-lightness) 0.027 var(--gem-hue));
+  --color-subtle: oklch(var(--gem-subtle-lightness) 0.035 var(--gem-hue));
+  --color-analysis-good: #52c7e8;
   --color-border: color-mix(in srgb, var(--color-muted) 20%, transparent);
   --color-border-strong: color-mix(in srgb, var(--color-muted) 32%, transparent);
   --color-input-border: color-mix(
@@ -340,10 +376,6 @@
     var(--color-muted) var(--gem-input-border-strength),
     transparent
   );
-  --color-accent-soft-bg: color-mix(in srgb, var(--color-primary-soft) 11%, transparent);
-  --color-accent-soft-bg-strong: color-mix(in srgb, var(--color-primary-soft) 17%, transparent);
-  --color-accent-soft-border: color-mix(in srgb, var(--color-primary-soft) 34%, transparent);
-  --color-accent-soft-text: var(--color-primary-pale);
   --color-surface-soft: color-mix(in srgb, var(--color-panel-deep) 26%, transparent);
   --color-surface-soft-strong: color-mix(in srgb, var(--color-panel-deep) 46%, transparent);
   --color-surface-elevated-strong: oklch(
@@ -357,13 +389,11 @@
   --color-surface-inset: color-mix(in srgb, var(--color-muted) 8%, transparent);
   --color-surface-inset-strong: color-mix(in srgb, var(--color-muted) 13%, transparent);
   --color-table-head: var(--color-surface-inset);
-  --color-table-hover: var(--color-accent-soft-bg);
   --color-table-divider: color-mix(in srgb, var(--color-muted) 12%, transparent);
   --color-overlay: color-mix(in srgb, var(--color-page-bottom) 66%, transparent);
   --color-overlay-strong: color-mix(in srgb, var(--color-page-bottom) 96%, transparent);
   --color-modal-bg: var(--color-overlay);
   --color-glass-border: var(--color-border);
-  --color-primary-ring: var(--color-primary-soft);
   --page-background:
     radial-gradient(
       ellipse 78% 48% at 15% 0%,
@@ -371,22 +401,14 @@
       transparent
     ),
     linear-gradient(180deg, var(--color-page-top), var(--color-page-bottom));
-  --brand-wordmark-gradient: linear-gradient(
-    180deg,
-    var(--color-heading),
-    var(--color-primary-pale)
-  );
-  --brand-wordmark-color: var(--color-primary-pale);
-  --brand-wordmark-shadow: none;
-  --brand-mark-color: oklch(73% 0.21 var(--gem-nav-hue));
 }
 
-:root[data-gemstone-strength="accent"] {
+:root[data-theme="dark"][data-gemstone-strength="accent"] {
   --gem-surface-chroma: 0.008;
   --gem-wash: 5%;
 }
 
-:root[data-gemstone-strength="rich"] {
+:root[data-theme="dark"][data-gemstone-strength="rich"] {
   --gem-surface-chroma: 0.064;
   --gem-wash: 30%;
 }
@@ -408,34 +430,27 @@
   --gem-wash: 14%;
 }
 
+/* Light gemstones inherit Default Light's surfaces, text and borders.
+   Intensity changes local selection tints, not the page or card backgrounds. */
 :root[data-theme="light"][data-gemstone-strength] {
-  --gem-surface-chroma: 0.02;
-  --gem-page-top-lightness: 97%;
-  --gem-page-bottom-lightness: 94%;
-  --gem-panel-lightness: 98%;
-  --gem-deep-lightness: 88%;
-  --gem-elevated-lightness: 99%;
-  --gem-heading-lightness: 22%;
-  --gem-text-lightness: 28%;
-  --gem-muted-lightness: 42%;
-  --gem-subtle-lightness: 46%;
   --gem-action-lightness: 47%;
   --gem-action-hover-lightness: 41%;
   --gem-accent-lightness: 42%;
   --gem-accent-pale-lightness: 35%;
-  --gem-wash: 10%;
-  --gem-input-border-strength: 67%;
+  --gem-selection-tint: 8%;
+  --gem-emphasis-tint: 13%;
+  --color-accent-soft-border: color-mix(in srgb, var(--color-primary-soft) 26%, transparent);
   --color-analysis-good: #08788e;
-  --color-nav: color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
   --brand-mark-color: var(--color-nav-badge);
+  --page-background: linear-gradient(180deg, var(--color-page-top), var(--color-page-bottom));
 }
 
 :root[data-theme="light"][data-gemstone-strength="accent"] {
-  --gem-surface-chroma: 0.004;
-  --gem-wash: 3%;
+  --gem-selection-tint: 4%;
+  --gem-emphasis-tint: 8%;
 }
 
 :root[data-theme="light"][data-gemstone-strength="rich"] {
-  --gem-surface-chroma: 0.045;
-  --gem-wash: 18%;
+  --gem-selection-tint: 13%;
+  --gem-emphasis-tint: 20%;
 }

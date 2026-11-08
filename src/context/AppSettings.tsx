@@ -159,7 +159,7 @@ const BOARD_THEME_PALETTE: Record<string, BoardSquareColors> = {
   olive: { light: "#e7e6c8", dark: "#8b8d56" },
   newspaper: { light: "#f4eed9", dark: "#b4a789" },
   purple: { light: "#eadcf7", dark: "#8460b5" },
-  ruby: { light: "#f0d9dd", dark: "#a43a4d" },
+  ruby: { light: "#f7f1f2", dark: "#a13143" },
   emerald: { light: "#d7eee4", dark: "#4b8c77" },
   "purple-diag": { light: "#efe1fb", dark: "#76549d" },
   pink: { light: "#f8dbe4", dark: "#c86a8d" },
@@ -175,6 +175,15 @@ const DEFAULT_BOARD_THEME = "blue";
 const DEFAULT_CUSTOM_LIGHT_SQUARE = "#d4e4ff";
 const DEFAULT_CUSTOM_DARK_SQUARE = "#6291d8";
 const DEFAULT_BOARD_SOUND_SET: BoardSoundSet = "standard";
+
+const DEFAULT_BOARD_THEME_BY_PALETTE: Record<Theme, string> = {
+  default: DEFAULT_BOARD_THEME,
+  amethyst: "purple",
+  ruby: "ruby",
+  emerald: "emerald",
+};
+
+export const getDefaultBoardTheme = (theme: Theme): string => DEFAULT_BOARD_THEME_BY_PALETTE[theme];
 
 export type AppSettingsContextValue = {
   theme: Theme;
@@ -294,16 +303,11 @@ type BoardAppearance = z.infer<typeof boardAppearanceSchema>;
 type BoardAppearanceByTheme = z.infer<typeof boardAppearanceByThemeSchema>;
 
 const getDefaultBoardAppearance = (profile: BoardProfile): BoardAppearance => {
-  const palette = profile.replace(/-light$/, "");
-  const boardTheme =
-    palette === "amethyst"
-      ? "purple"
-      : palette === "ruby" || palette === "emerald"
-        ? palette
-        : DEFAULT_BOARD_THEME;
+  const theme =
+    GEMSTONE_THEMES.find((gem) => profile === gem || profile === `${gem}-light`) ?? DEFAULT_THEME;
   return {
     pieceSet: DEFAULT_PIECE_SET,
-    boardTheme,
+    boardTheme: getDefaultBoardTheme(theme),
     customLightSquare: DEFAULT_CUSTOM_LIGHT_SQUARE,
     customDarkSquare: DEFAULT_CUSTOM_DARK_SQUARE,
     boardColorOverrideTheme: "",
@@ -408,8 +412,8 @@ const profileRatingSlotsSchema = z.tuple([
 
 export const getBoardThemeColors = (
   boardTheme: string,
-  customLightSquare: string,
-  customDarkSquare: string,
+  customLightSquare = DEFAULT_CUSTOM_LIGHT_SQUARE,
+  customDarkSquare = DEFAULT_CUSTOM_DARK_SQUARE,
   boardColorOverrideTheme = "",
   boardOverrideLightSquare: string = DEFAULT_CUSTOM_LIGHT_SQUARE,
   boardOverrideDarkSquare: string = DEFAULT_CUSTOM_DARK_SQUARE,

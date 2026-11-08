@@ -120,10 +120,10 @@
   box-shadow: 0 22px 48px color-mix(in srgb, var(--color-panel-deep) 42%, transparent);
 }
 
-.homePuzzlePreviewCard > img {
+.homePuzzlePreviewCard > :is(img, svg) {
   position: absolute;
   inset: 6px;
-  display: none;
+  display: block;
   width: calc(100% - 12px);
   max-width: none;
   height: calc(100% - 12px);
@@ -145,16 +145,6 @@
   width: 214px;
   height: 214px;
   opacity: 0.72;
-}
-
-:root:not([data-theme="light"], [data-gemstone-strength]) .homePuzzlePreviewDark,
-:root[data-theme="light"]:not([data-gemstone-strength]) .homePuzzlePreviewLight,
-:root[data-gemstone-strength] .homePuzzlePreviewNeutral {
-  display: block;
-}
-
-.homePuzzlePreviewNeutral {
-  filter: grayscale(1);
 }
 
 .homeSpotlightGrid {

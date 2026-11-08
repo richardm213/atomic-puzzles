@@ -10,6 +10,7 @@ import {
 } from "../../lib/matches/tournamentQueries";
 import { getTournamentRouteId, type TournamentMeta } from "../../lib/matches/tournaments";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { HomePuzzleArtwork } from "./HomePuzzleArtwork";
 
 const TournamentSpotlightCard = ({
   tournament,
@@ -92,60 +93,7 @@ export const HomePage = () => {
           </div>
         </div>
 
-        <div className="homePuzzlePreview" aria-hidden="true">
-          <div className="homePuzzlePreviewCard homePuzzlePreviewSecondary">
-            <img
-              className="homePuzzlePreviewDark"
-              src={appAssetPath("/images/home-puzzles/home-board-dark-secondary.png")}
-              alt=""
-              width="832"
-              height="832"
-              decoding="async"
-            />
-            <img
-              className="homePuzzlePreviewLight"
-              src={appAssetPath("/images/home-puzzles/home-board-light-secondary.png")}
-              alt=""
-              width="832"
-              height="832"
-              decoding="async"
-            />
-            <img
-              className="homePuzzlePreviewNeutral"
-              src={appAssetPath("/images/home-puzzles/home-board-amethyst-secondary.png")}
-              alt=""
-              width="832"
-              height="832"
-              decoding="async"
-            />
-          </div>
-          <div className="homePuzzlePreviewCard homePuzzlePreviewPrimary">
-            <img
-              className="homePuzzlePreviewDark"
-              src={appAssetPath("/images/home-puzzles/home-board-dark-primary.png")}
-              alt=""
-              width="832"
-              height="832"
-              decoding="async"
-            />
-            <img
-              className="homePuzzlePreviewLight"
-              src={appAssetPath("/images/home-puzzles/home-board-light-primary.png")}
-              alt=""
-              width="832"
-              height="832"
-              decoding="async"
-            />
-            <img
-              className="homePuzzlePreviewNeutral"
-              src={appAssetPath("/images/home-puzzles/home-board-amethyst-primary.png")}
-              alt=""
-              width="832"
-              height="832"
-              decoding="async"
-            />
-          </div>
-        </div>
+        <HomePuzzleArtwork />
       </section>
 
       <section className="homeSpotlightSection" aria-label="Atomic chess shortcuts">
