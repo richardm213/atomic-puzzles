@@ -169,7 +169,10 @@ export const HowCoinsWorkPage = () => (
                 </dd>
               </div>
             </dl>
-            <p>One reward per puzzle and tag. Changing or removing a vote doesn’t earn coins.</p>
+            <p>
+              Earning a reward for a tag rules out rewards for the same tag, its parents, and its
+              subtags on that puzzle. Changing or removing a vote doesn’t earn coins.
+            </p>
           </section>
         </div>
 

@@ -184,7 +184,7 @@ export const PuzzleMotifsPanel = ({
                       <button
                         key={motif.tag}
                         type="button"
-                        aria-label={`Add ${motif.tag}`}
+                        aria-label={`Add ${getName(motif.tag)}`}
                         disabled={saving}
                         onClick={() => void addMotif(motif.tag)}
                       >
@@ -239,7 +239,7 @@ export const PuzzleMotifsPanel = ({
                   <button
                     type="button"
                     className="puzzleMotifDefinitionRemove"
-                    aria-label={`Remove ${selectedMotif.tag}`}
+                    aria-label={`Remove ${getName(selectedMotif.tag)}`}
                     title={`Remove ${getName(selectedMotif.tag)}`}
                     disabled={saving}
                     onClick={async () => {

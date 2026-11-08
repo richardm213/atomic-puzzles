@@ -25,6 +25,16 @@ describe("puzzle dashboard tag filters", () => {
     ]);
   });
 
+  it("finds a personal name without changing the tag used to filter puzzles", () => {
+    const matches = filterAvailablePuzzleMotifs(motifs, [], "double attack", (tag) =>
+      tag === "fork" ? "Double attack" : tag,
+    );
+    const selectedTags = matches.map(({ tag }) => tag);
+
+    expect(selectedTags).toEqual(["fork"]);
+    expect(entryMatchesSelectedTags(["fork"], selectedTags)).toBe(true);
+  });
+
   it("removes already-selected tags from the available results", () => {
     expect(filterAvailablePuzzleMotifs(motifs, ["fork"], "").map((motif) => motif.tag)).toEqual([
       "king_walk",

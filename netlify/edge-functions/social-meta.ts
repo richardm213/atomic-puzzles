@@ -82,7 +82,7 @@ const staticMetadata: Record<string, SocialMetadata> = {
     title: "Atomic Endgame Practice",
     description: "Practice timed atomic queen endgames and compare leaderboard results.",
   },
-  "/puzzles/motifs": {
+  "/tactical-motifs": {
     title: "Atomic Puzzle Motifs",
     description: "Explore the tactical motifs used to classify Atomic Puzzles.",
   },

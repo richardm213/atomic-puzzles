@@ -715,33 +715,39 @@ describe("PuzzleSolverPage solution options", () => {
     expect(screen.queryByLabelText("Puzzle tags")).not.toBeInTheDocument();
   });
 
-  it("hides a tied tag while keeping it votable from the picker", async () => {
-    mocks.loadPuzzleTagVotes.mockResolvedValue([{ tag: "fork", up: 1, down: 0, vote: 0 }]);
+  it("shows a positive subtag instead of its parent and keeps hidden tags votable", async () => {
+    const fork = { tag: "fork", up: 3, down: 0, vote: 0 };
+    const epaulette = { tag: "epaulette_fork", up: 1, down: 0, vote: 0 };
+    mocks.loadPuzzleTagVotes.mockResolvedValue([fork, epaulette]);
     mocks.voteOnPuzzleTag
-      .mockResolvedValueOnce([{ tag: "fork", up: 1, down: 1, vote: -1 }])
-      .mockResolvedValueOnce([{ tag: "fork", up: 1, down: 0, vote: 0 }]);
+      .mockResolvedValueOnce([fork, { ...epaulette, down: 1, vote: -1 }])
+      .mockResolvedValueOnce([fork, epaulette]);
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
 
     const motifs = await screen.findByLabelText("Tags on this puzzle");
-    await user.click(within(motifs).getByRole("button", { name: /View definition for Fork/ }));
-    const dialog = screen.getByRole("dialog", { name: "Fork" });
+    const parentButton = { name: /^View definition for Fork\b/ };
+    const subtagButton = { name: /^View definition for Epaulette fork\b/ };
+    const subtag = await within(motifs).findByRole("button", subtagButton);
+    expect(within(motifs).queryByRole("button", parentButton)).not.toBeInTheDocument();
+    await user.click(subtag);
+    const dialog = screen.getByRole("dialog", { name: "Epaulette fork" });
     expect(await within(dialog).findByText("Unconfirmed")).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: /Downvote Fork/ }));
+    const downvote = { name: /Downvote Epaulette fork/ };
+    await user.click(within(dialog).getByRole("button", downvote));
     expect(await within(dialog).findByText("Hidden")).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Close tag definition" }));
-    expect(
-      within(motifs).queryByRole("button", { name: /View definition for Fork/ }),
-    ).not.toBeInTheDocument();
+    expect(within(motifs).queryByRole("button", subtagButton)).not.toBeInTheDocument();
+    expect(within(motifs).getByRole("button", parentButton)).toBeInTheDocument();
 
     await user.click(within(motifs).getByRole("button", { name: "Vote on tags" }));
     const picker = screen.getByRole("region", { name: "Vote on any tag" });
     await user.type(within(picker).getByRole("searchbox"), "fork");
-    await user.click(within(picker).getByRole("button", { name: /Downvote Fork/, pressed: true }));
-    expect(mocks.voteOnPuzzleTag).toHaveBeenLastCalledWith(1369, "fork", 0);
-    expect(
-      await within(motifs).findByRole("button", { name: /View definition for Fork/ }),
-    ).toBeInTheDocument();
+    await user.click(within(picker).getByRole("button", { ...downvote, pressed: true }));
+    expect(mocks.voteOnPuzzleTag).toHaveBeenLastCalledWith(1369, "epaulette_fork", 0);
+    expect(await within(motifs).findByRole("button", subtagButton)).toBeInTheDocument();
+    expect(within(motifs).queryByRole("button", parentButton)).not.toBeInTheDocument();
+    expect(within(picker).getByRole("button", { name: /^Upvote Fork\b/ })).toBeInTheDocument();
   });
 
   it("keeps the solution hidden after a wrong move until the player gives up", async () => {

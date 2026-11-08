@@ -85,9 +85,9 @@ export const navItems: NavItem[] = [
         isActive: (pathname) => pathname === "/solve/custom-sets",
       },
       {
-        to: "/puzzles/motifs",
+        to: "/tactical-motifs",
         label: "Tactical motifs",
-        isActive: (pathname) => pathname === "/puzzles/motifs",
+        isActive: (pathname) => pathname === "/tactical-motifs",
       },
       {
         to: "/puzzles/endgames",

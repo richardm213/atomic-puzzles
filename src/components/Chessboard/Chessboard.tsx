@@ -93,6 +93,7 @@ export type ChessboardProps = {
   previewMoveBrush?: "paleBlue" | "red";
   analysisMarker?: { uci: string; symbol: string; fill: string } | null | undefined;
   captureNavigationShortcuts?: boolean;
+  enableNavigationShortcuts?: boolean;
   preserveAnalysisHistoryOnSolutionChange?: boolean;
   restrictMovesToSolution?: boolean;
   disabled?: boolean;
@@ -166,6 +167,7 @@ const ChessboardComponent = ({
   previewMoveBrush = "paleBlue",
   analysisMarker,
   captureNavigationShortcuts = false,
+  enableNavigationShortcuts = true,
   preserveAnalysisHistoryOnSolutionChange = false,
   restrictMovesToSolution = false,
   disabled = false,
@@ -1446,7 +1448,11 @@ const ChessboardComponent = ({
     syncBoard,
   ]);
 
-  useBoardShortcuts(navigatePlayback, pendingPromotion !== null, captureNavigationShortcuts);
+  useBoardShortcuts(
+    navigatePlayback,
+    !enableNavigationShortcuts || pendingPromotion !== null,
+    captureNavigationShortcuts,
+  );
 
   useEffect(() => {
     if (showSolution && solutionEntriesRef.current.length > 0) return;

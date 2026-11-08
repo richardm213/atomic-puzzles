@@ -1,176 +1,142 @@
 import "./PuzzleMotifs.css";
 
-import { faMagnifyingGlass, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useMemo, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { PuzzleMotifRename } from "../../components/PuzzleMotifRename/PuzzleMotifRename";
 import { Seo } from "../../components/Seo/Seo";
-import {
-  getPuzzleMotifAnchor,
-  getPuzzleMotifParent,
-  type PuzzleMotif,
-  puzzleMotifs,
-} from "../../lib/puzzles/puzzleMotifs";
+import { isPuzzleMotifTag, type PuzzleMotif, puzzleMotifs } from "../../lib/puzzles/puzzleMotifs";
 import { usePuzzleMotifNames } from "../../lib/puzzles/usePuzzleMotifNames";
+import { motifExamples } from "./motifExamples";
+import { PuzzleMotifExample } from "./PuzzleMotifExample";
 
-const renderMotif = (
-  motif: PuzzleMotif,
-  childrenByParent: Map<PuzzleMotif["parentTag"], PuzzleMotif[]>,
-  naming: Pick<ReturnType<typeof usePuzzleMotifNames>, "getName" | "canRename">,
-  onFocusFallback: () => void,
-  parent?: PuzzleMotif,
-  depth = 0,
-) => {
-  const children = childrenByParent.get(motif.tag) ?? [];
-  const anchor = getPuzzleMotifAnchor(motif.tag);
-  const Heading = depth === 0 ? "h2" : depth === 1 ? "h3" : "h4";
-  const name = naming.getName(motif.tag);
+const childrenByParent = new Map<string | undefined, PuzzleMotif[]>();
+for (const motif of puzzleMotifs) {
+  const siblings = childrenByParent.get(motif.parentTag) ?? [];
+  siblings.push(motif);
+  childrenByParent.set(motif.parentTag, siblings);
+}
 
-  return (
-    <div className={`motifFamily ${children.length > 0 ? "hasChildren" : ""}`} key={motif.tag}>
-      <article id={anchor} className={`motifCard ${parent ? "motifCardChild" : "motifCardParent"}`}>
-        {parent ? (
-          <span className="motifParentLabel">Under {naming.getName(parent.tag)}</span>
-        ) : null}
-        <div className="motifCardHeading">
-          <Heading>{name}</Heading>
-          <div className="motifCardActions">
-            <a className="motifTag" href={`#${anchor}`} aria-label={`Link to ${name}`}>
-              #{motif.tag}
-            </a>
-            {naming.canRename ? (
-              <PuzzleMotifRename
-                motif={motif}
-                name={name}
-                showLabel
-                onFocusFallback={onFocusFallback}
-              />
-            ) : null}
-          </div>
-        </div>
-        <p>{motif.description}</p>
-      </article>
-      {children.length > 0 ? (
-        <div className="motifChildren" role="group" aria-label={`${name} submotifs`}>
-          {children.map((child) =>
-            renderMotif(child, childrenByParent, naming, onFocusFallback, motif, depth + 1),
-          )}
-        </div>
-      ) : null}
-    </div>
-  );
-};
+const rootMotifs = childrenByParent.get(undefined) ?? [];
+const descendants = (motif: PuzzleMotif): PuzzleMotif[] => [
+  motif,
+  ...(childrenByParent.get(motif.tag) ?? []).flatMap(descendants),
+];
+const orderedMotifs = rootMotifs.flatMap(descendants);
 
 export const PuzzleMotifsPage = () => {
-  const [query, setQuery] = useState("");
-  const searchRef = useRef<HTMLInputElement>(null);
   const { getName, canRename } = usePuzzleMotifNames();
-  const normalizedQuery = query.trim().toLowerCase().replace(/^#/, "");
-  const matchingMotifs = useMemo(
-    () =>
-      puzzleMotifs.filter((motif) => {
-        if (!normalizedQuery) return true;
-        return [motif.tag, motif.name, getName(motif.tag), motif.description].some((value) =>
-          value.toLowerCase().includes(normalizedQuery),
-        );
-      }),
-    [getName, normalizedQuery],
-  );
-  const childrenByParent = useMemo(() => {
-    const visibleTags = new Set(matchingMotifs.map((motif) => motif.tag));
-    for (const motif of matchingMotifs) {
-      let parent = getPuzzleMotifParent(motif);
-      while (parent && !visibleTags.has(parent.tag)) {
-        visibleTags.add(parent.tag);
-        parent = getPuzzleMotifParent(parent);
-      }
-    }
+  const navigate = useNavigate();
+  const [focusRequest, setFocusRequest] = useState<{ tag: string; pointer: boolean } | null>(null);
 
-    const groups = new Map<PuzzleMotif["parentTag"], PuzzleMotif[]>();
-    for (const motif of puzzleMotifs) {
-      if (!visibleTags.has(motif.tag)) continue;
-      const group = groups.get(motif.parentTag) ?? [];
-      group.push(motif);
-      groups.set(motif.parentTag, group);
-    }
-    return groups;
-  }, [matchingMotifs]);
-  const rootMotifs = childrenByParent.get(undefined) ?? [];
+  useEffect(() => {
+    // The signed-in route can mount after the browser first resolves a deep link.
+    const scrollToMotif = () => {
+      const tag = window.location.hash.slice(1).replace(/^motifs?-/, "");
+      if (isPuzzleMotifTag(tag)) {
+        document.getElementById(tag)?.scrollIntoView({ block: "start" });
+      }
+    };
+    scrollToMotif();
+    window.addEventListener("hashchange", scrollToMotif);
+    return () => window.removeEventListener("hashchange", scrollToMotif);
+  }, []);
+
+  const renderGlossaryItem = (motif: PuzzleMotif): ReactNode => {
+    const children = childrenByParent.get(motif.tag);
+    return (
+      <li key={motif.tag}>
+        <a
+          href={`#${motif.tag}`}
+          onClick={(event) => {
+            if (
+              event.defaultPrevented ||
+              event.altKey ||
+              event.ctrlKey ||
+              event.metaKey ||
+              event.shiftKey
+            )
+              return;
+            if (!motifExamples[motif.tag]) {
+              setFocusRequest(null);
+              return;
+            }
+            // Native fragment navigation focuses the article, not its replay.
+            event.preventDefault();
+            setFocusRequest({ tag: motif.tag, pointer: event.detail > 0 });
+            if (window.location.hash !== `#${motif.tag}`) {
+              void navigate({
+                to: "/tactical-motifs",
+                search: true,
+                hash: motif.tag,
+                resetScroll: false,
+                hashScrollIntoView: false,
+              });
+            }
+          }}
+        >
+          {getName(motif.tag)}
+        </a>
+        {children?.length ? <ul>{children.map(renderGlossaryItem)}</ul> : null}
+      </li>
+    );
+  };
 
   return (
     <div className="motifsPage">
       <Seo
         title="Atomic Chess Tactical Motifs"
-        description="Definitions for the tactical motifs used to tag puzzles on Atomic Puzzles."
-        path="/puzzles/motifs"
+        description="Explore Atomic Chess tactics through definitions and replayable puzzle examples."
+        path="/tactical-motifs"
       />
-
       <div className="motifsShell">
-        <header className="motifsHero">
-          <div className="motifsHeroCopy">
-            <p className="motifsEyebrow">Puzzle reference</p>
-            <h1>Atomic tactical motifs</h1>
-            <p>Browse the patterns used to classify Atomic Puzzles.</p>
-          </div>
+        <h1>Atomic tactical motifs</h1>
+        <nav className="motifGlossary" id="motif-glossary" aria-labelledby="motif-glossary-title">
+          <h2 id="motif-glossary-title">Glossary</h2>
+          <ul className="motifGlossaryIndex">{rootMotifs.map(renderGlossaryItem)}</ul>
+        </nav>
 
-          <div className="motifsHeroStats" aria-label="Motif total">
-            <div>
-              <strong>{puzzleMotifs.length}</strong>
-              <span>motifs</span>
-            </div>
-          </div>
-
-          <label className="motifsSearch">
-            <span className="motifsSearchLabel">Find a motif</span>
-            <span className="motifsSearchControl">
-              <FontAwesomeIcon icon={faMagnifyingGlass} aria-hidden="true" />
-              <input
-                ref={searchRef}
-                type="search"
-                value={query}
-                placeholder="Search tags, names, or ideas…"
-                onChange={(event) => setQuery(event.target.value)}
-              />
-              {query ? (
-                <button type="button" aria-label="Clear motif search" onClick={() => setQuery("")}>
-                  <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
-                </button>
-              ) : null}
-            </span>
-          </label>
-        </header>
-
-        <div className="motifsContent">
-          <div className="motifsResultsHeading" aria-live="polite">
-            <p>
-              {normalizedQuery ? "Search results" : "All motifs"}
-              <span>{matchingMotifs.length}</span>
-            </p>
-            {normalizedQuery ? <small>Matching “{query.trim()}”</small> : null}
-          </div>
-
-          {matchingMotifs.length > 0 ? (
-            <section className="motifsIndexSection" aria-label="Motif definitions">
-              <div className="motifsGrid">
-                {rootMotifs.map((motif) =>
-                  renderMotif(motif, childrenByParent, { getName, canRename }, () =>
-                    searchRef.current?.focus(),
-                  ),
-                )}
-              </div>
-            </section>
-          ) : (
-            <div className="motifsEmpty">
-              <span aria-hidden="true">#</span>
-              <h2>No motifs found</h2>
-              <p>Try a piece, pattern, or tactical idea.</p>
-              <button type="button" onClick={() => setQuery("")}>
-                Clear search
-              </button>
-            </div>
-          )}
-        </div>
+        <section className="motifDefinitions" aria-label="Motif definitions and examples">
+          {orderedMotifs.map((motif) => {
+            const name = getName(motif.tag);
+            const example = motifExamples[motif.tag];
+            const anchor = motif.tag;
+            return (
+              <article
+                className="motifDefinition"
+                id={anchor}
+                key={motif.tag}
+                tabIndex={-1}
+                aria-labelledby={`${anchor}-heading`}
+              >
+                <div className="motifDefinitionHeading">
+                  <h2 id={`${anchor}-heading`}>{name}</h2>
+                  {canRename ? <PuzzleMotifRename motif={motif} name={name} /> : null}
+                </div>
+                <p className="motifDefinitionText">{motif.description}</p>
+                {example ? (
+                  <PuzzleMotifExample
+                    example={example}
+                    name={name}
+                    focusRequest={focusRequest?.tag === motif.tag ? focusRequest : null}
+                  />
+                ) : null}
+                <div className="motifDefinitionLinks">
+                  <a
+                    className="motifGlossaryReturn"
+                    href="#motif-glossary"
+                    aria-label="Back to glossary"
+                    title="Back to glossary"
+                  >
+                    <FontAwesomeIcon icon={faArrowUp} aria-hidden="true" />
+                  </a>
+                </div>
+              </article>
+            );
+          })}
+        </section>
       </div>
     </div>
   );

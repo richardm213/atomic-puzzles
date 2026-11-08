@@ -9,7 +9,11 @@ import {
   type PuzzleTagTally,
   type PuzzleTagVote,
 } from "../../../shared/domain/puzzles/puzzleTagVotes";
-import { type PuzzleMotif, puzzleMotifs } from "../../lib/puzzles/puzzleMotifs";
+import {
+  getMostSpecificPuzzleMotifTags,
+  type PuzzleMotif,
+  puzzleMotifs,
+} from "../../lib/puzzles/puzzleMotifs";
 import { loadPuzzleTagVotes, voteOnPuzzleTag } from "../../lib/puzzles/puzzleTags";
 import { usePuzzleMotifNames } from "../../lib/puzzles/usePuzzleMotifNames";
 import type { AsyncActionStatus } from "../../types/async";
@@ -19,6 +23,17 @@ import { PuzzleMotifRename } from "../PuzzleMotifRename/PuzzleMotifRename";
 const motifsByTag = new Map(puzzleMotifs.map((motif) => [motif.tag, motif]));
 const emptyTally = (tag: string): PuzzleTagTally => ({ tag, up: 0, down: 0, vote: 0 });
 const directions = [1, -1] as const;
+
+const getVisiblePuzzleTags = (tags: string[], tallies: PuzzleTagTally[] | null) => {
+  if (!tallies) return getMostSpecificPuzzleMotifTags(tags);
+  const positiveTags = new Set(
+    tallies.filter((tally) => getPuzzleTagStatus(tally) !== "hidden").map(({ tag }) => tag),
+  );
+  // Preserve the already loaded tag order while adding newly visible motifs.
+  return getMostSpecificPuzzleMotifTags(
+    [...new Set([...tags, ...positiveTags])].filter((tag) => positiveTags.has(tag)),
+  );
+};
 
 const VoteButtons = ({
   name,
@@ -86,13 +101,7 @@ export const PuzzleTagVotingPanel = ({
   const { getName, canRename } = usePuzzleMotifNames();
   const selectedMotif = selectedTag ? motifsByTag.get(selectedTag) : null;
   const talliesByTag = new Map(tallies?.map((tally) => [tally.tag, tally]));
-  // Preserve the already loaded tag order while adding newly visible motifs.
-  const visibleTags = tallies
-    ? [...new Set([...tags, ...tallies.map(({ tag }) => tag)])].filter((tag) => {
-        const tally = talliesByTag.get(tag);
-        return tally && getPuzzleTagStatus(tally) !== "hidden";
-      })
-    : tags;
+  const visibleTags = getVisiblePuzzleTags(tags, tallies);
   const saving = saveStatus.state === "saving";
   const normalizedSearch = searchValue.trim().toLowerCase();
   const matchingMotifs = pickerOpen
@@ -144,10 +153,10 @@ export const PuzzleTagVotingPanel = ({
     setSaveStatus({ state: "saving" });
     try {
       const votes = await voteOnPuzzleTag(puzzleId, tag, direction);
-      const updated = votes.find((tally) => tally.tag === tag) ?? emptyTally(tag);
-      if (getPuzzleTagStatus(updated) === "hidden") {
-        const focusedChip = document.activeElement?.closest<HTMLElement>("[data-motif-chip]");
-        if (focusedChip?.dataset.motifChip === tag) pickerButtonRef.current?.focus();
+      const focusedTag =
+        document.activeElement?.closest<HTMLElement>("[data-motif-chip]")?.dataset.motifChip;
+      if (focusedTag && !getVisiblePuzzleTags(tags, votes).includes(focusedTag)) {
+        pickerButtonRef.current?.focus();
       }
       setTallies(votes);
       setSaveStatus({ state: "saved" });
@@ -283,7 +292,13 @@ export const PuzzleTagVotingPanel = ({
                     >
                       {getName(motif.tag)}
                       {talliesByTag.has(motif.tag) && !visibleTags.includes(motif.tag) ? (
-                        <small>Hidden</small>
+                        <small>
+                          {getPuzzleTagStatus(
+                            talliesByTag.get(motif.tag) ?? emptyTally(motif.tag),
+                          ) === "hidden"
+                            ? "Hidden"
+                            : "Subtag shown"}
+                        </small>
                       ) : null}
                     </button>
                     {voteControls(motif)}

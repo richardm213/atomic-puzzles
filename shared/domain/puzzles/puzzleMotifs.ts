@@ -22,19 +22,19 @@ export const puzzleMotifs: PuzzleMotif[] = [
     tag: "coercion",
     name: "Coercion",
     description:
-      "A forcing move drives an opposing piece onto a square where it can be attacked or captured.",
+      "A forcing move drives an opposing piece onto a square where it can be attacked or exploded.",
   },
   {
     tag: "diagonal_clearance",
     name: "Diagonal clearance",
     description:
-      "An explosion clears a diagonal, allowing a bishop or queen to use the opened line. The player's move or a forced opposing capture may cause the explosion.",
+      "An explosion clears a diagonal, allowing a bishop or queen to use the opened line. The explosion can come from your own capture or a capture you force your opponent to make.",
   },
   {
     tag: "file_clearance",
     name: "File clearance",
     description:
-      "An explosion clears a file, allowing a rook or queen to use the opened line. The player's move or a forced opposing capture may cause the explosion.",
+      "An explosion clears a file, allowing a rook or queen to use the opened line. The explosion can come from your own capture or a capture you force your opponent to make.",
   },
   {
     tag: "square_clearance",
@@ -59,7 +59,7 @@ export const puzzleMotifs: PuzzleMotif[] = [
     tag: "zwischenzug",
     name: "Zwischenzug",
     description:
-      "A forcing move is inserted before the expected reply, escaping a threat or making the intended continuation possible.",
+      "A forcing move is inserted before the expected reply, escaping a threat and/or making the intended continuation possible.",
   },
   {
     tag: "knight_invasion",
@@ -213,7 +213,7 @@ export const puzzleMotifs: PuzzleMotif[] = [
     tag: "square",
     name: "Square",
     description:
-      "A drawing mechanism in which the king moves safely around a 2×2 square, preventing the opponent from creating an explosion mate.",
+      "A tactic that relies on whether the king can draw by moving within a safe 2×2 square or is vulnerable to explosion mate without one.",
   },
   {
     tag: "explosion_mate_threat",
@@ -243,7 +243,7 @@ export const puzzleMotifs: PuzzleMotif[] = [
   {
     tag: "stuck_pawn",
     name: "Stuck pawn",
-    description: "A pawn with no useful move becomes a weakness, an obstruction, or a target.",
+    description: "A pawn stuck under another piece becomes a target.",
   },
   {
     tag: "stuck_piece",
@@ -274,6 +274,7 @@ export const puzzleMotifs: PuzzleMotif[] = [
 ];
 
 const puzzleMotifTagSet = new Set(puzzleMotifs.map((motif) => motif.tag));
+const puzzleMotifParentByTag = new Map(puzzleMotifs.map(({ tag, parentTag }) => [tag, parentTag]));
 const puzzleMotifTagAliases: Record<string, string> = {
   endgame_draw: "draw",
   equal: "draw",
@@ -297,6 +298,19 @@ export const normalizePuzzleMotifTags = (value: unknown): string[] => {
 export const getPuzzleMotifParent = (motif: PuzzleMotif): PuzzleMotif | undefined =>
   motif.parentTag ? puzzleMotifs.find((candidate) => candidate.tag === motif.parentTag) : undefined;
 
+// For display only: pass positive-net tags, leaving stored tags and filters intact.
+export const getMostSpecificPuzzleMotifTags = (tags: readonly string[]): string[] => {
+  const superseded = new Set<string>();
+  for (const tag of tags) {
+    let parent = puzzleMotifParentByTag.get(tag);
+    while (parent && !superseded.has(parent)) {
+      superseded.add(parent);
+      parent = puzzleMotifParentByTag.get(parent);
+    }
+  }
+  return tags.filter((tag) => !superseded.has(tag));
+};
+
 export const isPuzzleEndgameMotifTag = (tag: string): boolean => {
   const visited = new Set<string>();
   let currentTag = tag;
@@ -309,5 +323,3 @@ export const isPuzzleEndgameMotifTag = (tag: string): boolean => {
 
   return false;
 };
-
-export const getPuzzleMotifAnchor = (tag: string): string => `motif-${tag}`;

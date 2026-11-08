@@ -617,8 +617,21 @@ const legacyPuzzleLeaderboardRoute = createRoute({
 
 const puzzleMotifsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/puzzles/motifs",
+  path: "/tactical-motifs",
   component: AuthenticatedPuzzleMotifsPage,
+});
+
+const legacyPuzzleMotifsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/puzzles/motifs",
+  beforeLoad: ({ location }) => {
+    throw redirect({
+      to: "/tactical-motifs",
+      search: location.search,
+      hash: location.hash,
+      replace: true,
+    });
+  },
 });
 
 const puzzleSubmissionRoute = createRoute({
@@ -837,6 +850,7 @@ const routeTree = rootRoute.addChildren([
   gameAnalysesFinishedRoute,
   legacyPuzzleLeaderboardRoute,
   puzzleMotifsRoute,
+  legacyPuzzleMotifsRoute,
   puzzleSubmissionRoute,
   puzzleReviewRoute,
   puzzleRecentRoute,

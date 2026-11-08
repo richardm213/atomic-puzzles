@@ -15,6 +15,7 @@ import {
   refreshCustomPuzzleSet,
   removePuzzleFromCustomSet,
 } from "../../lib/puzzles/customPuzzleSets";
+import { getMostSpecificPuzzleMotifTags } from "../../lib/puzzles/puzzleMotifs";
 import { puzzleCatalogQueryOptions } from "../../lib/puzzles/puzzleQueries";
 import { usePuzzleMotifNames } from "../../lib/puzzles/usePuzzleMotifNames";
 import { getErrorMessage } from "../../utils/errors";
@@ -191,7 +192,9 @@ export const CustomPuzzleSetEditPage = () => {
                       </Link>
                       <div className="customSetEditPuzzleTags" aria-label="Puzzle tags">
                         {puzzle?.tags?.length ? (
-                          puzzle.tags.map((tag) => <span key={tag}>{getName(tag)}</span>)
+                          getMostSpecificPuzzleMotifTags(puzzle.tags).map((tag) => (
+                            <span key={tag}>{getName(tag)}</span>
+                          ))
                         ) : (
                           <span className="empty">No tags</span>
                         )}

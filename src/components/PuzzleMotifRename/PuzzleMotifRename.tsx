@@ -64,7 +64,7 @@ const RenameDialog = ({ motif, name, onClose }: RenameProps & { onClose: () => v
       >
         <div>
           <h2 id={`${id}-title`}>Rename tag</h2>
-          <p id={`${id}-scope`}>Only you see this name, and only in this browser.</p>
+          <p id={`${id}-scope`}>Only you see this name.</p>
         </div>
 
         <div className="motifRenameField">
@@ -110,9 +110,8 @@ const RenameDialog = ({ motif, name, onClose }: RenameProps & { onClose: () => v
 export const PuzzleMotifRename = ({
   motif,
   name,
-  showLabel = false,
   onFocusFallback,
-}: RenameProps & { showLabel?: boolean; onFocusFallback?: () => void }) => {
+}: RenameProps & { onFocusFallback?: () => void }) => {
   const [editing, setEditing] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   return (
@@ -123,11 +122,10 @@ export const PuzzleMotifRename = ({
         type="button"
         aria-label={`Rename ${name}`}
         aria-haspopup="dialog"
-        title={showLabel ? undefined : "Rename tag"}
+        title="Rename tag"
         onClick={() => setEditing(true)}
       >
         <FontAwesomeIcon icon={faPencil} aria-hidden="true" />
-        {showLabel ? "Rename" : null}
       </button>
       {editing ? (
         <RenameDialog
