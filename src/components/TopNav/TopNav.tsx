@@ -24,7 +24,15 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { atomic960Enabled, modeLabels, publicModeOptions } from "../../constants/matches";
-import { getBoardThemeColors, type Theme, useAppSettings } from "../../context/AppSettings";
+import {
+  type ColorMode,
+  GEMSTONE_STRENGTHS,
+  GEMSTONE_THEMES,
+  type GemstoneStrength,
+  getBoardThemeColors,
+  type Theme,
+  useAppSettings,
+} from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import {
   automaticProfileRatingSlot,
@@ -135,6 +143,10 @@ export const TopNav = () => {
   const {
     theme,
     setTheme,
+    colorMode,
+    setColorMode,
+    gemstoneStrength,
+    setGemstoneStrength,
     pieceSet,
     setPieceSet,
     pieceSets,
@@ -193,7 +205,7 @@ export const TopNav = () => {
     setShowCoinChangePopups,
   } = useAppSettings();
   const normalizedAuthUsername = normalizeUsername(user?.username);
-  const canUseAmethystTheme =
+  const canUseGemstoneThemes =
     normalizedAuthUsername === "admin" || normalizedAuthUsername === "seaside_tiramisu";
   const isProfilePage = /^\/@\/[^/]+\/?$/.test(pathname);
   const [profileUsername, setProfileUsername] = useState(() =>
@@ -262,10 +274,10 @@ export const TopNav = () => {
   }, [normalizedAuthUsername, profileMenuOpen]);
 
   useEffect(() => {
-    if (!isLoading && theme === "amethyst" && !canUseAmethystTheme) {
-      setTheme("dark");
+    if (!isLoading && theme !== "default" && !canUseGemstoneThemes) {
+      setTheme("default");
     }
-  }, [canUseAmethystTheme, isLoading, setTheme, theme]);
+  }, [canUseGemstoneThemes, isLoading, setTheme, theme]);
 
   const resolvedProfileUsername = profileUsername || normalizedAuthUsername;
 
@@ -445,7 +457,7 @@ export const TopNav = () => {
           aria-hidden="true"
         />
         <img
-          className="brandMarkImage brandMarkAmethyst"
+          className="brandMarkImage brandMarkGemstone"
           src={appAssetPath("/images/brand/atomic-logo-amethyst.png")}
           alt=""
           width="30"
@@ -909,7 +921,7 @@ export const TopNav = () => {
               ) : null}
               <div className="navSettingsSection navSettingsStack">
                 <span className="navSettingsGroupTitle">General</span>
-                <div className="navSettingsField">
+                <div className="navSettingsField navSettingsAppearanceField">
                   <label className="navSettingsLabel" htmlFor="site-theme-select">
                     Theme
                   </label>
@@ -918,17 +930,52 @@ export const TopNav = () => {
                     value={theme}
                     onChange={(event) => {
                       const nextTheme = event.target.value as Theme;
-                      if (nextTheme === "amethyst" && !canUseAmethystTheme) return;
+                      if (nextTheme !== "default" && !canUseGemstoneThemes) return;
                       setTheme(nextTheme);
                     }}
                   >
-                    <option value="dark">Dark</option>
-                    <option value="light">Light</option>
-                    <option value="amethyst" disabled={!canUseAmethystTheme}>
-                      {canUseAmethystTheme ? "Amethyst" : "Amethyst — Locked"}
-                    </option>
+                    <option value="default">Default</option>
+                    {GEMSTONE_THEMES.map((gem) => (
+                      <option key={gem} value={gem} disabled={!canUseGemstoneThemes}>
+                        {gem.charAt(0).toUpperCase() + gem.slice(1)}
+                        {canUseGemstoneThemes ? "" : " — Locked"}
+                      </option>
+                    ))}
                   </select>
                 </div>
+                <div className="navSettingsField navSettingsAppearanceField">
+                  <label className="navSettingsLabel" htmlFor="site-color-mode-select">
+                    Color mode
+                  </label>
+                  <select
+                    id="site-color-mode-select"
+                    value={colorMode}
+                    onChange={(event) => setColorMode(event.target.value as ColorMode)}
+                  >
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                  </select>
+                </div>
+                {theme !== "default" && canUseGemstoneThemes ? (
+                  <div className="navSettingsField navSettingsAppearanceField">
+                    <label className="navSettingsLabel" htmlFor="site-color-strength-select">
+                      Color intensity
+                    </label>
+                    <select
+                      id="site-color-strength-select"
+                      value={gemstoneStrength}
+                      onChange={(event) =>
+                        setGemstoneStrength(event.target.value as GemstoneStrength)
+                      }
+                    >
+                      {GEMSTONE_STRENGTHS.map(({ value, label }) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
                 <label className="navSettingsCheckbox">
                   <span>Show coin balance</span>
                   <input

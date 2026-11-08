@@ -28,7 +28,7 @@ import {
 } from "../lib/practice/localAnalysisEngine";
 
 const STORAGE_KEYS = {
-  theme: "atomic-puzzles.theme",
+  siteAppearance: "atomic-puzzles.site-appearance",
   boardAppearanceByTheme: "atomic-puzzles.board.appearance-by-theme",
   showBoardCoordinates: "atomic-puzzles.board.show-coordinates",
   enableBoardPremoves: "atomic-puzzles.board.enable-premoves",
@@ -50,8 +50,17 @@ const STORAGE_KEYS = {
   hiddenRatingGraphModes: "profile.ratingGraph.hiddenModes",
 };
 
-const THEMES = ["dark", "light", "amethyst"] as const;
+export const GEMSTONE_THEMES = ["amethyst", "ruby", "emerald"] as const;
+const COLOR_MODES = ["dark", "light"] as const;
+const THEMES = ["default", ...GEMSTONE_THEMES] as const;
+export const GEMSTONE_STRENGTHS = [
+  { value: "accent", label: "Accent only" },
+  { value: "tinted", label: "Tinted" },
+  { value: "rich", label: "Rich" },
+] as const;
 export type Theme = (typeof THEMES)[number];
+export type ColorMode = (typeof COLOR_MODES)[number];
+export type GemstoneStrength = (typeof GEMSTONE_STRENGTHS)[number]["value"];
 
 export type LabeledOption = { value: string; label: string };
 
@@ -119,6 +128,8 @@ const LICHESS_BOARD_THEMES: LabeledOption[] = [
   { value: "olive", label: "Olive" },
   { value: "newspaper", label: "Newspaper" },
   { value: "purple", label: "Purple" },
+  { value: "ruby", label: "Ruby" },
+  { value: "emerald", label: "Emerald" },
   { value: "pink", label: "Pink" },
   { value: "ic", label: "IC" },
   { value: "custom", label: "Custom" },
@@ -148,6 +159,8 @@ const BOARD_THEME_PALETTE: Record<string, BoardSquareColors> = {
   olive: { light: "#e7e6c8", dark: "#8b8d56" },
   newspaper: { light: "#f4eed9", dark: "#b4a789" },
   purple: { light: "#eadcf7", dark: "#8460b5" },
+  ruby: { light: "#f0d9dd", dark: "#a43a4d" },
+  emerald: { light: "#d7eee4", dark: "#4b8c77" },
   "purple-diag": { light: "#efe1fb", dark: "#76549d" },
   pink: { light: "#f8dbe4", dark: "#c86a8d" },
   ic: { light: "#dff6ff", dark: "#66b9d6" },
@@ -155,7 +168,8 @@ const BOARD_THEME_PALETTE: Record<string, BoardSquareColors> = {
 
 const IMAGE_BOARD_THEMES = ["wood", "wood2", "wood3", "wood4", "maple", "maple2"];
 
-const DEFAULT_THEME: Theme = "dark";
+const DEFAULT_THEME: Theme = "default";
+const DEFAULT_COLOR_MODE: ColorMode = "dark";
 const DEFAULT_PIECE_SET = "cburnett";
 const DEFAULT_BOARD_THEME = "blue";
 const DEFAULT_CUSTOM_LIGHT_SQUARE = "#d4e4ff";
@@ -164,7 +178,11 @@ const DEFAULT_BOARD_SOUND_SET: BoardSoundSet = "standard";
 
 export type AppSettingsContextValue = {
   theme: Theme;
-  setTheme: Dispatch<SetStateAction<Theme>>;
+  setTheme: (theme: Theme) => void;
+  colorMode: ColorMode;
+  setColorMode: (mode: ColorMode) => void;
+  gemstoneStrength: GemstoneStrength;
+  setGemstoneStrength: (strength: GemstoneStrength) => void;
   pieceSet: string;
   setPieceSet: Dispatch<SetStateAction<string>>;
   pieceSets: LabeledOption[];
@@ -232,7 +250,34 @@ const isValidBoardTheme = (value: unknown): value is string =>
 const isValidHexColor = (value: unknown): value is string =>
   typeof value === "string" && /^#([0-9a-f]{6})$/i.test(value);
 const isImageBoardTheme = (value: string): boolean => IMAGE_BOARD_THEMES.includes(value);
-const themeSchema = z.enum(THEMES);
+const siteAppearanceSchema = z.object({
+  theme: z.enum(THEMES),
+  colorMode: z.enum(COLOR_MODES),
+  gemstoneStrength: z.enum(GEMSTONE_STRENGTHS.map(({ value }) => value)),
+});
+type SiteAppearance = z.infer<typeof siteAppearanceSchema>;
+
+const loadLegacySiteAppearance = (): SiteAppearance => {
+  const legacy = readPersistedState(
+    "atomic-puzzles.theme",
+    z.enum([...COLOR_MODES, ...GEMSTONE_THEMES]),
+  );
+  return {
+    theme: !legacy || legacy === "dark" || legacy === "light" ? DEFAULT_THEME : legacy,
+    colorMode: legacy === "light" ? "light" : DEFAULT_COLOR_MODE,
+    gemstoneStrength: "tinted",
+  };
+};
+
+// Keep the old record keys for Default and for the original dark gemstone appearance.
+const boardProfileSchema = z.enum([
+  ...COLOR_MODES,
+  ...GEMSTONE_THEMES,
+  ...GEMSTONE_THEMES.map((theme) => `${theme}-light` as const),
+]);
+type BoardProfile = z.infer<typeof boardProfileSchema>;
+const getBoardProfile = (theme: Theme, mode: ColorMode): BoardProfile =>
+  theme === "default" ? mode : mode === "light" ? `${theme}-light` : theme;
 const hexColorSchema = z.string().refine(isValidHexColor);
 const boardAppearanceSchema = z.object({
   pieceSet: z.string().refine(isValidPieceSet),
@@ -243,19 +288,29 @@ const boardAppearanceSchema = z.object({
   boardOverrideLightSquare: hexColorSchema,
   boardOverrideDarkSquare: hexColorSchema,
 });
-const boardAppearanceByThemeSchema = z.record(themeSchema, boardAppearanceSchema);
+// Older installs have a saved record that only contains the original three themes.
+const boardAppearanceByThemeSchema = z.partialRecord(boardProfileSchema, boardAppearanceSchema);
 type BoardAppearance = z.infer<typeof boardAppearanceSchema>;
 type BoardAppearanceByTheme = z.infer<typeof boardAppearanceByThemeSchema>;
 
-const getDefaultBoardAppearance = (theme: Theme): BoardAppearance => ({
-  pieceSet: DEFAULT_PIECE_SET,
-  boardTheme: theme === "amethyst" ? "purple" : DEFAULT_BOARD_THEME,
-  customLightSquare: DEFAULT_CUSTOM_LIGHT_SQUARE,
-  customDarkSquare: DEFAULT_CUSTOM_DARK_SQUARE,
-  boardColorOverrideTheme: "",
-  boardOverrideLightSquare: DEFAULT_CUSTOM_LIGHT_SQUARE,
-  boardOverrideDarkSquare: DEFAULT_CUSTOM_DARK_SQUARE,
-});
+const getDefaultBoardAppearance = (profile: BoardProfile): BoardAppearance => {
+  const palette = profile.replace(/-light$/, "");
+  const boardTheme =
+    palette === "amethyst"
+      ? "purple"
+      : palette === "ruby" || palette === "emerald"
+        ? palette
+        : DEFAULT_BOARD_THEME;
+  return {
+    pieceSet: DEFAULT_PIECE_SET,
+    boardTheme,
+    customLightSquare: DEFAULT_CUSTOM_LIGHT_SQUARE,
+    customDarkSquare: DEFAULT_CUSTOM_DARK_SQUARE,
+    boardColorOverrideTheme: "",
+    boardOverrideLightSquare: DEFAULT_CUSTOM_LIGHT_SQUARE,
+    boardOverrideDarkSquare: DEFAULT_CUSTOM_DARK_SQUARE,
+  };
+};
 
 const loadLegacyBoardAppearances = (): BoardAppearanceByTheme => {
   const schemas = boardAppearanceSchema.shape;
@@ -288,23 +343,30 @@ const loadLegacyBoardAppearances = (): BoardAppearanceByTheme => {
   };
 };
 
-const useBoardAppearance = (theme: Theme) => {
+const useBoardAppearance = (profile: BoardProfile) => {
   const [appearances, setAppearances] = usePersistedState(
     STORAGE_KEYS.boardAppearanceByTheme,
     boardAppearanceByThemeSchema,
     loadLegacyBoardAppearances,
   );
+  const appearance = useMemo(
+    () => appearances[profile] ?? getDefaultBoardAppearance(profile),
+    [appearances, profile],
+  );
   const actions = useMemo(() => {
     const setter =
       <K extends keyof BoardAppearance>(field: K): Dispatch<SetStateAction<BoardAppearance[K]>> =>
       (next) => {
-        setAppearances((current) => ({
-          ...current,
-          [theme]: {
-            ...current[theme],
-            [field]: typeof next === "function" ? next(current[theme][field]) : next,
-          },
-        }));
+        setAppearances((current) => {
+          const active = current[profile] ?? getDefaultBoardAppearance(profile);
+          return {
+            ...current,
+            [profile]: {
+              ...active,
+              [field]: typeof next === "function" ? next(active[field]) : next,
+            },
+          };
+        });
       };
     return {
       setters: {
@@ -317,11 +379,14 @@ const useBoardAppearance = (theme: Theme) => {
         setBoardOverrideDarkSquare: setter("boardOverrideDarkSquare"),
       },
       resetBoardAppearance: () => {
-        setAppearances((current) => ({ ...current, [theme]: getDefaultBoardAppearance(theme) }));
+        setAppearances((current) => ({
+          ...current,
+          [profile]: getDefaultBoardAppearance(profile),
+        }));
       },
     };
-  }, [setAppearances, theme]);
-  return [appearances[theme], actions] as const;
+  }, [setAppearances, profile]);
+  return [appearance, actions] as const;
 };
 
 const boardSoundSetSchema = z.custom<BoardSoundSet>(isBoardSoundSet);
@@ -364,13 +429,26 @@ export const getBoardThemeColors = (
 };
 
 export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setTheme] = usePersistedState<Theme>(
-    STORAGE_KEYS.theme,
-    themeSchema,
-    DEFAULT_THEME,
+  const [{ theme, colorMode, gemstoneStrength }, setSiteAppearance] = usePersistedState(
+    STORAGE_KEYS.siteAppearance,
+    siteAppearanceSchema,
+    loadLegacySiteAppearance,
+  );
+  const setTheme = useCallback(
+    (theme: Theme) => setSiteAppearance((current) => ({ ...current, theme })),
+    [setSiteAppearance],
+  );
+  const setColorMode = useCallback(
+    (colorMode: ColorMode) => setSiteAppearance((current) => ({ ...current, colorMode })),
+    [setSiteAppearance],
+  );
+  const setGemstoneStrength = useCallback(
+    (gemstoneStrength: GemstoneStrength) =>
+      setSiteAppearance((current) => ({ ...current, gemstoneStrength })),
+    [setSiteAppearance],
   );
   const [boardAppearance, { resetBoardAppearance, setters: boardAppearanceSetters }] =
-    useBoardAppearance(theme);
+    useBoardAppearance(getBoardProfile(theme, colorMode));
   const [showBoardCoordinates, setShowBoardCoordinates] = usePersistedState(
     STORAGE_KEYS.showBoardCoordinates,
     z.boolean(),
@@ -487,8 +565,12 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    document.documentElement.dataset["theme"] = theme;
-  }, [theme]);
+    const { dataset } = document.documentElement;
+    dataset["theme"] = colorMode;
+    dataset["palette"] = theme;
+    if (theme === "default") delete dataset["gemstoneStrength"];
+    else dataset["gemstoneStrength"] = gemstoneStrength;
+  }, [theme, colorMode, gemstoneStrength]);
 
   useEffect(() => {
     if (previousLocalAnalysisEngineRef.current === localAnalysisEngine) return;
@@ -502,6 +584,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     () => ({
       theme,
       setTheme,
+      colorMode,
+      setColorMode,
+      gemstoneStrength,
+      setGemstoneStrength,
       ...boardAppearance,
       ...boardAppearanceSetters,
       pieceSets: LICHESS_PIECE_SETS,
@@ -550,6 +636,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     [
       theme,
       setTheme,
+      colorMode,
+      setColorMode,
+      gemstoneStrength,
+      setGemstoneStrength,
       boardAppearance,
       boardAppearanceSetters,
       showBoardCoordinates,

@@ -111,7 +111,7 @@ export const HomePage = () => {
               decoding="async"
             />
             <img
-              className="homePuzzlePreviewAmethyst"
+              className="homePuzzlePreviewGemstone"
               src={appAssetPath("/images/home-puzzles/home-board-amethyst-secondary.png")}
               alt=""
               width="832"
@@ -137,7 +137,7 @@ export const HomePage = () => {
               decoding="async"
             />
             <img
-              className="homePuzzlePreviewAmethyst"
+              className="homePuzzlePreviewGemstone"
               src={appAssetPath("/images/home-puzzles/home-board-amethyst-primary.png")}
               alt=""
               width="832"

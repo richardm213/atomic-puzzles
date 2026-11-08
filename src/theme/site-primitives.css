@@ -323,13 +323,15 @@
   padding: 10px 16px;
   border: 1px solid color-mix(in srgb, var(--color-primary-soft) 34%, var(--color-primary));
   border-radius: var(--radius-ui);
-  background:
+  background: var(
+    --color-action-fill,
     linear-gradient(180deg, color-mix(in srgb, white 11%, transparent), transparent 58%),
     linear-gradient(
       135deg,
       var(--color-primary),
       color-mix(in srgb, var(--color-primary) 80%, var(--color-cyan))
-    );
+    )
+  );
   color: var(--color-on-primary);
   font-size: var(--text-control);
   font-weight: 650;
@@ -348,13 +350,15 @@
 
 .primaryActionButton:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--color-primary-soft) 52%, var(--color-primary));
-  background:
+  background: var(
+    --color-action-fill-hover,
     linear-gradient(180deg, color-mix(in srgb, white 15%, transparent), transparent 58%),
     linear-gradient(
       135deg,
       var(--color-primary-hover),
       color-mix(in srgb, var(--color-primary) 68%, var(--color-cyan-bright))
-    );
+    )
+  );
   transform: translateY(-1px);
   box-shadow:
     0 1px 0 color-mix(in srgb, white 22%, transparent) inset,

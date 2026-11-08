@@ -209,7 +209,10 @@
 }
 
 .usernamePickerTabs button.active {
-  background: color-mix(in srgb, var(--color-primary) 68%, var(--color-panel-strong));
+  background: var(
+    --color-action-fill,
+    color-mix(in srgb, var(--color-primary) 68%, var(--color-panel-strong))
+  );
   color: var(--color-on-primary);
 }
 

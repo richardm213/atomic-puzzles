@@ -71,23 +71,37 @@
 }
 
 .brandMarkLight,
-.brandMarkAmethyst {
+.brandMarkGemstone {
   display: none;
 }
 
+:root[data-theme="dark"][data-gemstone-strength] .brandMarkGemstone {
+  --brand-image-hue: var(--gem-logo-rotation);
+}
+
+:root[data-theme="light"][data-gemstone-strength] .brandMarkLight {
+  --brand-image-hue: var(--gem-light-logo-rotation);
+}
+
+:root[data-gemstone-strength] :is(.brandMarkGemstone, .brandMarkLight) {
+  filter: hue-rotate(var(--brand-image-hue, 0deg));
+  border-radius: var(--radius-sm);
+}
+
 :root[data-theme="light"] .brandMarkDark,
-:root[data-theme="amethyst"] .brandMarkDark {
+:root[data-gemstone-strength] .brandMarkDark {
   display: none;
 }
 
 :root[data-theme="light"] .brandMarkLight,
-:root[data-theme="amethyst"] .brandMarkAmethyst {
+:root[data-theme="dark"][data-gemstone-strength] .brandMarkGemstone {
   display: block;
 }
 
 .homeBrand:hover .brandMarkImage,
-.homeBrand:focus-visible .brandMarkImage {
-  filter: brightness(1.12) saturate(1.08);
+.homeBrand:focus-visible .brandMarkImage,
+:root[data-gemstone-strength] .homeBrand:is(:hover, :focus-visible) .brandMarkImage {
+  filter: hue-rotate(var(--brand-image-hue, 0deg)) brightness(1.12) saturate(1.08);
 }
 
 .homeBrand span {
@@ -484,6 +498,16 @@
   padding: 6px 9px;
   width: 100%;
   font-size: 13px;
+}
+
+:root[data-gemstone-strength] .navSettingsMenu select {
+  border-color: var(--color-input-border);
+}
+
+@media (max-width: 640px) {
+  .navSettingsAppearanceField select {
+    min-height: var(--control-height-touch);
+  }
 }
 
 .navSettingsSlotGrid {

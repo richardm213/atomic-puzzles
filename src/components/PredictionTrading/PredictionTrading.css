@@ -150,6 +150,10 @@
   color: var(--color-success) !important;
 }
 
+:root[data-theme="light"][data-gemstone-strength] .predictionSharedStatus--open {
+  color: var(--color-profit-strip-text) !important;
+}
+
 .predictionSharedStatus--closed {
   background: var(--color-danger-soft-bg);
   color: var(--color-market-no) !important;
@@ -809,6 +813,12 @@
 .predictionSharedOutcomePicker button:last-child[aria-pressed="true"] {
   background: var(--color-market-no);
   color: var(--color-panel-deep);
+}
+
+:root[data-theme="light"][data-gemstone-strength]
+  .predictionSharedOutcomePicker
+  button[aria-pressed="true"] {
+  color: var(--color-on-primary);
 }
 
 .predictionSharedOutcomePicker button strong {

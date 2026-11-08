@@ -57,7 +57,7 @@
 
 .profileHistoryTitleLink:hover,
 .profileHistoryTitleLink:focus-visible {
-  color: var(--color-primary);
+  color: var(--color-primary-text, var(--color-primary));
   text-shadow: 0 0 22px color-mix(in srgb, var(--color-primary) 22%, transparent);
 }
 

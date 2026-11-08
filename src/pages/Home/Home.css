@@ -148,7 +148,7 @@
 }
 
 .homePuzzlePreviewLight,
-.homePuzzlePreviewAmethyst {
+.homePuzzlePreviewGemstone {
   display: none !important;
 }
 
@@ -156,16 +156,18 @@
   display: none;
 }
 
-:root[data-theme="light"] .homePuzzlePreviewLight {
+:root[data-theme="light"]:not([data-gemstone-strength]) .homePuzzlePreviewLight {
   display: block !important;
 }
 
-:root[data-theme="amethyst"] .homePuzzlePreviewDark {
+:root[data-gemstone-strength] .homePuzzlePreviewDark {
   display: none;
 }
 
-:root[data-theme="amethyst"] .homePuzzlePreviewAmethyst {
+:root[data-gemstone-strength] .homePuzzlePreviewGemstone {
   display: block !important;
+  filter: hue-rotate(var(--gem-board-preview-rotation))
+    saturate(var(--gem-board-preview-saturation, 1));
 }
 
 .homeSpotlightGrid {

@@ -48,7 +48,7 @@ describe("AppSettings", () => {
       result.current.setCustomDarkSquare("#123456");
       result.current.setPieceSet("merida");
       result.current.setBoardSoundsEnabled(true);
-      result.current.setTheme("light");
+      result.current.setColorMode("light");
     });
     expect(result.current).toMatchObject({
       boardTheme: "blue",
@@ -59,11 +59,13 @@ describe("AppSettings", () => {
       result.current.setBoardTheme("green");
       result.current.setPieceSet("alpha");
       result.current.setTheme("amethyst");
+      result.current.setColorMode("dark");
     });
     expect(result.current.boardTheme).toBe("purple");
     act(() => {
       result.current.setBoardTheme("blue");
-      result.current.setTheme("dark");
+      result.current.setTheme("default");
+      result.current.setColorMode("dark");
     });
     expect(result.current).toMatchObject({
       boardTheme: "custom",
@@ -74,10 +76,17 @@ describe("AppSettings", () => {
     first.unmount();
 
     const reloaded = renderSettings().result;
-    expect(reloaded.current).toMatchObject({ theme: "dark", boardTheme: "custom" });
-    act(() => reloaded.current.setTheme("light"));
+    expect(reloaded.current).toMatchObject({
+      theme: "default",
+      colorMode: "dark",
+      boardTheme: "custom",
+    });
+    act(() => reloaded.current.setColorMode("light"));
     expect(reloaded.current).toMatchObject({ boardTheme: "green", pieceSet: "alpha" });
-    act(() => reloaded.current.setTheme("amethyst"));
+    act(() => {
+      reloaded.current.setTheme("amethyst");
+      reloaded.current.setColorMode("dark");
+    });
     expect(reloaded.current.boardTheme).toBe("blue");
   });
 
@@ -88,7 +97,8 @@ describe("AppSettings", () => {
     window.localStorage.setItem("atomic-puzzles.board-override-light-square", '"#abcdef"');
     const { result } = renderSettings();
     expect(result.current).toMatchObject({
-      theme: "light",
+      theme: "default",
+      colorMode: "light",
       boardTheme: "green",
       boardColorOverrideTheme: "green",
       boardOverrideLightSquare: "#abcdef",
@@ -96,16 +106,66 @@ describe("AppSettings", () => {
 
     act(() => result.current.resetDisplaySettings());
     expect(result.current).toMatchObject({
-      theme: "light",
+      theme: "default",
+      colorMode: "light",
       boardTheme: "blue",
       boardColorOverrideTheme: "",
     });
-    act(() => result.current.setTheme("dark"));
+    act(() => result.current.setColorMode("dark"));
     expect(result.current).toMatchObject({
       boardTheme: "green",
       boardColorOverrideTheme: "green",
       boardOverrideLightSquare: "#abcdef",
     });
+  });
+
+  it("adds gemstone defaults without discarding saved boards from the three-theme format", () => {
+    const savedBoard = {
+      pieceSet: "merida",
+      boardTheme: "custom",
+      customLightSquare: "#f3e5cf",
+      customDarkSquare: "#746983",
+      boardColorOverrideTheme: "",
+      boardOverrideLightSquare: "#d4e4ff",
+      boardOverrideDarkSquare: "#6291d8",
+    };
+    window.localStorage.setItem(
+      "atomic-puzzles.board.appearance-by-theme",
+      JSON.stringify({ dark: savedBoard, light: savedBoard, amethyst: savedBoard }),
+    );
+    window.localStorage.setItem("atomic-puzzles.theme", '"amethyst"');
+    const first = renderSettings();
+    const { result } = first;
+    expect(result.current).toMatchObject({ theme: "amethyst", colorMode: "dark", ...savedBoard });
+
+    act(() => result.current.setTheme("ruby"));
+    expect(result.current.boardTheme).toBe("ruby");
+    act(() => result.current.setPieceSet("alpha"));
+    act(() => result.current.setGemstoneStrength("rich"));
+    expect(result.current.pieceSet).toBe("alpha");
+    act(() => result.current.setColorMode("light"));
+    expect(result.current).toMatchObject({
+      theme: "ruby",
+      boardTheme: "ruby",
+      pieceSet: "cburnett",
+    });
+    act(() => result.current.setTheme("emerald"));
+    expect(result.current).toMatchObject({ colorMode: "light", boardTheme: "emerald" });
+    first.unmount();
+
+    const reloaded = renderSettings().result;
+    expect(reloaded.current).toMatchObject({
+      theme: "emerald",
+      colorMode: "light",
+      gemstoneStrength: "rich",
+    });
+    act(() => {
+      reloaded.current.setTheme("ruby");
+      reloaded.current.setColorMode("dark");
+    });
+    expect(reloaded.current).toMatchObject({ boardTheme: "ruby", pieceSet: "alpha" });
+    act(() => reloaded.current.setTheme("amethyst"));
+    expect(reloaded.current).toMatchObject(savedBoard);
   });
 
   it("persists puzzle and game link targets independently", () => {

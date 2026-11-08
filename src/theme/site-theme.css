@@ -266,58 +266,161 @@
   --analysis-workspace-cyan-bright: #076d80;
 }
 
-:root[data-theme="amethyst"] {
-  --color-page-top: #281631;
-  --color-page-bottom: #100a18;
-  --color-panel: rgba(36, 20, 47, 0.9);
-  --color-panel-strong: #281832;
-  --color-panel-deep: #110a18;
-  --color-nav: rgba(18, 10, 25, 0.9);
-  --color-border: rgba(224, 174, 235, 0.2);
-  --color-border-strong: rgba(246, 202, 244, 0.24);
-  --color-input-border: rgba(231, 190, 239, 0.28);
-  --color-text: #f1e8f4;
-  --color-heading: #fff7fd;
-  --color-muted: #d5bedc;
-  --color-subtle: #b597bd;
-  --color-primary: #bd45c7;
-  --color-primary-hover: #a437af;
-  --color-primary-soft: #e58ce5;
-  --color-primary-pale: #f5c8ef;
-  --color-cyan: #a74db4;
-  --color-cyan-bright: #ea8dd9;
-  --color-accent-soft-bg: rgba(189, 69, 199, 0.17);
-  --color-accent-soft-bg-strong: rgba(189, 69, 199, 0.24);
-  --color-accent-soft-border: rgba(231, 168, 232, 0.3);
-  --color-accent-soft-text: #fff1fc;
-  --color-surface-soft: rgba(22, 8, 29, 0.22);
-  --color-surface-soft-strong: rgba(22, 8, 29, 0.34);
-  --color-surface-elevated: rgba(46, 24, 57, 0.76);
-  --color-surface-elevated-strong: rgba(46, 24, 57, 0.94);
-  --color-surface-inset: rgba(221, 156, 226, 0.09);
-  --color-surface-inset-strong: rgba(221, 156, 226, 0.13);
-  --color-table-head: rgba(221, 156, 226, 0.09);
-  --color-table-hover: rgba(232, 128, 218, 0.1);
-  --color-table-divider: rgba(224, 174, 235, 0.11);
-  --color-overlay: rgba(31, 13, 39, 0.58);
-  --color-overlay-strong: rgba(24, 10, 31, 0.96);
-  --color-modal-bg: rgba(31, 13, 39, 0.62);
-  --color-glass-border: rgba(224, 174, 235, 0.2);
-  --color-primary-ring: rgba(229, 140, 229, 0.72);
-  --shadow-panel: 0 22px 54px rgba(12, 3, 18, 0.38);
-  --shadow-soft: 0 12px 30px rgba(12, 3, 18, 0.3);
-  --shadow-strong: 0 28px 74px rgba(8, 2, 13, 0.48);
+/* Gemstones share a restrained surface ramp. Status, market and rating colors
+   stay independent so the active theme cannot change the meaning of a signal. */
+:root[data-palette="amethyst"] {
+  --gem-hue: 292;
+  --gem-board-preview-rotation: -18deg;
+  --gem-logo-rotation: -35deg;
+  --gem-light-logo-rotation: 46deg;
+}
+
+:root[data-palette="ruby"] {
+  --gem-hue: 20;
+  --gem-action-chroma: 0.19;
+  --gem-accent-chroma: 0.16;
+  --gem-accent-dark-lightness: 72%;
+  --gem-board-preview-rotation: 72deg;
+  --gem-board-preview-saturation: 1.4;
+  --gem-logo-rotation: 50deg;
+  --gem-light-logo-rotation: 119deg;
+}
+
+:root[data-palette="emerald"] {
+  --gem-hue: 164;
+  --gem-board-preview-rotation: 236deg;
+  --gem-logo-rotation: 210deg;
+  --gem-light-logo-rotation: 290deg;
+}
+
+:root[data-gemstone-strength] {
+  --gem-surface-chroma: 0.035;
+  --gem-page-top-lightness: 23%;
+  --gem-page-bottom-lightness: 15%;
+  --gem-panel-lightness: 25%;
+  --gem-deep-lightness: 14%;
+  --gem-elevated-lightness: 27%;
+  --gem-heading-lightness: 98%;
+  --gem-text-lightness: 93%;
+  --gem-muted-lightness: 80%;
+  --gem-subtle-lightness: 70%;
+  --gem-action-lightness: 48%;
+  --gem-action-hover-lightness: 52%;
+  --gem-accent-lightness: var(--gem-accent-dark-lightness, 79%);
+  --gem-accent-pale-lightness: 91%;
+  --gem-wash: 21%;
+  --gem-input-border-strength: 50%;
+  --color-page-top: oklch(var(--gem-page-top-lightness) var(--gem-surface-chroma) var(--gem-hue));
+  --color-page-bottom: oklch(
+    var(--gem-page-bottom-lightness) var(--gem-surface-chroma) var(--gem-hue)
+  );
+  --color-panel-strong: oklch(var(--gem-panel-lightness) var(--gem-surface-chroma) var(--gem-hue));
+  --color-panel-deep: oklch(var(--gem-deep-lightness) var(--gem-surface-chroma) var(--gem-hue));
+  --color-panel: color-mix(in srgb, var(--color-panel-strong) 94%, transparent);
+  --color-nav: color-mix(in srgb, var(--color-page-bottom) 94%, transparent);
+  --color-heading: oklch(var(--gem-heading-lightness) 0.015 var(--gem-hue));
+  --color-text: oklch(var(--gem-text-lightness) 0.018 var(--gem-hue));
+  --color-muted: oklch(var(--gem-muted-lightness) 0.027 var(--gem-hue));
+  --color-subtle: oklch(var(--gem-subtle-lightness) 0.035 var(--gem-hue));
+  --color-primary: oklch(var(--gem-action-lightness) var(--gem-action-chroma, 0.14) var(--gem-hue));
+  --color-primary-hover: oklch(
+    var(--gem-action-hover-lightness) var(--gem-action-chroma, 0.14) var(--gem-hue)
+  );
+  --color-primary-soft: oklch(
+    var(--gem-accent-lightness) var(--gem-accent-chroma, 0.105) var(--gem-hue)
+  );
+  --color-primary-text: var(--color-primary-soft);
+  --color-primary-pale: oklch(var(--gem-accent-pale-lightness) 0.06 var(--gem-hue));
+  --color-on-primary: oklch(98% 0.01 var(--gem-hue));
+  --color-action-fill: var(--color-primary);
+  --color-action-fill-hover: var(--color-primary-hover);
+  --color-analysis-good: #52c7e8;
+  --color-cyan: var(--color-primary);
+  --color-cyan-bright: var(--color-primary-soft);
+  --color-border: color-mix(in srgb, var(--color-muted) 20%, transparent);
+  --color-border-strong: color-mix(in srgb, var(--color-muted) 32%, transparent);
+  --color-input-border: color-mix(
+    in srgb,
+    var(--color-muted) var(--gem-input-border-strength),
+    transparent
+  );
+  --color-accent-soft-bg: color-mix(in srgb, var(--color-primary-soft) 11%, transparent);
+  --color-accent-soft-bg-strong: color-mix(in srgb, var(--color-primary-soft) 17%, transparent);
+  --color-accent-soft-border: color-mix(in srgb, var(--color-primary-soft) 34%, transparent);
+  --color-accent-soft-text: var(--color-primary-pale);
+  --color-surface-soft: color-mix(in srgb, var(--color-panel-deep) 26%, transparent);
+  --color-surface-soft-strong: color-mix(in srgb, var(--color-panel-deep) 46%, transparent);
+  --color-surface-elevated-strong: oklch(
+    var(--gem-elevated-lightness) var(--gem-surface-chroma) var(--gem-hue)
+  );
+  --color-surface-elevated: color-mix(
+    in srgb,
+    var(--color-surface-elevated-strong) 78%,
+    transparent
+  );
+  --color-surface-inset: color-mix(in srgb, var(--color-muted) 8%, transparent);
+  --color-surface-inset-strong: color-mix(in srgb, var(--color-muted) 13%, transparent);
+  --color-table-head: var(--color-surface-inset);
+  --color-table-hover: var(--color-accent-soft-bg);
+  --color-table-divider: color-mix(in srgb, var(--color-muted) 12%, transparent);
+  --color-overlay: color-mix(in srgb, var(--color-page-bottom) 66%, transparent);
+  --color-overlay-strong: color-mix(in srgb, var(--color-page-bottom) 96%, transparent);
+  --color-modal-bg: var(--color-overlay);
+  --color-glass-border: var(--color-border);
+  --color-primary-ring: var(--color-primary-soft);
   --page-background:
-    radial-gradient(ellipse 70% 44% at 12% 6%, rgba(189, 69, 199, 0.24), transparent 100%),
-    radial-gradient(ellipse 58% 38% at 88% 0%, rgba(235, 93, 185, 0.16), transparent 100%),
-    linear-gradient(180deg, var(--color-page-top) 0%, var(--color-page-bottom) 100%);
-  --site-background: var(--page-background);
-  --brand-wordmark-gradient: linear-gradient(180deg, #fff7fd 0%, #f0bfe9 100%);
-  --brand-wordmark-shadow: 0 0 18px rgba(232, 128, 218, 0.22);
-  --brand-mark-bg: linear-gradient(145deg, #4b2057, var(--color-panel-deep));
-  --brand-mark-border: rgba(232, 128, 218, 0.58);
-  --brand-mark-color: #f0a5e5;
-  --brand-mark-shadow:
-    0 0 0 1px color-mix(in srgb, white 8%, transparent) inset, 0 8px 18px rgba(189, 69, 199, 0.28);
-  --dropdown-panel-bg: var(--color-panel-strong);
+    radial-gradient(
+      ellipse 78% 48% at 15% 0%,
+      color-mix(in srgb, var(--color-primary) var(--gem-wash), transparent),
+      transparent
+    ),
+    linear-gradient(180deg, var(--color-page-top), var(--color-page-bottom));
+  --brand-wordmark-gradient: linear-gradient(
+    180deg,
+    var(--color-heading),
+    var(--color-primary-pale)
+  );
+  --brand-wordmark-color: var(--color-primary-pale);
+  --brand-wordmark-shadow: none;
+}
+
+:root[data-gemstone-strength="accent"] {
+  --gem-surface-chroma: 0.008;
+  --gem-wash: 5%;
+}
+
+:root[data-gemstone-strength="rich"] {
+  --gem-surface-chroma: 0.064;
+  --gem-wash: 30%;
+}
+
+:root[data-theme="light"][data-gemstone-strength] {
+  --gem-surface-chroma: 0.02;
+  --gem-page-top-lightness: 97%;
+  --gem-page-bottom-lightness: 94%;
+  --gem-panel-lightness: 98%;
+  --gem-deep-lightness: 88%;
+  --gem-elevated-lightness: 99%;
+  --gem-heading-lightness: 22%;
+  --gem-text-lightness: 28%;
+  --gem-muted-lightness: 42%;
+  --gem-subtle-lightness: 46%;
+  --gem-action-lightness: 47%;
+  --gem-action-hover-lightness: 41%;
+  --gem-accent-lightness: 42%;
+  --gem-accent-pale-lightness: 35%;
+  --gem-wash: 10%;
+  --gem-input-border-strength: 67%;
+  --color-analysis-good: #08788e;
+  --color-nav: color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
+}
+
+:root[data-theme="light"][data-gemstone-strength="accent"] {
+  --gem-surface-chroma: 0.004;
+  --gem-wash: 3%;
+}
+
+:root[data-theme="light"][data-gemstone-strength="rich"] {
+  --gem-surface-chroma: 0.045;
+  --gem-wash: 18%;
 }

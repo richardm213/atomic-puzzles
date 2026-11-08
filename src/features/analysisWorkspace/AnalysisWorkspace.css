@@ -43,7 +43,11 @@
   }
 }
 
-:root[data-theme="light"] .analysisPage {
+:root[data-gemstone-strength] .analysisPage {
+  --analysis-inaccuracy: var(--color-rating-graph-hyper);
+}
+
+:root[data-theme="light"]:not([data-gemstone-strength]) .analysisPage {
   --color-panel: rgba(247, 250, 253, 0.98);
   --color-panel-strong: var(--analysis-workspace-panel-strong);
   --color-panel-deep: var(--analysis-workspace-panel-deep);
@@ -81,8 +85,8 @@
   text-shadow: none;
 }
 
-:root[data-theme="light"] .analysisPage .analysisExplorerTable th,
-:root[data-theme="light"] .analysisPage .analysisExplorerTable td {
+:root[data-theme="light"]:not([data-gemstone-strength]) .analysisPage .analysisExplorerTable th,
+:root[data-theme="light"]:not([data-gemstone-strength]) .analysisPage .analysisExplorerTable td {
   border-color: rgba(35, 55, 84, 0.22);
 }
 
@@ -328,7 +332,7 @@ body:has(.analysisPage),
 .analysisMoveList button.excellent > b,
 .analysisMoveList button.good > span,
 .analysisMoveList button.good > b {
-  color: var(--color-cyan-bright);
+  color: var(--color-analysis-good, var(--color-cyan-bright));
 }
 .analysisMoveList button.inaccuracy > span,
 .analysisMoveList button.inaccuracy > b {
@@ -353,7 +357,10 @@ body:has(.analysisPage),
 }
 
 .analysisMoveList button.active {
-  background: color-mix(in srgb, var(--color-primary) 68%, var(--color-panel-strong));
+  background: var(
+    --color-action-fill,
+    color-mix(in srgb, var(--color-primary) 68%, var(--color-panel-strong))
+  );
   color: var(--color-on-primary);
 }
 
@@ -769,7 +776,7 @@ button.analysisLichessLink {
 }
 
 .analysisPlayerSideButton svg {
-  color: var(--color-primary);
+  color: var(--color-primary-text, var(--color-primary));
   font-size: 18px;
 }
 
