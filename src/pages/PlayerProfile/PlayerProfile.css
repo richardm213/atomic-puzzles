@@ -294,34 +294,8 @@
 }
 
 .profileMetricRow {
-  --profile-rating-accent: var(--color-primary);
-
   display: grid;
   gap: var(--space-2);
-}
-
-.profileMetricRow[data-rating-mode="blitz"] {
-  --profile-rating-accent: var(--color-rating-graph-blitz);
-}
-
-.profileMetricRow[data-rating-mode="bullet"] {
-  --profile-rating-accent: var(--color-rating-graph-bullet);
-}
-
-.profileMetricRow[data-rating-mode="hyperbullet"] {
-  --profile-rating-accent: var(--color-rating-graph-hyper);
-}
-
-.profileMetricRow[data-rating-mode="rapid"] {
-  --profile-rating-accent: var(--color-rating-graph-rapid);
-}
-
-.profileMetricRow[data-rating-mode="wolfrandom"] {
-  --profile-rating-accent: var(--color-calendar-monthly);
-}
-
-.profileMetricRow[data-rating-mode="atomic960"] {
-  --profile-rating-accent: var(--color-rating-graph-atomic960);
 }
 
 .profileMetricRowTitle {
@@ -1070,22 +1044,6 @@
   background: color-mix(in srgb, var(--color-accent-warm) 30%, var(--color-panel-strong));
   border-color: var(--color-accent-warm-strong);
   box-shadow: 0 10px 22px color-mix(in srgb, var(--color-accent-warm) 18%, transparent);
-}
-
-:root[data-theme="light"] .profileMetricRowTitle {
-  color: color-mix(in srgb, var(--profile-rating-accent) 78%, var(--color-heading));
-}
-
-:root[data-theme="light"] .profileMetricRow .profileMetric {
-  border-color: color-mix(in srgb, var(--profile-rating-accent) 28%, var(--color-border));
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--profile-rating-accent) 8%, var(--color-panel-strong)),
-    var(--color-panel-strong) 62%
-  );
-  box-shadow:
-    inset 0 2px 0 color-mix(in srgb, var(--profile-rating-accent) 42%, transparent),
-    0 5px 14px color-mix(in srgb, var(--profile-rating-accent) 7%, transparent);
 }
 
 :root[data-theme="light"] .profileOpeningTag {
