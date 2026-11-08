@@ -93,6 +93,7 @@ export const atomicTourPlacementAfterChampionship = (
 export const atomicTourMainStageForResults = (
   eventFirstStage: AtomicTourMainStage,
   results: AtomicTourMainResult[],
+  hasSeededRoundOf32Bye = false,
 ): AtomicTourMainStage | null => {
   const orderedResults = [...results].sort(
     (left, right) => stageOrder.indexOf(left.stage) - stageOrder.indexOf(right.stage),
@@ -105,7 +106,11 @@ export const atomicTourMainStageForResults = (
   const enteredViaBye = orderedResults.some(
     ({ stage, outcome }) => outcome === "bye" && stageOrder.indexOf(stage) < firstDecisionIndex,
   );
-  if (enteredViaBye && firstDecision.outcome === "loss") return eventFirstStage;
+  if (enteredViaBye && firstDecision.outcome === "loss") {
+    return hasSeededRoundOf32Bye && firstDecision.stage === "round-of-16"
+      ? "round-of-32"
+      : eventFirstStage;
+  }
 
   return decidedResults.reduce((bestStage, result) => {
     const resultStageIndex = stageOrder.indexOf(result.stage);

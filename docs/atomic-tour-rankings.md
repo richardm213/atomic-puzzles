@@ -40,8 +40,9 @@ capped at 10% of the event maximum, so a 2,000-point champion can finish with up
 1,000-point champion with up to 1,100.
 
 Byes do not earn points. Following the ATP rule, a player who advances by bye and then loses their
-first played match receives only the event's first-round loser points. A played win advances the
-player to the next guaranteed point tier.
+first played match receives only the event's first-round loser points. In AWC 2026, a seed whose
+first played match is a Round-of-16 loss after byes receives Round-of-32 loser points (100).
+A played win advances the player to the next guaranteed point tier.
 
 Qualifier wins are scored by distance from the main draw rather than by the displayed round name.
 The final AWC qualifying round awards 2% of the event maximum, the preceding round 1.5%, and an
@@ -53,9 +54,9 @@ walkover after a played Q1 win. Byes and unplayed pairings do not earn points.
 ## Ranking behavior
 
 - Rankings use standard competition ranking (`1, 2, 2, 4`).
-- A live snapshot and historical monthly snapshots are stored in
-  `atomic_tour_ranking_snapshots`. Historical months are included only when an award was earned or
-  expired, so inactive months do not clutter the date picker.
+- There is one snapshot per published month in `atomic_tour_ranking_snapshots`. A refresh replaces
+  that month's standings and compares movement with the previous published month. Historical
+  months are included only when an award was earned or expired.
 - Each award expires at the end of the month 25 months after its match month. For example, a match
   played in September 2024 expires on October 31, 2026, while matches played later in the same
   tournament expire in later months.
@@ -63,7 +64,7 @@ walkover after a played Q1 win. Byes and unplayed pairings do not earn points.
 
 ## Publishing data
 
-1. Apply `supabase/atomic_tour_rankings.sql` to the current Supabase database.
+1. Confirm the current Supabase database has the monthly `refresh_atomic_tour_ranking` function.
 2. Load the production environment without printing credentials.
 3. Bundle and run `scripts/rebuild-atomic-tour-rankings.ts`:
 

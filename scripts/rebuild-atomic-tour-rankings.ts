@@ -192,7 +192,11 @@ const awardKey = (...parts: string[]): string =>
     .filter(Boolean)
     .join(":");
 
-const knockoutAwards = (event: CatalogRow, matches: MatchRow[]): PointAward[] => {
+const knockoutAwards = (
+  event: CatalogRow,
+  matches: MatchRow[],
+  seededPlayers: ReadonlySet<string>,
+): PointAward[] => {
   const tier = atomicTourEventPoints[event.id] ?? atomicTourEventPoints[event.series_key];
   if (!tier) return [];
   const fallbackDate = event.end_date ?? today;
@@ -304,7 +308,28 @@ const knockoutAwards = (event: CatalogRow, matches: MatchRow[]): PointAward[] =>
         },
       ];
     });
-    let earnedStage = atomicTourMainStageForResults(eventFirstStage, mainResults);
+    const hasSeededRoundOf32Bye =
+      event.id === "awc2026" &&
+      seededPlayers.has(player) &&
+      sourceMatches.some(
+        (match) =>
+          atomicTourStageForRound(match.round) === "round-of-32" &&
+          [normalize(match.p1), normalize(match.p2)].includes("bye") &&
+          winner(match) === player,
+      ) &&
+      sourceMatches.some(
+        (match) =>
+          atomicTourStageForRound(match.round) === "round-of-16" &&
+          isBonusEligibleResult(match) &&
+          winner(match) !== player &&
+          score(match.s1) + score(match.s2) > 1 &&
+          !match.outcome_type,
+      );
+    let earnedStage = atomicTourMainStageForResults(
+      eventFirstStage,
+      mainResults,
+      hasSeededRoundOf32Bye,
+    );
     if (
       championshipDecider &&
       [normalize(championshipDecider.p1), normalize(championshipDecider.p2)].includes(player)
@@ -521,6 +546,16 @@ const run = async () => {
   if (catalogError) throw catalogError;
   if (archivesError) throw archivesError;
 
+  const seededPlayers = new Set<string>();
+  if (!requestedEventId || requestedEventId === "awc2026") {
+    const { data: seeds, error } = await supabase
+      .from("tournament_seeds")
+      .select("player_name")
+      .eq("tournament", "awc2026");
+    if (error) throw error;
+    for (const seed of seeds) seededPlayers.add(normalize(seed.player_name));
+  }
+
   const pageSize = 1_000;
   const matches = await loadAllPages(async (from, size) => {
     const { data, error } = await supabase
@@ -545,7 +580,7 @@ const run = async () => {
       addParticipant(participants, event.id, match.p1);
       addParticipant(participants, event.id, match.p2);
     });
-    awards.push(...knockoutAwards(event, eventMatches));
+    awards.push(...knockoutAwards(event, eventMatches, seededPlayers));
   }
   for (const season of requestedEventId ? [] : atomicChessLeagueSeasons) {
     const tournamentId = `acl-s${season.number}`;
@@ -616,8 +651,8 @@ const run = async () => {
       if (!existingDate || changeDate > existingDate) materialDateByMonth.set(month, changeDate);
     }
   }
-  const snapshotDates = new Set(requestedEventId ? [] : materialDateByMonth.values());
-  snapshotDates.add(today);
+  materialDateByMonth.set(today.slice(0, 7), today);
+  const snapshotDates = requestedEventId ? [today] : [...materialDateByMonth.values()];
   if (!requestedEventId) {
     while (true) {
       const { data: existingSnapshots, error: existingSnapshotsError } = await supabase
@@ -640,7 +675,7 @@ const run = async () => {
       if (error) throw error;
     }
   }
-  for (const snapshotDate of [...snapshotDates].sort()) {
+  for (const snapshotDate of snapshotDates.sort()) {
     const { error } = await supabase.rpc("refresh_atomic_tour_ranking", {
       p_snapshot_date: snapshotDate,
     });
@@ -737,7 +772,7 @@ const run = async () => {
   process.stdout.write(
     requestedEventId
       ? `Updated ${requestedEventId} with ${awards.length} point awards and refreshed the live ranking; preserved historical snapshots and removed ${staleEntryCount} stale event entries.\n`
-      : `Published ${awards.length} Atomic Tour point awards and ${snapshotDates.size} material snapshots; removed ${staleEntryCount} stale event entries.\n`,
+      : `Published ${awards.length} Atomic Tour point awards and ${snapshotDates.length} material snapshots; removed ${staleEntryCount} stale event entries.\n`,
   );
 };
 

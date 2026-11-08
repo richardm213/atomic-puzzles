@@ -72,14 +72,19 @@ describe("Atomic Tour scoring", () => {
   });
 
   it("does not award advanced-round points for a bye followed by a loss", () => {
-    expect(
-      atomicTourMainStageForResults("entered", [
-        { stage: "entered", outcome: "bye" },
-        { stage: "round-of-64", outcome: "bye" },
-        { stage: "round-of-32", outcome: "bye" },
-        { stage: "round-of-16", outcome: "loss" },
-      ]),
-    ).toBe("entered");
+    const results = [
+      { stage: "entered", outcome: "bye" },
+      { stage: "round-of-64", outcome: "bye" },
+      { stage: "round-of-32", outcome: "bye" },
+      { stage: "round-of-16", outcome: "loss" },
+    ] as const;
+    expect(atomicTourMainStageForResults("entered", [...results])).toBe("entered");
+    const seededStage = atomicTourMainStageForResults("entered", [...results], true);
+    expect(seededStage).toBe("round-of-32");
+    expect(calculateKnockoutTourPoints({ tier: 2000, mainStage: seededStage! }).basePoints).toBe(
+      100,
+    );
+    expect(atomicTourMainStageForResults("entered", results.slice(0, -1), true)).toBeNull();
   });
 
   it("advances the earned stage only after a played win", () => {
