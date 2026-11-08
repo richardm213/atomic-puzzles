@@ -1,12 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-  createClient: vi.fn(),
-}));
+const mocks = vi.hoisted(() => ({ createClient: vi.fn() }));
 
-vi.mock("@supabase/supabase-js", () => ({
-  createClient: mocks.createClient,
-}));
+vi.mock("@supabase/supabase-js", () => ({ createClient: mocks.createClient }));
 
 import { handler } from "../functions/puzzle-tags";
 import { createSiteSessionCookie } from "../lib/siteSession";
@@ -15,7 +11,7 @@ const authHeaders = (username: string) => ({
   cookie: createSiteSessionCookie(username, {}).split(";")[0],
 });
 
-describe("puzzle-tags function", () => {
+describe("puzzle tag voting API", () => {
   beforeEach(() => {
     mocks.createClient.mockReset();
     vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
@@ -28,50 +24,49 @@ describe("puzzle-tags function", () => {
 
   afterEach(() => vi.unstubAllEnvs());
 
-  it("rejects users other than seaside_tiramisu", async () => {
+  it("does not accept votes without an authenticated voter", async () => {
     const response = await handler({
       httpMethod: "POST",
-      headers: authHeaders("someone_else"),
-      body: JSON.stringify({ puzzleId: 42, tags: ["fork"] }),
+      body: JSON.stringify({ puzzleId: 42, tag: "fork", vote: 1 }),
     });
-
-    expect(response.statusCode).toBe(403);
+    expect(response.statusCode).toBe(401);
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
-  it("rejects unknown or duplicate tags", async () => {
-    for (const tags of [["unknown"], ["fork", "fork"]]) {
+  it("rejects unknown tags and caller-supplied identity or weight", async () => {
+    for (const input of [
+      { tag: "unknown", vote: 1 },
+      { tag: "fork", vote: 1, voter: "seaside_tiramisu", weight: 3 },
+      { tag: "fork", vote: 3 },
+    ]) {
       const response = await handler({
         httpMethod: "POST",
-        headers: authHeaders("seaside_tiramisu"),
-        body: JSON.stringify({ puzzleId: 42, tags }),
+        headers: authHeaders("solver"),
+        body: JSON.stringify({ puzzleId: 42, ...input }),
       });
       expect(response.statusCode).toBe(400);
     }
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
-  it("updates any number of valid tags through the service role", async () => {
-    const tags = ["fork", "pin", "tempo"];
-    const single = vi.fn(async () => ({ data: { id: 42, tags }, error: null }));
-    const select = vi.fn(() => ({ single }));
-    const is = vi.fn(() => ({ select }));
-    const eq = vi.fn(() => ({ is }));
-    const update = vi.fn(() => ({ eq }));
-    const from = vi.fn(() => ({ update }));
-    mocks.createClient.mockReturnValue({ from });
+  it("lets a regular user downvote a motif that is not visible", async () => {
+    const votes = [{ tag: "fork", up: 0, down: 1, vote: -1 }];
+    const rpc = vi.fn().mockResolvedValue({ data: { votes, coinAward: 0 }, error: null });
+    mocks.createClient.mockReturnValue({ rpc });
 
     const response = await handler({
       httpMethod: "POST",
-      headers: authHeaders("seaside_tiramisu"),
-      body: JSON.stringify({ puzzleId: 42, tags }),
+      headers: authHeaders("solver"),
+      body: JSON.stringify({ puzzleId: 42, tag: "fork", vote: -1 }),
     });
 
     expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body)).toEqual({ puzzleId: 42, tags });
-    expect(from).toHaveBeenCalledWith("puzzles");
-    expect(update).toHaveBeenCalledWith({ tags });
-    expect(eq).toHaveBeenCalledWith("id", 42);
-    expect(is).toHaveBeenCalledWith("deleted_at", null);
+    expect(JSON.parse(response.body)).toEqual({ votes, coinAward: 0 });
+    expect(rpc).toHaveBeenCalledWith("cast_rewarded_puzzle_tag_vote", {
+      p_puzzle_id: 42,
+      p_voter: "solver",
+      p_tag: "fork",
+      p_vote: -1,
+    });
   });
 });

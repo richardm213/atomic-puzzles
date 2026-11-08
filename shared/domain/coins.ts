@@ -46,6 +46,7 @@ export const COIN_TRANSACTION_REASONS = [
   "puzzle_correct",
   "puzzle_attempted",
   "puzzle_created",
+  "puzzle_tagging",
   "shop_redemption",
   "daily_bonus",
   "tournament_bet",

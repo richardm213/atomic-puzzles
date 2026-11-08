@@ -1,48 +1,68 @@
 import { z } from "zod";
 
 import {
-  isPuzzleMotifTag,
-  normalizePuzzleMotifTags,
-} from "../../../../shared/domain/puzzles/puzzleMotifs";
+  puzzleTagSchema,
+  puzzleTagVoteSchema,
+  puzzleTagVotesSchema,
+  rewardedPuzzleTagVoteResponseSchema,
+} from "../../../../shared/domain/puzzles/puzzleTagVotes";
 import {
   authenticateRequest,
+  identityResponse,
   requireSameOrigin,
   requireUsername,
 } from "../../../platform/authentication";
 import type { FunctionEvent } from "../../../platform/defineFunction";
 import { createServerSupabase } from "../../../platform/environment";
 import { HttpError } from "../../../platform/errors";
-import { jsonResponse } from "../../../platform/response";
 import { parseJsonBody } from "../../../platform/validation";
 
-const TAG_EDITOR = "seaside_tiramisu";
-const updateTagsSchema = z
-  .object({ puzzleId: z.number().int().positive(), tags: z.array(z.string()) })
-  .refine(({ tags }) => tags.every(isPuzzleMotifTag), { message: "Unknown puzzle motif." })
-  .refine(({ tags }) => new Set(tags).size === tags.length, {
-    message: "Puzzle motifs must be unique.",
-  });
+const puzzleIdSchema = z.number().int().positive();
+const voteSchema = z
+  .object({
+    puzzleId: puzzleIdSchema,
+    tag: puzzleTagSchema,
+    vote: puzzleTagVoteSchema,
+  })
+  .strict();
 
 export const puzzleTagRoute = async (event: FunctionEvent) => {
-  requireSameOrigin(event.headers, "Cross-site puzzle tag changes are not allowed.");
-  const input = parseJsonBody(event, updateTagsSchema, "Invalid puzzle motifs.");
-  const identity = await authenticateRequest(event.headers);
-  const username = requireUsername(identity, "Log in with Lichess to edit puzzle motifs.");
-  if (username !== TAG_EDITOR) {
-    throw new HttpError(403, "Only seaside_tiramisu can edit puzzle motifs.");
+  const isWrite = event.httpMethod === "POST";
+  if (isWrite) requireSameOrigin(event.headers, "Cross-site puzzle tag votes are not allowed.");
+  const input = isWrite ? parseJsonBody(event, voteSchema, "Invalid puzzle tag vote.") : null;
+  const puzzleId = puzzleIdSchema.safeParse(
+    input?.puzzleId ?? Number(event.queryStringParameters?.puzzleId),
+  );
+  if (!puzzleId.success) throw new HttpError(400, "Invalid puzzle ID.");
+  const identity = await authenticateRequest(event.headers, !isWrite);
+  const voter = input
+    ? requireUsername(identity, "Log in with Lichess to vote on puzzle tags.")
+    : identity.username;
+  const supabase = createServerSupabase("Puzzle tag voting service");
+  const { data, error } = input
+    ? await supabase.rpc("cast_rewarded_puzzle_tag_vote", {
+        p_puzzle_id: puzzleId.data,
+        p_voter: voter,
+        p_tag: input.tag,
+        p_vote: input.vote,
+      })
+    : await supabase.rpc("get_puzzle_tag_votes", {
+        p_puzzle_id: puzzleId.data,
+        p_voter: voter,
+      });
+  if (error?.code === "PT409" && input) {
+    throw new HttpError(
+      409,
+      "Your puzzle attempt hasn’t been saved yet. Try voting again in a moment.",
+    );
   }
-  const tags = normalizePuzzleMotifTags(input.tags);
-  const { data, error } = await createServerSupabase("Puzzle motif service")
-    .from("puzzles")
-    .update({ tags })
-    .eq("id", input.puzzleId)
-    .is("deleted_at", null)
-    .select("id,tags")
-    .single();
-  if (error) throw new Error(`Unable to update puzzle motifs: ${error.message}`);
-  if (!data) throw new HttpError(404, "Puzzle not found.");
-  return jsonResponse(200, {
-    puzzleId: Number(data.id),
-    tags: normalizePuzzleMotifTags(data.tags),
-  });
+  if (error) throw new Error(`Unable to read or update puzzle tag votes: ${error.message}`);
+  if (data === null) throw new HttpError(404, "Puzzle not found.");
+  return identityResponse(
+    identity,
+    200,
+    input
+      ? rewardedPuzzleTagVoteResponseSchema.parse(data)
+      : { votes: puzzleTagVotesSchema.parse(data) },
+  );
 };

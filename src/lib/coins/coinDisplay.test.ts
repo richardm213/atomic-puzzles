@@ -15,6 +15,7 @@ describe("coin display", () => {
     expect(displayedCoinDeduction(-0.04)).toBe(0);
     expect(formatCoinBalance(1234.99)).toBe("1,234");
     expect(formatCoinAmount(1.6)).toBe("+1.6");
+    expect(formatCoinAmount(0.25)).toBe("+0.25");
     expect(formatCoinAmount(-1.26)).toBe("-1.3");
   });
 });

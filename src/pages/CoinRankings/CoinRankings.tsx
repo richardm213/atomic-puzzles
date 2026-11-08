@@ -15,6 +15,7 @@ import {
   coinTransactionsQueryOptions,
 } from "../../lib/coins/coinQueries";
 import type { CoinTransaction, CoinTransactionReason } from "../../lib/coins/coins";
+import { puzzleMotifs } from "../../lib/puzzles/puzzleMotifs";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { getBrowserStorageJson, setBrowserStorageJson } from "../../utils/browserStorage";
 import { getErrorMessage } from "../../utils/errors";
@@ -22,13 +23,21 @@ import { formatLocalDateTime } from "../../utils/formatters";
 
 type CoinView = "rankings" | "transactions";
 type TransactionCategory =
-  "gifts" | "solves" | "submissions" | "purchases" | "game-analysis" | "bonuses" | "bets";
+  | "gifts"
+  | "solves"
+  | "submissions"
+  | "tagging"
+  | "purchases"
+  | "game-analysis"
+  | "bonuses"
+  | "bets";
 
 const filterStorageKey = "atomic-puzzles.coin-transaction-filters";
 const transactionFilters: { key: TransactionCategory; label: string }[] = [
   { key: "gifts", label: "Gifts" },
   { key: "solves", label: "Puzzle solves" },
   { key: "submissions", label: "Puzzle submissions" },
+  { key: "tagging", label: "Tagging" },
   { key: "purchases", label: "Shop purchases" },
   { key: "game-analysis", label: "Game analysis" },
   { key: "bonuses", label: "Daily bonuses" },
@@ -41,6 +50,7 @@ const reasonCategory: Record<CoinTransactionReason, TransactionCategory> = {
   puzzle_correct: "solves",
   puzzle_attempted: "solves",
   puzzle_created: "submissions",
+  puzzle_tagging: "tagging",
   shop_redemption: "purchases",
   daily_bonus: "bonuses",
   tournament_bet: "bets",
@@ -103,6 +113,14 @@ const transactionDescription = (transaction: CoinTransaction) => {
   if (transaction.reason === "puzzle_created") {
     return puzzleId ? `Submitted puzzle #${puzzleId}` : "Submitted a puzzle";
   }
+  if (transaction.reason === "puzzle_tagging") {
+    const tag = metadataString(transaction, "tag");
+    const motif = puzzleMotifs.find((motif) => motif.tag === tag)?.name ?? "a tag";
+    const action = metadataString(transaction, "action");
+    const verb =
+      action === "proposed" ? "Proposed" : action === "downvoted" ? "Downvoted" : "Upvoted";
+    return `${verb} ${motif}${puzzleId ? ` on puzzle #${puzzleId}` : ""}`;
+  }
   if (transaction.reason === "shop_redemption") {
     const itemKey = metadataString(transaction, "itemKey");
     return transaction.amount > 0
@@ -148,9 +166,21 @@ const transactionDescription = (transaction: CoinTransaction) => {
 
 const readSavedFilters = (): TransactionCategory[] => {
   const saved = getBrowserStorageJson<unknown>("local", filterStorageKey, null);
-  if (!Array.isArray(saved)) return allTransactionCategories;
-  const migrated = saved.includes("purchases") ? [...saved, "game-analysis"] : saved;
-  return allTransactionCategories.filter((category) => migrated.includes(category));
+  if (Array.isArray(saved)) {
+    const migrated = saved.includes("purchases") ? [...saved, "game-analysis"] : saved;
+    if (
+      allTransactionCategories.every(
+        (category) => category === "tagging" || migrated.includes(category),
+      )
+    ) {
+      return allTransactionCategories;
+    }
+    return allTransactionCategories.filter((category) => migrated.includes(category));
+  }
+  const categories =
+    saved && typeof saved === "object" && "categories" in saved ? saved.categories : null;
+  if (!Array.isArray(categories)) return allTransactionCategories;
+  return allTransactionCategories.filter((category) => categories.includes(category));
 };
 
 export const CoinRankingsPage = () => {
@@ -227,7 +257,7 @@ export const CoinRankingsPage = () => {
     setTransactionPage(1);
     setSelectedCategories((current) => {
       const next = checked ? [...current, category] : current.filter((entry) => entry !== category);
-      setBrowserStorageJson("local", filterStorageKey, next);
+      setBrowserStorageJson("local", filterStorageKey, { categories: next });
       return next;
     });
   };

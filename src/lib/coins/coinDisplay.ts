@@ -21,8 +21,8 @@ export const formatCoinAmount = (value: number): string => {
       maximumFractionDigits: 1,
     });
   }
-  const displayed = Math.round(normalized * 10) / 10;
+  const displayed = Math.round(normalized * 100) / 100;
   return `${displayed > 0 ? "+" : ""}${displayed.toLocaleString(undefined, {
-    maximumFractionDigits: 1,
+    maximumFractionDigits: 2,
   })}`;
 };

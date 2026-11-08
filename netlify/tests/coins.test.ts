@@ -188,6 +188,7 @@ describe("coins function", () => {
       "puzzle_correct",
       "puzzle_attempted",
       "puzzle_created",
+      "puzzle_tagging",
       "shop_redemption",
       "daily_bonus",
       "tournament_bet",
@@ -199,9 +200,9 @@ describe("coins function", () => {
         {
           id: 19,
           username: "solver",
-          amount: 5,
-          reason: "puzzle_correct",
-          metadata: { puzzleId: 42 },
+          amount: 0.25,
+          reason: "puzzle_tagging",
+          metadata: { puzzleId: 42, tag: "fork", action: "proposed" },
           created_at: "2026-10-01T12:00:00.000Z",
         },
       ],
@@ -232,7 +233,9 @@ describe("coins function", () => {
     expect(orderByCreatedAt).toHaveBeenCalledWith("created_at", { ascending: false });
     expect(orderById).toHaveBeenCalledWith("id", { ascending: false });
     expect(range).toHaveBeenCalledWith(50, 99);
-    expect(JSON.parse(response.body).result[0]).not.toHaveProperty("source_key");
+    const [transaction] = JSON.parse(response.body).result;
+    expect(transaction).toMatchObject({ reason: "puzzle_tagging", amount: 0.25 });
+    expect(transaction).not.toHaveProperty("source_key");
     expect(JSON.parse(response.body).pagination).toEqual({
       page: 2,
       pageSize: 50,

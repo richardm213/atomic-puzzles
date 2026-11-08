@@ -51,6 +51,8 @@
   --color-profit-strip-text: #070c16;
   --color-warning: #facc15;
   --color-danger: #fca5a5;
+  --color-motif-confirmed: var(--color-success);
+  --color-motif-unconfirmed: var(--color-danger);
   --color-loss-strip-bg: #3a1520;
   --color-loss-strip-text: #ff5c75;
   --color-market-yes: #22d3ee;
@@ -189,6 +191,8 @@
   --color-profit-strip-text: #0d6b3a;
   --color-warning: #a86d00;
   --color-danger: #dc2626;
+  --color-motif-confirmed: var(--color-profit-strip-text);
+  --color-motif-unconfirmed: var(--color-loss-strip-text);
   --color-loss-strip-bg: #fee2e2;
   --color-loss-strip-text: #b91c1c;
   --color-market-yes: #1d5ed8;

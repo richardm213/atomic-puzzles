@@ -45,7 +45,8 @@ const mocks = vi.hoisted(() => ({
     setId?: string;
   },
   scrollIntoView: vi.fn(),
-  updatePuzzleTags: vi.fn(),
+  loadPuzzleTagVotes: vi.fn(),
+  voteOnPuzzleTag: vi.fn(),
   updatePuzzleExplanation: vi.fn(),
   username: "solver",
 }));
@@ -105,7 +106,8 @@ vi.mock("../../lib/puzzles/customPuzzleSets", () => ({
 }));
 
 vi.mock("../../lib/puzzles/puzzleTags", () => ({
-  updatePuzzleTags: mocks.updatePuzzleTags,
+  loadPuzzleTagVotes: mocks.loadPuzzleTagVotes,
+  voteOnPuzzleTag: mocks.voteOnPuzzleTag,
 }));
 
 vi.mock("../../lib/puzzles/puzzleExplanation", () => ({
@@ -303,9 +305,10 @@ describe("PuzzleSolverPage solution options", () => {
     });
     mocks.navigate.mockReset();
     mocks.username = "solver";
-    mocks.updatePuzzleTags
+    mocks.loadPuzzleTagVotes
       .mockReset()
-      .mockImplementation(async (_puzzleId: number, tags: string[]) => tags);
+      .mockResolvedValue([{ tag: "fork", up: 3, down: 0, vote: 0 }]);
+    mocks.voteOnPuzzleTag.mockReset();
     mocks.updatePuzzleExplanation
       .mockReset()
       .mockImplementation(async (_puzzleId: number, explanation: string) => explanation.trim());
@@ -663,7 +666,7 @@ describe("PuzzleSolverPage solution options", () => {
     const motifList = await screen.findByLabelText("Tags on this puzzle");
     expect(within(motifList).getByText("Fork")).toBeInTheDocument();
     expect(
-      within(motifList).getByRole("button", { name: "View definition for Fork" }),
+      within(motifList).getByRole("button", { name: /View definition for Fork/ }),
     ).toBeInTheDocument();
     expect(
       within(motifList).queryByRole("button", { name: "Remove fork" }),
@@ -712,56 +715,33 @@ describe("PuzzleSolverPage solution options", () => {
     expect(screen.queryByLabelText("Puzzle tags")).not.toBeInTheDocument();
   });
 
-  it("lets seaside_tiramisu add and remove any number of motifs", async () => {
-    mocks.username = "seaside_tiramisu";
+  it("hides a tied tag while keeping it votable from the picker", async () => {
+    mocks.loadPuzzleTagVotes.mockResolvedValue([{ tag: "fork", up: 1, down: 0, vote: 0 }]);
+    mocks.voteOnPuzzleTag
+      .mockResolvedValueOnce([{ tag: "fork", up: 1, down: 1, vote: -1 }])
+      .mockResolvedValueOnce([{ tag: "fork", up: 1, down: 0, vote: 0 }]);
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
 
-    await user.click(await screen.findByRole("button", { name: "Add tag" }));
-    expect(screen.queryByText(/available/i)).not.toBeInTheDocument();
-    await user.type(screen.getByRole("searchbox", { name: "Search tags to add" }), "pin");
-    await user.click(screen.getByRole("button", { name: "Add pin" }));
-    await waitFor(() =>
-      expect(mocks.updatePuzzleTags).toHaveBeenLastCalledWith(1369, ["fork", "pin"]),
-    );
-
-    await user.click(screen.getByRole("button", { name: "Add tag" }));
-    await user.type(screen.getByRole("searchbox", { name: "Search tags to add" }), "tempo");
-    await user.click(screen.getByRole("button", { name: "Add tempo" }));
-    await waitFor(() =>
-      expect(mocks.updatePuzzleTags).toHaveBeenLastCalledWith(1369, ["fork", "pin", "tempo"]),
-    );
-
-    await user.click(screen.getByRole("button", { name: "View definition for Fork" }));
+    const motifs = await screen.findByLabelText("Tags on this puzzle");
+    await user.click(within(motifs).getByRole("button", { name: /View definition for Fork/ }));
+    const dialog = screen.getByRole("dialog", { name: "Fork" });
+    expect(await within(dialog).findByText("Unconfirmed")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: /Downvote Fork/ }));
+    expect(await within(dialog).findByText("Hidden")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Close tag definition" }));
     expect(
-      screen.getByText(
-        "One piece attacks two or more targets at once, and the opponent cannot defend them all.",
-      ),
+      within(motifs).queryByRole("button", { name: /View definition for Fork/ }),
+    ).not.toBeInTheDocument();
+
+    await user.click(within(motifs).getByRole("button", { name: "Vote on tags" }));
+    const picker = screen.getByRole("region", { name: "Vote on any tag" });
+    await user.type(within(picker).getByRole("searchbox"), "fork");
+    await user.click(within(picker).getByRole("button", { name: /Downvote Fork/, pressed: true }));
+    expect(mocks.voteOnPuzzleTag).toHaveBeenLastCalledWith(1369, "fork", 0);
+    expect(
+      await within(motifs).findByRole("button", { name: /View definition for Fork/ }),
     ).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Remove fork" }));
-
-    await waitFor(() =>
-      expect(mocks.updatePuzzleTags).toHaveBeenLastCalledWith(1369, ["pin", "tempo"]),
-    );
-    expect(await screen.findByText("Tags updated.")).toBeInTheDocument();
-  });
-
-  it("shows the add tag action in place of the empty tag message", async () => {
-    mocks.username = "seaside_tiramisu";
-    const loadPuzzlesById = mocks.loadPuzzlesById.getMockImplementation();
-    mocks.loadPuzzlesById.mockImplementation(async (puzzleIds: number[]) =>
-      (await loadPuzzlesById!(puzzleIds)).map((puzzle: Record<string, unknown>) => ({
-        ...puzzle,
-        tags: [],
-      })),
-    );
-
-    render(<PuzzleSolverPage />);
-
-    const motifList = await screen.findByLabelText("Tags on this puzzle");
-    expect(within(motifList).getByRole("button", { name: "Add tag" })).toBeInTheDocument();
-    expect(within(motifList).queryByText("No tags yet.")).not.toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Add tag" })).toHaveLength(1);
   });
 
   it("keeps the solution hidden after a wrong move until the player gives up", async () => {

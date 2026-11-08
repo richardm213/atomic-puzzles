@@ -1,18 +1,38 @@
-import { postApi } from "../api/postApi";
-import { normalizePuzzleMotifTags } from "./puzzleMotifs";
+import {
+  type PuzzleTagVote,
+  puzzleTagVoteResponseSchema,
+  rewardedPuzzleTagVoteResponseSchema,
+} from "../../../shared/domain/puzzles/puzzleTagVotes";
+import { apiRequest, postApi } from "../api/postApi";
+import { announceCoinsEarned } from "../coins/coinEvents";
 
-export const updatePuzzleTags = async (puzzleId: number, tags: string[]): Promise<string[]> => {
-  const result = await postApi<{ puzzleId?: number; tags?: unknown }>(
-    "/api/puzzles/tags",
-    { puzzleId, tags },
+const endpoint = "/api/puzzles/tags";
+const options = {
+  schema: puzzleTagVoteResponseSchema,
+  invalidMessage: "The server returned invalid puzzle tag votes.",
+};
+
+export const loadPuzzleTagVotes = async (puzzleId: number, signal: AbortSignal) =>
+  (
+    await apiRequest(`${endpoint}?puzzleId=${puzzleId}`, {
+      ...options,
+      errorMessage: "Unable to load puzzle tag votes.",
+      signal,
+    })
+  ).votes;
+
+export const voteOnPuzzleTag = async (puzzleId: number, tag: string, vote: PuzzleTagVote) => {
+  const { votes, coinAward } = await postApi(
+    endpoint,
+    { puzzleId, tag, vote },
     {
-      errorMessage: "Unable to update puzzle motifs.",
-      invalidMessage: "Unable to update puzzle motifs: the server returned no data.",
+      ...options,
+      schema: rewardedPuzzleTagVoteResponseSchema,
+      errorMessage: "Unable to save your tag vote.",
     },
   );
-
-  if (result.puzzleId !== puzzleId || !Array.isArray(result.tags)) {
-    throw new Error("Unable to update puzzle motifs: the server returned invalid data.");
+  if (coinAward > 0) {
+    announceCoinsEarned(coinAward, coinAward === 0.25 ? "Tag proposed" : "Tag vote");
   }
-  return normalizePuzzleMotifTags(result.tags);
+  return votes;
 };

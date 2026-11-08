@@ -38,7 +38,7 @@ import { buildPieceStyle } from "../../components/Chessboard/boardStyle";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { PuzzleCommunity } from "../../components/PuzzleCommunity/PuzzleCommunity";
-import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
+import { PuzzleTagVotingPanel } from "../../components/PuzzleTagVotingPanel/PuzzleTagVotingPanel";
 import { Seo } from "../../components/Seo/Seo";
 import {
   activeLineIndex,
@@ -76,7 +76,6 @@ import {
   getPuzzleSetSourceId,
   isAwcPuzzleEvent,
 } from "../../lib/puzzles/puzzleSets";
-import { updatePuzzleTags } from "../../lib/puzzles/puzzleTags";
 import {
   fetchPuzzleAttemptsForPuzzle,
   fetchPuzzleProgressRowsForUsername,
@@ -123,7 +122,6 @@ const OPA_STYLE_BADGE_LABEL =
 const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
 const PUZZLE_PREFETCH_COUNT = 3;
 const MAX_PUZZLE_ATTEMPT_DURATION_MS = 60 * 60 * 1000;
-const PUZZLE_TAG_EDITOR = "seaside_tiramisu";
 const PUZZLE_RATING_EDITOR = "seaside_tiramisu";
 const PUZZLE_EXPLANATION_LEGACY_AUTHOR = "admin";
 const PUZZLE_EXPLANATION_LEGACY_EDITOR = "seaside_tiramisu";
@@ -547,7 +545,6 @@ export const PuzzleSolverPage = () => {
     () => normalizePuzzleMotifTags(activePuzzle?.tags),
     [activePuzzle?.tags],
   );
-  const canManagePuzzleTags = user?.username?.trim().toLowerCase() === PUZZLE_TAG_EDITOR;
   const canManagePuzzleRating = normalizeUsername(user?.username) === PUZZLE_RATING_EDITOR;
   const activePuzzleRating = useMemo(() => puzzleRatingFromRow(activePuzzle), [activePuzzle]);
   const normalizedAuthor = normalizeUsername(author);
@@ -1411,16 +1408,6 @@ export const PuzzleSolverPage = () => {
     solutionNavigation,
   ]);
 
-  const updatePuzzleMotifs = async (nextTags: string[]): Promise<void> => {
-    if (!canManagePuzzleTags || !activePuzzleId) return;
-    const savedTags = await updatePuzzleTags(activePuzzleId, nextTags);
-    setPuzzles((current) =>
-      current.map((puzzle) =>
-        puzzle.puzzleId === activePuzzleId ? { ...puzzle, tags: savedTags } : puzzle,
-      ),
-    );
-  };
-
   const handleUpdatePuzzleRating = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (!canManagePuzzleRating || !activePuzzleId || ratingSaveStatus.state === "saving") return;
@@ -1775,6 +1762,16 @@ export const PuzzleSolverPage = () => {
     );
   };
 
+  const puzzleTagVoting =
+    hasAttemptedActivePuzzle && activePuzzleId ? (
+      <PuzzleTagVotingPanel
+        key={`${activePuzzleId}:${normalizedUsername}`}
+        puzzleId={activePuzzleId}
+        tags={activePuzzleTags}
+        canVote={Boolean(normalizedUsername)}
+      />
+    ) : null;
+
   return (
     <div className="page puzzlePage" style={materialPieceStyle}>
       <Seo
@@ -1946,13 +1943,7 @@ export const PuzzleSolverPage = () => {
           ) : null}
         </header>
 
-        <PuzzleMotifsPanel
-          key={activePuzzleId ?? "empty"}
-          visible={hasAttemptedActivePuzzle}
-          tags={activePuzzleTags}
-          canManage={canManagePuzzleTags}
-          onUpdate={updatePuzzleMotifs}
-        />
+        {!isMobileLayout ? puzzleTagVoting : null}
 
         {!isMobileLayout && hasAttemptedActivePuzzle ? (
           <div id="desktop-puzzle-vote-slot" className="puzzleVoteSlot" />
@@ -2177,6 +2168,7 @@ export const PuzzleSolverPage = () => {
               ) : null}
             </div>
             {renderPlayerRows(true)}
+            {puzzleTagVoting}
           </section>
           {hasAttemptedActivePuzzle ? (
             <div id="mobile-puzzle-vote-slot" className="mobilePuzzleVoteSlot" />
