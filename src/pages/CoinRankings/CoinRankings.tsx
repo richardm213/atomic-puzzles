@@ -15,7 +15,6 @@ import {
   coinTransactionsQueryOptions,
 } from "../../lib/coins/coinQueries";
 import type { CoinTransaction, CoinTransactionReason } from "../../lib/coins/coins";
-import { puzzleMotifs } from "../../lib/puzzles/puzzleMotifs";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { getBrowserStorageJson, setBrowserStorageJson } from "../../utils/browserStorage";
 import { getErrorMessage } from "../../utils/errors";
@@ -114,12 +113,10 @@ const transactionDescription = (transaction: CoinTransaction) => {
     return puzzleId ? `Submitted puzzle #${puzzleId}` : "Submitted a puzzle";
   }
   if (transaction.reason === "puzzle_tagging") {
-    const tag = metadataString(transaction, "tag");
-    const motif = puzzleMotifs.find((motif) => motif.tag === tag)?.name ?? "a tag";
     const action = metadataString(transaction, "action");
     const verb =
       action === "proposed" ? "Proposed" : action === "downvoted" ? "Downvoted" : "Upvoted";
-    return `${verb} ${motif}${puzzleId ? ` on puzzle #${puzzleId}` : ""}`;
+    return `${verb} a tag${puzzleId ? ` on puzzle #${puzzleId}` : ""}`;
   }
   if (transaction.reason === "shop_redemption") {
     const itemKey = metadataString(transaction, "itemKey");

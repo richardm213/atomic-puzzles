@@ -336,7 +336,18 @@ export const coinsRoute = async (event: FunctionEvent) => {
     if (error) throw new Error(`Unable to load coin transactions: ${error.message}`);
     const total = count ?? 0;
     return identityResponse(identity, 200, {
-      result: data,
+      result: data.map((transaction) =>
+        transaction.reason === "puzzle_tagging"
+          ? {
+              ...transaction,
+              // Keep the motif private, including on transactions written before this change.
+              metadata: {
+                puzzleId: transaction.metadata?.puzzleId,
+                action: transaction.metadata?.action,
+              },
+            }
+          : transaction,
+      ),
       pagination: {
         page: input.page,
         pageSize: coinTransactionsPageSize,

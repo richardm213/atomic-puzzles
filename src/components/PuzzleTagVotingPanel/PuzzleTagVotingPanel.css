@@ -53,11 +53,6 @@
   --motif-bg: var(--color-success-soft-bg);
 }
 
-.puzzleTagVoteAppliedTag[data-status="unconfirmed"] {
-  --motif-tone: var(--color-motif-unconfirmed);
-  --motif-bg: var(--color-danger-soft-bg);
-}
-
 .puzzleTagVotesPanel button,
 .puzzleTagVoteDefinitionDialog button {
   font-family: inherit;
@@ -113,7 +108,14 @@
   font-size: 9px;
 }
 
-.puzzleTagVoteDefinitionButton:hover,
+.puzzleTagVoteDefinitionButton:hover {
+  background: color-mix(in srgb, var(--color-text) 6%, var(--motif-bg));
+}
+
+.puzzleTagVoteDefinitionButton:active {
+  background: color-mix(in srgb, var(--color-text) 10%, var(--motif-bg));
+}
+
 .puzzleTagVotesAddButton:hover,
 .puzzleTagVotesAddButton[aria-expanded="true"] {
   border-color: var(--motif-tone, var(--color-primary-soft));
@@ -124,7 +126,6 @@
   );
 }
 
-.puzzleTagVoteDefinitionButton:active,
 .puzzleTagVotesAddButton:active {
   background: color-mix(
     in srgb,
@@ -135,18 +136,28 @@
 
 .puzzleTagVoteHoverVotes {
   display: none;
-  position: absolute;
-  z-index: 3;
-  inset-block: 0;
-  inset-inline-start: calc(100% - 1px);
-  box-shadow: var(--shadow-soft);
+  flex: none;
 }
 
-.puzzleTagVoteHoverVotes .puzzleTagVoteVoteButtons {
+.puzzleTagVoteInlineVotes {
+  display: flex;
+  flex: none;
+}
+
+.puzzleTagVoteAppliedTag[data-voted="true"] .puzzleTagVoteDefinitionButton {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+.puzzleTagVoteHoverVotes .puzzleTagVoteVoteButtons,
+.puzzleTagVoteInlineVotes .puzzleTagVoteVoteButtons {
   border-color: var(--color-accent-soft-border);
+  border-inline-start: 0;
   border-start-start-radius: 0;
   border-end-start-radius: 0;
   background: var(--color-panel-strong);
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 .puzzleTagVoteHoverVotes .puzzleTagVoteVoteButtons > * {
@@ -159,8 +170,8 @@
     display: flex;
   }
 
-  .puzzleTagVoteAppliedTag:hover .puzzleTagVoteDefinitionButton,
-  .puzzleTagVoteAppliedTag:focus-within .puzzleTagVoteDefinitionButton {
+  .puzzleTagVoteAppliedTag:has(.puzzleTagVoteHoverVotes):is(:hover, :focus-within)
+    .puzzleTagVoteDefinitionButton {
     border-start-end-radius: 0;
     border-end-end-radius: 0;
   }
@@ -184,8 +195,9 @@
 }
 
 .puzzleTagVoteVoteButtons > * {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 26px;
   min-width: 32px;
   padding: var(--space-1);
@@ -198,18 +210,17 @@
 
 .puzzleTagVoteVoteButtons > :first-child {
   border-inline-end: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  border-start-start-radius: inherit;
+  border-end-start-radius: inherit;
 }
 
 .puzzleTagVoteVoteButtons > :last-child {
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
-.puzzleTagVoteVoteButtons button[aria-pressed="true"] {
+.puzzleTagVoteVoteButtons button[data-selected="true"] {
   background: var(--color-accent-soft-bg-strong);
   color: var(--color-primary-soft);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .puzzleTagVoteVoteButtons button:hover:not([aria-disabled="true"]),

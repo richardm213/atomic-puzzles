@@ -19,7 +19,13 @@ export const puzzleTagVoteResponseSchema = z.object({
 
 export const rewardedPuzzleTagVoteResponseSchema = puzzleTagVoteResponseSchema.extend({
   // Accept the old proposal reward while the database update rolls out.
-  coinAward: z.union([z.literal(0), z.literal(0.1), z.literal(0.2), z.literal(0.25)]),
+  coinAward: z.union([
+    z.literal(0),
+    z.literal(0.01),
+    z.literal(0.1),
+    z.literal(0.2),
+    z.literal(0.25),
+  ]),
 });
 
 export type PuzzleTagVote = z.infer<typeof puzzleTagVoteSchema>;

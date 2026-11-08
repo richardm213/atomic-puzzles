@@ -164,11 +164,17 @@ export const HowCoinsWorkPage = () => (
               </div>
               <div>
                 <dt>
-                  Cast your first vote on a visible tag, or propose a tag that becomes visible on a
-                  puzzle with two or more tags
+                  Cast your first vote on a visible tag below +6 net, or propose a tag that becomes
+                  visible on a puzzle with two or more tags
                 </dt>
                 <dd>
                   <CoinAmount amount={0.1} />
+                </dd>
+              </div>
+              <div>
+                <dt>Cast your first vote on a tag already at +6 net or higher</dt>
+                <dd>
+                  <CoinAmount amount={0.01} />
                 </dd>
               </div>
             </dl>
