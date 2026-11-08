@@ -157,13 +157,16 @@ export const HowCoinsWorkPage = () => (
             </div>
             <dl className="coinRuleList">
               <div>
-                <dt>Propose a new tag that becomes visible</dt>
+                <dt>Propose a tag that becomes visible on a puzzle with fewer than two tags</dt>
                 <dd>
-                  <CoinAmount amount={0.25} />
+                  <CoinAmount amount={0.2} />
                 </dd>
               </div>
               <div>
-                <dt>Cast your first vote on a tag with a positive score</dt>
+                <dt>
+                  Cast your first vote on a visible tag, or propose a tag that becomes visible on a
+                  puzzle with two or more tags
+                </dt>
                 <dd>
                   <CoinAmount amount={0.1} />
                 </dd>

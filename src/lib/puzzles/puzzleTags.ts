@@ -32,7 +32,7 @@ export const voteOnPuzzleTag = async (puzzleId: number, tag: string, vote: Puzzl
     },
   );
   if (coinAward > 0) {
-    announceCoinsEarned(coinAward, coinAward === 0.25 ? "Tag proposed" : "Tag vote");
+    announceCoinsEarned(coinAward, coinAward > 0.1 ? "Tag proposed" : "Tag vote");
   }
   return votes;
 };
