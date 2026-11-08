@@ -595,7 +595,6 @@ export const CommunityDiscussion = ({
           </ul>
         ) : null}
         <div className="commentComposerActions">
-          <span className="commentMarkdownHint">Markdown supported</span>
           <button
             type="button"
             disabled={!commentBody.trim() || postingComment}
