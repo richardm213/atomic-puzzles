@@ -162,6 +162,7 @@ export const predictionOutcomeAbbreviation = (
     rechesster: "rechess",
     dandan2016: "dan",
     rabbier: "rabbie",
+    maxwellssilvrhammer: "max",
   };
   return (
     abbreviations[label.toLowerCase()] ?? predictionOutcomeUnderscoreLabel(definition, outcome)

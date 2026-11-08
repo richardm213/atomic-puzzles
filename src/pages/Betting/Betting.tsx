@@ -1060,11 +1060,7 @@ export const BettingPage = () => {
                                       decoding="async"
                                       aria-hidden="true"
                                     />
-                                    <span>
-                                      {entryLabel.toLowerCase() === "maxwellssilvrhammer"
-                                        ? "Max"
-                                        : entryLabel}
-                                    </span>
+                                    <span>{entryLabel}</span>
                                   </span>
                                   <span className="bettingOutcomeQuote">
                                     <strong>{formatPredictionChance(entryPrice)}</strong>
