@@ -140,20 +140,40 @@ begin
   end if;
 
   for position_username in
-    select distinct position.username
-    from public.prediction_positions position
-    where position.market_id = p_market_id
-      and position.quantity > 0
-      and position.username <> 'prediction_admin'
-    order by position.username
+    select participant.username
+    from (
+      select position.username
+      from public.prediction_positions position
+      where position.market_id = p_market_id
+        and position.quantity > 0
+      union
+      select bet.username
+      from public.tournament_bets bet
+      where bet.market_id = p_market_id
+    ) participant
+    where participant.username <> 'prediction_admin'
+    order by participant.username
   loop
     select coalesce(sum(transaction.amount), 0)
     into payout_amount
     from public.coin_transactions transaction
     where transaction.username = position_username
-      and transaction.reason = 'prediction_market_payout'
-      and transaction.source_key =
-        'prediction-market-payout:' || p_market_id || ':' || position_username;
+      and (
+        (
+          transaction.reason = 'prediction_market_payout'
+          and transaction.source_key =
+            'prediction-market-payout:' || p_market_id || ':' || position_username
+        )
+        or (
+          transaction.reason = 'tournament_bet_payout'
+          and transaction.source_key in (
+            select 'tournament-bet-payout:' || bet.id
+            from public.tournament_bets bet
+            where bet.market_id = p_market_id
+              and bet.username = position_username
+          )
+        )
+      );
 
     payout_label := case
       when round(payout_amount, 2) = trunc(round(payout_amount, 2))
