@@ -61,7 +61,7 @@ describe("AppSettings", () => {
       result.current.setTheme("amethyst");
       result.current.setColorMode("dark");
     });
-    expect(result.current.boardTheme).toBe("purple");
+    expect(result.current.boardTheme).toBe("amethyst");
     act(() => {
       result.current.setBoardTheme("blue");
       result.current.setTheme("default");

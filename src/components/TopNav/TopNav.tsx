@@ -915,7 +915,11 @@ export const TopNav = () => {
                       {canUseCustomThemes &&
                         CUSTOM_THEMES.map((palette) => (
                           <option key={palette} value={palette}>
-                            {palette.charAt(0).toUpperCase() + palette.slice(1)}
+                            {palette === "emerald"
+                              ? "Forest"
+                              : palette === "ruby"
+                                ? "Red Charcoal"
+                                : palette.charAt(0).toUpperCase() + palette.slice(1)}
                           </option>
                         ))}
                     </select>

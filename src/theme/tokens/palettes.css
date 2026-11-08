@@ -74,14 +74,21 @@
 }
 
 :root[data-palette="ruby"] {
-  --opening-hue-1: 26;
-  --opening-hue-2: 84;
-  --opening-hue-3: 320;
-  --opening-hue-4: 217;
-  --opening-hue-5: 9;
-  --opening-hue-6: 133;
-  --opening-hue-7: 276;
-  --opening-hue-8: 167;
+  --opening-chroma: 0.16;
+  --opening-fill-strength: 11%;
+  --opening-label-tint: 76%;
+  --opening-tag-shadow: none;
+  --opening-hue-1: 27;
+  --opening-hue-2: 55;
+  --opening-hue-3: 85;
+  --opening-chroma-3: 0.12;
+  --opening-lightness-3: 79%;
+  --opening-hue-4: 355;
+  --opening-hue-5: 325;
+  --opening-hue-6: 295;
+  --opening-hue-7: 265;
+  --opening-hue-8: 260;
+  --opening-chroma-8: 0.008;
 }
 
 :root[data-palette="emerald"] {
@@ -109,10 +116,10 @@
 /* Palettes define the accent hues; color mode owns the neutral surfaces.
    Status, market and rating colors keep their existing meaning across palettes. */
 :root[data-palette="amethyst"] {
-  --gem-hue: 308;
-  --gem-nav-hue: 320;
-  --gem-action-chroma: 0.17;
-  --gem-accent-chroma: 0.13;
+  --gem-hue: 295;
+  --gem-nav-hue: 295;
+  --gem-action-chroma: 0.2;
+  --gem-accent-chroma: 0.14;
 }
 
 :root[data-palette="ruby"] {
@@ -211,10 +218,26 @@
     linear-gradient(180deg, var(--color-page-top), var(--color-page-bottom));
 }
 
+/* Amethyst takes its violet and lavender accents from the PyChess profile icon. */
+:root[data-theme="dark"][data-palette="amethyst"] {
+  --gem-material-hue: 295;
+  --gem-canvas-chroma: 0.028;
+  --gem-surface-chroma: 0.025;
+  --gem-wash: 13%;
+  --color-primary: #6d28d9;
+  --color-primary-hover: #7c3aed;
+  --color-primary-soft: #c4b5fd;
+  --color-primary-pale: #e9d5ff;
+  --color-nav-badge: #8b3df2;
+  --brand-mark-color: #c270ff;
+  --brand-mark-tile: var(--theme-nav-ink);
+}
+
 /* Ruby uses charcoal materials with a faint crimson tint. */
 :root[data-theme="dark"][data-palette="ruby"] {
   --gem-hue: 27;
   --gem-nav-hue: 27;
+  --color-primary-soft: #ff6b6b;
   --gem-material-hue: 260;
   --gem-page-top-lightness: 23%;
   --gem-canvas-chroma: 0.008;

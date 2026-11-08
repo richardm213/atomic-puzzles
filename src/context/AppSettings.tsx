@@ -127,8 +127,9 @@ const LICHESS_BOARD_THEMES: LabeledOption[] = [
   { value: "olive", label: "Olive" },
   { value: "newspaper", label: "Newspaper" },
   { value: "purple", label: "Purple" },
-  { value: "ruby", label: "Ruby" },
-  { value: "emerald", label: "Emerald" },
+  { value: "amethyst", label: "Amethyst" },
+  { value: "ruby", label: "Red Charcoal" },
+  { value: "emerald", label: "Forest" },
   { value: "pink", label: "Pink" },
   { value: "ic", label: "IC" },
   { value: "custom", label: "Custom" },
@@ -158,6 +159,7 @@ const BOARD_THEME_PALETTE: Record<string, BoardSquareColors> = {
   olive: { light: "#e7e6c8", dark: "#8b8d56" },
   newspaper: { light: "#f4eed9", dark: "#b4a789" },
   purple: { light: "#eadcf7", dark: "#8460b5" },
+  amethyst: { light: "#eee5f7", dark: "#8664b2" },
   ruby: { light: "#eee3d2", dark: "#9e4444" },
   emerald: { light: "#d7eee4", dark: "#4b8c77" },
   "purple-diag": { light: "#efe1fb", dark: "#76549d" },
@@ -177,7 +179,7 @@ const DEFAULT_BOARD_SOUND_SET: BoardSoundSet = "standard";
 
 const DEFAULT_BOARD_THEME_BY_PALETTE: Record<Theme, string> = {
   default: DEFAULT_BOARD_THEME,
-  amethyst: "purple",
+  amethyst: "amethyst",
   ruby: "ruby",
   emerald: "emerald",
   black: "grey",

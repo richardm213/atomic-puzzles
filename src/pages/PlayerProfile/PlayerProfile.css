@@ -119,7 +119,7 @@
 .profileOpeningTag {
   --opening-ink: var(--color-subtle);
   --opening-ink-lightness: 75%;
-  --opening-fill: 19%;
+  --opening-fill: var(--opening-fill-strength, 19%);
   --opening-border: color-mix(in srgb, var(--opening-ink) 43%, var(--color-border));
   display: inline-flex;
   align-items: center;
@@ -128,12 +128,19 @@
   border-radius: 999px;
   border: 1px solid var(--opening-border);
   background: color-mix(in srgb, var(--opening-ink) var(--opening-fill), var(--color-panel-strong));
-  color: color-mix(in srgb, var(--opening-ink) 45%, var(--color-heading));
+  color: color-mix(
+    in srgb,
+    var(--opening-ink) var(--opening-label-tint, 45%),
+    var(--color-heading)
+  );
   font-size: 12px;
   font-weight: 650;
   line-height: 1.2;
   white-space: nowrap;
-  box-shadow: 0 6px 14px color-mix(in srgb, var(--opening-border) 32%, transparent);
+  box-shadow: var(
+    --opening-tag-shadow,
+    0 6px 14px color-mix(in srgb, var(--opening-border) 32%, transparent)
+  );
 }
 
 .profileTourRankLink {
@@ -178,6 +185,8 @@
 
 .profileOpeningTag[data-opening-tone="3"] {
   --opening-hue: var(--opening-hue-3);
+  --opening-chroma: var(--opening-chroma-3, 0.125);
+  --opening-ink-lightness: var(--opening-lightness-3, 75%);
 }
 
 .profileOpeningTag[data-opening-tone="4"] {
@@ -198,10 +207,13 @@
 
 .profileOpeningTag[data-opening-tone="8"] {
   --opening-hue: var(--opening-hue-8);
+  --opening-chroma: var(--opening-chroma-8, 0.125);
 }
 
 .profileOpeningTag[data-opening-tone] {
-  --opening-ink: oklch(var(--opening-ink-lightness) 0.125 var(--opening-hue));
+  --opening-ink: oklch(
+    var(--opening-ink-lightness) var(--opening-chroma, 0.125) var(--opening-hue)
+  );
 }
 
 .profileTrophyRow {
@@ -1048,8 +1060,11 @@
 
 :root[data-theme="light"] .profileOpeningTag {
   --opening-ink-lightness: 48%;
-  --opening-fill: 13%;
-  box-shadow: 0 6px 14px color-mix(in srgb, var(--opening-border) 20%, transparent);
+  --opening-fill: var(--opening-fill-strength, 13%);
+  box-shadow: var(
+    --opening-tag-shadow,
+    0 6px 14px color-mix(in srgb, var(--opening-border) 20%, transparent)
+  );
 }
 
 .playerProfilePanel .analyzeButton:hover:not(:disabled) {
