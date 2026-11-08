@@ -76,8 +76,6 @@
   --gem-accent-dark-lightness: 72%;
   --gem-nav-hue: 20;
   --gem-nav-chroma: 0.2;
-  --gem-mark-dark-lightness: 62%;
-  --gem-mark-dark-chroma: 0.18;
 }
 
 :root[data-palette="emerald"] {
@@ -132,9 +130,6 @@
   );
   --brand-wordmark-color: var(--color-primary-pale);
   --brand-wordmark-shadow: none;
-  --brand-mark-color: oklch(
-    var(--gem-mark-dark-lightness, 73%) var(--gem-mark-dark-chroma, 0.21) var(--gem-nav-hue)
-  );
 }
 
 /* Dark palettes recolor the material inputs. The color-mode rules apply the
@@ -150,6 +145,8 @@
   --color-panel-deep: oklch(15.5% var(--gem-surface-chroma) var(--gem-hue));
   --theme-panel-ink: var(--color-panel-strong);
   --theme-nav-ink: var(--color-panel-deep);
+  --brand-mark-color: oklch(78% var(--gem-nav-chroma, 0.22) var(--gem-nav-hue));
+  --brand-mark-tile: color-mix(in srgb, var(--color-nav-badge) 8%, var(--theme-nav-ink));
   --theme-inset-ink: oklch(13% var(--gem-surface-chroma) var(--gem-hue));
   --theme-raised-ink: oklch(21% var(--gem-surface-chroma) var(--gem-hue));
   --color-table-hover: color-mix(in srgb, var(--color-primary-soft) 8%, transparent);
@@ -182,5 +179,6 @@
   --feature-card-tint: 6%;
   --feature-card-hover-tint: 9%;
   --brand-mark-color: var(--color-nav-badge);
+  --brand-mark-tile: color-mix(in srgb, var(--color-nav-badge) 2%, var(--color-page-top));
   --page-background: linear-gradient(180deg, var(--color-page-top), var(--color-page-bottom));
 }

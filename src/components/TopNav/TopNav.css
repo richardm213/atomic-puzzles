@@ -69,31 +69,25 @@
   height: var(--nav-brand-mark-size);
   flex: 0 0 var(--nav-brand-mark-size);
   object-fit: contain;
+  filter: var(--brand-mark-filter, none);
   transition: filter 140ms ease;
 }
 
-.brandMarkLight,
-.brandMarkGemstone {
-  display: none;
+.brandMarkFilter {
+  position: absolute;
 }
 
-:root[data-theme="light"] .brandMarkDark,
-:root[data-gemstone-theme] .brandMarkDark {
-  display: none;
+.brandMarkFilterInk {
+  flood-color: var(--brand-mark-color);
 }
 
-:root[data-theme="light"]:not([data-gemstone-theme]) .brandMarkLight,
-:root[data-gemstone-theme] .brandMarkGemstone {
-  display: block;
-}
-
-.brandMarkGemstone {
-  color: var(--brand-mark-color);
+.brandMarkFilterTile {
+  flood-color: var(--brand-mark-tile);
 }
 
 .homeBrand:hover .brandMarkImage,
 .homeBrand:focus-visible .brandMarkImage {
-  filter: brightness(1.12) saturate(1.08);
+  filter: var(--brand-mark-filter, brightness(1)) brightness(1.12) saturate(1.08);
 }
 
 .homeBrand span {

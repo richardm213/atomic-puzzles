@@ -55,6 +55,7 @@ import {
   PlayerFlairPicker,
 } from "../PlayerSocialControls/PlayerSocialControls";
 import { TournamentPlayerLink } from "../TournamentPlayerLink/TournamentPlayerLink";
+import { NavBrandMark } from "./NavBrandMark";
 import { NavNotificationsPanel } from "./NavNotificationsPanel";
 import { NavPlayerSearch } from "./NavPlayerSearch";
 import { navItems } from "./topNavItems";
@@ -436,41 +437,7 @@ export const TopNav = () => {
         aria-label="Go to Atomic Puzzles home page"
         aria-current={pathname === "/" ? "page" : undefined}
       >
-        <img
-          className="brandMarkImage brandMarkDark"
-          src={appAssetPath("/favicon.ico")}
-          alt=""
-          width="30"
-          height="30"
-          aria-hidden="true"
-        />
-        <img
-          className="brandMarkImage brandMarkLight"
-          src={appAssetPath("/images/brand/atomic-logo-light.png")}
-          alt=""
-          width="30"
-          height="30"
-          aria-hidden="true"
-        />
-        <svg
-          className="brandMarkImage brandMarkGemstone"
-          viewBox="3 3 42 42"
-          width="28"
-          height="28"
-          focusable="false"
-          aria-hidden="true"
-        >
-          <g fill="none" stroke="currentColor" strokeWidth="2.25">
-            <ellipse cx="24" cy="24" rx="21" ry="8.5" transform="rotate(45 24 24)" />
-            <ellipse cx="24" cy="24" rx="21" ry="8.5" transform="rotate(-45 24 24)" />
-          </g>
-          <g fill="currentColor">
-            <circle cx="24" cy="24" r="5.5" />
-            <circle cx="8" cy="7" r="2.4" />
-            <circle cx="39" cy="15" r="2.4" />
-            <circle cx="29" cy="40" r="2.4" />
-          </g>
-        </svg>
+        <NavBrandMark mode={colorMode} tinted={theme !== "default"} />
         <span>Atomic Puzzles</span>
       </Link>
       <button
