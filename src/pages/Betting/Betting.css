@@ -1139,6 +1139,10 @@
   color: var(--color-primary-pale);
 }
 
+.betHistoryReturn[data-result="possible"] strong {
+  color: var(--color-heading);
+}
+
 .betHistoryPnlUnit {
   padding-inline-start: var(--space-2);
 }

@@ -222,13 +222,15 @@ export const BetHistoryTable = ({
               const pnl = Math.round((payout - bet.totalCost) * 100) / 100 || 0;
               const showPnl = returnDisplay === "pnl";
               const result =
-                showPnl || bet.status !== "open"
-                  ? pnl > 0
+                bet.status === "open"
+                  ? showPnl
+                    ? "possible"
+                    : undefined
+                  : pnl > 0
                     ? "gain"
                     : pnl < 0
                       ? "loss"
-                      : undefined
-                  : undefined;
+                      : undefined;
               const selectionContents = (
                 <>
                   <BetHistoryUsername

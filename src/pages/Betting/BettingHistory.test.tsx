@@ -168,11 +168,14 @@ describe("BettingHistory", () => {
     const open = screen.getByRole("row", { name: /open/i });
     expect(within(open).getByText("+300")).toBeInTheDocument();
     expect(within(open).getByText("possible")).toBeInTheDocument();
+    expect(within(open).getByText("+300").closest("td")).toHaveAttribute("data-result", "possible");
     const won = screen.getByRole("row", { name: /won/i });
     const lost = screen.getByRole("row", { name: /lost/i });
     const refunded = screen.getByRole("row", { name: /refunded/i });
     expect(within(won).getByText("+150")).toBeInTheDocument();
     expect(within(lost).getByText("-300")).toBeInTheDocument();
+    expect(within(won).getByText("+150").closest("td")).toHaveAttribute("data-result", "gain");
+    expect(within(lost).getByText("-300").closest("td")).toHaveAttribute("data-result", "loss");
     expect(within(refunded).getByText("0")).toBeInTheDocument();
     expect(window.localStorage.getItem("betting.history.returnDisplay")).toBe('"pnl"');
     await user.selectOptions(screen.getByLabelText("Display"), "return");
