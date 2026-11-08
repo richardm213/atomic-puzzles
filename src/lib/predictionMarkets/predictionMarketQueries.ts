@@ -36,6 +36,9 @@ export const patchPredictionMarketState = (
   queryClient: QueryClient,
   state: PredictionMarketState,
 ) => {
+  const previous = queryClient.getQueryData<PredictionMarketState>(
+    predictionMarketQueryKey(state.market.id),
+  );
   queryClient.setQueryData(predictionMarketQueryKey(state.market.id), state);
   queryClient.setQueriesData<PredictionMarketState[]>(
     { queryKey: [...predictionMarketQueryRoot, "batch"] },
@@ -44,4 +47,10 @@ export const patchPredictionMarketState = (
         marketState.market.id === state.market.id ? state : marketState,
       ),
   );
+  if (JSON.stringify(previous?.positions) !== JSON.stringify(state.positions)) {
+    void queryClient.invalidateQueries(
+      { queryKey: ["coins", "summary"] },
+      { cancelRefetch: false },
+    );
+  }
 };

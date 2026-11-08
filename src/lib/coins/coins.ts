@@ -21,6 +21,7 @@ export type AtomicDbAnalysisRequest =
 
 export type CoinSummary = {
   balance: number;
+  inBets?: number;
   dailyClaimAvailable: boolean;
   economyBan?: {
     endsAt: string;
@@ -66,6 +67,7 @@ export type RedemptionHistoryItem = {
 const summarySchema = z.object({
   result: z.object({
     balance: z.number(),
+    inBets: z.number().nonnegative().optional(),
     dailyClaimAvailable: z.boolean().optional().default(false),
     economyBan: z
       .object({

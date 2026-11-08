@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import {
@@ -150,6 +151,141 @@ const bodySchema = z.discriminatedUnion("action", [
     }),
 ]);
 
+const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => {
+  const [accounts, openBets, unsettledMarkets] = await Promise.all([
+    loadAllLeaderboardRows<CoinAccountRow>((from, to) => {
+      const query = supabase.from("coin_accounts").select("username,balance");
+      if (username) query.eq("username", username);
+      return query.order("username").range(from, to);
+    }, "Unable to load coin rankings: coin accounts could not be read."),
+    loadAllLeaderboardRows<OpenBetRow>((from, to) => {
+      const query = supabase.from("tournament_bets").select("id,username,total_cost");
+      if (username) query.eq("username", username);
+      return query.eq("status", "open").order("id").range(from, to);
+    }, "Unable to load coin rankings: tournament bets could not be read."),
+    loadAllLeaderboardRows<{ id: string }>(
+      (from, to) =>
+        supabase
+          .from("prediction_markets")
+          .select("id")
+          .in("status", ["open", "closed"])
+          .order("id")
+          .range(from, to),
+      "Unable to load coin rankings: prediction markets could not be read.",
+    ),
+  ]);
+
+  const openBetCosts = new Map<string, number>();
+  const unsettledMarketIds = unsettledMarkets.map((market) => market.id);
+
+  if (unsettledMarketIds.length > 0) {
+    const [positions, fills, legacyCredits] = await Promise.all([
+      loadAllLeaderboardRows<PredictionPositionRow>((from, to) => {
+        const query = supabase
+          .from("prediction_positions")
+          .select("market_id,username,outcome,quantity");
+        if (username) query.eq("username", username);
+        return query
+          .in("market_id", unsettledMarketIds)
+          .gt("quantity", 0)
+          .order("market_id")
+          .order("username")
+          .order("outcome")
+          .range(from, to);
+      }, "Unable to load coin rankings: prediction positions could not be read."),
+      loadAllLeaderboardRows<LeaderboardPredictionFill>((from, to) => {
+        const query = supabase
+          .from("prediction_fills")
+          .select(
+            "id,market_id,outcome,price_cents,quantity,buyer_username,seller_username,pair_key,created_at",
+          );
+        if (username) query.or(`buyer_username.eq.${username},seller_username.eq.${username}`);
+        return query.in("market_id", unsettledMarketIds).order("id").range(from, to);
+      }, "Unable to load coin rankings: prediction fills could not be read."),
+      loadAllLeaderboardRows<LegacyPositionCreditRow>((from, to) => {
+        const query = supabase
+          .from("prediction_legacy_position_credits")
+          .select("source_bet_id,market_id,username,outcome,quantity,price_cents");
+        if (username) query.eq("username", username);
+        return query.in("market_id", unsettledMarketIds).order("source_bet_id").range(from, to);
+      }, "Unable to load coin rankings: legacy prediction positions could not be read."),
+    ]);
+
+    const fillsByMarket = new Map<string, LeaderboardPredictionFill[]>();
+    for (const fill of fills) {
+      const marketFills = fillsByMarket.get(fill.market_id);
+      if (marketFills) marketFills.push(fill);
+      else fillsByMarket.set(fill.market_id, [fill]);
+    }
+    const legacyCostsByOwner = new Map<
+      string,
+      Record<"yes" | "no", { quantity: number; costCents: number }>
+    >();
+    const convertedBetIds = new Set<number>();
+    for (const credit of legacyCredits) {
+      convertedBetIds.add(credit.source_bet_id);
+      const ownerKey = `${credit.market_id}:${credit.username}`;
+      const ownerCosts = legacyCostsByOwner.get(ownerKey) ?? {
+        yes: { quantity: 0, costCents: 0 },
+        no: { quantity: 0, costCents: 0 },
+      };
+      ownerCosts[credit.outcome].quantity += credit.quantity;
+      ownerCosts[credit.outcome].costCents += credit.quantity * credit.price_cents;
+      legacyCostsByOwner.set(ownerKey, ownerCosts);
+    }
+
+    const costsByMarketAndUser = new Map<
+      string,
+      ReturnType<typeof calculatePredictionPositionCost>
+    >();
+    for (const position of positions) {
+      // Liquidity is seeded directly for the internal market-maker account and is
+      // intentionally excluded from public rankings.
+      if (position.username === "prediction_admin") continue;
+      const ownerKey = `${position.market_id}:${position.username}`;
+      let costs = costsByMarketAndUser.get(ownerKey);
+      if (!costs) {
+        costs = calculatePredictionPositionCost(
+          fillsByMarket.get(position.market_id) ?? [],
+          position.username,
+          legacyCostsByOwner.get(ownerKey),
+        );
+        costsByMarketAndUser.set(ownerKey, costs);
+      }
+      const traded = costs[position.outcome];
+      if (Math.abs(traded.quantity - position.quantity) > 0.000001) {
+        throw new Error("Unable to load coin rankings: prediction position history is incomplete.");
+      }
+      const positionCostCents = (traded.averagePriceCents ?? 0) * traded.quantity;
+      addAmount(openBetCosts, position.username, positionCostCents / 100);
+    }
+
+    for (const bet of openBets) {
+      if (!convertedBetIds.has(bet.id)) addAmount(openBetCosts, bet.username, bet.total_cost);
+    }
+  } else {
+    for (const bet of openBets) addAmount(openBetCosts, bet.username, bet.total_cost);
+  }
+  const rankings = accounts
+    .filter(
+      (account) => username || !hiddenLeaderboardUsernames.has(account.username.toLowerCase()),
+    )
+    .map((account) => {
+      const inBets = openBetCosts.get(account.username) ?? 0;
+      return {
+        username: account.username,
+        netWorth: account.balance + inBets,
+        balance: account.balance,
+        inBets,
+      };
+    })
+    .sort(
+      (left, right) =>
+        right.netWorth - left.netWorth || left.username.localeCompare(right.username),
+    );
+  return rankings;
+};
+
 export const coinsRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, bodySchema, "Invalid coins request.");
   if (
@@ -172,153 +308,7 @@ export const coinsRoute = async (event: FunctionEvent) => {
   }
   if (input.action === "leaderboard") {
     const supabase = createServerSupabase("Atomic Coins service");
-    const [accounts, openBets, unsettledMarkets] = await Promise.all([
-      loadAllLeaderboardRows<CoinAccountRow>(
-        (from, to) =>
-          supabase
-            .from("coin_accounts")
-            .select("username,balance")
-            .order("username")
-            .range(from, to),
-        "Unable to load coin rankings: coin accounts could not be read.",
-      ),
-      loadAllLeaderboardRows<OpenBetRow>(
-        (from, to) =>
-          supabase
-            .from("tournament_bets")
-            .select("id,username,total_cost")
-            .eq("status", "open")
-            .order("id")
-            .range(from, to),
-        "Unable to load coin rankings: tournament bets could not be read.",
-      ),
-      loadAllLeaderboardRows<{ id: string }>(
-        (from, to) =>
-          supabase
-            .from("prediction_markets")
-            .select("id")
-            .in("status", ["open", "closed"])
-            .order("id")
-            .range(from, to),
-        "Unable to load coin rankings: prediction markets could not be read.",
-      ),
-    ]);
-
-    const openBetCosts = new Map<string, number>();
-    const unsettledMarketIds = unsettledMarkets.map((market) => market.id);
-
-    if (unsettledMarketIds.length > 0) {
-      const [positions, fills, legacyCredits] = await Promise.all([
-        loadAllLeaderboardRows<PredictionPositionRow>(
-          (from, to) =>
-            supabase
-              .from("prediction_positions")
-              .select("market_id,username,outcome,quantity")
-              .in("market_id", unsettledMarketIds)
-              .gt("quantity", 0)
-              .order("market_id")
-              .order("username")
-              .order("outcome")
-              .range(from, to),
-          "Unable to load coin rankings: prediction positions could not be read.",
-        ),
-        loadAllLeaderboardRows<LeaderboardPredictionFill>(
-          (from, to) =>
-            supabase
-              .from("prediction_fills")
-              .select(
-                "id,market_id,outcome,price_cents,quantity,buyer_username,seller_username,pair_key,created_at",
-              )
-              .in("market_id", unsettledMarketIds)
-              .order("id")
-              .range(from, to),
-          "Unable to load coin rankings: prediction fills could not be read.",
-        ),
-        loadAllLeaderboardRows<LegacyPositionCreditRow>(
-          (from, to) =>
-            supabase
-              .from("prediction_legacy_position_credits")
-              .select("source_bet_id,market_id,username,outcome,quantity,price_cents")
-              .in("market_id", unsettledMarketIds)
-              .order("source_bet_id")
-              .range(from, to),
-          "Unable to load coin rankings: legacy prediction positions could not be read.",
-        ),
-      ]);
-
-      const fillsByMarket = new Map<string, LeaderboardPredictionFill[]>();
-      for (const fill of fills) {
-        const marketFills = fillsByMarket.get(fill.market_id);
-        if (marketFills) marketFills.push(fill);
-        else fillsByMarket.set(fill.market_id, [fill]);
-      }
-      const legacyCostsByOwner = new Map<
-        string,
-        Record<"yes" | "no", { quantity: number; costCents: number }>
-      >();
-      const convertedBetIds = new Set<number>();
-      for (const credit of legacyCredits) {
-        convertedBetIds.add(credit.source_bet_id);
-        const ownerKey = `${credit.market_id}:${credit.username}`;
-        const ownerCosts = legacyCostsByOwner.get(ownerKey) ?? {
-          yes: { quantity: 0, costCents: 0 },
-          no: { quantity: 0, costCents: 0 },
-        };
-        ownerCosts[credit.outcome].quantity += credit.quantity;
-        ownerCosts[credit.outcome].costCents += credit.quantity * credit.price_cents;
-        legacyCostsByOwner.set(ownerKey, ownerCosts);
-      }
-
-      const costsByMarketAndUser = new Map<
-        string,
-        ReturnType<typeof calculatePredictionPositionCost>
-      >();
-      for (const position of positions) {
-        // Liquidity is seeded directly for the internal market-maker account and is
-        // intentionally excluded from public rankings.
-        if (position.username === "prediction_admin") continue;
-        const ownerKey = `${position.market_id}:${position.username}`;
-        let costs = costsByMarketAndUser.get(ownerKey);
-        if (!costs) {
-          costs = calculatePredictionPositionCost(
-            fillsByMarket.get(position.market_id) ?? [],
-            position.username,
-            legacyCostsByOwner.get(ownerKey),
-          );
-          costsByMarketAndUser.set(ownerKey, costs);
-        }
-        const traded = costs[position.outcome];
-        if (Math.abs(traded.quantity - position.quantity) > 0.000001) {
-          throw new Error(
-            "Unable to load coin rankings: prediction position history is incomplete.",
-          );
-        }
-        const positionCostCents = (traded.averagePriceCents ?? 0) * traded.quantity;
-        addAmount(openBetCosts, position.username, positionCostCents / 100);
-      }
-
-      for (const bet of openBets) {
-        if (!convertedBetIds.has(bet.id)) addAmount(openBetCosts, bet.username, bet.total_cost);
-      }
-    } else {
-      for (const bet of openBets) addAmount(openBetCosts, bet.username, bet.total_cost);
-    }
-    const rankings = accounts
-      .filter((account) => !hiddenLeaderboardUsernames.has(account.username.toLowerCase()))
-      .map((account) => {
-        const inBets = openBetCosts.get(account.username) ?? 0;
-        return {
-          username: account.username,
-          netWorth: account.balance + inBets,
-          balance: account.balance,
-          inBets,
-        };
-      })
-      .sort(
-        (left, right) =>
-          right.netWorth - left.netWorth || left.username.localeCompare(right.username),
-      );
-    return identityResponse(identity, 200, { result: rankings });
+    return identityResponse(identity, 200, { result: await loadCoinRankings(supabase) });
   }
   if (input.action === "transactions") {
     const supabase = createServerSupabase("Atomic Coins service");
@@ -535,7 +525,10 @@ export const coinsRoute = async (event: FunctionEvent) => {
       },
     );
   })();
-  const { data, error } = await rpc;
+  const [{ data, error }, portfolio] = await Promise.all([
+    rpc,
+    input.action === "summary" ? loadCoinRankings(supabase, username) : Promise.resolve(null),
+  ]);
   if (error) {
     const banMatch = error.message.match(/coin economy ban active until ([^\s]+)/i);
     if (banMatch) {
@@ -566,6 +559,11 @@ export const coinsRoute = async (event: FunctionEvent) => {
       throw new HttpError(404, "That player does not have an Atomic Puzzles account.");
     }
     throw new Error(`Unable to update coins: ${error.message}`);
+  }
+  if (input.action === "summary") {
+    return identityResponse(identity, 200, {
+      result: { ...data, inBets: portfolio?.[0]?.inBets ?? 0 },
+    });
   }
   return identityResponse(identity, 200, { result: data });
 };

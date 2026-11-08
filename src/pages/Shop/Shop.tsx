@@ -181,7 +181,10 @@ export const ShopPage = () => {
     enabled: isAuthenticated,
   });
   const updateSummary = (data: CoinSummary) => {
-    queryClient.setQueryData(coinQueryKeys.summary(username), data);
+    queryClient.setQueryData<CoinSummary>(coinQueryKeys.summary(username), (current) => ({
+      ...current,
+      ...data,
+    }));
   };
   const daily = useMutation({ mutationFn: claimDailyCoins, onSuccess: updateSummary });
   const redeem = useMutation({

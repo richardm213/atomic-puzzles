@@ -23,6 +23,45 @@ const requestHeaders = (username: string) => ({
 });
 
 describe("coins function", () => {
+  it("returns the signed-in account's invested coins alongside its balance", async () => {
+    const queries = new Map<string, ReturnType<typeof vi.fn>>();
+    const from = vi.fn((table: string) => {
+      const query = {
+        select: vi.fn(),
+        eq: vi.fn(),
+        in: vi.fn(),
+        order: vi.fn(),
+        range: vi.fn(async () => ({
+          data:
+            table === "coin_accounts"
+              ? [{ username: "portfolio_owner", balance: 100 }]
+              : table === "tournament_bets"
+                ? [{ id: 1, username: "portfolio_owner", total_cost: 25 }]
+                : [],
+          error: null,
+        })),
+      };
+      query.select.mockReturnValue(query);
+      query.eq.mockReturnValue(query);
+      query.in.mockReturnValue(query);
+      query.order.mockReturnValue(query);
+      queries.set(table, query.eq);
+      return query;
+    });
+    mocks.createClient.mockReturnValue({
+      from,
+      rpc: vi.fn(async () => ({ data: { balance: 100, dailyClaimAvailable: false }, error: null })),
+    });
+    const response = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("Portfolio_Owner"),
+      body: JSON.stringify({ action: "summary", username: "another_player" }),
+    });
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).result).toMatchObject({ balance: 100, inBets: 25 });
+    expect(queries.get("coin_accounts")).toHaveBeenCalledWith("username", "portfolio_owner");
+    expect(queries.get("tournament_bets")).toHaveBeenCalledWith("username", "portfolio_owner");
+  });
   it("purchases a permanent theme for the signed-in user without accepting a client price", async () => {
     const rpc = vi.fn(async () => ({
       data: { balance: 100, redemptionId: 8, status: "fulfilled" },

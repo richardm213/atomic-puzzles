@@ -49,6 +49,10 @@ export const updateCachedCoinBalance = (
   queryClient.setQueryData<CoinSummary>(coinQueryKeys.summary(username), (current) =>
     current ? { ...current, balance } : current,
   );
+  void queryClient.invalidateQueries(
+    { queryKey: coinQueryKeys.summary(username), exact: true },
+    { cancelRefetch: false },
+  );
 };
 
 export const updateCachedCoinBalanceByDelta = (
