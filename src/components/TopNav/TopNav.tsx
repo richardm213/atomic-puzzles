@@ -554,7 +554,7 @@ export const TopNav = () => {
           <Link
             className="navCoinBalance"
             to="/shop"
-            aria-label={`Net worth ${formatCoinBalance(coinSummaryQuery.data.balance + (coinSummaryQuery.data.inBets ?? 0))} coins. In bets ${formatCoinBalance(coinSummaryQuery.data.inBets ?? 0)} coins. Balance ${formatCoinBalance(coinSummaryQuery.data.balance)} coins${
+            aria-label={`${formatCoinBalance(coinSummaryQuery.data.balance)} coins${
               coinSummaryQuery.data.dailyClaimAvailable ? ". Daily bonus available" : ""
             }. Open coin shop.`}
           >
@@ -563,24 +563,7 @@ export const TopNav = () => {
               alt=""
               aria-hidden="true"
             />
-            <span className="navCoinStats">
-              <span>
-                <span>Net worth</span>
-                <b>
-                  {formatCoinBalance(
-                    coinSummaryQuery.data.balance + (coinSummaryQuery.data.inBets ?? 0),
-                  )}
-                </b>
-              </span>
-              <span>
-                <span>In bets</span>
-                <b>{formatCoinBalance(coinSummaryQuery.data.inBets ?? 0)}</b>
-              </span>
-              <span>
-                <span>Balance</span>
-                <b>{formatCoinBalance(coinSummaryQuery.data.balance)}</b>
-              </span>
-            </span>
+            <span>{formatCoinBalance(coinSummaryQuery.data.balance)}</span>
           </Link>
         ) : null}
         {isAuthenticated ? (
@@ -985,7 +968,7 @@ export const TopNav = () => {
                   </div>
                 </div>
                 <label className="navSettingsCheckbox">
-                  <span>Show coin summary</span>
+                  <span>Show coin balance</span>
                   <input
                     type="checkbox"
                     checked={showCoinBalance}

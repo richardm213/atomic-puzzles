@@ -1,0 +1,25 @@
+.bettingAccountSummary {
+  display: flex;
+  flex: none;
+  gap: var(--space-5);
+  margin: 0 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.bettingAccountSummary > div {
+  display: grid;
+  gap: var(--space-1);
+  text-align: right;
+}
+
+.bettingAccountSummary dt {
+  color: var(--color-subtle);
+  font-size: var(--text-sm);
+}
+
+.bettingAccountSummary dd {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 1.2rem;
+  font-weight: 650;
+}

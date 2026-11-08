@@ -9,6 +9,7 @@ import { InlineState } from "../../components/InlineState/InlineState";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { PredictionMarketExplainer } from "../../components/PredictionMarketExplainer/PredictionMarketExplainer";
 import { PredictionOrderEditor } from "../../components/PredictionOrderEditor/PredictionOrderEditor";
+import { BettingAccountSummary } from "../../components/PredictionTrading/BettingAccountSummary";
 import { PredictionMarketRoi } from "../../components/PredictionTrading/PredictionMarketRoi";
 import { PredictionMarketStatus } from "../../components/PredictionTrading/PredictionMarketStatus";
 import { PredictionMarketTable } from "../../components/PredictionTrading/PredictionMarketTable";
@@ -550,6 +551,7 @@ export const PredictionMarketPage = () => {
               ) : null}
             </div>
           </div>
+          <BettingAccountSummary />
         </header>
 
         {marketsQuery.error ? (

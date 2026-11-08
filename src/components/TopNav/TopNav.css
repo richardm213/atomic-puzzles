@@ -896,39 +896,9 @@
 }
 
 .navCoinBalance img {
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
-}
-
-.navCoinStats {
-  display: grid;
-  gap: 1px;
-  min-width: 96px;
-}
-
-.navCoinStats > span {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
-  font-size: 11px;
-  line-height: 1.2;
-}
-
-.navCoinStats > span > span {
-  color: var(--color-muted);
-  font-weight: 500;
-}
-
-.navCoinStats b {
-  color: var(--color-heading);
-  font-weight: 650;
-}
-
-@media (max-width: 700px) {
-  .navCoinBalance img {
-    display: none;
-  }
 }
 
 .navCoinBalance:hover {
@@ -1781,6 +1751,10 @@
 @media (max-width: 390px) {
   .navCoinBalance {
     padding-inline: 0;
+  }
+
+  .navCoinBalance span {
+    display: none;
   }
 }
 

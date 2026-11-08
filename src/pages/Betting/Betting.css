@@ -41,45 +41,6 @@
   color: var(--link-hover-color, var(--color-heading));
 }
 
-.bettingBalance {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-width: 170px;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel-strong);
-}
-
-.bettingBalance img {
-  width: 38px;
-  height: 38px;
-  object-fit: contain;
-}
-
-.bettingBalance span {
-  display: grid;
-  color: var(--color-subtle);
-  font-size: var(--text-sm);
-  font-weight: 650;
-}
-
-.bettingBalance strong {
-  color: var(--color-heading);
-  font-size: 1.2rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.bettingBalance small {
-  margin-top: 2px;
-  color: var(--color-subtle);
-  font-size: 0.72rem;
-  font-weight: 600;
-  line-height: 1.3;
-}
-
 .bettingTabs {
   min-width: 0;
   display: flex;
@@ -1675,10 +1636,6 @@
   .bettingHeader {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .bettingBalance {
-    width: 100%;
   }
 
   .bettingTabs {

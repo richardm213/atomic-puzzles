@@ -178,6 +178,12 @@ test("live book updates render promptly and missed events recover without idle b
     page.getByRole("button", { name: /Ask 30 cents, 100 contracts/ }).first(),
   ).toBeVisible();
   await expect(pending).toHaveCount(1);
+  await page.getByRole("button", { name: "Edit your order at 30 cents", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "Edit order", exact: true });
+  await editor.getByRole("spinbutton", { name: "Contracts", exact: true }).click();
+  await expect(editor).toBeVisible();
+  await editor.click({ position: { x: 8, y: 8 } });
+  await expect(editor).toHaveCount(0);
   await expect.poll(() => Boolean(socket && topic)).toBe(true);
   // Let the subscription and recovery baseline settle before measuring.
   await expect.poll(() => versionReads).toBeGreaterThanOrEqual(2);
@@ -263,9 +269,9 @@ test("live book updates render promptly and missed events recover without idle b
     expect(contrast).toBeGreaterThanOrEqual(4.5);
   }
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(
-    page.getByRole("link", { name: /Net worth 225 coins\. In bets 25 coins\. Balance 200 coins/ }),
-  ).toBeVisible();
+  const account = page.getByLabel("Betting account", { exact: true });
+  await expect(account).toBeVisible();
+  await expect(account).toHaveText("Net worth225In bets25Balance200");
   await pending.click();
   const popup = page.getByRole("dialog", { name: "Your orders · natso", exact: true });
   const cancelPrimary = popup.getByRole("button", {
@@ -291,6 +297,10 @@ test("live book updates render promptly and missed events recover without idle b
   expect(cancelledOrderIds).toEqual([1, 2]);
   await page.keyboard.press("Escape");
   await expect(popup).toHaveCount(0);
+  await page.goto("/betting");
+  await expect(page.getByLabel("Betting account", { exact: true })).toHaveText(
+    "Net worth225In bets25Balance200",
+  );
   console.log(
     JSON.stringify({ realtimeMs, missedEventRecoveryMs: recoveryMs, idleBookDownloads: 0 }),
   );

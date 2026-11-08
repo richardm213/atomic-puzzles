@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { InlineState } from "../../components/InlineState/InlineState";
 import { PredictionOrderEditor } from "../../components/PredictionOrderEditor/PredictionOrderEditor";
+import { BettingAccountSummary } from "../../components/PredictionTrading/BettingAccountSummary";
 import { PredictionMarketGroupHeader } from "../../components/PredictionTrading/PredictionMarketGroupHeader";
 import { PredictionMarketTable } from "../../components/PredictionTrading/PredictionMarketTable";
 import { PredictionOrderBook } from "../../components/PredictionTrading/PredictionOrderBook";
@@ -40,7 +41,7 @@ import {
   bettingQueryKeys,
   tournamentBetsQueryOptions,
 } from "../../lib/betting/bettingQueries";
-import { formatCoinBalance, formatCoinValue } from "../../lib/coins/coinDisplay";
+import { formatCoinValue } from "../../lib/coins/coinDisplay";
 import { coinSummaryQueryOptions, updateCachedCoinBalance } from "../../lib/coins/coinQueries";
 import {
   tournamentBracketQueryOptions,
@@ -814,15 +815,7 @@ export const BettingPage = () => {
               </Link>
             </nav>
           </div>
-          {isAuthenticated ? (
-            <div className="bettingBalance" aria-live="polite">
-              <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
-              <span>
-                <strong>{formatCoinBalance(balance)}</strong>
-                coins available
-              </span>
-            </div>
-          ) : null}
+          <BettingAccountSummary />
         </header>
 
         <div className="bettingTabs" role="tablist" aria-label="Betting views">

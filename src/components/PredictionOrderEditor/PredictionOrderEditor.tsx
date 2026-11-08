@@ -51,6 +51,16 @@ export const PredictionOrderEditor = ({
     return () => dialog.close();
   }, []);
 
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const dismissOnBackdropClick = (event: MouseEvent) => {
+      if (event.target === dialog) onClose();
+    };
+    dialog.addEventListener("click", dismissOnBackdropClick);
+    return () => dialog.removeEventListener("click", dismissOnBackdropClick);
+  }, [onClose]);
+
   const finish = (result: PredictionOrderMutationResult) => {
     onClose();
     void onUpdated(result);
