@@ -3,8 +3,8 @@ import "./PuzzleCommunity.css";
 import {
   faArrowDown,
   faArrowUp,
-  faChevronDown,
-  faChevronRight,
+  faMinus,
+  faPlus,
   faReply,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -591,177 +591,171 @@ export const CommunityDiscussion = ({
       isAuthenticated &&
       comment.id > 0 &&
       user?.username?.toLowerCase() === comment.username.toLowerCase();
+    const hasReplies = replies.length > 0;
+    const contentId = `comment-content-${comment.id}`;
+    const repliesId = `comment-replies-${comment.id}`;
+
     return (
-      <li className="puzzleComment" key={comment.id} style={{ "--comment-depth": depth } as never}>
+      <li className="puzzleComment" key={comment.id}>
         <article
           id={`comment-${comment.id}`}
-          className={`puzzleCommentCard ${isCollapsed ? "collapsed" : ""}`}
+          className={`puzzleCommentCard${hasReplies && !isCollapsed ? " branchOpen" : ""}`}
         >
-          {isCollapsed ? (
+          {hasReplies ? (
             <button
-              className="collapsedCommentSummary"
+              className="commentBranchToggle"
               type="button"
+              aria-label={`${isCollapsed ? "Expand" : "Collapse"} thread by ${comment.username}`}
+              aria-controls={`${contentId} ${repliesId}`}
+              aria-expanded={!isCollapsed}
               onClick={() => toggleCollapsed(comment.id)}
-              aria-label={`Expand comment by ${comment.username}`}
-              aria-expanded="false"
             >
-              <FontAwesomeIcon icon={faChevronRight} />
-              <strong>{comment.username}</strong>
-              {allowCommentVotes ? (
-                <span>
-                  {comment.score} {comment.score === 1 ? "point" : "points"}
-                </span>
-              ) : null}
-              <time dateTime={comment.created_at}>{formatLocalDateTime(comment.created_at)}</time>
-              {hiddenReplyCount > 0 ? (
-                <span className="collapsedCommentReplies">
-                  {hiddenReplyCount} {hiddenReplyCount === 1 ? "reply" : "replies"} hidden
-                </span>
-              ) : null}
+              <span className="commentBranchIcon">
+                <FontAwesomeIcon icon={isCollapsed ? faPlus : faMinus} aria-hidden="true" />
+              </span>
             </button>
           ) : (
-            <div className={`puzzleCommentLayout ${allowCommentVotes ? "" : "withoutVotes"}`}>
-              {allowCommentVotes ? (
-                <div className="commentVoteRail" aria-label={`Score ${comment.score}`}>
+            <span className="commentBranchLeaf" aria-hidden="true"></span>
+          )}
+          <header className="puzzleCommentMeta">
+            <strong>{comment.username}</strong>
+            <time dateTime={comment.created_at}>{formatLocalDateTime(comment.created_at)}</time>
+            {isCollapsed ? (
+              <span className="collapsedCommentReplies">
+                {hiddenReplyCount} {hiddenReplyCount === 1 ? "reply" : "replies"} hidden
+              </span>
+            ) : null}
+          </header>
+          <div className="puzzleCommentContent" id={contentId} hidden={isCollapsed}>
+            {draft && canEdit ? (
+              <form
+                className="puzzleCommentComposer commentEditComposer"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (
+                    draft.body.trim() &&
+                    draft.body !== draft.original &&
+                    !editCommentMutation.isPending
+                  ) {
+                    editCommentMutation.mutate(draft);
+                  }
+                }}
+              >
+                <textarea
+                  ref={editInputRef}
+                  aria-label="Edit comment (Markdown)"
+                  maxLength={10_000}
+                  rows={3}
+                  value={draft.body}
+                  readOnly={editCommentMutation.isPending}
+                  onChange={(event) => setEditDraft({ ...draft, body: event.target.value })}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape" && !editCommentMutation.isPending)
+                      closeEditor(draft.id);
+                  }}
+                />
+                {editCommentMutation.error ? (
+                  <p className="puzzleCommunityError" role="alert">
+                    {getErrorMessage(editCommentMutation.error, "Unable to edit comment.")}
+                  </p>
+                ) : null}
+                <div className="commentComposerActions">
                   <button
-                    className={comment.viewer_vote === 1 ? "active upvote" : "upvote"}
+                    className="commentEditCancel"
                     type="button"
-                    aria-label={`Upvote comment. ${comment.upvotes} upvotes`}
-                    aria-pressed={comment.viewer_vote === 1}
-                    title={`${comment.upvotes} upvotes`}
-                    disabled={pendingCommentVotes.has(comment.id)}
-                    onClick={() => void handleCommentVote(comment, 1)}
+                    disabled={editCommentMutation.isPending}
+                    onClick={() => closeEditor(draft.id)}
                   >
-                    <FontAwesomeIcon icon={faArrowUp} />
+                    Cancel
                   </button>
-                  <strong>{comment.score}</strong>
                   <button
-                    className={comment.viewer_vote === -1 ? "active downvote" : "downvote"}
-                    type="button"
-                    aria-label={`Downvote comment. ${comment.downvotes} downvotes`}
-                    aria-pressed={comment.viewer_vote === -1}
-                    title={`${comment.downvotes} downvotes`}
-                    disabled={pendingCommentVotes.has(comment.id)}
-                    onClick={() => void handleCommentVote(comment, -1)}
+                    type="submit"
+                    disabled={
+                      !draft.body.trim() ||
+                      draft.body === draft.original ||
+                      editCommentMutation.isPending
+                    }
                   >
-                    <FontAwesomeIcon icon={faArrowDown} />
+                    {editCommentMutation.isPending ? "Saving…" : "Save changes"}
                   </button>
                 </div>
-              ) : null}
-              <div className="puzzleCommentBody">
-                <div className="puzzleCommentMeta">
-                  <button
-                    className="commentCollapseButton"
-                    type="button"
-                    disabled={Boolean(draft && editCommentMutation.isPending)}
-                    onClick={() => {
-                      if (draft) setEditDraft(null);
-                      toggleCollapsed(comment.id);
-                    }}
-                    aria-label={`Collapse comment by ${comment.username}`}
-                    aria-expanded="true"
-                  >
-                    <FontAwesomeIcon icon={faChevronDown} />
-                  </button>
-                  <strong>{comment.username}</strong>
-                  <time dateTime={comment.created_at}>
-                    {formatLocalDateTime(comment.created_at)}
-                  </time>
-                </div>
-                {draft && canEdit ? (
-                  <form
-                    className="puzzleCommentComposer commentEditComposer"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      if (
-                        draft.body.trim() &&
-                        draft.body !== draft.original &&
-                        !editCommentMutation.isPending
-                      ) {
-                        editCommentMutation.mutate(draft);
-                      }
-                    }}
-                  >
-                    <textarea
-                      ref={editInputRef}
-                      aria-label="Edit comment (Markdown)"
-                      maxLength={10_000}
-                      rows={3}
-                      value={draft.body}
-                      readOnly={editCommentMutation.isPending}
-                      onChange={(event) => setEditDraft({ ...draft, body: event.target.value })}
-                      onKeyDown={(event) => {
-                        if (event.key === "Escape" && !editCommentMutation.isPending)
-                          closeEditor(draft.id);
-                      }}
-                    />
-                    {editCommentMutation.error ? (
-                      <p className="puzzleCommunityError" role="alert">
-                        {getErrorMessage(editCommentMutation.error, "Unable to edit comment.")}
-                      </p>
-                    ) : null}
-                    <div className="commentComposerActions">
+              </form>
+            ) : (
+              <>
+                <CommentMarkdown className="puzzleCommentText" body={comment.body} />
+                <div className="puzzleCommentActions">
+                  {allowCommentVotes ? (
+                    <div
+                      className="commentVoteGroup"
+                      role="group"
+                      aria-label={`Score ${comment.score}`}
+                    >
                       <button
-                        className="commentEditCancel"
+                        className={comment.viewer_vote === 1 ? "active upvote" : "upvote"}
                         type="button"
-                        disabled={editCommentMutation.isPending}
-                        onClick={() => closeEditor(draft.id)}
+                        aria-label={`Upvote comment. ${comment.upvotes} upvotes`}
+                        aria-pressed={comment.viewer_vote === 1}
+                        title={`${comment.upvotes} upvotes`}
+                        disabled={pendingCommentVotes.has(comment.id)}
+                        onClick={() => void handleCommentVote(comment, 1)}
                       >
-                        Cancel
+                        <FontAwesomeIcon icon={faArrowUp} aria-hidden="true" />
                       </button>
+                      <strong>{comment.score}</strong>
                       <button
-                        type="submit"
-                        disabled={
-                          !draft.body.trim() ||
-                          draft.body === draft.original ||
-                          editCommentMutation.isPending
-                        }
+                        className={comment.viewer_vote === -1 ? "active downvote" : "downvote"}
+                        type="button"
+                        aria-label={`Downvote comment. ${comment.downvotes} downvotes`}
+                        aria-pressed={comment.viewer_vote === -1}
+                        title={`${comment.downvotes} downvotes`}
+                        disabled={pendingCommentVotes.has(comment.id)}
+                        onClick={() => void handleCommentVote(comment, -1)}
                       >
-                        {editCommentMutation.isPending ? "Saving…" : "Save changes"}
+                        <FontAwesomeIcon icon={faArrowDown} aria-hidden="true" />
                       </button>
                     </div>
-                  </form>
-                ) : (
-                  <>
-                    <CommentMarkdown className="puzzleCommentText" body={comment.body} />
+                  ) : null}
+                  <button
+                    className="commentReplyButton"
+                    type="button"
+                    onClick={() => {
+                      if (!requireLogin()) return;
+                      setReplyingTo(comment);
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faReply} aria-hidden="true" />
+                    Reply
+                  </button>
+                  {canEdit ? (
                     <button
-                      className="commentReplyButton"
+                      className="commentEditButton"
                       type="button"
+                      disabled={editDraft !== null}
                       onClick={() => {
-                        if (!requireLogin()) return;
-                        setReplyingTo(comment);
+                        editCommentMutation.reset();
+                        setEditDraft({
+                          id: comment.id,
+                          body: comment.body,
+                          original: comment.body,
+                        });
                       }}
                     >
-                      <FontAwesomeIcon icon={faReply} />
-                      Reply
+                      Edit
                     </button>
-                    {canEdit ? (
-                      <button
-                        className="commentEditButton"
-                        type="button"
-                        disabled={editDraft !== null}
-                        onClick={() => {
-                          editCommentMutation.reset();
-                          setEditDraft({
-                            id: comment.id,
-                            body: comment.body,
-                            original: comment.body,
-                          });
-                        }}
-                      >
-                        Edit
-                      </button>
-                    ) : null}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
+                  ) : null}
+                </div>
+              </>
+            )}
+            {replyingTo?.id === comment.id ? renderCommentComposer(true) : null}
+          </div>
         </article>
-        {replyingTo?.id === comment.id ? renderCommentComposer(true) : null}
-        {!isCollapsed && replies.length > 0 ? (
-          <ol className="puzzleCommentReplies">
-            {replies.map((reply) => renderComment(reply, depth + 1))}
+        {hasReplies ? (
+          <ol
+            className={`puzzleCommentReplies${depth >= 6 ? " flatReplies" : ""}`}
+            id={repliesId}
+            hidden={isCollapsed}
+          >
+            {!isCollapsed ? replies.map((reply) => renderComment(reply, depth + 1)) : null}
           </ol>
         ) : null}
       </li>

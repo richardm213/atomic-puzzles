@@ -385,6 +385,49 @@ describe("PuzzleCommunity", () => {
     expect(screen.getAllByRole("listitem")[0]).toHaveTextContent("Older top comment");
   });
 
+  it("collapses only the selected branch and keeps nested disclosure state and keyboard focus", async () => {
+    const user = userEvent.setup();
+    const comment = (id: number, username: string, parent_id: number | null, body: string) => ({
+      id,
+      username,
+      parent_id,
+      body,
+      created_at: "2026-01-01T00:00:00Z",
+      upvotes: 0,
+      downvotes: 0,
+      score: 0,
+      viewer_vote: 0,
+    });
+    mocks.fetchCommunityDiscussion.mockResolvedValueOnce({
+      comments: [
+        comment(1, "alice", null, "First thread"),
+        comment(2, "bob", 1, "Nested reply"),
+        comment(3, "charlie", 2, "Deep reply"),
+        comment(4, "dana", null, "Separate thread"),
+      ],
+    });
+    render(<CommunityDiscussion target={{ type: "tournament", id: "awc2026" }} />);
+
+    await user.click(await screen.findByRole("button", { name: "Collapse thread by bob" }));
+    const parentToggle = screen.getByRole("button", { name: "Collapse thread by alice" });
+    parentToggle.focus();
+    await user.keyboard("{Enter}");
+
+    expect(parentToggle).toHaveAccessibleName("Expand thread by alice");
+    expect(parentToggle).toHaveAttribute("aria-expanded", "false");
+    expect(parentToggle).toHaveFocus();
+    expect(screen.getByText("2 replies hidden")).toBeVisible();
+    expect(screen.getByText("First thread")).not.toBeVisible();
+    expect(screen.queryByText("Nested reply")).not.toBeInTheDocument();
+    expect(screen.getByText("Separate thread")).toBeVisible();
+
+    await user.keyboard(" ");
+    expect(parentToggle).toHaveAttribute("aria-expanded", "true");
+    expect(parentToggle).toHaveFocus();
+    await user.click(screen.getByRole("button", { name: "Expand thread by bob" }));
+    expect(screen.getByText("Deep reply")).toBeVisible();
+  });
+
   it("moves the composer directly under the comment being replied to", async () => {
     const user = userEvent.setup();
     render(<PuzzleCommunity puzzleId={42} voteTargetId="missing-vote-target" />);
