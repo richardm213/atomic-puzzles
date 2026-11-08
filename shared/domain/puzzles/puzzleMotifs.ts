@@ -101,6 +101,13 @@ export const puzzleMotifs: PuzzleMotif[] = [
       "The opponent threatens mate or an invasion, and only an accurate defensive move keeps the position safe.",
   },
   {
+    tag: "prophylaxis",
+    name: "Prophylaxis",
+    parentTag: "defensive",
+    description:
+      "A move that anticipates and prevents an opponent’s plan before it becomes a direct threat, often by guarding an invasion square or closing a line of entry.",
+  },
+  {
     tag: "prevent_invasion",
     name: "Prevent invasion",
     parentTag: "defensive",
@@ -144,6 +151,7 @@ export const puzzleMotifs: PuzzleMotif[] = [
   {
     tag: "blocking",
     name: "Blocking",
+    parentTag: "defensive",
     description:
       "A piece blocks a file or diagonal to stop an opposing piece from using or invading along it.",
   },
@@ -165,13 +173,12 @@ export const puzzleMotifs: PuzzleMotif[] = [
     tag: "pin",
     name: "Pin",
     description:
-      "A tactic that involves pinning a piece, attacking a pinned piece, or using a pin to invade on squares that would otherwise be defended.",
+      "A tactic that involves pinning a piece or using a pin to invade squares that would otherwise be defended.",
   },
   {
     tag: "unpinning",
     name: "Unpinning",
-    description:
-      "A pin is removed so the pinned piece can move or capture and create a decisive threat.",
+    description: "A pin is removed so a capture or invasion can be made.",
   },
   {
     tag: "tempo",
