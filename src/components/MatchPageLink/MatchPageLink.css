@@ -24,7 +24,7 @@
   transform: translateY(-1px);
 }
 
-:root[data-gemstone-strength] .matchPageLink:is(:hover, :focus-visible) {
+:root[data-gemstone-theme] .matchPageLink:is(:hover, :focus-visible) {
   color: var(--color-primary-soft);
   border-color: var(--color-accent-soft-border);
   background: color-mix(in srgb, var(--color-primary-soft) 14%, var(--color-panel-strong));

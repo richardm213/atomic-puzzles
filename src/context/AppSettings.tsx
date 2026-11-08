@@ -53,14 +53,8 @@ const STORAGE_KEYS = {
 export const GEMSTONE_THEMES = ["amethyst", "ruby", "emerald"] as const;
 const COLOR_MODES = ["dark", "light"] as const;
 const THEMES = ["default", ...GEMSTONE_THEMES] as const;
-export const GEMSTONE_STRENGTHS = [
-  { value: "accent", label: "Accent only" },
-  { value: "tinted", label: "Tinted" },
-  { value: "rich", label: "Rich" },
-] as const;
 export type Theme = (typeof THEMES)[number];
 export type ColorMode = (typeof COLOR_MODES)[number];
-export type GemstoneStrength = (typeof GEMSTONE_STRENGTHS)[number]["value"];
 
 export type LabeledOption = { value: string; label: string };
 
@@ -159,7 +153,7 @@ const BOARD_THEME_PALETTE: Record<string, BoardSquareColors> = {
   olive: { light: "#e7e6c8", dark: "#8b8d56" },
   newspaper: { light: "#f4eed9", dark: "#b4a789" },
   purple: { light: "#eadcf7", dark: "#8460b5" },
-  ruby: { light: "#f7f1f2", dark: "#a13143" },
+  ruby: { light: "#f7f1f2", dark: "#9b5b67" },
   emerald: { light: "#d7eee4", dark: "#4b8c77" },
   "purple-diag": { light: "#efe1fb", dark: "#76549d" },
   pink: { light: "#f8dbe4", dark: "#c86a8d" },
@@ -190,8 +184,6 @@ export type AppSettingsContextValue = {
   setTheme: (theme: Theme) => void;
   colorMode: ColorMode;
   setColorMode: (mode: ColorMode) => void;
-  gemstoneStrength: GemstoneStrength;
-  setGemstoneStrength: (strength: GemstoneStrength) => void;
   pieceSet: string;
   setPieceSet: Dispatch<SetStateAction<string>>;
   pieceSets: LabeledOption[];
@@ -262,7 +254,6 @@ const isImageBoardTheme = (value: string): boolean => IMAGE_BOARD_THEMES.include
 const siteAppearanceSchema = z.object({
   theme: z.enum(THEMES),
   colorMode: z.enum(COLOR_MODES),
-  gemstoneStrength: z.enum(GEMSTONE_STRENGTHS.map(({ value }) => value)),
 });
 type SiteAppearance = z.infer<typeof siteAppearanceSchema>;
 
@@ -274,7 +265,6 @@ const loadLegacySiteAppearance = (): SiteAppearance => {
   return {
     theme: !legacy || legacy === "dark" || legacy === "light" ? DEFAULT_THEME : legacy,
     colorMode: legacy === "light" ? "light" : DEFAULT_COLOR_MODE,
-    gemstoneStrength: "tinted",
   };
 };
 
@@ -433,7 +423,7 @@ export const getBoardThemeColors = (
 };
 
 export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
-  const [{ theme, colorMode, gemstoneStrength }, setSiteAppearance] = usePersistedState(
+  const [{ theme, colorMode }, setSiteAppearance] = usePersistedState(
     STORAGE_KEYS.siteAppearance,
     siteAppearanceSchema,
     loadLegacySiteAppearance,
@@ -444,11 +434,6 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
   );
   const setColorMode = useCallback(
     (colorMode: ColorMode) => setSiteAppearance((current) => ({ ...current, colorMode })),
-    [setSiteAppearance],
-  );
-  const setGemstoneStrength = useCallback(
-    (gemstoneStrength: GemstoneStrength) =>
-      setSiteAppearance((current) => ({ ...current, gemstoneStrength })),
     [setSiteAppearance],
   );
   const [boardAppearance, { resetBoardAppearance, setters: boardAppearanceSetters }] =
@@ -572,9 +557,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     const { dataset } = document.documentElement;
     dataset["theme"] = colorMode;
     dataset["palette"] = theme;
-    if (theme === "default") delete dataset["gemstoneStrength"];
-    else dataset["gemstoneStrength"] = gemstoneStrength;
-  }, [theme, colorMode, gemstoneStrength]);
+    document.documentElement.toggleAttribute("data-gemstone-theme", theme !== "default");
+  }, [theme, colorMode]);
 
   useEffect(() => {
     if (previousLocalAnalysisEngineRef.current === localAnalysisEngine) return;
@@ -590,8 +574,6 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setTheme,
       colorMode,
       setColorMode,
-      gemstoneStrength,
-      setGemstoneStrength,
       ...boardAppearance,
       ...boardAppearanceSetters,
       pieceSets: LICHESS_PIECE_SETS,
@@ -642,8 +624,6 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setTheme,
       colorMode,
       setColorMode,
-      gemstoneStrength,
-      setGemstoneStrength,
       boardAppearance,
       boardAppearanceSetters,
       showBoardCoordinates,

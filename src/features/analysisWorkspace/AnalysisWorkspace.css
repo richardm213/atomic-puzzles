@@ -43,11 +43,11 @@
   }
 }
 
-:root[data-gemstone-strength] .analysisPage {
+:root[data-gemstone-theme] .analysisPage {
   --analysis-inaccuracy: var(--color-rating-graph-hyper);
 }
 
-:root[data-theme="light"]:not([data-gemstone-strength]) .analysisPage {
+:root[data-theme="light"]:not([data-gemstone-theme]) .analysisPage {
   --color-panel: rgba(247, 250, 253, 0.98);
   --color-panel-strong: var(--analysis-workspace-panel-strong);
   --color-panel-deep: var(--analysis-workspace-panel-deep);
@@ -85,8 +85,8 @@
   text-shadow: none;
 }
 
-:root[data-theme="light"]:not([data-gemstone-strength]) .analysisPage .analysisExplorerTable th,
-:root[data-theme="light"]:not([data-gemstone-strength]) .analysisPage .analysisExplorerTable td {
+:root[data-theme="light"]:not([data-gemstone-theme]) .analysisPage .analysisExplorerTable th,
+:root[data-theme="light"]:not([data-gemstone-theme]) .analysisPage .analysisExplorerTable td {
   border-color: rgba(35, 55, 84, 0.22);
 }
 

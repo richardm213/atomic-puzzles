@@ -294,7 +294,7 @@
 }
 
 /* Gemstone accents are shared across modes. */
-:root[data-gemstone-strength] {
+:root[data-gemstone-theme] {
   --gem-selection-tint: 11%;
   --gem-emphasis-tint: 17%;
   --gem-action-lightness: 48%;
@@ -343,7 +343,7 @@
 }
 
 /* Dark mode also tints the canvas and panels. */
-:root[data-theme="dark"][data-gemstone-strength] {
+:root[data-theme="dark"][data-gemstone-theme] {
   --gem-surface-chroma: 0.035;
   --gem-page-top-lightness: 23%;
   --gem-page-bottom-lightness: 15%;
@@ -403,16 +403,6 @@
     linear-gradient(180deg, var(--color-page-top), var(--color-page-bottom));
 }
 
-:root[data-theme="dark"][data-gemstone-strength="accent"] {
-  --gem-surface-chroma: 0.008;
-  --gem-wash: 5%;
-}
-
-:root[data-theme="dark"][data-gemstone-strength="rich"] {
-  --gem-surface-chroma: 0.064;
-  --gem-wash: 30%;
-}
-
 /* Keep Ruby's color in its accents, not in the dark canvas. */
 :root[data-theme="dark"][data-palette="ruby"] {
   --gem-page-top-lightness: 22%;
@@ -420,19 +410,8 @@
   --gem-wash: 9%;
 }
 
-:root[data-theme="dark"][data-palette="ruby"][data-gemstone-strength="accent"] {
-  --gem-surface-chroma: 0.005;
-  --gem-wash: 2%;
-}
-
-:root[data-theme="dark"][data-palette="ruby"][data-gemstone-strength="rich"] {
-  --gem-surface-chroma: 0.031;
-  --gem-wash: 14%;
-}
-
-/* Light gemstones inherit Default Light's surfaces, text and borders.
-   Intensity changes local selection tints, not the page or card backgrounds. */
-:root[data-theme="light"][data-gemstone-strength] {
+/* Light gemstones inherit Default Light's surfaces, text and borders. */
+:root[data-theme="light"][data-gemstone-theme] {
   --gem-action-lightness: 47%;
   --gem-action-hover-lightness: 41%;
   --gem-accent-lightness: 42%;
@@ -443,14 +422,4 @@
   --color-analysis-good: #08788e;
   --brand-mark-color: var(--color-nav-badge);
   --page-background: linear-gradient(180deg, var(--color-page-top), var(--color-page-bottom));
-}
-
-:root[data-theme="light"][data-gemstone-strength="accent"] {
-  --gem-selection-tint: 4%;
-  --gem-emphasis-tint: 8%;
-}
-
-:root[data-theme="light"][data-gemstone-strength="rich"] {
-  --gem-selection-tint: 13%;
-  --gem-emphasis-tint: 20%;
 }

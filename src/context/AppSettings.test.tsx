@@ -141,8 +141,6 @@ describe("AppSettings", () => {
     act(() => result.current.setTheme("ruby"));
     expect(result.current.boardTheme).toBe("ruby");
     act(() => result.current.setPieceSet("alpha"));
-    act(() => result.current.setGemstoneStrength("rich"));
-    expect(result.current.pieceSet).toBe("alpha");
     act(() => result.current.setColorMode("light"));
     expect(result.current).toMatchObject({
       theme: "ruby",
@@ -157,7 +155,6 @@ describe("AppSettings", () => {
     expect(reloaded.current).toMatchObject({
       theme: "emerald",
       colorMode: "light",
-      gemstoneStrength: "rich",
     });
     act(() => {
       reloaded.current.setTheme("ruby");
@@ -166,6 +163,20 @@ describe("AppSettings", () => {
     expect(reloaded.current).toMatchObject({ boardTheme: "ruby", pieceSet: "alpha" });
     act(() => reloaded.current.setTheme("amethyst"));
     expect(reloaded.current).toMatchObject(savedBoard);
+  });
+
+  it("restores the saved palette and mode even if color intensity was saved", () => {
+    window.localStorage.setItem(
+      "atomic-puzzles.site-appearance",
+      JSON.stringify({ theme: "ruby", colorMode: "light", gemstoneStrength: "rich" }),
+    );
+    const { result } = renderSettings();
+    expect(result.current).toMatchObject({ theme: "ruby", colorMode: "light" });
+
+    act(() => result.current.setColorMode("dark"));
+    expect(
+      JSON.parse(window.localStorage.getItem("atomic-puzzles.site-appearance") ?? "{}"),
+    ).toEqual({ theme: "ruby", colorMode: "dark" });
   });
 
   it("persists puzzle and game link targets independently", () => {

@@ -150,7 +150,7 @@
   color: var(--color-success) !important;
 }
 
-:root[data-theme="light"][data-gemstone-strength] .predictionSharedStatus--open {
+:root[data-theme="light"][data-gemstone-theme] .predictionSharedStatus--open {
   color: var(--color-profit-strip-text) !important;
 }
 
