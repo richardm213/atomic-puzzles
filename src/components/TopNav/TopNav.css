@@ -75,33 +75,23 @@
   display: none;
 }
 
-:root[data-theme="dark"][data-gemstone-strength] .brandMarkGemstone {
-  --brand-image-hue: var(--gem-logo-rotation);
-}
-
-:root[data-theme="light"][data-gemstone-strength] .brandMarkLight {
-  --brand-image-hue: var(--gem-light-logo-rotation);
-}
-
-:root[data-gemstone-strength] :is(.brandMarkGemstone, .brandMarkLight) {
-  filter: hue-rotate(var(--brand-image-hue, 0deg));
-  border-radius: var(--radius-sm);
-}
-
 :root[data-theme="light"] .brandMarkDark,
 :root[data-gemstone-strength] .brandMarkDark {
   display: none;
 }
 
-:root[data-theme="light"] .brandMarkLight,
-:root[data-theme="dark"][data-gemstone-strength] .brandMarkGemstone {
+:root[data-theme="light"]:not([data-gemstone-strength]) .brandMarkLight,
+:root[data-gemstone-strength] .brandMarkGemstone {
   display: block;
 }
 
+.brandMarkGemstone {
+  color: var(--brand-mark-color);
+}
+
 .homeBrand:hover .brandMarkImage,
-.homeBrand:focus-visible .brandMarkImage,
-:root[data-gemstone-strength] .homeBrand:is(:hover, :focus-visible) .brandMarkImage {
-  filter: hue-rotate(var(--brand-image-hue, 0deg)) brightness(1.12) saturate(1.08);
+.homeBrand:focus-visible .brandMarkImage {
+  filter: brightness(1.12) saturate(1.08);
 }
 
 .homeBrand span {
@@ -958,7 +948,10 @@
   padding: 0 4px;
   border: 2px solid var(--color-nav);
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--notification-accent), var(--color-cyan));
+  background: var(
+    --color-nav-badge,
+    linear-gradient(135deg, var(--notification-accent), var(--color-cyan))
+  );
   color: white;
   font-size: 9px;
   font-weight: 650;
@@ -1239,9 +1232,11 @@
   justify-content: center;
   flex: 0 0 26px;
   border-radius: 50%;
-  background:
+  background: var(
+    --color-nav-badge,
     linear-gradient(180deg, color-mix(in srgb, white 14%, transparent), transparent),
-    color-mix(in srgb, var(--color-primary) 68%, var(--color-panel-strong));
+    color-mix(in srgb, var(--color-primary) 68%, var(--color-panel-strong))
+  );
   color: var(--color-on-primary);
   box-shadow: 0 0 0 1px color-mix(in srgb, white 10%, transparent) inset;
   font-size: 11px;

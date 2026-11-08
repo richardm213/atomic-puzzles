@@ -270,9 +270,7 @@
    stay independent so the active theme cannot change the meaning of a signal. */
 :root[data-palette="amethyst"] {
   --gem-hue: 292;
-  --gem-board-preview-rotation: -18deg;
-  --gem-logo-rotation: -35deg;
-  --gem-light-logo-rotation: 46deg;
+  --gem-nav-hue: 322;
 }
 
 :root[data-palette="ruby"] {
@@ -280,17 +278,12 @@
   --gem-action-chroma: 0.19;
   --gem-accent-chroma: 0.16;
   --gem-accent-dark-lightness: 72%;
-  --gem-board-preview-rotation: 72deg;
-  --gem-board-preview-saturation: 1.4;
-  --gem-logo-rotation: 50deg;
-  --gem-light-logo-rotation: 119deg;
+  --gem-nav-hue: 23;
 }
 
 :root[data-palette="emerald"] {
   --gem-hue: 164;
-  --gem-board-preview-rotation: 236deg;
-  --gem-logo-rotation: 210deg;
-  --gem-light-logo-rotation: 290deg;
+  --gem-nav-hue: 157;
 }
 
 :root[data-gemstone-strength] {
@@ -318,6 +311,7 @@
   --color-panel-deep: oklch(var(--gem-deep-lightness) var(--gem-surface-chroma) var(--gem-hue));
   --color-panel: color-mix(in srgb, var(--color-panel-strong) 94%, transparent);
   --color-nav: color-mix(in srgb, var(--color-page-bottom) 94%, transparent);
+  --color-nav-badge: oklch(50% 0.22 var(--gem-nav-hue));
   --color-heading: oklch(var(--gem-heading-lightness) 0.015 var(--gem-hue));
   --color-text: oklch(var(--gem-text-lightness) 0.018 var(--gem-hue));
   --color-muted: oklch(var(--gem-muted-lightness) 0.027 var(--gem-hue));
@@ -382,6 +376,7 @@
   );
   --brand-wordmark-color: var(--color-primary-pale);
   --brand-wordmark-shadow: none;
+  --brand-mark-color: oklch(73% 0.21 var(--gem-nav-hue));
 }
 
 :root[data-gemstone-strength="accent"] {
@@ -392,6 +387,23 @@
 :root[data-gemstone-strength="rich"] {
   --gem-surface-chroma: 0.064;
   --gem-wash: 30%;
+}
+
+/* Keep Ruby's color in its accents, not in the dark canvas. */
+:root[data-theme="dark"][data-palette="ruby"] {
+  --gem-page-top-lightness: 22%;
+  --gem-surface-chroma: 0.016;
+  --gem-wash: 9%;
+}
+
+:root[data-theme="dark"][data-palette="ruby"][data-gemstone-strength="accent"] {
+  --gem-surface-chroma: 0.005;
+  --gem-wash: 2%;
+}
+
+:root[data-theme="dark"][data-palette="ruby"][data-gemstone-strength="rich"] {
+  --gem-surface-chroma: 0.031;
+  --gem-wash: 14%;
 }
 
 :root[data-theme="light"][data-gemstone-strength] {
@@ -413,6 +425,7 @@
   --gem-input-border-strength: 67%;
   --color-analysis-good: #08788e;
   --color-nav: color-mix(in srgb, var(--color-panel-strong) 92%, transparent);
+  --brand-mark-color: var(--color-nav-badge);
 }
 
 :root[data-theme="light"][data-gemstone-strength="accent"] {

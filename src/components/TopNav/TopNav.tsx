@@ -456,14 +456,25 @@ export const TopNav = () => {
           height="30"
           aria-hidden="true"
         />
-        <img
+        <svg
           className="brandMarkImage brandMarkGemstone"
-          src={appAssetPath("/images/brand/atomic-logo-amethyst.png")}
-          alt=""
-          width="30"
-          height="30"
+          viewBox="3 3 42 42"
+          width="28"
+          height="28"
+          focusable="false"
           aria-hidden="true"
-        />
+        >
+          <g fill="none" stroke="currentColor" strokeWidth="2.25">
+            <ellipse cx="24" cy="24" rx="21" ry="8.5" transform="rotate(45 24 24)" />
+            <ellipse cx="24" cy="24" rx="21" ry="8.5" transform="rotate(-45 24 24)" />
+          </g>
+          <g fill="currentColor">
+            <circle cx="24" cy="24" r="5.5" />
+            <circle cx="8" cy="7" r="2.4" />
+            <circle cx="39" cy="15" r="2.4" />
+            <circle cx="29" cy="40" r="2.4" />
+          </g>
+        </svg>
         <span>Atomic Puzzles</span>
       </Link>
       <button
