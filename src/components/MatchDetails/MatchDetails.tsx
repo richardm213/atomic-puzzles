@@ -13,6 +13,7 @@ export type MatchDetailsProps = {
   matchKey: string;
   showH2HLink?: boolean;
   showRunningScore?: boolean;
+  showSummary?: boolean;
   stopPropagation?: MouseEventHandler;
 };
 
@@ -28,52 +29,57 @@ export const MatchDetails = ({
   matchKey,
   showH2HLink = false,
   showRunningScore = false,
+  showSummary = true,
   stopPropagation,
 }: MatchDetailsProps) => (
   <>
-    <div className={`matchCardPlayerStats${showH2HLink ? " matchCardPlayerStatsWithH2H" : ""}`}>
-      <div>
-        <strong>
-          {match.playerA}
-          <BannedPlayerMark username={match.playerA} />
-        </strong>
-        <span>
-          {match.playerABeforeRating === null
-            ? "Unrated"
-            : `Rating ${match.playerABeforeRating}${match.playerAAfterRating === null ? "" : ` (${formatSignedDecimal(match.playerAAfterRating - match.playerABeforeRating)})`}`}
-        </span>
-        {match.playerABeforeRd !== null ? (
-          <span>{`RD ${match.playerABeforeRd}${match.playerAAfterRd === null ? "" : ` (${formatSignedDecimal(match.playerAAfterRd - match.playerABeforeRd)})`}`}</span>
-        ) : null}
-      </div>
-      <div>
-        <strong>
-          {match.playerB}
-          <BannedPlayerMark username={match.playerB} />
-        </strong>
-        <span>
-          {match.playerBBeforeRating === null
-            ? "Unrated"
-            : `Rating ${match.playerBBeforeRating}${match.playerBAfterRating === null ? "" : ` (${formatSignedDecimal(match.playerBAfterRating - match.playerBBeforeRating)})`}`}
-        </span>
-        {match.playerBBeforeRd !== null ? (
-          <span>{`RD ${match.playerBBeforeRd}${match.playerBAfterRd === null ? "" : ` (${formatSignedDecimal(match.playerBAfterRd - match.playerBBeforeRd)})`}`}</span>
-        ) : null}
-      </div>
-      {showH2HLink ? (
-        <div className="matchH2HSlot">
-          <MatchH2HLink
-            playerA={match.playerA}
-            playerB={match.playerB}
-            onClick={(event) => stopPropagation?.(event)}
-          />
+    {showSummary ? (
+      <div className={`matchCardPlayerStats${showH2HLink ? " matchCardPlayerStatsWithH2H" : ""}`}>
+        <div>
+          <strong>
+            {match.playerA}
+            <BannedPlayerMark username={match.playerA} />
+          </strong>
+          <span>
+            {match.playerABeforeRating === null
+              ? "Unrated"
+              : `Rating ${match.playerABeforeRating}${match.playerAAfterRating === null ? "" : ` (${formatSignedDecimal(match.playerAAfterRating - match.playerABeforeRating)})`}`}
+          </span>
+          {match.playerABeforeRd !== null ? (
+            <span>{`RD ${match.playerABeforeRd}${match.playerAAfterRd === null ? "" : ` (${formatSignedDecimal(match.playerAAfterRd - match.playerABeforeRd)})`}`}</span>
+          ) : null}
         </div>
-      ) : null}
-    </div>
-    <div className="matchDetailsMeta">
-      <span>Source</span>
-      <strong>{getMatchSourceLabel(match.sourceValue)}</strong>
-    </div>
+        <div>
+          <strong>
+            {match.playerB}
+            <BannedPlayerMark username={match.playerB} />
+          </strong>
+          <span>
+            {match.playerBBeforeRating === null
+              ? "Unrated"
+              : `Rating ${match.playerBBeforeRating}${match.playerBAfterRating === null ? "" : ` (${formatSignedDecimal(match.playerBAfterRating - match.playerBBeforeRating)})`}`}
+          </span>
+          {match.playerBBeforeRd !== null ? (
+            <span>{`RD ${match.playerBBeforeRd}${match.playerBAfterRd === null ? "" : ` (${formatSignedDecimal(match.playerBAfterRd - match.playerBBeforeRd)})`}`}</span>
+          ) : null}
+        </div>
+        {showH2HLink ? (
+          <div className="matchH2HSlot">
+            <MatchH2HLink
+              playerA={match.playerA}
+              playerB={match.playerB}
+              onClick={(event) => stopPropagation?.(event)}
+            />
+          </div>
+        ) : null}
+      </div>
+    ) : null}
+    {showSummary ? (
+      <div className="matchDetailsMeta">
+        <span>Source</span>
+        <strong>{getMatchSourceLabel(match.sourceValue)}</strong>
+      </div>
+    ) : null}
     <div className={`matchGames${showRunningScore ? " matchGamesWithScore" : ""}`}>
       <div className="matchGamesHeader">
         <strong>Game</strong>

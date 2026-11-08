@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 
 import { BannedPlayerMark } from "../../components/BannedPlayerMark/BannedPlayerMark";
-import { GameAnalysisBatchControl } from "../../components/GameAnalysisBatchControl/GameAnalysisBatchControl";
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
@@ -17,7 +16,7 @@ import { matchDetailQueryOptions } from "../../lib/matches/queries";
 import { decodeRouteParam, normalizeMatchMode } from "../../lib/matches/routes";
 import { getTournamentRouteId } from "../../lib/matches/tournaments";
 import { getErrorMessage } from "../../utils/errors";
-import { formatLocalDateTime, formatScore } from "../../utils/formatters";
+import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../../utils/formatters";
 
 export const MatchPage = () => {
   const { matchId: matchIdParam } = useParams({ strict: false });
@@ -55,14 +54,26 @@ export const MatchPage = () => {
             <>
               <section className="matchPageHeader" aria-label="Match result">
                 <div className="matchPageHeaderRow">
-                  <PlayerLink
-                    className="matchPageHeaderPlayer"
-                    username={match.playerA}
-                    title={match.playerA}
-                  >
-                    {match.playerA}
-                    <BannedPlayerMark username={match.playerA} />
-                  </PlayerLink>
+                  <div className="matchPageHeaderPlayerSummary">
+                    <PlayerLink
+                      className="matchPageHeaderPlayer"
+                      username={match.playerA}
+                      title={match.playerA}
+                    >
+                      {match.playerA}
+                      <BannedPlayerMark username={match.playerA} />
+                    </PlayerLink>
+                    <div className="matchPageHeaderPlayerStats">
+                      <span>
+                        {match.playerABeforeRating === null
+                          ? "Unrated"
+                          : `Rating ${match.playerABeforeRating}${match.playerAAfterRating === null ? "" : ` (${formatSignedDecimal(match.playerAAfterRating - match.playerABeforeRating)})`}`}
+                      </span>
+                      {match.playerABeforeRd !== null ? (
+                        <span>{`RD ${match.playerABeforeRd}${match.playerAAfterRd === null ? "" : ` (${formatSignedDecimal(match.playerAAfterRd - match.playerABeforeRd)})`}`}</span>
+                      ) : null}
+                    </div>
+                  </div>
                   <div
                     className="matchPageHeaderScore"
                     aria-label={`Score ${match.scoreA} to ${match.scoreB}`}
@@ -71,14 +82,26 @@ export const MatchPage = () => {
                     <span>-</span>
                     <strong>{formatScore(match.scoreB)}</strong>
                   </div>
-                  <PlayerLink
-                    className="matchPageHeaderPlayer matchPageHeaderPlayerRight"
-                    username={match.playerB}
-                    title={match.playerB}
-                  >
-                    {match.playerB}
-                    <BannedPlayerMark username={match.playerB} />
-                  </PlayerLink>
+                  <div className="matchPageHeaderPlayerSummary matchPageHeaderPlayerSummaryRight">
+                    <PlayerLink
+                      className="matchPageHeaderPlayer matchPageHeaderPlayerRight"
+                      username={match.playerB}
+                      title={match.playerB}
+                    >
+                      {match.playerB}
+                      <BannedPlayerMark username={match.playerB} />
+                    </PlayerLink>
+                    <div className="matchPageHeaderPlayerStats">
+                      <span>
+                        {match.playerBBeforeRating === null
+                          ? "Unrated"
+                          : `Rating ${match.playerBBeforeRating}${match.playerBAfterRating === null ? "" : ` (${formatSignedDecimal(match.playerBAfterRating - match.playerBBeforeRating)})`}`}
+                      </span>
+                      {match.playerBBeforeRd !== null ? (
+                        <span>{`RD ${match.playerBBeforeRd}${match.playerBAfterRd === null ? "" : ` (${formatSignedDecimal(match.playerBAfterRd - match.playerBBeforeRd)})`}`}</span>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
                 <div className="matchPageHeaderMeta">
                   {modeLabel ? <span className="matchPageMetaPill">{modeLabel}</span> : null}
@@ -112,24 +135,12 @@ export const MatchPage = () => {
               </section>
 
               <section className="matchPageContent">
-                <div className="matchPageDetailsCard">
-                  <div className="matchPageSectionHeading">
-                    <h2>Game Breakdown</h2>
-                    <GameAnalysisBatchControl
-                      games={match.games
-                        .filter((game) => game.id && game.id !== "—")
-                        .map((game) => ({ id: game.id, number: game.index + 1 }))}
-                      triggerLabel="Analyze match"
-                      allowGameSelection
-                      className="matchPageAnalyzeControl"
-                    />
-                  </div>
-                  <MatchDetails
-                    match={match}
-                    matchKey={`standalone-${match.matchId || match.firstGameId}`}
-                    showRunningScore
-                  />
-                </div>
+                <MatchDetails
+                  match={match}
+                  matchKey={`standalone-${match.matchId || match.firstGameId}`}
+                  showRunningScore
+                  showSummary={false}
+                />
               </section>
 
               <CommunityDiscussion

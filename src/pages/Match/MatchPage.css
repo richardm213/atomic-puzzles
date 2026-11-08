@@ -11,40 +11,11 @@
     var(--color-panel);
 }
 
-.matchPageDetailsCard {
-  position: relative;
-  overflow: hidden;
-  padding: clamp(18px, 3vw, 24px);
-  border: 1px solid var(--color-border);
-  border-radius: 20px;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-surface-elevated) 92%, transparent),
-      transparent
-    ),
-    var(--color-panel-strong);
-  box-shadow: var(--shadow-soft);
-}
-
 .matchPageHeader,
 .matchPageContent,
 .matchPagePanel > .puzzleCommunity {
   width: min(660px, 100%);
   margin-inline: auto;
-}
-
-.matchPageDetailsCard::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto auto 0;
-  width: 100%;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--color-primary-soft) 72%, transparent),
-    transparent 78%
-  );
 }
 
 .matchPageHeader {
@@ -66,6 +37,27 @@
   font-weight: 650;
   line-height: 1.05;
   text-decoration: none;
+}
+
+.matchPageHeaderPlayerSummary {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  justify-items: start;
+}
+
+.matchPageHeaderPlayerSummaryRight {
+  justify-items: end;
+  text-align: right;
+}
+
+.matchPageHeaderPlayerStats {
+  display: grid;
+  gap: 2px;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
 }
 
 .matchPageHeaderPlayer:hover {
@@ -191,47 +183,14 @@
   align-items: start;
 }
 
-.matchPageSectionHeading h2 {
-  margin: 0;
-  color: var(--color-heading);
-  font-size: clamp(20px, 2vw, 24px);
-  line-height: 1.05;
-}
-
-.matchPageSectionHeading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: 16px;
-}
-
-@media (max-width: 520px) {
-  .matchPageSectionHeading {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .matchPageAnalyzeControl,
-  .matchPageAnalyzeControl .gameAnalysisBatchTrigger {
-    width: 100%;
-  }
-}
-
-.matchPageDetailsCard .matchCardPlayerStats > div {
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--color-surface-soft-strong) 78%, transparent);
-  padding: 14px 16px;
-}
-
-.matchPageDetailsCard .matchGames {
+.matchPageContent .matchGames {
   overflow: hidden;
   border-radius: 14px;
   background: color-mix(in srgb, var(--color-surface-soft) 92%, transparent);
 }
 
-.matchPageDetailsCard .matchGamesHeader,
-.matchPageDetailsCard .matchGameRow {
+.matchPageContent .matchGamesHeader,
+.matchPageContent .matchGameRow {
   grid-template-columns: minmax(76px, 0.88fr) minmax(104px, 1.2fr) minmax(88px, 0.92fr) minmax(
       116px,
       1fr
@@ -241,21 +200,21 @@
   min-width: 0;
 }
 
-.matchPageDetailsCard .matchGamesHeader {
+.matchPageContent .matchGamesHeader {
   padding: 12px 14px;
 }
 
-.matchPageDetailsCard .matchGameRow {
+.matchPageContent .matchGameRow {
   padding: 12px 14px;
 }
 
-.matchPageDetailsCard .matchGamesHeader > :nth-child(3),
-.matchPageDetailsCard .matchGameRow > :nth-child(3) {
+.matchPageContent .matchGamesHeader > :nth-child(3),
+.matchPageContent .matchGameRow > :nth-child(3) {
   justify-self: center;
 }
 
-.matchPageDetailsCard .matchGamesHeader > :last-child,
-.matchPageDetailsCard .matchGameRow > :last-child {
+.matchPageContent .matchGamesHeader > :last-child,
+.matchPageContent .matchGameRow > :last-child {
   min-width: 0;
   justify-self: start;
   overflow-wrap: anywhere;
@@ -272,10 +231,6 @@
     padding: 14px;
   }
 
-  .matchPageDetailsCard {
-    padding: 16px;
-  }
-
   .matchPageHeaderRow {
     grid-template-columns: 1fr;
     justify-items: center;
@@ -288,25 +243,32 @@
     text-align: center;
   }
 
-  .matchPageDetailsCard .matchGamesHeader,
-  .matchPageDetailsCard .matchGameRow {
+  .matchPageHeaderPlayerSummary,
+  .matchPageHeaderPlayerSummaryRight {
+    width: 100%;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .matchPageContent .matchGamesHeader,
+  .matchPageContent .matchGameRow {
     grid-template-columns: 68px minmax(0, 1fr);
     gap: 8px;
   }
 
-  .matchPageDetailsCard .matchGamesHeader > *,
-  .matchPageDetailsCard .matchGameRow > * {
+  .matchPageContent .matchGamesHeader > *,
+  .matchPageContent .matchGameRow > * {
     white-space: normal;
   }
 
-  .matchPageDetailsCard .matchGamesHeader > :nth-child(3),
-  .matchPageDetailsCard .matchGamesHeader > :last-child,
-  .matchPageDetailsCard .matchGameRow > :nth-child(3),
-  .matchPageDetailsCard .matchGameRow > :last-child {
+  .matchPageContent .matchGamesHeader > :nth-child(3),
+  .matchPageContent .matchGamesHeader > :last-child,
+  .matchPageContent .matchGameRow > :nth-child(3),
+  .matchPageContent .matchGameRow > :last-child {
     grid-column: 1 / -1;
   }
 
-  .matchPageDetailsCard .matchGameRow > :last-child {
+  .matchPageContent .matchGameRow > :last-child {
     overflow-wrap: anywhere;
   }
 }
