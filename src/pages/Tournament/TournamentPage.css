@@ -9,6 +9,7 @@
     max(calc(var(--page-gutter) + 2px), env(safe-area-inset-bottom))
     max(clamp(18px, 3vw, 28px), env(safe-area-inset-left));
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 
