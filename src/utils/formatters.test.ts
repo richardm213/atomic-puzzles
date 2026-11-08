@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   formatCalendarDate,
   formatCalendarDateRange,
+  formatCommentAge,
   formatGameCount,
   formatLocalDateTime,
   formatSignedDecimal,
@@ -62,5 +63,19 @@ describe("formatGameCount", () => {
     [1_000_000, "1M"],
   ])("formats %s games as %s", (games, expected) => {
     expect(formatGameCount(games)).toBe(expected);
+  });
+});
+
+describe("formatCommentAge", () => {
+  const now = Date.parse("2026-11-08T00:00:00Z");
+
+  it.each([
+    [0, "just now"],
+    [59, "59 min ago"],
+    [60, "1 hour ago"],
+    [24 * 60, "1 day ago"],
+    [3 * 24 * 60, "3 days ago"],
+  ])("formats a comment posted %s minutes ago", (minutes, expected) => {
+    expect(formatCommentAge(new Date(now - minutes * 60_000).toISOString(), now)).toBe(expected);
   });
 });

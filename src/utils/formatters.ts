@@ -28,6 +28,17 @@ export const formatLocalDateTime = (timestamp: number | string | Date): string =
   return includeYear ? `${month} ${day}, ${year}` : `${month} ${day} ${time}`;
 };
 
+export const formatCommentAge = (timestamp: string, now: number): string => {
+  const minutes = Math.floor((now - Date.parse(timestamp)) / 60_000);
+  if (!Number.isFinite(minutes)) return "";
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} ${days === 1 ? "day" : "days"} ago`;
+};
+
 export const formatGameCount = (games: number): string => {
   if (games >= 1_000_000) {
     return `${(games / 1_000_000).toFixed(games >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}M`;

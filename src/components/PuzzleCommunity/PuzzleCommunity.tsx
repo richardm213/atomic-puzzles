@@ -14,6 +14,7 @@ import { createPortal } from "react-dom";
 
 import type { VoteValue } from "../../../shared/domain/voting";
 import { useAuth } from "../../context/AuthContext";
+import { useMinuteClock } from "../../hooks/useMinuteClock";
 import {
   communityDiscussionQueryOptions,
   communityQueryKeys,
@@ -29,7 +30,7 @@ import {
 } from "../../lib/community/puzzleCommunity";
 import type { UsernameSearchSuggestion } from "../../lib/users/usernameSearch";
 import { getErrorMessage } from "../../utils/errors";
-import { formatLocalDateTime } from "../../utils/formatters";
+import { formatCommentAge, formatLocalDateTime } from "../../utils/formatters";
 import { CommentMarkdown } from "../CommentMarkdown/CommentMarkdown";
 
 const MENTION_SEARCH_DELAY_MS = 180;
@@ -132,6 +133,7 @@ export const CommunityDiscussion = ({
     enabled: Boolean(targetId) && discussionReady,
   });
   const community = discussionQuery.data ?? null;
+  const commentClock = useMinuteClock(Boolean(community?.comments.length));
   const loading = discussionQuery.isPending;
   const queryError = discussionQuery.error
     ? getErrorMessage(discussionQuery.error, "Unable to load discussion.")
@@ -619,7 +621,9 @@ export const CommunityDiscussion = ({
           )}
           <header className="puzzleCommentMeta">
             <strong>{comment.username}</strong>
-            <time dateTime={comment.created_at}>{formatLocalDateTime(comment.created_at)}</time>
+            <time dateTime={comment.created_at} title={formatLocalDateTime(comment.created_at)}>
+              {formatCommentAge(comment.created_at, commentClock)}
+            </time>
             {isCollapsed ? (
               <span className="collapsedCommentReplies">
                 {hiddenReplyCount} {hiddenReplyCount === 1 ? "reply" : "replies"} hidden
