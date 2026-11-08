@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: "7 */4 * * *"
       timezone: America/Los_Angeles
+    # Temporary hourly checks through 2026-11-09 23:59:59 UTC.
+    - cron: "7 * 8-9 11 *"
+      timezone: UTC
   workflow_dispatch:
 
 permissions:
@@ -19,14 +22,38 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Select the active checking cadence
+        id: cadence
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          run_sync=true
+          if [[ "$EVENT_NAME" == "schedule" ]]; then
+            utc_day=$(date -u +%F)
+            if [[ "$SCHEDULE" == "7 * 8-9 11 *" ]]; then
+              # The cron has no year field; prevent it running again next November.
+              if [[ "$utc_day" < "2026-11-08" || "$utc_day" > "2026-11-09" ]]; then
+                run_sync=false
+              fi
+            elif [[ "$utc_day" == "2026-11-08" || "$utc_day" == "2026-11-09" ]]; then
+              # The hourly schedule already covers the normal four-hour slots.
+              run_sync=false
+            fi
+          fi
+          echo "run_sync=$run_sync" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
+        if: steps.cadence.outputs.run_sync == 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@v4
+        if: steps.cadence.outputs.run_sync == 'true'
         with:
           node-version: 24
       - run: npm ci --ignore-scripts
+        if: steps.cadence.outputs.run_sync == 'true'
       - name: Check Lichess and sync the bracket
+        if: steps.cadence.outputs.run_sync == 'true'
         env:
           AWC_SUPABASE_URL: ${{ vars.AWC_SUPABASE_URL }}
           AWC_SUPABASE_ANON_KEY: ${{ vars.AWC_SUPABASE_ANON_KEY }}

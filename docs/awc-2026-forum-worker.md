@@ -2,6 +2,11 @@
 
 GitHub Actions checks the AWC results thread from page 18 through the last page
 at 12:07 a.m., 4:07 a.m., 8:07 a.m., 12:07 p.m., 4:07 p.m., and 8:07 p.m. Pacific.
+From November 8 through November 9, 2026 (UTC), it checks at seven minutes past
+every hour instead. Starting November 10 at 00:00 UTC, it automatically returns to
+the four-hour Pacific schedule. Manual runs remain available. The temporary cron
+is date-guarded so it cannot reactivate next November.
+
 The script uses no AI or Codex. GitHub may delay scheduled runs; a late announcement
 can still miss the next run before kickoff.
 
