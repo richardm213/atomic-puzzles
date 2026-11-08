@@ -27,7 +27,8 @@ export const BetShareSlip = ({
     reversed: Math.random() < 0.5,
   }));
   const [ready, setReady] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const selection =
     bet.predictionSelectionLabel ??
@@ -40,6 +41,16 @@ export const BetShareSlip = ({
   const payoutLabel = bet.status === "open" ? "To win" : "Paid out";
   const payoutText = `${payout.toLocaleString(undefined, { maximumFractionDigits: 0 })} coins`;
   const description = `${marketTitle}. ${selection}${countryCode ? ` (${countryCode})` : ""}. Odds ${odds}. Cost ${cost}. ${payoutLabel} ${payoutText}.`;
+
+  const filename = `atomic-puzzles-${bet.marketId}-${bet.username}.png`.replace(
+    /[^a-zA-Z0-9._-]/g,
+    "-",
+  );
+  const canShareImage = Boolean(
+    imageFile &&
+    typeof navigator.share === "function" &&
+    navigator.canShare?.({ files: [imageFile] }),
+  );
 
   useEffect(() => {
     const dialog = pane.current;
@@ -63,6 +74,7 @@ export const BetShareSlip = ({
   useEffect(() => {
     let cancelled = false;
     setReady(false);
+    setImageFile(null);
     setError("");
     const draw = async () => {
       await document.fonts.ready;
@@ -244,6 +256,15 @@ export const BetShareSlip = ({
               : heading;
         context.fillText(value!, 384, y);
       });
+      // Prepare the file before a click so native sharing retains user activation.
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.current!.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error("Image export failed"))),
+          "image/png",
+        ),
+      );
+      if (cancelled) return;
+      setImageFile(new File([blob], filename, { type: "image/png" }));
       setReady(true);
     };
     void draw().catch(() => {
@@ -255,6 +276,7 @@ export const BetShareSlip = ({
   }, [
     bet,
     frame,
+    filename,
     colorMode,
     theme,
     marketTitle,
@@ -267,32 +289,35 @@ export const BetShareSlip = ({
     payoutText,
   ]);
 
-  const download = async () => {
-    if (!canvas.current || !ready) return;
-    setSaving(true);
+  const download = () => {
+    if (!imageFile || !ready || sharing) return;
     setError("");
     try {
-      const blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.current!.toBlob(
-          (blob) => (blob ? resolve(blob) : reject(new Error("Image export failed"))),
-          "image/png",
-        ),
-      );
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(imageFile);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `atomic-puzzles-${bet.marketId}-${bet.username}.png`.replace(
-        /[^a-zA-Z0-9._-]/g,
-        "-",
-      );
+      link.download = imageFile.name;
       document.body.append(link);
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
       setError("Unable to download the image. Please try again.");
+    }
+  };
+
+  const share = async () => {
+    if (!imageFile || !ready || !canShareImage || sharing) return;
+    setSharing(true);
+    setError("");
+    try {
+      await navigator.share({ files: [imageFile] });
+    } catch (cause) {
+      if (!(cause instanceof DOMException && cause.name === "AbortError")) {
+        setError("Unable to share the image. You can download it instead.");
+      }
     } finally {
-      setSaving(false);
+      setSharing(false);
     }
   };
 
@@ -313,14 +338,26 @@ export const BetShareSlip = ({
       />
       {!ready && !error ? <p role="status">Preparing image…</p> : null}
       {error ? <p role="alert">{error}</p> : null}
-      <button
-        type="button"
-        className="primaryActionButton betShareSlipDownload"
-        disabled={!ready || saving}
-        onClick={() => void download()}
-      >
-        {saving ? "Downloading…" : "Download image"}
-      </button>
+      <div className="betShareSlipActions">
+        {canShareImage ? (
+          <button
+            type="button"
+            className="primaryActionButton"
+            disabled={!ready || sharing}
+            onClick={() => void share()}
+          >
+            {sharing ? "Sharing…" : "Share image"}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className={`betShareSlipDownload${canShareImage ? "" : " primaryActionButton"}`}
+          disabled={!ready || sharing}
+          onClick={download}
+        >
+          Download image
+        </button>
+      </div>
     </dialog>,
     document.body,
   );
