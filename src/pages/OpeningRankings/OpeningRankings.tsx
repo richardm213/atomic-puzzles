@@ -11,6 +11,7 @@ import {
   getAtomicDbPositionEvaluation,
 } from "../../utils/atomicDb";
 import { fenAfterUciMove } from "../../utils/chessNotation";
+import { TWO_KNIGHTS_OPENING_LINE } from "../../utils/openings";
 
 type OpeningDefinition = { move: string; moves: string[] };
 type OpeningRanking = OpeningDefinition & {
@@ -23,7 +24,7 @@ type OpeningRanking = OpeningDefinition & {
 // loaded from AtomicDB on every visit rather than being captured here as static values.
 const openingDefinitions: OpeningDefinition[] = [
   {
-    move: "1. Nf3 f6 2. Nc3",
+    move: TWO_KNIGHTS_OPENING_LINE,
     moves: ["g1f3", "f7f6", "b1c3"],
   },
   {

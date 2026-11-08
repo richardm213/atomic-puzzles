@@ -1,3 +1,5 @@
+export const TWO_KNIGHTS_OPENING_LINE = "1. Nf3 f6 2. Nc3";
+
 const openingDisplayLabels: Record<string, string> = {
   "nf3 e3": "Nf3 e3",
   "nf3 e4": "Nf3 e4",
@@ -35,3 +37,6 @@ export const getOpeningDisplayLabel = (opening: string): string => {
   const normalizedOpening = normalizeOpeningKey(opening);
   return openingDisplayLabels[normalizedOpening] ?? String(opening || "").trim();
 };
+
+export const getOpeningMoveLine = (opening: string): string | undefined =>
+  normalizeOpeningKey(opening) === "2n" ? TWO_KNIGHTS_OPENING_LINE : undefined;

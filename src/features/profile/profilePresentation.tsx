@@ -1,4 +1,5 @@
 import type { AliasAccountSource } from "../../lib/archive/aliases";
+import { normalizeOpeningKey } from "../../utils/openings";
 
 const lichessProfileUrl = (username: string): string =>
   `https://lichess.org/@/${encodeURIComponent(String(username || "").trim())}`;
@@ -9,40 +10,41 @@ const chessComProfileUrl = (username: string): string =>
 export const NON_COUNTED_ALIAS_MESSAGE =
   "This account is marked as a drunk account and is not included in the rating system.";
 
-const openingToneClasses: Record<string, string> = {
-  "nf3 e3": "openingToneNf3E3",
-  "nf3 e4": "openingToneNf3E4",
-  "nf3 na3": "openingToneNf3Na3",
-  e4: "openingToneE4",
-  e5: "openingToneE5",
-  d4: "openingToneD4",
-  d6: "openingToneD6",
-  "2n": "openingTone2n",
-  "2n h3": "openingTone2nH3",
-  "nh3 d4": "openingToneNh3D4",
-  "nh3 e4": "openingToneNh3E4",
-  "nh3 e3": "openingToneNh3E3",
-  "nh3 na3": "openingToneNh3Na3",
-  nc3: "openingToneNc3",
-  na3: "openingToneNa3",
-  "nf3 d4": "openingToneNf3D4",
-  "nf3 nd4": "openingToneNf3Nd4",
-  "nf3 c3": "openingToneNf3C3",
-  "e3 nc3": "openingToneE3Nc3",
-  "e3 qh5": "openingToneE3Qh5",
-  "e3 qf3": "openingToneE3Qf3",
-  "e3 f4": "openingToneE3F4",
-  "e3 b4": "openingToneE3B4",
-  "nh3 nc3": "openingToneNh3Nc3",
-  variety: "openingToneVariety",
+type OpeningTone = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+// Seed the slots with the featured lines from Opening Rankings, not their live rank.
+const openingTones: Partial<Record<string, OpeningTone>> = {
+  "2n": 1,
+  "nf3 e3": 2,
+  "nh3 d4": 3,
+  "nf3 e4": 4,
+  "nh3 e4": 5,
+  "nf3 d4": 6,
+  d4: 3,
+  e4: 7,
+  "nh3 nc3": 2,
+  "nh3 na3": 8,
+  "nh3 e3": 4,
+  "e3 nc3": 5,
+  nc3: 8,
+  "nf3 na3": 7,
+  "nf3 nd4": 1,
+  "nf3 c3": 8,
+  "e3 qh5": 6,
+  "e3 qf3": 7,
+  na3: 4,
+  "e3 b4": 2,
+  "e3 f4": 3,
+  "2n h3": 6,
+  e5: 5,
+  d6: 8,
+  variety: 6,
 };
 
-export const getOpeningToneClass = (opening: string): string =>
-  openingToneClasses[
-    String(opening || "")
-      .trim()
-      .toLowerCase()
-  ] ?? "openingToneDefault";
+export const getOpeningTone = (opening: string): OpeningTone | undefined => {
+  const key = normalizeOpeningKey(opening);
+  return Object.hasOwn(openingTones, key) ? openingTones[key] : undefined;
+};
 
 export const profileResultToneClass = (playerScore: number, opponentScore: number): string => {
   if (playerScore > opponentScore) return " winner";

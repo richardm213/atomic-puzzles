@@ -60,6 +60,52 @@
     0 5px 12px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
+/* Opening badges use stable slots in both modes. Each palette reshuffles
+   the hue pool without changing the badge's contrast or what its label means. */
+:root {
+  --opening-hue-1: 192;
+  --opening-hue-2: 260;
+  --opening-hue-3: 150;
+  --opening-hue-4: 82;
+  --opening-hue-5: 345;
+  --opening-hue-6: 300;
+  --opening-hue-7: 39;
+  --opening-hue-8: 113;
+}
+
+:root[data-palette="ruby"] {
+  --opening-hue-1: 26;
+  --opening-hue-2: 84;
+  --opening-hue-3: 320;
+  --opening-hue-4: 217;
+  --opening-hue-5: 9;
+  --opening-hue-6: 133;
+  --opening-hue-7: 276;
+  --opening-hue-8: 167;
+}
+
+:root[data-palette="emerald"] {
+  --opening-hue-1: 161;
+  --opening-hue-2: 219;
+  --opening-hue-3: 29;
+  --opening-hue-4: 128;
+  --opening-hue-5: 74;
+  --opening-hue-6: 255;
+  --opening-hue-7: 195;
+  --opening-hue-8: 290;
+}
+
+:root[data-palette="amethyst"] {
+  --opening-hue-1: 309;
+  --opening-hue-2: 287;
+  --opening-hue-3: 231;
+  --opening-hue-4: 354;
+  --opening-hue-5: 115;
+  --opening-hue-6: 169;
+  --opening-hue-7: 61;
+  --opening-hue-8: 327;
+}
+
 /* Palettes define the accent hues; color mode owns the neutral surfaces.
    Status, market and rating colors keep their existing meaning across palettes. */
 :root[data-palette="amethyst"] {

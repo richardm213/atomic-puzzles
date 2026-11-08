@@ -55,7 +55,7 @@ import {
   ChessComProfileIcon,
   getAliasProfileHref,
   getAliasProfileSourceLabel,
-  getOpeningToneClass,
+  getOpeningTone,
   LichessProfileIcon,
   NON_COUNTED_ALIAS_MESSAGE,
   profileResultToneClass,
@@ -115,7 +115,7 @@ import {
   formatScore,
   formatSignedDecimal,
 } from "../../utils/formatters";
-import { getOpeningDisplayLabel } from "../../utils/openings";
+import { getOpeningDisplayLabel, getOpeningMoveLine } from "../../utils/openings";
 import { normalizeUsername } from "../../utils/playerNames";
 import { useProfileFilters } from "./useProfileFilters";
 
@@ -942,7 +942,9 @@ export const PlayerProfilePage = ({
                   {profileOpenings.map((opening) => (
                     <span
                       key={`opening-${opening}`}
-                      className={`profileOpeningTag ${getOpeningToneClass(opening)}`}
+                      className="profileOpeningTag"
+                      data-opening-tone={getOpeningTone(opening)}
+                      title={getOpeningMoveLine(opening)}
                     >
                       {getOpeningDisplayLabel(opening)}
                     </span>
