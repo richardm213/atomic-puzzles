@@ -342,58 +342,30 @@
   );
 }
 
-/* Dark mode also tints the canvas and panels. */
+/* Dark gemstones use Default Dark's surface depths and opacities. Keep the
+   stronger palette wash on the canvas, with restrained color in the panels. */
 :root[data-theme="dark"][data-gemstone-theme] {
-  --gem-surface-chroma: 0.035;
+  --gem-canvas-chroma: 0.035;
+  --gem-surface-chroma: 0.022;
   --gem-page-top-lightness: 23%;
-  --gem-page-bottom-lightness: 15%;
-  --gem-panel-lightness: 25%;
-  --gem-deep-lightness: 14%;
-  --gem-elevated-lightness: 27%;
-  --gem-heading-lightness: 98%;
-  --gem-text-lightness: 93%;
-  --gem-muted-lightness: 80%;
-  --gem-subtle-lightness: 70%;
   --gem-wash: 21%;
-  --gem-input-border-strength: 50%;
-  --color-page-top: oklch(var(--gem-page-top-lightness) var(--gem-surface-chroma) var(--gem-hue));
-  --color-page-bottom: oklch(
-    var(--gem-page-bottom-lightness) var(--gem-surface-chroma) var(--gem-hue)
-  );
-  --color-panel-strong: oklch(var(--gem-panel-lightness) var(--gem-surface-chroma) var(--gem-hue));
-  --color-panel-deep: oklch(var(--gem-deep-lightness) var(--gem-surface-chroma) var(--gem-hue));
-  --color-panel: color-mix(in srgb, var(--color-panel-strong) 94%, transparent);
-  --color-nav: color-mix(in srgb, var(--color-page-bottom) 94%, transparent);
-  --color-heading: oklch(var(--gem-heading-lightness) 0.015 var(--gem-hue));
-  --color-text: oklch(var(--gem-text-lightness) 0.018 var(--gem-hue));
-  --color-muted: oklch(var(--gem-muted-lightness) 0.027 var(--gem-hue));
-  --color-subtle: oklch(var(--gem-subtle-lightness) 0.035 var(--gem-hue));
+  --gem-inset: oklch(13% var(--gem-surface-chroma) var(--gem-hue));
+  --gem-elevated: oklch(21% var(--gem-surface-chroma) var(--gem-hue));
+  --color-page-top: oklch(var(--gem-page-top-lightness) var(--gem-canvas-chroma) var(--gem-hue));
+  --color-page-bottom: oklch(15% var(--gem-canvas-chroma) var(--gem-hue));
+  --color-panel-strong: oklch(21.2% var(--gem-surface-chroma) var(--gem-hue));
+  --color-panel-deep: oklch(15.5% var(--gem-surface-chroma) var(--gem-hue));
+  --color-panel: color-mix(in srgb, var(--color-panel-strong) 88%, transparent);
+  --color-nav: color-mix(in srgb, var(--color-panel-deep) 88%, transparent);
   --color-analysis-good: #52c7e8;
-  --color-border: color-mix(in srgb, var(--color-muted) 20%, transparent);
-  --color-border-strong: color-mix(in srgb, var(--color-muted) 32%, transparent);
-  --color-input-border: color-mix(
-    in srgb,
-    var(--color-muted) var(--gem-input-border-strength),
-    transparent
-  );
-  --color-surface-soft: color-mix(in srgb, var(--color-panel-deep) 26%, transparent);
-  --color-surface-soft-strong: color-mix(in srgb, var(--color-panel-deep) 46%, transparent);
-  --color-surface-elevated-strong: oklch(
-    var(--gem-elevated-lightness) var(--gem-surface-chroma) var(--gem-hue)
-  );
-  --color-surface-elevated: color-mix(
-    in srgb,
-    var(--color-surface-elevated-strong) 78%,
-    transparent
-  );
-  --color-surface-inset: color-mix(in srgb, var(--color-muted) 8%, transparent);
-  --color-surface-inset-strong: color-mix(in srgb, var(--color-muted) 13%, transparent);
-  --color-table-head: var(--color-surface-inset);
-  --color-table-divider: color-mix(in srgb, var(--color-muted) 12%, transparent);
-  --color-overlay: color-mix(in srgb, var(--color-page-bottom) 66%, transparent);
-  --color-overlay-strong: color-mix(in srgb, var(--color-page-bottom) 96%, transparent);
+  --color-surface-soft: color-mix(in srgb, var(--gem-inset) 18%, transparent);
+  --color-surface-soft-strong: color-mix(in srgb, var(--gem-inset) 28%, transparent);
+  --color-surface-elevated: color-mix(in srgb, var(--gem-elevated) 72%, transparent);
+  --color-surface-elevated-strong: color-mix(in srgb, var(--gem-elevated) 92%, transparent);
+  --color-table-hover: color-mix(in srgb, var(--color-primary-soft) 8%, transparent);
+  --color-overlay: color-mix(in srgb, var(--gem-elevated) 54%, transparent);
+  --color-overlay-strong: color-mix(in srgb, var(--gem-elevated) 95%, transparent);
   --color-modal-bg: var(--color-overlay);
-  --color-glass-border: var(--color-border);
   --page-background:
     radial-gradient(
       ellipse 78% 48% at 15% 0%,
@@ -406,6 +378,7 @@
 /* Keep Ruby's color in its accents, not in the dark canvas. */
 :root[data-theme="dark"][data-palette="ruby"] {
   --gem-page-top-lightness: 22%;
+  --gem-canvas-chroma: 0.016;
   --gem-surface-chroma: 0.016;
   --gem-wash: 9%;
 }
