@@ -55,7 +55,6 @@ import {
   PlayerCountryPicker,
   PlayerFlairPicker,
 } from "../PlayerSocialControls/PlayerSocialControls";
-import { TournamentPlayerLink } from "../TournamentPlayerLink/TournamentPlayerLink";
 import { NavBrandMark } from "./NavBrandMark";
 import { NavNotificationsPanel } from "./NavNotificationsPanel";
 import { NavPlayerSearch } from "./NavPlayerSearch";
@@ -629,9 +628,10 @@ export const TopNav = () => {
                     </span>
                     View profile
                   </Link>
-                  <TournamentPlayerLink
+                  <Link
                     className="navProfileDropdownItem"
-                    username={resolvedProfileUsername}
+                    to="/tournaments/players/$username"
+                    params={{ username: normalizeUsername(resolvedProfileUsername) }}
                     role="menuitem"
                     onClick={() => setOpenPanel(null)}
                   >
@@ -639,7 +639,7 @@ export const TopNav = () => {
                       <FontAwesomeIcon icon={faTrophy} />
                     </span>
                     Tournament profile
-                  </TournamentPlayerLink>
+                  </Link>
                   <Link
                     className="navProfileDropdownItem"
                     to="/dashboard"
