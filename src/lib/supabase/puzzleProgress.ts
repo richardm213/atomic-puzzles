@@ -3,7 +3,7 @@ import { z } from "zod";
 import { normalizeUsername } from "../../utils/playerNames";
 import { postApi } from "../api/postApi";
 import { getSupabaseClient } from "./client";
-import type { PuzzleRatingEvent } from "./puzzleUserRatings";
+import { type PuzzleRatingEvent, puzzleRatingEventResponseSchema } from "./puzzleUserRatings";
 import { fetchAllSupabaseRows, loadSupabasePage, loadSupabaseRows } from "./rows";
 import type {
   AttemptedPuzzleIdRow,
@@ -29,21 +29,7 @@ const puzzleProgressResponseSchema = z.object({
   coinAward: z.number().nonnegative().optional().default(0),
   coinDelta: z.number().optional(),
   rated: z.boolean().optional().default(true),
-  ratingEvent: z
-    .object({
-      username: z.string(),
-      puzzleId: z.string(),
-      attemptedAt: z.string(),
-      puzzleCorrect: z.boolean(),
-      userRatingBefore: z.number(),
-      userRatingAfter: z.number(),
-      userRatingDeviationBefore: z.number(),
-      userRatingDeviationAfter: z.number(),
-      puzzleRatingBefore: z.number(),
-      puzzleRatingAfter: z.number(),
-    })
-    .nullable()
-    .optional(),
+  ratingEvent: puzzleRatingEventResponseSchema.nullable().optional(),
 });
 
 const normalizePuzzleId = (puzzleId: unknown): string => {

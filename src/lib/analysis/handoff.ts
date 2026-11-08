@@ -10,11 +10,6 @@ type AnalysisHandoff = {
   createdAt: number;
 };
 
-export const createAnalysisHandoffId = (): string => {
-  const randomId = globalThis.crypto?.randomUUID?.();
-  return randomId ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-};
-
 export const analysisHandoffUrl = (fen: string, handoffId: string): string =>
   `/analysis/${fen.replaceAll(" ", "_")}?handoff=${encodeURIComponent(handoffId)}`;
 

@@ -3,17 +3,14 @@ import "./VariationTree.css";
 import type { ReactNode } from "react";
 
 import {
-  buildSolutionMoveTree,
+  buildIndexedSolutionMoveTree,
   compareMoves,
   findMainChild,
+  type IndexedSolutionMoveNode,
   movePrefix,
   orderedChildren,
   sameSolutionMove,
 } from "../../lib/chess/pgn";
-
-type MoveTreeNode = import("../../lib/chess/pgn").SolutionMoveNode<{
-  lineIndexes: Set<number>;
-}>;
 
 export type VariationOption = { move: string; lineIndex: number; plyIndex: number };
 
@@ -49,22 +46,6 @@ export const variationOptions = (
   );
 };
 
-const createMoveTree = (lines: string[][]): MoveTreeNode => {
-  const tree = buildSolutionMoveTree(lines, () => ({ lineIndexes: new Set<number>() }));
-  lines.forEach((line, lineIndex) => {
-    let node = tree;
-    node.lineIndexes.add(lineIndex);
-    line.forEach((move) => {
-      const next = node.children.get(move);
-      if (next) {
-        node = next;
-        node.lineIndexes.add(lineIndex);
-      }
-    });
-  });
-  return tree;
-};
-
 export const VariationTree = ({
   lines,
   activeLine,
@@ -79,10 +60,10 @@ export const VariationTree = ({
   onMoveClick: (lineIndex: number, moveIndex: number) => void;
 }) => {
   if (!lines.length) return null;
-  const tree = createMoveTree(lines);
+  const tree = buildIndexedSolutionMoveTree(lines);
 
   const renderNode = (
-    node: MoveTreeNode,
+    node: IndexedSolutionMoveNode,
     ply: number,
     keyPrefix: string,
     forceMoveNumber = false,

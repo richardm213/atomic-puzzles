@@ -59,7 +59,7 @@ type PuzzleUserRatingResponseRow = {
   [Key in keyof Omit<StoredPuzzleUserRatingRow, "user_id">]?: StoredPuzzleUserRatingRow[Key] | null;
 };
 
-const puzzleRatingEventResponseSchema = z.object({
+export const puzzleRatingEventResponseSchema = z.object({
   username: z.string(),
   puzzleId: z.string(),
   attemptedAt: z.string(),

@@ -530,15 +530,6 @@ export const disposeInactiveLocalAnalysisEngine = (active: LocalAnalysisEngine):
     );
 };
 
-export const warmFairyStockfish = async (): Promise<void> => {
-  if (!globalThis.crossOriginIsolated || typeof SharedArrayBuffer === "undefined") return;
-  try {
-    await getEngine(readLocalAnalysisEngine());
-  } catch {
-    // The real request reports initialization errors. Warming is best-effort.
-  }
-};
-
 const waitForBestMove = (
   engine: StockfishEngine,
   signal?: AbortSignal,

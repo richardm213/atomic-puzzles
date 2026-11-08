@@ -322,6 +322,24 @@ export const buildSolutionMoveTree = <TExtras extends Record<string, unknown>>(
   return root;
 };
 
+export type IndexedSolutionMoveNode = SolutionMoveNode<{ lineIndexes: Set<number> }>;
+
+export const buildIndexedSolutionMoveTree = (lines: string[][]): IndexedSolutionMoveNode => {
+  const tree = buildSolutionMoveTree(lines, () => ({ lineIndexes: new Set<number>() }));
+  lines.forEach((line, lineIndex) => {
+    let node = tree;
+    node.lineIndexes.add(lineIndex);
+    line.forEach((move) => {
+      const next = node.children.get(move);
+      if (next) {
+        node = next;
+        node.lineIndexes.add(lineIndex);
+      }
+    });
+  });
+  return tree;
+};
+
 export const orderedChildren = <TExtras extends Record<string, unknown>>(
   node: SolutionMoveNode<TExtras>,
 ): SolutionMoveNode<TExtras>[] =>
