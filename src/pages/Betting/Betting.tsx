@@ -1272,9 +1272,7 @@ export const BettingPage = () => {
                   >
                     {activePredictionDisplayMode === "book" ? (
                       <div className="betSlipSelection">
-                        {activePredictionDisplayMode === "book" ? (
-                          <small>{selectedPredictionGroup?.title ?? "Prediction market"}</small>
-                        ) : null}
+                        <small>{selectedPredictionGroup?.title ?? "Prediction market"}</small>
                         <div className="betSlipContract">
                           <span>
                             <img
@@ -1294,28 +1292,18 @@ export const BettingPage = () => {
                                 predictionSelection.outcome,
                               )}
                             </strong>
-                            {activePredictionDisplayMode === "book" ? (
-                              <em>
-                                {selectedPredictionGroup?.id === "awc-2026-champion" ||
-                                selectedPredictionGroup?.id === "awc-2027-champion"
-                                  ? predictionSelection.outcome === "yes"
-                                    ? "to win"
-                                    : "not to win"
-                                  : selectedPredictionGroup?.id === "awc-2026-round-of-16"
-                                    ? "to win"
-                                    : selectedPredictionGroup?.id === "ban-2026"
-                                      ? predictionSelection.outcome === "yes"
-                                        ? "banned"
-                                        : "not banned"
-                                      : predictionSelection.outcome === "yes"
-                                        ? "to win"
-                                        : "not to win"}
-                              </em>
-                            ) : null}
+                            <em>
+                              {selectedPredictionGroup?.id === "ban-2026"
+                                ? predictionSelection.outcome === "yes"
+                                  ? "banned"
+                                  : "not banned"
+                                : selectedPredictionGroup?.id === "awc-2026-round-of-16" ||
+                                    predictionSelection.outcome === "yes"
+                                  ? "to win"
+                                  : "not to win"}
+                            </em>
                           </span>
-                          {activePredictionDisplayMode === "book" ? (
-                            <b>{validPredictionPrice ? `${predictionPrice}%` : "—"}</b>
-                          ) : null}
+                          <b>{validPredictionPrice ? `${predictionPrice}%` : "—"}</b>
                         </div>
                       </div>
                     ) : null}
@@ -1504,7 +1492,7 @@ export const BettingPage = () => {
                       )
                     ) : isAuthenticated ? (
                       <button
-                        className="betSubmitButton bettingPredictionOrderSubmit"
+                        className="betSubmitButton"
                         type="submit"
                         disabled={
                           !validPredictionPrice ||
@@ -1520,7 +1508,7 @@ export const BettingPage = () => {
                       </button>
                     ) : (
                       <button
-                        className="betSubmitButton bettingPredictionOrderSubmit"
+                        className="betSubmitButton"
                         type="button"
                         disabled={authLoading}
                         onClick={() => void login("/betting")}

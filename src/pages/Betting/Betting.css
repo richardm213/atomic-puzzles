@@ -517,10 +517,6 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.betSlip--predictionOrder h2 {
-  padding: 10px var(--space-4);
-}
-
 .betSlip h2.betSlipVisuallyHiddenTitle {
   position: absolute;
   width: 1px;
@@ -535,23 +531,6 @@
 .betSlip--predictionOrder form {
   gap: 12px;
   padding: 0 var(--space-4) var(--space-4);
-}
-
-.betSlip--predictionOrder .betSlipSelection {
-  gap: 0;
-  padding: 14px 0 2px;
-  border-bottom: 0;
-}
-
-.betSlip--predictionOrder .betSlipContract {
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.betSlip--predictionOrder .betSlipContract strong {
-  font-size: 1.05rem;
-  font-weight: 650;
 }
 
 .betSlip > p,
