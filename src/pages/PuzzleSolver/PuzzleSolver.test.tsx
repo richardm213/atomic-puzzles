@@ -842,44 +842,53 @@ describe("PuzzleSolverPage solution options", () => {
     performanceNow.mockRestore();
   });
 
-  it("lets a regular author add an explanation after solving their puzzle", async () => {
-    mocks.username = "puzzle_author";
-    mocks.puzzleAuthor = "Puzzle_Author";
-    mocks.attemptedPuzzleIds = new Set();
-    mocks.puzzleExplanation = "";
-    const user = userEvent.setup();
-    render(<PuzzleSolverPage />);
+  it.each([true, false])(
+    "lets an author add an explanation in analysis after an attempt (correct: %s)",
+    async (puzzleCorrect) => {
+      mocks.username = "puzzle_author";
+      mocks.puzzleAuthor = "Puzzle_Author";
+      mocks.attemptedPuzzleIds = new Set();
+      mocks.puzzleExplanation = "";
+      const user = userEvent.setup();
+      render(<PuzzleSolverPage />);
 
-    const explanationTab = await screen.findByRole("tab", { name: "Explanation" });
-    expect(explanationTab).toBeDisabled();
+      const explanationTab = await screen.findByRole("tab", { name: "Explanation" });
+      expect(explanationTab).toBeDisabled();
 
-    act(() => {
-      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
-        puzzleId: 1369,
-        puzzleCorrect: true,
-        incorrectMove: null,
-        correctMove: "12... O-O",
+      act(() => {
+        mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+          puzzleId: 1369,
+          puzzleCorrect,
+          incorrectMove: puzzleCorrect ? null : "12... Kd7",
+          correctMove: puzzleCorrect ? "12... O-O" : null,
+        });
       });
-    });
 
-    await waitFor(() => expect(explanationTab).toBeEnabled());
-    await user.click(explanationTab);
-    await user.click(screen.getByRole("button", { name: "Add explanation" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Puzzle explanation" }),
-      "The king move escapes the atomic threat.",
-    );
-    await user.click(screen.getByRole("button", { name: "Save explanation" }));
-
-    await waitFor(() =>
-      expect(mocks.updatePuzzleExplanation).toHaveBeenCalledWith(
-        1369,
+      await waitFor(() => expect(explanationTab).toBeEnabled());
+      if (!puzzleCorrect) {
+        await user.click(explanationTab);
+        expect(screen.queryByRole("button", { name: "Add explanation" })).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Give up and reveal the solution" }));
+      }
+      await waitFor(() => expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true));
+      await user.click(explanationTab);
+      await user.click(screen.getByRole("button", { name: "Add explanation" }));
+      await user.type(
+        screen.getByRole("textbox", { name: "Puzzle explanation" }),
         "The king move escapes the atomic threat.",
-      ),
-    );
-    expect(await screen.findByText("Explanation saved.")).toBeInTheDocument();
-    expect(screen.getByText("The king move escapes the atomic threat.")).toBeInTheDocument();
-  });
+      );
+      await user.click(screen.getByRole("button", { name: "Save explanation" }));
+
+      await waitFor(() =>
+        expect(mocks.updatePuzzleExplanation).toHaveBeenCalledWith(
+          1369,
+          "The king move escapes the atomic threat.",
+        ),
+      );
+      expect(await screen.findByText("Explanation saved.")).toBeInTheDocument();
+      expect(screen.getByText("The king move escapes the atomic threat.")).toBeInTheDocument();
+    },
+  );
 
   it("lets an author edit an explanation when revisiting an unrated solve in analysis", async () => {
     mocks.username = "puzzle_author";
