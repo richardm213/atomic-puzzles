@@ -801,6 +801,30 @@ a.tournamentGroupHistoryChip:focus-visible {
   scrollbar-width: thin;
 }
 
+.tournamentDateSetting {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding-inline: var(--space-2);
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tournamentDateSetting input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
+.tournamentDateSetting input:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
 .tournamentStageToggle {
   display: inline-flex;
   align-items: center;
@@ -1081,11 +1105,11 @@ a.tournamentGroupHistoryChip:focus-visible {
   align-content: center;
 }
 
-.tournamentMatchCardTree.hasScheduledTime {
+.tournamentMatchCardTree.hasMatchDate {
   padding-block: var(--space-1);
 }
 
-.tournamentMatchScheduledTime {
+.tournamentMatchDate {
   padding-inline: var(--space-1);
   color: var(--color-muted);
   font-size: 0.78rem;
@@ -1353,7 +1377,15 @@ a.tournamentGroupHistoryChip:focus-visible {
   }
 
   .tournamentBracketControls {
+    flex-wrap: wrap;
     width: 100%;
+    overflow-x: visible;
+  }
+
+  .tournamentBracketControls .tournamentStageToggle {
+    flex: 0 0 100%;
+    max-width: 100%;
+    overflow-x: auto;
   }
 
   .tournamentCommentsLink {

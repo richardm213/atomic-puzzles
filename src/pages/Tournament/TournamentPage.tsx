@@ -10,6 +10,7 @@ import type {
   UIEvent as ReactUIEvent,
 } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 
 import { CommunityCommentsLink } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
 import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleCommunity";
@@ -18,6 +19,7 @@ import { Seo } from "../../components/Seo/Seo";
 import { TournamentPlayerLink } from "../../components/TournamentPlayerLink/TournamentPlayerLink";
 import { modeLabels } from "../../constants/matches";
 import { TournamentFairPlayFlag } from "../../features/tournaments/TournamentFairPlayFlag";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUnderscoreUsernameCutoff } from "../../hooks/useUnderscoreUsernameCutoff";
 import {
   formatMatchKickoff,
@@ -44,7 +46,11 @@ import { appAssetPath } from "../../utils/appAssetPath";
 import { setBrowserStorageItem } from "../../utils/browserStorage";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { getErrorMessage } from "../../utils/errors";
-import { formatCalendarDateRange, formatTimeControl } from "../../utils/formatters";
+import {
+  formatCalendarDate,
+  formatCalendarDateRange,
+  formatTimeControl,
+} from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
 import { AtomicChessLeaguePage } from "./AtomicChessLeaguePage";
 import {
@@ -484,6 +490,7 @@ const TournamentSeeds = ({
 
 const TournamentMatchCard = ({
   match,
+  showMatchDates,
   topSeedMap,
   entryMarkers,
   seedCount,
@@ -495,6 +502,7 @@ const TournamentMatchCard = ({
   loserSources = [],
 }: {
   match: PositionedMatch;
+  showMatchDates: boolean;
   topSeedMap: Map<string, number>;
   entryMarkers: Map<string, TournamentEntryMarker>;
   seedCount: number;
@@ -513,6 +521,7 @@ const TournamentMatchCard = ({
   const isDoubleBye = isTournamentDoubleByeMatch(match);
   const byeAdvancePlayer = byeAdvancePlayerName(match);
   const { hasSchedule, startTime } = useMatchSchedule(match);
+  const matchDate = startTime || (showMatchDates ? formatCalendarDate(match.played_on) : "");
   const representedLosers = new Set(
     [match.p1, match.p2]
       .filter((playerName) => !isEmptyPlayer(playerName))
@@ -587,7 +596,7 @@ const TournamentMatchCard = ({
 
   return (
     <div
-      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage || hasSchedule ? " isClickable" : ""}${shouldShowTrophy ? " hasTrophy" : ""}${shouldShowTrophy && placeTrophyOnSide ? " hasSideTrophy" : ""}${match.replacement_for ? " hasReplacementHistory" : ""}${startTime ? " hasScheduledTime" : ""}`}
+      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage || hasSchedule ? " isClickable" : ""}${shouldShowTrophy ? " hasTrophy" : ""}${shouldShowTrophy && placeTrophyOnSide ? " hasSideTrophy" : ""}${match.replacement_for ? " hasReplacementHistory" : ""}${matchDate ? " hasMatchDate" : ""}`}
       style={{
         left: `${match.x}px`,
         top: `${match.y}px`,
@@ -705,9 +714,12 @@ const TournamentMatchCard = ({
             {scoreSlotDisplay(match, match.p2)}
           </strong>
         </div>
-        {startTime ? (
-          <time className="tournamentMatchScheduledTime" dateTime={match.scheduled_at}>
-            {startTime}
+        {matchDate ? (
+          <time
+            className="tournamentMatchDate"
+            dateTime={startTime ? match.scheduled_at : match.played_on || undefined}
+          >
+            {matchDate}
           </time>
         ) : null}
       </div>
@@ -804,6 +816,7 @@ const GroupHistoryChip = ({ entry }: { entry: GroupStageHistoryEntry }) => {
 
 const TournamentStageSection = ({
   stage,
+  showMatchDates,
   layout,
   zoomLevel,
   isDragging,
@@ -827,6 +840,7 @@ const TournamentStageSection = ({
   loserSourcesByMatchId,
 }: {
   stage: TournamentBracketStage;
+  showMatchDates: boolean;
   layout: StageLayout;
   zoomLevel: number;
   isDragging: boolean;
@@ -970,6 +984,7 @@ const TournamentStageSection = ({
                             <div className="tournamentGroupRoundMatch" key={match.id}>
                               <TournamentMatchCard
                                 match={{ ...match, x: 0, y: 0 }}
+                                showMatchDates={showMatchDates}
                                 topSeedMap={topSeedMap}
                                 entryMarkers={entryMarkers}
                                 seedCount={seedCount}
@@ -1078,6 +1093,7 @@ const TournamentStageSection = ({
                       <TournamentMatchCard
                         key={match.id}
                         match={match}
+                        showMatchDates={showMatchDates}
                         topSeedMap={topSeedMap}
                         entryMarkers={entryMarkers}
                         seedCount={seedCount}
@@ -1112,6 +1128,11 @@ const BracketTournamentPage = ({
   tournamentRound?: string | undefined;
 }) => {
   const navigate = useNavigate();
+  const [showMatchDates, setShowMatchDates] = usePersistedState(
+    "atomic-puzzles.tournaments.show-match-dates",
+    z.boolean(),
+    false,
+  );
   const catalogQuery = useQuery(tournamentCatalogQueryOptions());
   const adjacentTournaments = useMemo(
     () => getAdjacentTournamentMetas(tournamentId, catalogQuery.data ?? []),
@@ -1706,6 +1727,16 @@ const BracketTournamentPage = ({
               onZoomIn={() => updateStageZoom(activeStage.key, 1)}
             />
           ) : null}
+          {activeStage ? (
+            <label className="tournamentDateSetting">
+              <input
+                type="checkbox"
+                checked={showMatchDates}
+                onChange={(event) => setShowMatchDates(event.target.checked)}
+              />
+              Show dates
+            </label>
+          ) : null}
         </div>
         <CommunityCommentsLink
           target={{ type: "tournament", id: bracket.id }}
@@ -1724,6 +1755,7 @@ const BracketTournamentPage = ({
             <TournamentStageSection
               key={stage.key}
               stage={stage}
+              showMatchDates={showMatchDates}
               layout={stageLayouts.get(stage.key)}
               zoomLevel={zoomLevel}
               isDragging={draggingStage === stage.key}
