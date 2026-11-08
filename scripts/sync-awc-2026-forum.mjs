@@ -136,12 +136,13 @@ export function parsePost(post) {
 
 export function archiveScores(row) {
   return row.games.reduce(([a, b], game) => {
-    const [id, , result, white] = game.split(",");
-    if (!validGameId.test(id) || !["0", "1", "2"].includes(result) || !["1", "2"].includes(white)) {
+    const [id, , winnerSlot, whiteSlot] = game.split(",");
+    if (!validGameId.test(id) || !["0", "1", "2"].includes(winnerSlot) || !["1", "2"].includes(whiteSlot)) {
       throw new Error("Unexpected archived game encoding");
     }
-    if (result === "0") return [a + 0.5, b + 0.5];
-    const p1Won = result === white;
+    if (winnerSlot === "0") return [a + 0.5, b + 0.5];
+    // The archive encodes the winner by match-player slot, independent of color.
+    const p1Won = winnerSlot === "1";
     return [a + Number(p1Won), b + Number(!p1Won)];
   }, [0, 0]);
 }
