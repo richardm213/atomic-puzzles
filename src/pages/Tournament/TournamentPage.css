@@ -1064,6 +1064,18 @@ a.tournamentGroupHistoryChip:focus-visible {
   align-content: center;
 }
 
+.tournamentMatchCardTree.hasScheduledTime {
+  padding-block: var(--space-1);
+}
+
+.tournamentMatchScheduledTime {
+  padding-inline: var(--space-1);
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1rem;
+}
+
 .tournamentDoubleByeAnchor {
   position: absolute;
   height: 102px;

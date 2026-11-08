@@ -72,6 +72,32 @@ type StageKey = string;
 
 const TOURNAMENT_TAB_KEYS = new Set(["main", "losers", "qualifying", SEEDS_STAGE_KEY]);
 
+const scheduledMatchTimeFormat = new Intl.DateTimeFormat("en-GB", {
+  month: "short",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "UTC",
+  timeZoneName: "short",
+});
+
+const scheduledMatchTime = (match: TournamentMatch): string => {
+  if (
+    !match.scheduled_at ||
+    !match.p1 ||
+    !match.p2 ||
+    match.match_id ||
+    match.played_on ||
+    match.outcome_type ||
+    match.s1 ||
+    match.s2
+  ) {
+    return "";
+  }
+  const timestamp = Date.parse(match.scheduled_at);
+  return Number.isFinite(timestamp) ? scheduledMatchTimeFormat.format(timestamp) : "";
+};
+
 const normalizeTournamentTab = (value: string | undefined): string => {
   const normalized = String(value || "")
     .trim()
@@ -481,6 +507,7 @@ const TournamentMatchCard = ({
   const shouldShowTrophy = showTrophy && Boolean(trophyAssetPath);
   const isDoubleBye = isTournamentDoubleByeMatch(match);
   const byeAdvancePlayer = byeAdvancePlayerName(match);
+  const startTime = scheduledMatchTime(match);
   const representedLosers = new Set(
     [match.p1, match.p2]
       .filter((playerName) => !isEmptyPlayer(playerName))
@@ -555,7 +582,7 @@ const TournamentMatchCard = ({
 
   return (
     <div
-      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage ? " isClickable" : ""}${shouldShowTrophy ? " hasTrophy" : ""}${shouldShowTrophy && placeTrophyOnSide ? " hasSideTrophy" : ""}${match.replacement_for ? " hasReplacementHistory" : ""}`}
+      className={`tournamentMatchCard tournamentMatchCardTree${hasMatchPage ? " isClickable" : ""}${shouldShowTrophy ? " hasTrophy" : ""}${shouldShowTrophy && placeTrophyOnSide ? " hasSideTrophy" : ""}${match.replacement_for ? " hasReplacementHistory" : ""}${startTime ? " hasScheduledTime" : ""}`}
       style={{
         left: `${match.x}px`,
         top: `${match.y}px`,
@@ -665,6 +692,11 @@ const TournamentMatchCard = ({
             {scoreSlotDisplay(match, match.p2)}
           </strong>
         </div>
+        {startTime ? (
+          <time className="tournamentMatchScheduledTime" dateTime={match.scheduled_at}>
+            {startTime}
+          </time>
+        ) : null}
       </div>
     </div>
   );

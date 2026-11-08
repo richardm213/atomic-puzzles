@@ -33,6 +33,7 @@ export type TournamentMatch = {
   id: string;
   match_id: string;
   played_on: string;
+  scheduled_at?: string;
   p1: string;
   p2: string;
   s1: number;
@@ -128,6 +129,7 @@ type TournamentMatchRowFromDb = {
   id?: string | null;
   match_id?: string | null;
   played_on?: string | null;
+  scheduled_at?: string | null;
   p1?: string | null;
   p2?: string | null;
   s1?: number | string | null;
@@ -189,6 +191,7 @@ export const compareTournamentStartDates = (
 
 const TOURNAMENT_MATCHES_SELECT_COLUMNS =
   "tournament,bracket,round,order,id,match_id,played_on,p1,p2,s1,s2,winner_to,loser_to,outcome_type,replacement_player,replacement_for,replacement_note,replacement_history";
+const TOURNAMENT_BRACKET_SELECT_COLUMNS = `${TOURNAMENT_MATCHES_SELECT_COLUMNS},scheduled_at`;
 const PLAYER_COUNTRIES_SELECT_COLUMNS = "player_name,country_code";
 const TOURNAMENT_SEEDS_SELECT_COLUMNS = "tournament,player_name,seed";
 const TOURNAMENT_CATALOG_WITH_DATES_SELECT_COLUMNS =
@@ -432,6 +435,7 @@ const normalizeMatchRow = (row: TournamentMatchRowFromDb): TournamentMatch => ({
   id: String(row?.id ?? "").trim(),
   match_id: String(row?.match_id ?? "").trim(),
   played_on: String(row?.played_on ?? "").trim(),
+  scheduled_at: row.scheduled_at?.trim() || undefined,
   p1: String(row?.p1 ?? "").trim(),
   p2: String(row?.p2 ?? "").trim(),
   s1: Number(row?.s1),
@@ -1036,7 +1040,7 @@ const fetchTournamentMatchRows = async (tournamentId: string): Promise<Tournamen
     const buildQuery = () =>
       supabase
         .from(TOURNAMENT_MATCHES_TABLE)
-        .select(TOURNAMENT_MATCHES_SELECT_COLUMNS)
+        .select(TOURNAMENT_BRACKET_SELECT_COLUMNS)
         .eq("tournament", tournamentId);
 
     const rows = await fetchAllSupabaseRows<TournamentMatchRowFromDb>(
