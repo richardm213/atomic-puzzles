@@ -30,6 +30,7 @@ const roundOf16Bet: BetHistoryEntry = {
 const predictionState = (
   id: string,
   status: PredictionMarketState["market"]["status"],
+  exchangeVolumeCoins = 0,
 ): PredictionMarketState => ({
   market: {
     id,
@@ -43,7 +44,7 @@ const predictionState = (
     settlementReferenceFillId: null,
     resolvedAt: status === "resolved" ? "2026-11-01T00:00:00Z" : null,
     sportsbookVolumeCoins: 0,
-    exchangeVolumeCoins: 0,
+    exchangeVolumeCoins,
   },
   book: { yes: { bids: [], asks: [] }, no: { bids: [], asks: [] } },
   fills: [],
@@ -145,6 +146,7 @@ describe("BettingHistory", () => {
             description: "",
             displayOrder: 1,
             markets: [
+              { id: "goro-ban", username: "goro to get banned", countryCode: "" },
               {
                 id: "awc-r16-natso-crepuscular",
                 username: "natso",
@@ -162,7 +164,8 @@ describe("BettingHistory", () => {
         ]}
         predictionMarketStates={[
           predictionState("awc-r16-natso-crepuscular", "open"),
-          predictionState("awc-r16-rechesster-renaudmerle", "resolved"),
+          predictionState("awc-r16-rechesster-renaudmerle", "resolved", 10),
+          predictionState("goro-ban", "resolved"),
         ]}
         countryByPlayer={{}}
         myBetsLoading={false}
@@ -185,6 +188,7 @@ describe("BettingHistory", () => {
     expect(searchParams.get("status")).toBe("resolved");
     expect(screen.queryByRole("option", { name: /natso vs crepuscular/i })).not.toBeInTheDocument();
     expect(screen.getByRole("option", { name: /rechesster vs renaudmerle/i })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /goro to get banned/i })).not.toBeInTheDocument();
 
     await user.selectOptions(screen.getByLabelText("Market"), "awc-r16-rechesster-renaudmerle");
     searchParams = new URLSearchParams(window.location.search);

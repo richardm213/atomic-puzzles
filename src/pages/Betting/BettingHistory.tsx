@@ -252,11 +252,22 @@ export const BettingHistory = ({
       predictionMarketStates.map((state) => [state.market.id, state]),
     );
     const resolvedOnly = filters.status === "resolved";
+    const marketsWithBets = new Set([...allBets, ...myBets].map((bet) => bet.marketId));
 
     for (const group of predictionMarketGroups) {
       if (group.id.includes("shield")) continue;
       for (const market of sortPredictionMarketsByChance(group.markets, stateByMarketId)) {
-        if (resolvedOnly && stateByMarketId.get(market.id)?.market.status !== "resolved") continue;
+        if (resolvedOnly) {
+          const state = stateByMarketId.get(market.id);
+          if (state?.market.status !== "resolved") continue;
+          if (
+            state.market.sportsbookVolumeCoins <= 0 &&
+            state.market.exchangeVolumeCoins <= 0 &&
+            state.fills.length === 0 &&
+            !marketsWithBets.has(market.id)
+          )
+            continue;
+        }
         const strike = market.outcomeLabels
           ? `${market.outcomeLabels.yes} vs ${market.outcomeLabels.no}`
           : market.username;
@@ -272,7 +283,7 @@ export const BettingHistory = ({
     }
 
     return [...options].map(([id, label]) => ({ id, label }));
-  }, [filters.status, markets, predictionMarketGroups, predictionMarketStates]);
+  }, [allBets, filters.status, markets, myBets, predictionMarketGroups, predictionMarketStates]);
   const visibleMyBets = useMemo(
     () =>
       filterHistoryBets({
