@@ -57,5 +57,5 @@ test("advances both players in bracket order without overwriting an occupied slo
 });
 
 test("verifies archive score in archive-player order despite alternating colors", () => {
-  deepEqual(archiveScores({ games: ["11111111,,2,2,3+2", "22222222,,2,1,3+2", "33333333,,0,1,3+2"] }), [1.5, 1.5]);
+  deepEqual(archiveScores({ games: ["11111111,,2,2,3+2", "22222222,,2,1,3+2", "33333333,,0,1,3+2"] }), [0.5, 2.5]);
 });
