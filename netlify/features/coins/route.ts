@@ -80,6 +80,7 @@ const addAmount = (amounts: Map<string, number>, username: string, amount: numbe
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("summary") }),
   z.object({ action: z.literal("history") }),
+  z.object({ action: z.literal("redCharcoalAccess") }),
   z.object({ action: z.literal("leaderboard") }),
   z.object({
     action: z.literal("transactions"),
@@ -470,6 +471,17 @@ export const coinsRoute = async (event: FunctionEvent) => {
     canonicalRecipientUsername = recipientIdentity;
   }
   const supabase = createServerSupabase("Atomic Coins service");
+  if (input.action === "redCharcoalAccess") {
+    const { data, error } = await supabase
+      .from("shop_redemptions")
+      .select("id")
+      .eq("username", username)
+      .eq("item_key", "theme_red_charcoal")
+      .eq("status", "fulfilled")
+      .limit(1);
+    if (error) throw new Error(`Unable to check theme ownership: ${error.message}`);
+    return identityResponse(identity, 200, { owned: Boolean(data?.length) });
+  }
   if (input.action === "redeem" && input.itemKey === "username_change") {
     if (!input.requestedUsername) {
       throw new HttpError(400, "Enter the username you want to request.");
@@ -515,10 +527,13 @@ export const coinsRoute = async (event: FunctionEvent) => {
         p_players: input.players,
       });
     }
-    return supabase.rpc("redeem_shop_item", {
-      p_username: username,
-      p_item_key: input.itemKey,
-    });
+    return supabase.rpc(
+      input.itemKey === "theme_red_charcoal" ? "purchase_shop_theme" : "redeem_shop_item",
+      {
+        p_username: username,
+        p_item_key: input.itemKey,
+      },
+    );
   })();
   const { data, error } = await rpc;
   if (error) {

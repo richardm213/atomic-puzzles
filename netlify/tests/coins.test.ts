@@ -23,6 +23,45 @@ const requestHeaders = (username: string) => ({
 });
 
 describe("coins function", () => {
+  it("purchases a permanent theme for the signed-in user without accepting a client price", async () => {
+    const rpc = vi.fn(async () => ({
+      data: { balance: 100, redemptionId: 8, status: "fulfilled" },
+      error: null,
+    }));
+    mocks.createClient.mockReturnValue({ rpc });
+    const response = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("Theme_Buyer"),
+      body: JSON.stringify({
+        action: "redeem",
+        itemKey: "theme_red_charcoal",
+        username: "another_player",
+        cost: 1,
+      }),
+    });
+    expect(rpc).toHaveBeenCalledWith("purchase_shop_theme", {
+      p_username: "theme_buyer",
+      p_item_key: "theme_red_charcoal",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).result).toMatchObject({ balance: 100, status: "fulfilled" });
+  });
+
+  it("checks theme ownership only for the authenticated account and fulfilled purchases", async () => {
+    const limit = vi.fn(async () => ({ data: [{ id: 8 }], error: null }));
+    const query = { eq: vi.fn(), limit };
+    query.eq.mockReturnValue(query);
+    mocks.createClient.mockReturnValue({ from: vi.fn(() => ({ select: vi.fn(() => query) })) });
+    const response = await handler({
+      httpMethod: "POST",
+      headers: requestHeaders("Theme_Buyer"),
+      body: JSON.stringify({ action: "redCharcoalAccess", username: "another_player" }),
+    });
+    expect(query.eq).toHaveBeenCalledWith("username", "theme_buyer");
+    expect(query.eq).toHaveBeenCalledWith("item_key", "theme_red_charcoal");
+    expect(query.eq).toHaveBeenCalledWith("status", "fulfilled");
+    expect(JSON.parse(response.body)).toEqual({ owned: true });
+  });
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-11-03T00:00:01.000Z"));
@@ -381,9 +420,7 @@ describe("coins function", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body).redemptions).toEqual([
-      { ...legacyRow, request_details: {} },
-    ]);
+    expect(JSON.parse(response.body).redemptions).toEqual([{ ...legacyRow, request_details: {} }]);
   });
 
   it("rejects cross-site gifts before contacting the database", async () => {

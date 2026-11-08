@@ -3,10 +3,11 @@ import "./Shop.css";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { faDiscord } from "@fortawesome/free-brands-svg-icons";
 import {
+  faBorderAll,
   faCheck,
   faCircleInfo,
-  faDatabase,
-  faSitemap,
+  faGlobe,
+  faPalette,
   faUserPen,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -17,6 +18,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { SHOP_ITEM_COSTS, SHOP_REOPENS_AT } from "../../../shared/domain/coins";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
+import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import {
@@ -30,20 +32,23 @@ import {
   DAILY_COIN_BONUS,
   redeemShopItem,
   type RedemptionHistoryItem,
-  requestAtomicDbAnalysis,
   type ShopItemKey,
 } from "../../lib/coins/coins";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { getErrorMessage } from "../../utils/errors";
-import { NadekoFlowersIcon } from "./NadekoFlowersIcon";
 
 const CHEST_PRICE_IMAGE = "/images/coins/gold-coin-chest.png";
 
+type ShopCategory = "all" | "discord" | "lichess" | "site";
+
 type ShopItemIcon =
-  { kind: "fontawesome"; icon: IconDefinition } | { kind: "lichess" } | { kind: "nadeko-flowers" };
+  | { kind: "fontawesome"; icon: IconDefinition }
+  | { kind: "lichess" }
+  | { kind: "emoji"; value: string };
 
 const shopItems: {
   key: ShopItemKey;
+  category: Exclude<ShopCategory, "all">;
   name: string;
   cost: number;
   icon: ShopItemIcon;
@@ -51,7 +56,16 @@ const shopItems: {
   description?: string;
 }[] = [
   {
+    key: "theme_red_charcoal",
+    category: "site",
+    name: "Red Charcoal theme",
+    cost: SHOP_ITEM_COSTS.theme_red_charcoal,
+    icon: { kind: "fontawesome", icon: faPalette },
+    priceImage: "/images/coins/gold-coin-stack-v2.png",
+  },
+  {
     key: "username_change",
+    category: "site",
     name: "Change username",
     cost: SHOP_ITEM_COSTS.username_change,
     icon: { kind: "fontawesome", icon: faUserPen },
@@ -59,15 +73,8 @@ const shopItems: {
     description: "Admin approval required",
   },
   {
-    key: "atomicdb_analysis_12h",
-    name: "12-hour AtomicDB opening analysis",
-    cost: SHOP_ITEM_COSTS.atomicdb_analysis_12h,
-    icon: { kind: "fontawesome", icon: faDatabase },
-    priceImage: "/images/coins/gold-coin-stack-v2.png",
-    description: "1T of analysis",
-  },
-  {
     key: "discord_nitro_month",
+    category: "discord",
     name: "1 month Discord Nitro Basic",
     cost: SHOP_ITEM_COSTS.discord_nitro_month,
     icon: { kind: "fontawesome", icon: faDiscord },
@@ -75,6 +82,7 @@ const shopItems: {
   },
   {
     key: "discord_nitro_year",
+    category: "discord",
     name: "1 year Discord Nitro Basic",
     cost: SHOP_ITEM_COSTS.discord_nitro_year,
     icon: { kind: "fontawesome", icon: faDiscord },
@@ -82,6 +90,7 @@ const shopItems: {
   },
   {
     key: "discord_nitro_full_month",
+    category: "discord",
     name: "1 month Discord Nitro Nitro",
     cost: SHOP_ITEM_COSTS.discord_nitro_full_month,
     icon: { kind: "fontawesome", icon: faDiscord },
@@ -89,6 +98,7 @@ const shopItems: {
   },
   {
     key: "discord_nitro_full_year",
+    category: "discord",
     name: "1 year Discord Nitro Nitro",
     cost: SHOP_ITEM_COSTS.discord_nitro_full_year,
     icon: { kind: "fontawesome", icon: faDiscord },
@@ -96,30 +106,37 @@ const shopItems: {
   },
   {
     key: "flowers_500",
+    category: "discord",
     name: "500 Flowers",
     cost: SHOP_ITEM_COSTS.flowers_500,
-    icon: { kind: "nadeko-flowers" },
+    icon: { kind: "emoji", value: "🌸" },
     priceImage: CHEST_PRICE_IMAGE,
   },
   {
     key: "lichess_patron_month",
+    category: "lichess",
     name: "1 month Lichess Patron",
     cost: SHOP_ITEM_COSTS.lichess_patron_month,
     icon: { kind: "lichess" },
     priceImage: CHEST_PRICE_IMAGE,
   },
-  {
-    key: "next_prize_tournament_format",
-    name: "Choose the next 100$+ prize tournament format",
-    cost: SHOP_ITEM_COSTS.next_prize_tournament_format,
-    icon: { kind: "fontawesome", icon: faSitemap },
-    priceImage: CHEST_PRICE_IMAGE,
-  },
+];
+
+const historicalShopItemNames: Partial<Record<ShopItemKey, string>> = {
+  atomicdb_analysis_12h: "12-hour AtomicDB opening analysis",
+  next_prize_tournament_format: "Choose the next 100$+ prize tournament format",
+};
+
+const shopCategories: { key: ShopCategory; label: string; icon: ShopItemIcon }[] = [
+  { key: "all", label: "All", icon: { kind: "fontawesome", icon: faBorderAll } },
+  { key: "discord", label: "Discord", icon: { kind: "fontawesome", icon: faDiscord } },
+  { key: "lichess", label: "Lichess", icon: { kind: "lichess" } },
+  { key: "site", label: "Site", icon: { kind: "fontawesome", icon: faGlobe } },
 ];
 
 const ShopItemIcon = ({ icon }: { icon: ShopItemIcon }) => {
   if (icon.kind === "lichess") return <span className="lichessBrandIcon" />;
-  if (icon.kind === "nadeko-flowers") return <NadekoFlowersIcon className="nadekoFlowersIcon" />;
+  if (icon.kind === "emoji") return <span className="shopItemEmoji">{icon.value}</span>;
   return <FontAwesomeIcon icon={icon.icon} />;
 };
 
@@ -141,21 +158,18 @@ const redemptionDateFormatter = new Intl.DateTimeFormat(undefined, {
 });
 
 export const ShopPage = () => {
+  const [category, setCategory] = useState<ShopCategory>("all");
   const redeemDialogRef = useRef<HTMLDialogElement>(null);
-  const analysisDialogRef = useRef<HTMLDialogElement>(null);
   const purchaseToastTimeoutRef = useRef<number | null>(null);
   const [selectedReward, setSelectedReward] = useState<(typeof shopItems)[number] | null>(null);
   const [requestedUsername, setRequestedUsername] = useState("");
-  const [analysisOpen, setAnalysisOpen] = useState(false);
-  const [analysisFocus, setAnalysisFocus] = useState<"higher_eval" | "player_lines">("higher_eval");
-  const [openingInputs, setOpeningInputs] = useState([""]);
-  const [playerInputs, setPlayerInputs] = useState([""]);
   const [purchaseToast, setPurchaseToast] = useState("");
   const [shopClosed, setShopClosed] = useState(() => Date.now() < Date.parse(SHOP_REOPENS_AT));
   const [dailyCountdown, setDailyCountdown] = useState(() =>
     formatCountdown(Math.max(0, Math.ceil((getNextDailyReset() - Date.now()) / 1000))),
   );
   const { isAuthenticated, isLoading, login, user } = useAuth();
+  const { setTheme } = useAppSettings();
   const queryClient = useQueryClient();
   const username = user?.username ?? "anonymous";
   const summary = useQuery({
@@ -220,11 +234,19 @@ export const ShopPage = () => {
           coinQueryKeys.redemptionHistory(username),
           (current) =>
             current?.map((item) =>
-              item.id === context.optimisticId ? { ...item, id: data.redemptionId! } : item,
+              item.id === context.optimisticId
+                ? {
+                    ...item,
+                    id: data.redemptionId!,
+                    status: data.status === "fulfilled" ? "fulfilled" : item.status,
+                  }
+                : item,
             ),
         );
       }
       const purchasedItem = shopItems.find((item) => item.key === variables.itemKey);
+      if (variables.itemKey === "theme_red_charcoal" && data.status === "fulfilled")
+        setTheme("ruby");
       setPurchaseToast(`${purchasedItem?.name ?? "Purchase"} confirmed`);
       if (purchaseToastTimeoutRef.current !== null) {
         window.clearTimeout(purchaseToastTimeoutRef.current);
@@ -244,30 +266,23 @@ export const ShopPage = () => {
       ]);
     },
   });
-  const analysis = useMutation({
-    mutationFn: requestAtomicDbAnalysis,
-    onSuccess: (data) => {
-      updateSummary({ ...data, dailyClaimAvailable: summary.data?.dailyClaimAvailable ?? false });
-      setAnalysisOpen(false);
-    },
-  });
   const balance = summary.data?.balance ?? 0;
+  const ownsRedCharcoal =
+    redemptionHistory.data?.some(
+      (item) => item.itemKey === "theme_red_charcoal" && item.status === "fulfilled",
+    ) ?? false;
   const economyBan = summary.data?.economyBan ?? null;
-  const busy = daily.isPending || redeem.isPending || analysis.isPending;
-  const errorValue = summary.error ?? daily.error ?? redeem.error ?? analysis.error;
+  const busy = daily.isPending || redeem.isPending;
+  const errorValue = summary.error ?? daily.error ?? redeem.error;
   const error = getErrorMessage(errorValue, "");
 
   const redeemItem = (item: (typeof shopItems)[number]) => {
-    if (shopClosed || balance < item.cost || busy || economyBan) return;
-    redeem.reset();
-    if (item.key === "atomicdb_analysis_12h") {
-      analysis.reset();
-      setAnalysisFocus("higher_eval");
-      setOpeningInputs([""]);
-      setPlayerInputs([""]);
-      setAnalysisOpen(true);
+    if (item.key === "theme_red_charcoal" && ownsRedCharcoal) {
+      setTheme("ruby");
       return;
     }
+    if (shopClosed || balance < item.cost || busy || economyBan) return;
+    redeem.reset();
     setRequestedUsername("");
     setSelectedReward(item);
   };
@@ -291,31 +306,6 @@ export const ShopPage = () => {
     });
   };
 
-  const closeAnalysisDialog = () => {
-    if (!analysis.isPending) setAnalysisOpen(false);
-  };
-
-  const updateInput = (
-    setter: typeof setOpeningInputs,
-    values: string[],
-    index: number,
-    value: string,
-  ) => setter(values.map((current, currentIndex) => (currentIndex === index ? value : current)));
-
-  const submitAnalysisRequest = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (shopClosed) return;
-    const openings = openingInputs.map((value) => value.trim()).filter(Boolean);
-    const players = playerInputs.map((value) => value.trim()).filter(Boolean);
-    if (analysisFocus === "higher_eval") {
-      if (!openings.length) return;
-      analysis.mutate({ focus: "higher_eval", openings });
-      return;
-    }
-    if (!openings[0] || !players.length) return;
-    analysis.mutate({ focus: "player_lines", openings: [openings[0]], players });
-  };
-
   useEffect(() => {
     return () => {
       if (purchaseToastTimeoutRef.current !== null) {
@@ -337,13 +327,6 @@ export const ShopPage = () => {
     if (selectedReward && !dialog.open) dialog.showModal();
     if (!selectedReward && dialog.open) dialog.close();
   }, [selectedReward]);
-
-  useEffect(() => {
-    const dialog = analysisDialogRef.current;
-    if (!dialog) return;
-    if (analysisOpen && !dialog.open) dialog.showModal();
-    if (!analysisOpen && dialog.open) dialog.close();
-  }, [analysisOpen]);
 
   useEffect(() => {
     if (summary.data?.dailyClaimAvailable !== false || economyBan) return undefined;
@@ -451,185 +434,6 @@ export const ShopPage = () => {
         </div>
       ) : null}
 
-      <dialog
-        ref={analysisDialogRef}
-        className="analysisRequestDialog"
-        aria-labelledby="analysis-request-title"
-        onCancel={(event) => {
-          if (analysis.isPending) event.preventDefault();
-          else setAnalysisOpen(false);
-        }}
-        onClickCapture={(event) => {
-          if (event.target === event.currentTarget) closeAnalysisDialog();
-        }}
-      >
-        <form className="analysisRequestForm" onSubmit={submitAnalysisRequest}>
-          <header>
-            <div>
-              <h2 id="analysis-request-title">Request AtomicDB analysis</h2>
-              <p>Choose how the 12-hour analysis should be used.</p>
-            </div>
-            <span className="analysisRequestPrice">
-              <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
-              200
-            </span>
-          </header>
-
-          <fieldset className="analysisFocusOptions">
-            <legend>Analysis focus</legend>
-            <div className={analysisFocus === "higher_eval" ? "selected" : ""}>
-              <input
-                id="analysis-focus-higher-eval"
-                type="radio"
-                name="analysis-focus"
-                value="higher_eval"
-                checked={analysisFocus === "higher_eval"}
-                onChange={() => {
-                  analysis.reset();
-                  setAnalysisFocus("higher_eval");
-                  setOpeningInputs((current) => current.slice(0, 5));
-                }}
-              />
-              <label htmlFor="analysis-focus-higher-eval">
-                <strong id="analysis-focus-higher-eval-label">Push for higher evaluation</strong>
-                <small>Submit up to five opening sequences for deeper analysis.</small>
-              </label>
-            </div>
-            <div className={analysisFocus === "player_lines" ? "selected" : ""}>
-              <input
-                id="analysis-focus-player-lines"
-                type="radio"
-                name="analysis-focus"
-                value="player_lines"
-                checked={analysisFocus === "player_lines"}
-                onChange={() => {
-                  analysis.reset();
-                  setAnalysisFocus("player_lines");
-                  setOpeningInputs((current) => [current[0] ?? ""]);
-                }}
-              />
-              <label htmlFor="analysis-focus-player-lines">
-                <strong id="analysis-focus-player-lines-label">Cover player database lines</strong>
-                <small>Analyze one opening across up to ten players.</small>
-              </label>
-            </div>
-          </fieldset>
-
-          <div className="analysisRequestFields">
-            <div className="analysisDynamicHeader">
-              <div>
-                <strong>{analysisFocus === "higher_eval" ? "Opening sequences" : "Opening"}</strong>
-                <span>AtomicDB URL, FEN, or moves</span>
-              </div>
-              {analysisFocus === "higher_eval" && openingInputs.length < 5 ? (
-                <button
-                  type="button"
-                  onClick={() => setOpeningInputs((current) => [...current, ""])}
-                >
-                  Add opening
-                </button>
-              ) : null}
-            </div>
-            {openingInputs.map((value, index) => (
-              <label className="analysisTextField" key={`opening-${index}`}>
-                <span>Opening {analysisFocus === "higher_eval" ? index + 1 : ""}</span>
-                <span className="analysisInputRow">
-                  <input
-                    type="text"
-                    value={value}
-                    required={index === 0}
-                    maxLength={1000}
-                    placeholder="Paste a URL, FEN, or move sequence"
-                    onChange={(event) =>
-                      updateInput(setOpeningInputs, openingInputs, index, event.target.value)
-                    }
-                  />
-                  {analysisFocus === "higher_eval" && openingInputs.length > 1 ? (
-                    <button
-                      type="button"
-                      aria-label={`Remove opening ${index + 1}`}
-                      onClick={() =>
-                        setOpeningInputs((current) =>
-                          current.filter((_, currentIndex) => currentIndex !== index),
-                        )
-                      }
-                    >
-                      Remove
-                    </button>
-                  ) : null}
-                </span>
-              </label>
-            ))}
-
-            {analysisFocus === "player_lines" ? (
-              <>
-                <div className="analysisDynamicHeader">
-                  <div>
-                    <strong>Players</strong>
-                    <span>Lichess usernames</span>
-                  </div>
-                  {playerInputs.length < 10 ? (
-                    <button
-                      type="button"
-                      onClick={() => setPlayerInputs((current) => [...current, ""])}
-                    >
-                      Add player
-                    </button>
-                  ) : null}
-                </div>
-                {playerInputs.map((value, index) => (
-                  <label className="analysisTextField" key={`player-${index}`}>
-                    <span>Player {index + 1}</span>
-                    <span className="analysisInputRow">
-                      <input
-                        type="text"
-                        value={value}
-                        required={index === 0}
-                        maxLength={50}
-                        pattern="[A-Za-z0-9_-]+"
-                        placeholder="Lichess username"
-                        autoComplete="off"
-                        onChange={(event) =>
-                          updateInput(setPlayerInputs, playerInputs, index, event.target.value)
-                        }
-                      />
-                      {playerInputs.length > 1 ? (
-                        <button
-                          type="button"
-                          aria-label={`Remove player ${index + 1}`}
-                          onClick={() =>
-                            setPlayerInputs((current) =>
-                              current.filter((_, currentIndex) => currentIndex !== index),
-                            )
-                          }
-                        >
-                          Remove
-                        </button>
-                      ) : null}
-                    </span>
-                  </label>
-                ))}
-              </>
-            ) : null}
-          </div>
-
-          {analysis.isError ? (
-            <p className="analysisRequestError" role="alert">
-              {getErrorMessage(analysis.error, "Unable to request this analysis.")}
-            </p>
-          ) : null}
-
-          <footer>
-            <button type="button" disabled={analysis.isPending} onClick={closeAnalysisDialog}>
-              Cancel
-            </button>
-            <button type="submit" disabled={analysis.isPending}>
-              {analysis.isPending ? "Requesting…" : "Request for 200 coins"}
-            </button>
-          </footer>
-        </form>
-      </dialog>
-
       {!isAuthenticated ? (
         <section className="panel coinShopGate">
           <h2>Log in to earn coins</h2>
@@ -710,54 +514,71 @@ export const ShopPage = () => {
               {error}
             </p>
           ) : null}
-          {analysis.isSuccess ? (
-            <p className="coinShopSuccess" role="status">
-              Analysis requested. An admin has been notified.
-            </p>
-          ) : null}
-
           <section className="coinRewards" aria-labelledby="coin-rewards-title">
-            <h2 id="coin-rewards-title">Rewards</h2>
-            <div className="shopItems">
-              {shopItems.map((item) => (
-                <article className="shopItem" key={item.key}>
-                  <div className="shopItemTopRow">
-                    <div className="shopItemArt" aria-hidden="true">
-                      <ShopItemIcon icon={item.icon} />
-                    </div>
-                    <span className="shopItemPrice">
-                      <img
-                        className={
-                          item.key === "discord_nitro_year" ||
-                          item.key === "discord_nitro_full_year"
-                            ? "premiumPriceImage"
-                            : ""
-                        }
-                        src={appAssetPath(item.priceImage)}
-                        alt=""
-                      />
-                      {item.cost.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="shopItemCopy">
-                    <h3>{item.name}</h3>
-                    {item.description ? <p>{item.description}</p> : null}
-                  </div>
+            <div className="shopRewardsHeader">
+              <h2 id="coin-rewards-title">Rewards</h2>
+              <div className="shopCategoryFilters" role="group" aria-label="Shop category">
+                {shopCategories.map((entry) => (
                   <button
+                    key={entry.key}
                     type="button"
-                    disabled={shopClosed || balance < item.cost || busy || Boolean(economyBan)}
-                    onClick={() => redeemItem(item)}
+                    aria-pressed={category === entry.key}
+                    onClick={() => setCategory(entry.key)}
                   >
-                    {shopClosed
-                      ? "Closed"
-                      : item.key === "atomicdb_analysis_12h"
-                        ? "Request"
-                        : redeem.isPending && redeem.variables?.itemKey === item.key
-                          ? "Buying…"
-                          : "Buy"}
+                    <span aria-hidden="true">
+                      <ShopItemIcon icon={entry.icon} />
+                    </span>
+                    {entry.label}
                   </button>
-                </article>
-              ))}
+                ))}
+              </div>
+            </div>
+            <div className="shopItems">
+              {shopItems
+                .filter((item) => category === "all" || item.category === category)
+                .sort((a, b) => a.cost - b.cost)
+                .map((item) => (
+                  <article className="shopItem" key={item.key}>
+                    <div className="shopItemTopRow">
+                      <div className="shopItemArt" aria-hidden="true">
+                        <ShopItemIcon icon={item.icon} />
+                      </div>
+                      <span className="shopItemPrice">
+                        <img
+                          className={
+                            item.key === "discord_nitro_year" ||
+                            item.key === "discord_nitro_full_year"
+                              ? "premiumPriceImage"
+                              : ""
+                          }
+                          src={appAssetPath(item.priceImage)}
+                          alt=""
+                        />
+                        {item.cost.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="shopItemCopy">
+                      <h3>{item.name}</h3>
+                      {item.description ? <p>{item.description}</p> : null}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={
+                        !(item.key === "theme_red_charcoal" && ownsRedCharcoal) &&
+                        (shopClosed || balance < item.cost || busy || Boolean(economyBan))
+                      }
+                      onClick={() => redeemItem(item)}
+                    >
+                      {item.key === "theme_red_charcoal" && ownsRedCharcoal
+                        ? "Use theme"
+                        : shopClosed
+                          ? "Closed"
+                          : redeem.isPending && redeem.variables?.itemKey === item.key
+                            ? "Buying…"
+                            : "Buy"}
+                    </button>
+                  </article>
+                ))}
             </div>
           </section>
 
@@ -778,7 +599,11 @@ export const ShopPage = () => {
                   return (
                     <li key={redemption.id}>
                       <div>
-                        <strong>{item?.name ?? redemption.itemKey}</strong>
+                        <strong>
+                          {item?.name ??
+                            historicalShopItemNames[redemption.itemKey] ??
+                            redemption.itemKey}
+                        </strong>
                         <time dateTime={redemption.createdAt}>
                           {redemptionDateFormatter.format(new Date(redemption.createdAt))}
                         </time>

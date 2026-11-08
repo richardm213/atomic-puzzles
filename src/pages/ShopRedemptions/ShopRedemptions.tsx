@@ -22,6 +22,7 @@ const SHOP_ADMIN = "seaside_tiramisu";
 type RedemptionFilter = "all" | ShopRedemptionStatus;
 
 const itemNames: Record<ShopRedemption["itemKey"], string> = {
+  theme_red_charcoal: "Red Charcoal theme",
   username_change: "Change username",
   discord_nitro_month: "1 month Discord Nitro Basic",
   discord_nitro_year: "1 year Discord Nitro Basic",

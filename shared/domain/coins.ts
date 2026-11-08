@@ -1,4 +1,5 @@
 export const SHOP_ITEM_KEYS = [
+  "theme_red_charcoal",
   "username_change",
   "atomicdb_analysis_12h",
   "discord_nitro_month",
@@ -19,6 +20,7 @@ export const SHOP_REDEMPTION_STATUSES = ["pending", "fulfilled", "cancelled"] as
 export type ShopRedemptionStatus = (typeof SHOP_REDEMPTION_STATUSES)[number];
 
 export const SHOP_ITEM_COSTS = {
+  theme_red_charcoal: 100,
   username_change: 100,
   atomicdb_analysis_12h: 200,
   discord_nitro_month: 400,
@@ -31,6 +33,7 @@ export const SHOP_ITEM_COSTS = {
 } as const satisfies Record<ShopItemKey, number>;
 
 export const REDEEMABLE_SHOP_ITEM_KEYS = [
+  "theme_red_charcoal",
   "username_change",
   "discord_nitro_month",
   "discord_nitro_year",

@@ -70,6 +70,7 @@ const selectedReasonsFor = (categories: TransactionCategory[]) =>
     .map(([reason]) => reason);
 
 const shopItemLabels: Record<string, string> = {
+  theme_red_charcoal: "the Red Charcoal theme",
   username_change: "a username change",
   atomicdb_analysis_12h: "AtomicDB analysis",
   game_analysis: "Game analysis",

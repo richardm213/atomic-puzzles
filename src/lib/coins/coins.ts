@@ -218,6 +218,17 @@ export const claimDailyCoins = async (): Promise<CoinSummary> => {
 };
 export const redeemShopItem = (itemKey: ShopItemKey, requestedUsername?: string) =>
   request({ action: "redeem", itemKey, ...(requestedUsername ? { requestedUsername } : {}) });
+export const checkRedCharcoalAccess = async (): Promise<boolean> => {
+  const result = await postApi(
+    "/api/coins",
+    { action: "redCharcoalAccess" },
+    {
+      schema: z.object({ owned: z.boolean() }),
+      errorMessage: "Unable to check theme ownership.",
+    },
+  );
+  return result.owned;
+};
 export const requestAtomicDbAnalysis = (details: AtomicDbAnalysisRequest) =>
   request({ action: "requestAtomicDbAnalysis", ...details });
 

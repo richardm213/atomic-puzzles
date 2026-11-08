@@ -14,7 +14,7 @@
 }
 
 .coinShopHeader h1,
-.coinRewards > h2,
+.shopRewardsHeader > h2,
 .redemptionHistory > h2 {
   margin: 0;
 }
@@ -244,284 +244,6 @@
     opacity: 0;
     transform: translate3d(12px, 0, 0);
   }
-}
-
-.analysisRequestDialog {
-  width: min(680px, calc(100vw - 32px));
-  max-height: calc(100dvh - 32px);
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-panel-deep);
-  color: var(--color-text);
-  box-shadow: var(--shadow-strong);
-}
-
-.analysisRequestDialog::backdrop {
-  background: color-mix(in srgb, var(--color-panel-deep) 76%, transparent);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-}
-
-.analysisRequestForm {
-  max-height: inherit;
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
-}
-
-.analysisRequestForm > header,
-.analysisRequestForm > footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-5);
-}
-
-.analysisRequestForm > header {
-  border-bottom: 1px solid var(--color-border);
-}
-
-.analysisRequestForm > header h2,
-.analysisRequestForm > header p,
-.analysisRequestError {
-  margin: 0;
-}
-
-.analysisRequestForm > header h2 {
-  font-size: 22px;
-}
-
-.analysisRequestForm > header p {
-  margin-top: var(--space-1);
-  color: var(--color-muted);
-  font-size: 14px;
-}
-
-.analysisRequestPrice {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-heading);
-  font-size: 18px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-
-.analysisRequestPrice img {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-}
-
-.analysisFocusOptions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-  padding: var(--space-4) var(--space-5);
-  border: 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.analysisFocusOptions legend {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-}
-
-.analysisFocusOptions > div {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-surface-soft);
-  cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    background-color 160ms ease;
-}
-
-.analysisFocusOptions > div:hover {
-  border-color: var(--color-accent-soft-border);
-  background: var(--color-panel-strong);
-}
-
-.analysisFocusOptions > div.selected {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 11%, var(--color-panel-strong));
-}
-
-.analysisFocusOptions input {
-  width: 18px;
-  height: 18px;
-  margin: 1px 0 0;
-  accent-color: var(--color-primary);
-}
-
-.analysisFocusOptions label {
-  min-width: 0;
-  display: grid;
-  gap: var(--space-1);
-  cursor: pointer;
-}
-
-.analysisFocusOptions strong {
-  color: var(--color-heading);
-  font-size: 14px;
-}
-
-.analysisFocusOptions small {
-  color: var(--color-muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.analysisRequestFields {
-  display: grid;
-  align-content: start;
-  gap: var(--space-3);
-  padding: var(--space-5);
-  overflow-y: auto;
-}
-
-.analysisDynamicHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.analysisDynamicHeader > div {
-  display: grid;
-  gap: var(--space-1);
-}
-
-.analysisDynamicHeader strong {
-  color: var(--color-heading);
-  font-size: 14px;
-}
-
-.analysisDynamicHeader span {
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
-.analysisDynamicHeader button,
-.analysisInputRow button {
-  min-height: 36px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-panel-strong);
-  color: var(--color-primary-soft);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.analysisDynamicHeader button:hover,
-.analysisInputRow button:hover {
-  border-color: var(--color-primary);
-  color: var(--color-heading);
-}
-
-.analysisTextField {
-  display: grid;
-  gap: var(--space-1);
-  color: var(--color-muted);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.analysisInputRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-2);
-}
-
-.analysisInputRow input {
-  min-width: 0;
-  min-height: var(--control-height-touch);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-surface-inset-strong);
-  color: var(--color-heading);
-  font: inherit;
-  font-size: 14px;
-}
-
-.analysisInputRow input::placeholder {
-  color: var(--color-subtle);
-}
-
-.analysisFocusOptions input:focus-visible,
-.analysisDynamicHeader button:focus-visible,
-.analysisInputRow button:focus-visible,
-.analysisInputRow input:focus-visible,
-.analysisRequestForm > footer button:focus-visible {
-  outline: 3px solid var(--color-primary-ring);
-  outline-offset: 2px;
-}
-
-.analysisRequestError {
-  padding: 0 var(--space-5) var(--space-3);
-  color: var(--color-danger);
-  font-size: 13px;
-  font-weight: 650;
-}
-
-.analysisRequestForm > footer {
-  justify-content: flex-end;
-  border-top: 1px solid var(--color-border);
-}
-
-.analysisRequestForm > footer button {
-  min-height: var(--control-height-touch);
-  padding: 0 var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel-strong);
-  color: var(--color-heading);
-  font: inherit;
-  font-weight: 650;
-  cursor: pointer;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    transform 160ms ease;
-}
-
-.analysisRequestForm > footer button[type="submit"] {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-}
-
-.analysisRequestForm > footer button:hover:not(:disabled) {
-  border-color: var(--color-primary-soft);
-}
-
-.analysisRequestForm > footer button[type="submit"]:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
-
-.analysisRequestForm > footer button:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.analysisRequestForm > footer button:disabled {
-  cursor: not-allowed;
-  opacity: 0.56;
 }
 
 .coinHelpLink:focus-visible {
@@ -845,6 +567,64 @@
   gap: var(--space-4);
 }
 
+.shopRewardsHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.shopCategoryFilters {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.shopCategoryFilters button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+  color: var(--color-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.shopCategoryFilters button:hover {
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+}
+
+.shopCategoryFilters button[aria-pressed="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+}
+
+.shopCategoryFilters button:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.shopCategoryFilters button > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.shopCategoryFilters .lichessBrandIcon {
+  width: 20px;
+  height: 20px;
+}
+
 .shopItem {
   min-height: 224px;
   display: grid;
@@ -891,10 +671,9 @@
   height: 30px;
 }
 
-.shopItemArt .nadekoFlowersIcon {
-  width: 46px;
-  height: 46px;
-  overflow: visible;
+.shopItemEmoji {
+  font-size: 32px;
+  line-height: 1;
 }
 
 .lichessBrandIcon {
@@ -974,6 +753,19 @@
 }
 
 @media (max-width: 640px) {
+  .shopCategoryFilters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .shopCategoryFilters button {
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+    padding-inline: var(--space-1);
+  }
+
   .shopPurchaseToast {
     right: var(--space-4);
     left: var(--space-4);
@@ -1007,10 +799,6 @@
     align-items: flex-start;
     padding: var(--space-4);
   }
-
-  .analysisFocusOptions {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 420px) {
@@ -1030,22 +818,6 @@
   .redeemDialogActions {
     grid-template-columns: 1fr;
   }
-
-  .analysisRequestForm > header,
-  .analysisRequestForm > footer,
-  .analysisRequestFields,
-  .analysisFocusOptions {
-    padding-inline: var(--space-4);
-  }
-
-  .analysisRequestForm > footer {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .analysisRequestForm > footer button[type="submit"] {
-    grid-row: 1;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1061,11 +833,6 @@
   }
 
   .redeemDialogActions button {
-    transition: none;
-  }
-
-  .analysisFocusOptions > div,
-  .analysisRequestForm > footer button {
     transition: none;
   }
 

@@ -41,6 +41,7 @@ import { useNotificationNavigation } from "../../hooks/useNotificationNavigation
 import { isBoardSoundSet, playBoardSound } from "../../lib/boardSounds/boardSounds";
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
+import { checkRedCharcoalAccess } from "../../lib/coins/coins";
 import {
   notificationQueryKeys,
   notificationsQueryOptions,
@@ -204,6 +205,12 @@ export const TopNav = () => {
   const normalizedAuthUsername = normalizeUsername(user?.username);
   const canUseCustomThemes =
     normalizedAuthUsername === "admin" || normalizedAuthUsername === "seaside_tiramisu";
+  const themeAccess = useMutation({
+    mutationFn: checkRedCharcoalAccess,
+    onSuccess: (owned) => {
+      if (owned) setTheme("ruby");
+    },
+  });
   const darkOnlyTheme = canUseCustomThemes && isDarkOnlyTheme(theme);
   const isProfilePage = /^\/@\/[^/]+\/?$/.test(pathname);
   const [profileUsername, setProfileUsername] = useState(() =>
@@ -272,7 +279,7 @@ export const TopNav = () => {
   }, [normalizedAuthUsername, profileMenuOpen]);
 
   useEffect(() => {
-    if (!isLoading && theme !== "default" && !canUseCustomThemes) {
+    if (!isLoading && theme !== "default" && theme !== "ruby" && !canUseCustomThemes) {
       setTheme("default");
     }
   }, [canUseCustomThemes, isLoading, setTheme, theme]);
@@ -904,25 +911,46 @@ export const TopNav = () => {
                     </label>
                     <select
                       id="site-theme-select"
-                      value={canUseCustomThemes ? theme : "default"}
+                      value={canUseCustomThemes || theme === "ruby" ? theme : "default"}
+                      disabled={themeAccess.isPending}
                       onChange={(event) => {
                         const nextTheme = event.target.value as Theme;
+                        themeAccess.reset();
+                        if (nextTheme === "ruby" && !canUseCustomThemes) {
+                          if (!isAuthenticated) {
+                            void login(window.location.pathname + window.location.search);
+                            return;
+                          }
+                          themeAccess.mutate();
+                          return;
+                        }
                         if (nextTheme !== "default" && !canUseCustomThemes) return;
                         setTheme(nextTheme);
                       }}
                     >
                       <option value="default">Default</option>
-                      {canUseCustomThemes &&
-                        CUSTOM_THEMES.map((palette) => (
-                          <option key={palette} value={palette}>
-                            {palette === "emerald"
-                              ? "Forest Green"
-                              : palette === "ruby"
-                                ? "Red Charcoal"
-                                : palette.charAt(0).toUpperCase() + palette.slice(1)}
-                          </option>
-                        ))}
+                      {CUSTOM_THEMES.filter(
+                        (palette) => canUseCustomThemes || palette === "ruby",
+                      ).map((palette) => (
+                        <option key={palette} value={palette}>
+                          {palette === "emerald"
+                            ? "Forest Green"
+                            : palette === "ruby"
+                              ? "Red Charcoal"
+                              : palette.charAt(0).toUpperCase() + palette.slice(1)}
+                        </option>
+                      ))}
                     </select>
+                    {themeAccess.data === false ? (
+                      <Link to="/shop" onClick={() => setOpenPanel(null)}>
+                        Unlock Red Charcoal · 100 coins
+                      </Link>
+                    ) : null}
+                    {themeAccess.error ? (
+                      <p role="alert">
+                        {getErrorMessage(themeAccess.error, "Unable to check theme ownership.")}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="navSettingsField">
                     <label className="navSettingsLabel" htmlFor="site-color-mode-select">
