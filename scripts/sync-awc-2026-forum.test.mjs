@@ -29,6 +29,18 @@ test("turns a director's multi-match UTC announcement into exact kickoffs, not p
   deepEqual(parsePost(post("@Alice vs @Bob Nov 8 at 08 UTC", "spectator")), []);
 });
 
+test("accepts only HowlinD, AtomicWorldChamp, or a participant for either update", () => {
+  const score = "@Alice vs @Bob 6-2 https://lichess.org/ABCDEFGH";
+  const kickoff = "@Alice vs @Bob Nov 8 at 08 UTC";
+  for (const author of ["howlind", "atomicworldchamp", "bob"]) {
+    equal(parsePost(post(score, author))[0]?.type, "result");
+    equal(parsePost(post(kickoff, author))[0]?.type, "schedule");
+  }
+  // Another tournament player cannot publish or manufacture a conflict for this pair.
+  deepEqual(parsePost(post(score, "carol")), []);
+  deepEqual(parsePost(post(kickoff, "carol")), []);
+});
+
 test("advances both players in bracket order without overwriting an occupied slot", () => {
   const first = { id: "wb-r1-m1", order: 1, p1: "alice", p2: "bob", winner_to: "wb-r2-m1", loser_to: "lb-r1-m1" };
   const second = { ...first, id: "wb-r1-m2", order: 2, p1: "carol", p2: "dave" };
