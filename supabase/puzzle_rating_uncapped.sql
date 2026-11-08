@@ -154,7 +154,7 @@ begin
   from public.puzzle_ratings state
   where state.puzzle_id = p_puzzle_id;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.rate_first_puzzle_attempt_v2()
@@ -343,7 +343,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.rebuild_puzzle_ratings_from_history()
@@ -637,7 +637,7 @@ begin
   from public.puzzle_ratings state
   where puzzle.id = state.puzzle_id;
 end;
-$function$
+$function$;
 
 
 -- Normalize any legacy manual or computed V6 state before replaying history.

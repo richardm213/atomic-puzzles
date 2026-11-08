@@ -25,7 +25,7 @@ create table if not exists public.game_analyses (
   total_positions integer not null check (total_positions > 0),
   queued_positions integer not null default 0 check (queued_positions >= 0),
   completed_positions integer not null default 0 check (completed_positions >= 0),
-  cost numeric(18, 6) not null default 1 check (cost = 1),
+  cost numeric(18, 6) not null default 1 check (cost > 0),
   charge_attempt integer not null default 1 check (charge_attempt > 0),
   result jsonb,
   error text,
@@ -37,6 +37,13 @@ create table if not exists public.game_analyses (
   check (queued_positions <= total_positions),
   check (completed_positions <= total_positions)
 );
+
+alter table public.game_analyses
+  alter column cost set default 1;
+alter table public.game_analyses
+  drop constraint if exists game_analyses_cost_check;
+alter table public.game_analyses
+  add constraint game_analyses_cost_check check (cost > 0);
 
 create index if not exists game_analyses_work_idx
   on public.game_analyses (next_check_at, created_at)
@@ -74,21 +81,18 @@ begin
   end if;
 
   insert into public.game_analyses (
-    game_id, requested_by, initial_fen, moves, position_fens, total_positions
+    game_id, requested_by, initial_fen, moves, position_fens, total_positions, cost
   ) values (
     normalized_game_id, normalized_username, btrim(p_initial_fen), p_moves, p_position_fens,
-    jsonb_array_length(p_position_fens)
+    jsonb_array_length(p_position_fens), 1
   ) on conflict (game_id) do nothing;
   get diagnostics inserted_count = row_count;
 
   if inserted_count = 1 then
     current_balance := public.apply_coin_transaction(
-      normalized_username,
-      -1::numeric,
-      'game_analysis',
+      normalized_username, -1::numeric, 'game_analysis',
       'game-analysis:' || normalized_game_id || ':1',
-      jsonb_build_object('gameId', normalized_game_id, 'cost', 1),
-      now()
+      jsonb_build_object('gameId', normalized_game_id, 'cost', 1), now()
     );
   else
     select * into existing
@@ -98,17 +102,14 @@ begin
 
     if existing.status = 'failed' then
       current_balance := public.apply_coin_transaction(
-        normalized_username,
-        -1::numeric,
-        'game_analysis',
+        normalized_username, -1::numeric, 'game_analysis',
         'game-analysis:' || normalized_game_id || ':' || (existing.charge_attempt + 1)::text,
-        jsonb_build_object('gameId', normalized_game_id, 'cost', 1, 'retry', true),
-        now()
+        jsonb_build_object('gameId', normalized_game_id, 'cost', 1, 'retry', true), now()
       );
     end if;
 
     update public.game_analyses
-    set status = 'queued', requested_by = normalized_username,
+    set status = 'queued', requested_by = normalized_username, cost = 1,
       charge_attempt = charge_attempt + 1, error = null, retry_count = 0,
       next_check_at = now(), updated_at = now()
     where game_id = normalized_game_id and status = 'failed';

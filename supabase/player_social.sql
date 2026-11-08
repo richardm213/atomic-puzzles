@@ -23,6 +23,11 @@ alter table public.player_social_profiles
   add constraint player_social_profiles_country_code_check
     check (country_code is null or country_code ~ '^[A-Z]{2}$');
 
+-- Ratings are read live from the archive; remove obsolete cached snapshots.
+alter table public.player_social_profiles
+  drop column if exists ratings,
+  drop column if exists ratings_snapshot_date;
+
 alter table public.player_social_profiles enable row level security;
 revoke all on public.player_social_profiles from anon, authenticated;
 grant select (username, flair, country_code) on public.player_social_profiles to anon, authenticated;
