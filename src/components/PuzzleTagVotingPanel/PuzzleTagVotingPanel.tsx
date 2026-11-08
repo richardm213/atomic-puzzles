@@ -100,11 +100,6 @@ export const PuzzleTagVotingPanel = ({
   const selectedMotif = selectedTag ? motifsByTag.get(selectedTag) : null;
   const talliesByTag = new Map(tallies?.map((tally) => [tally.tag, tally]));
   const visibleTags = getVisiblePuzzleTags(tags, tallies);
-  const votedTags = canVote
-    ? (tallies?.filter(({ vote }) => vote !== 0).map(({ tag }) => tag) ?? [])
-    : [];
-  const votedTagSet = new Set(votedTags);
-  const communityTags = visibleTags.filter((tag) => !votedTagSet.has(tag));
   const saving = saveStatus.state === "saving";
   const normalizedSearch = searchValue.trim().toLowerCase();
   const netVotes = (tag: string) => {
@@ -160,15 +155,8 @@ export const PuzzleTagVotingPanel = ({
       const votes = await voteOnPuzzleTag(puzzleId, tag, direction);
       const focusedChip = document.activeElement?.closest<HTMLElement>("[data-motif-chip]");
       const focusedTag = focusedChip?.dataset.motifChip;
-      if (focusedTag) {
-        const willHaveVote = votes.some((tally) => tally.tag === focusedTag && tally.vote !== 0);
-        const movesBetweenRows = votedTagSet.has(focusedTag) !== willHaveVote;
-        if (
-          movesBetweenRows ||
-          (!willHaveVote && !getVisiblePuzzleTags(tags, votes).includes(focusedTag))
-        ) {
-          pickerButtonRef.current?.focus();
-        }
+      if (focusedTag && !getVisiblePuzzleTags(tags, votes).includes(focusedTag)) {
+        pickerButtonRef.current?.focus();
       }
       setTallies(votes);
       setSaveStatus({ state: "saved", removed: direction === 0 });
@@ -226,15 +214,8 @@ export const PuzzleTagVotingPanel = ({
     const name = getName(tag);
     const tally = talliesByTag.get(tag);
     const status = tally ? getPuzzleTagStatus(tally) : undefined;
-    const hasVote = canVote && Boolean(tally?.vote);
     return (
-      <div
-        className="puzzleTagVoteAppliedTag"
-        key={tag}
-        data-motif-chip={tag}
-        data-status={status}
-        data-voted={hasVote}
-      >
+      <div className="puzzleTagVoteAppliedTag" key={tag} data-motif-chip={tag} data-status={status}>
         <button
           type="button"
           className="puzzleTagVoteDefinitionButton"
@@ -247,11 +228,7 @@ export const PuzzleTagVotingPanel = ({
           {status ? <FontAwesomeIcon icon={statusIcons[status]} aria-hidden="true" /> : null}
           <span>{name}</span>
         </button>
-        {tally ? (
-          <div className={hasVote ? "puzzleTagVoteInlineVotes" : "puzzleTagVoteHoverVotes"}>
-            {voteControls(motif)}
-          </div>
-        ) : null}
+        {tally ? <div className="puzzleTagVoteHoverVotes">{voteControls(motif)}</div> : null}
       </div>
     );
   };
@@ -264,7 +241,7 @@ export const PuzzleTagVotingPanel = ({
         </div>
         <div className="puzzleTagVoteAppliedList" aria-label="Tags on this puzzle">
           <div className="puzzleTagVoteChips">
-            {communityTags.map(renderTag)}
+            {visibleTags.map(renderTag)}
             {visibleTags.length === 0 && !canVote ? <em>No tags yet.</em> : null}
           </div>
           {canVote ? (
@@ -281,7 +258,6 @@ export const PuzzleTagVotingPanel = ({
               >
                 {pickerOpen ? "Close tag picker" : "Add tag"}
               </button>
-              {votedTags.map(renderTag)}
             </div>
           ) : null}
         </div>

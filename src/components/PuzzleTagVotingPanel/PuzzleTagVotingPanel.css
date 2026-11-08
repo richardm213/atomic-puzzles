@@ -139,18 +139,7 @@
   flex: none;
 }
 
-.puzzleTagVoteInlineVotes {
-  display: flex;
-  flex: none;
-}
-
-.puzzleTagVoteAppliedTag[data-voted="true"] .puzzleTagVoteDefinitionButton {
-  border-start-end-radius: 0;
-  border-end-end-radius: 0;
-}
-
-.puzzleTagVoteHoverVotes .puzzleTagVoteVoteButtons,
-.puzzleTagVoteInlineVotes .puzzleTagVoteVoteButtons {
+.puzzleTagVoteHoverVotes .puzzleTagVoteVoteButtons {
   border-color: var(--color-accent-soft-border);
   border-inline-start: 0;
   border-start-start-radius: 0;
