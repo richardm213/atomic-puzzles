@@ -1,0 +1,181 @@
+/* Default accents and canvas wash. Gemstone palettes override these without
+   changing the mode's typography, borders, or surface opacity. */
+:root {
+  --color-primary: #315be8;
+  --color-primary-hover: #2447c2;
+  --color-primary-soft: #9cbcff;
+  --color-primary-pale: #cedbff;
+  --color-cyan: #168aa1;
+  --color-cyan-bright: #52c7e8;
+  --color-on-primary: #eff6ff;
+  --color-accent-soft-bg: rgba(14, 116, 144, 0.16);
+  --color-accent-soft-bg-strong: rgba(14, 116, 144, 0.2);
+  --color-accent-soft-border: rgba(148, 163, 184, 0.28);
+  --color-accent-soft-text: #ecfeff;
+  --color-table-hover: rgba(147, 197, 253, 0.08);
+  --color-primary-ring: rgba(156, 188, 255, 0.72);
+  --page-background:
+    radial-gradient(ellipse 70% 44% at 12% 6%, rgba(49, 91, 232, 0.2), transparent 100%),
+    radial-gradient(ellipse 58% 38% at 88% 0%, rgba(22, 138, 161, 0.14), transparent 100%),
+    linear-gradient(180deg, var(--color-page-top) 0%, var(--color-page-bottom) 100%);
+  --brand-wordmark-gradient: linear-gradient(180deg, #ffffff 0%, var(--color-primary-pale) 100%);
+  --brand-wordmark-color: var(--color-heading);
+  --brand-wordmark-shadow: 0 0 18px rgba(147, 197, 253, 0.18);
+  --brand-mark-bg: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-primary) 18%, var(--color-panel-deep)),
+    var(--color-panel-deep)
+  );
+  --brand-mark-border: color-mix(in srgb, var(--color-primary-soft) 58%, transparent);
+  --brand-mark-color: #8cecf5;
+  --brand-mark-shadow:
+    0 0 0 1px color-mix(in srgb, white 8%, transparent) inset,
+    0 8px 18px color-mix(in srgb, var(--color-primary) 24%, transparent);
+}
+
+:root[data-theme="light"] {
+  --color-primary: #2c58d8;
+  --color-primary-hover: #2048bc;
+  --color-primary-soft: #315fd6;
+  --color-primary-pale: #244fbf;
+  --color-cyan: #0e7c79;
+  --color-cyan-bright: #08788e;
+  --color-accent-soft-bg: rgba(15, 142, 163, 0.09);
+  --color-accent-soft-bg-strong: rgba(15, 142, 163, 0.14);
+  --color-accent-soft-border: rgba(76, 94, 122, 0.22);
+  --color-accent-soft-text: #124654;
+  --color-table-hover: rgba(42, 91, 215, 0.08);
+  --color-primary-ring: rgba(44, 88, 216, 0.46);
+  --page-background:
+    radial-gradient(ellipse 70% 42% at 14% 0%, rgba(49, 95, 214, 0.08), transparent 78%),
+    linear-gradient(180deg, var(--color-page-top) 0%, var(--color-page-bottom) 100%);
+  --brand-wordmark-gradient: linear-gradient(180deg, #07111f 0%, #123177 62%, #0b5264 100%);
+  --brand-wordmark-color: #10265d;
+  --brand-wordmark-shadow: none;
+  --brand-mark-bg: linear-gradient(145deg, #eef4ff 0%, #e2f5f4 100%);
+  --brand-mark-border: color-mix(in srgb, var(--color-primary) 26%, white);
+  --brand-mark-color: #214bc0;
+  --brand-mark-shadow:
+    0 0 0 1px color-mix(in srgb, white 72%, transparent) inset,
+    0 5px 12px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+/* Palettes define the accent hues; color mode owns the neutral surfaces.
+   Status, market and rating colors keep their existing meaning across palettes. */
+:root[data-palette="amethyst"] {
+  --gem-hue: 308;
+  --gem-nav-hue: 320;
+  --gem-action-chroma: 0.17;
+  --gem-accent-chroma: 0.13;
+}
+
+:root[data-palette="ruby"] {
+  --gem-hue: 20;
+  --gem-action-chroma: 0.18;
+  --gem-accent-chroma: 0.16;
+  --gem-accent-dark-lightness: 72%;
+  --gem-nav-hue: 20;
+  --gem-nav-chroma: 0.2;
+  --gem-mark-dark-lightness: 62%;
+  --gem-mark-dark-chroma: 0.18;
+}
+
+:root[data-palette="emerald"] {
+  --gem-hue: 164;
+  --gem-nav-hue: 157;
+}
+
+/* Gemstone accents are shared across modes. */
+:root[data-gemstone-theme] {
+  --gem-selection-tint: 11%;
+  --gem-emphasis-tint: 17%;
+  --gem-action-lightness: 48%;
+  --gem-action-hover-lightness: 52%;
+  --gem-accent-lightness: var(--gem-accent-dark-lightness, 79%);
+  --gem-accent-pale-lightness: 91%;
+  --color-nav-badge: oklch(50% var(--gem-nav-chroma, 0.22) var(--gem-nav-hue));
+  --color-primary: oklch(var(--gem-action-lightness) var(--gem-action-chroma, 0.14) var(--gem-hue));
+  --color-primary-hover: oklch(
+    var(--gem-action-hover-lightness) var(--gem-action-chroma, 0.14) var(--gem-hue)
+  );
+  --color-primary-soft: oklch(
+    var(--gem-accent-lightness) var(--gem-accent-chroma, 0.105) var(--gem-hue)
+  );
+  --color-primary-text: var(--color-primary-soft);
+  --color-primary-pale: oklch(var(--gem-accent-pale-lightness) 0.06 var(--gem-hue));
+  --color-on-primary: oklch(98% 0.01 var(--gem-hue));
+  --color-action-fill: var(--color-primary);
+  --color-action-fill-hover: var(--color-primary-hover);
+  --color-cyan: var(--color-primary);
+  --color-cyan-bright: var(--color-primary-soft);
+  --color-accent-soft-bg: color-mix(
+    in srgb,
+    var(--color-primary-soft) var(--gem-selection-tint),
+    transparent
+  );
+  --color-accent-soft-bg-strong: color-mix(
+    in srgb,
+    var(--color-primary-soft) var(--gem-emphasis-tint),
+    transparent
+  );
+  --color-accent-soft-border: color-mix(in srgb, var(--color-primary-soft) 34%, transparent);
+  --color-accent-soft-text: var(--color-primary-pale);
+  --color-table-hover: var(--color-accent-soft-bg);
+  --color-primary-ring: var(--color-primary-soft);
+  --brand-wordmark-gradient: linear-gradient(
+    180deg,
+    var(--color-heading),
+    var(--color-primary-pale)
+  );
+  --brand-wordmark-color: var(--color-primary-pale);
+  --brand-wordmark-shadow: none;
+  --brand-mark-color: oklch(
+    var(--gem-mark-dark-lightness, 73%) var(--gem-mark-dark-chroma, 0.21) var(--gem-nav-hue)
+  );
+}
+
+/* Dark palettes recolor the material inputs. The color-mode rules apply the
+   same opacity to every panel, inset, elevated surface and overlay. */
+:root[data-theme="dark"][data-gemstone-theme] {
+  --gem-canvas-chroma: 0.035;
+  --gem-surface-chroma: 0.022;
+  --gem-page-top-lightness: 23%;
+  --gem-wash: 21%;
+  --color-page-top: oklch(var(--gem-page-top-lightness) var(--gem-canvas-chroma) var(--gem-hue));
+  --color-page-bottom: oklch(15% var(--gem-canvas-chroma) var(--gem-hue));
+  --color-panel-strong: oklch(21.2% var(--gem-surface-chroma) var(--gem-hue));
+  --color-panel-deep: oklch(15.5% var(--gem-surface-chroma) var(--gem-hue));
+  --theme-panel-ink: var(--color-panel-strong);
+  --theme-nav-ink: var(--color-panel-deep);
+  --theme-inset-ink: oklch(13% var(--gem-surface-chroma) var(--gem-hue));
+  --theme-raised-ink: oklch(21% var(--gem-surface-chroma) var(--gem-hue));
+  --color-table-hover: color-mix(in srgb, var(--color-primary-soft) 8%, transparent);
+  --page-background:
+    radial-gradient(
+      ellipse 78% 48% at 15% 0%,
+      color-mix(in srgb, var(--color-primary) var(--gem-wash), transparent),
+      transparent
+    ),
+    linear-gradient(180deg, var(--color-page-top), var(--color-page-bottom));
+}
+
+/* Keep Ruby's color in its accents, not in the dark canvas. */
+:root[data-theme="dark"][data-palette="ruby"] {
+  --gem-page-top-lightness: 22%;
+  --gem-canvas-chroma: 0.016;
+  --gem-surface-chroma: 0.016;
+  --gem-wash: 9%;
+}
+
+/* Light gemstones inherit Default Light's surfaces, text and borders. */
+:root[data-theme="light"][data-gemstone-theme] {
+  --gem-action-lightness: 47%;
+  --gem-action-hover-lightness: 41%;
+  --gem-accent-lightness: 42%;
+  --gem-accent-pale-lightness: 35%;
+  --gem-selection-tint: 8%;
+  --gem-emphasis-tint: 13%;
+  --color-accent-soft-border: color-mix(in srgb, var(--color-primary-soft) 26%, transparent);
+  --brand-mark-color: var(--color-nav-badge);
+  --page-background: linear-gradient(180deg, var(--color-page-top), var(--color-page-bottom));
+}

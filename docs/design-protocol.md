@@ -18,7 +18,7 @@ audience, and priorities.
 Before changing a page:
 
 1. Read the page component and its styles.
-2. Read the shared theme tokens and relevant shared components.
+2. Read the [shared theme tokens](css-theming.md) and relevant shared components.
 3. Inspect adjacent pages that establish the same pattern.
 4. Preserve established content widths, density, typography, controls, radii, shadows, and copy
    tone unless there is a concrete usability reason to change them.

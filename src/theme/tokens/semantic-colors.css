@@ -1,0 +1,96 @@
+/* Meaning belongs to the feature, not to the selected palette. Light mode
+   can adjust contrast without changing what a status or series represents. */
+:root {
+  --color-pychess-icon: #e9d5ff;
+  --color-pychess-icon-hover: #f3e8ff;
+  --color-pychess-bg: #3d2669;
+  --color-pychess-bg-hover: #54279a;
+  --color-pychess-border: #9c78db;
+  --color-pychess-border-hover: #c4b5fd;
+  --color-pychess-shadow: rgba(124, 58, 237, 0.2);
+  --color-pychess-shadow-hover: rgba(124, 58, 237, 0.28);
+  --color-chesscom-icon-shadow: #2f6b20;
+  --color-chesscom-icon-body: #5f9f32;
+  --color-chesscom-icon-front: #6da737;
+  --color-chesscom-icon-highlight: #a5d877;
+  --color-success: #86efac;
+  --color-success-strong: #5ee5a4;
+  --color-profit-strip-bg: #5ee5a4;
+  --color-profit-strip-text: #070c16;
+  --color-warning: #facc15;
+  --color-danger: #fca5a5;
+  --color-motif-confirmed: var(--color-success);
+  --color-motif-unconfirmed: var(--color-danger);
+  --color-loss-strip-bg: #3a1520;
+  --color-loss-strip-text: #ff5c75;
+  --color-market-yes: #22d3ee;
+  --color-market-no: #e879f9;
+  --color-on-market: var(--color-panel-deep);
+  --color-rating-blitz: #ff5252;
+  --color-rating-hyper: #5688ff;
+  --color-rating-bullet: #09bdd7;
+  --color-rating-graph-blitz: #ff5263;
+  --color-rating-graph-bullet: #e879f9;
+  --color-rating-graph-hyper: #6790ff;
+  --color-rating-graph-rapid: #f0a33a;
+  --color-rating-graph-atomic960: #22cda2;
+  --color-calendar-monthly: #aa8cff;
+  --color-player-white: #f4f6f8;
+  --color-player-black: #171c25;
+  --color-gold: #f5c26b;
+  --color-accent-warm: #f2c873;
+  --color-accent-warm-strong: #f0b553;
+  --color-success-soft-bg: rgba(21, 128, 61, 0.14);
+  --color-danger-soft-bg: rgba(220, 38, 38, 0.12);
+  --color-warning-soft-bg: rgba(245, 194, 107, 0.1);
+  --color-warning-soft-border: rgba(245, 194, 107, 0.2);
+}
+
+:root[data-theme="light"] {
+  --color-pychess-icon: #6d28d9;
+  --color-pychess-icon-hover: #581c87;
+  --color-pychess-bg: #f1eafe;
+  --color-pychess-bg-hover: #e9d5ff;
+  --color-pychess-border: #a78bfa;
+  --color-pychess-border-hover: #8b5cf6;
+  --color-pychess-shadow: rgba(109, 40, 217, 0.14);
+  --color-pychess-shadow-hover: rgba(109, 40, 217, 0.2);
+  --color-success: #15803d;
+  --color-success-strong: #12844c;
+  --color-profit-strip-bg: #d1fae5;
+  --color-profit-strip-text: #0d6b3a;
+  --color-warning: #a86d00;
+  --color-danger: #dc2626;
+  --color-motif-confirmed: var(--color-profit-strip-text);
+  --color-motif-unconfirmed: var(--color-loss-strip-text);
+  --color-loss-strip-bg: #fee2e2;
+  --color-loss-strip-text: #b91c1c;
+  --color-market-yes: oklch(40% 0.06 225);
+  --color-market-no: oklch(40% 0.06 325);
+  --color-on-market: var(--color-on-primary);
+  --color-rating-blitz: #d92727;
+  --color-rating-hyper: #2859df;
+  --color-rating-bullet: #00849e;
+  --color-rating-graph-blitz: #cf3042;
+  --color-rating-graph-bullet: #a83bbd;
+  --color-rating-graph-hyper: #2f5fd6;
+  --color-rating-graph-rapid: #9a5b00;
+  --color-rating-graph-atomic960: #087f68;
+  --color-calendar-monthly: #6946bd;
+  --color-gold: #8f6500;
+  --color-accent-warm: #d6a34c;
+  --color-accent-warm-strong: #a86d00;
+  --color-success-soft-bg: #d1fae5;
+  --color-danger-soft-bg: rgba(220, 38, 38, 0.1);
+  --color-warning-soft-bg: rgba(232, 190, 114, 0.2);
+  --color-warning-soft-border: rgba(143, 101, 0, 0.22);
+}
+
+/* Gemstone secondary accents are decorative; analysis keeps its own signal. */
+:root[data-theme="dark"][data-gemstone-theme] {
+  --color-analysis-good: #52c7e8;
+}
+
+:root[data-theme="light"][data-gemstone-theme] {
+  --color-analysis-good: #08788e;
+}

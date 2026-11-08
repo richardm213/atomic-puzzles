@@ -1,0 +1,90 @@
+/* Shared material roles, foregrounds, borders and native control scheme.
+   Dark is the fallback before the saved appearance is restored. */
+:root {
+  --control-color-scheme: dark;
+
+  /* Dark palettes can swap the ink, not the material opacity. */
+  --theme-panel-ink: #10192d;
+  --theme-nav-ink: #080d18;
+  --theme-inset-ink: #020617;
+  --theme-raised-ink: #0f172a;
+
+  --color-page-top: #11192b;
+  --color-page-bottom: #090f1c;
+  --color-panel: color-mix(in srgb, var(--theme-panel-ink) 88%, transparent);
+  --color-panel-strong: #10182b;
+  --color-panel-deep: #070c16;
+  --color-nav: color-mix(in srgb, var(--theme-nav-ink) 88%, transparent);
+  --color-border: rgba(157, 176, 207, 0.18);
+  --color-border-strong: rgba(217, 228, 247, 0.17);
+  --color-input-border: rgba(183, 201, 231, 0.22);
+  --color-text: #e7edf7;
+  --color-heading: #f8fafc;
+  --color-muted: #b8c5d9;
+  --color-subtle: #8797af;
+  --color-on-elevated: #f5f7fb;
+  --color-surface-soft: color-mix(in srgb, var(--theme-inset-ink) 18%, transparent);
+  --color-surface-soft-strong: color-mix(in srgb, var(--theme-inset-ink) 28%, transparent);
+  --color-surface-elevated: color-mix(in srgb, var(--theme-raised-ink) 72%, transparent);
+  --color-surface-elevated-strong: color-mix(in srgb, var(--theme-raised-ink) 92%, transparent);
+  --color-surface-inset: rgba(148, 163, 184, 0.08);
+  --color-surface-inset-strong: rgba(148, 163, 184, 0.1);
+  --color-table-head: var(--color-surface-inset);
+  --color-table-divider: rgba(157, 176, 207, 0.1);
+  --color-overlay: color-mix(in srgb, var(--theme-raised-ink) 54%, transparent);
+  --color-overlay-strong: color-mix(in srgb, var(--theme-raised-ink) 95%, transparent);
+  --color-modal-bg: var(--color-overlay);
+  --color-glass-border: rgba(148, 163, 184, 0.18);
+  --shadow-panel: 0 22px 52px rgba(1, 5, 14, 0.32);
+  --shadow-soft: 0 12px 28px rgba(1, 5, 14, 0.24);
+  --shadow-strong: 0 28px 72px rgba(0, 0, 0, 0.4);
+  --nav-shadow: none;
+}
+
+:root[data-theme="light"] {
+  --control-color-scheme: light;
+  --color-page-top: #f7f9fc;
+  --color-page-bottom: #edf2f8;
+  --color-panel: rgba(255, 255, 255, 0.9);
+  --color-panel-strong: #ffffff;
+  --color-panel-deep: #d4deec;
+  --color-nav: rgba(249, 251, 255, 0.9);
+  --color-border: rgba(60, 82, 116, 0.18);
+  --color-border-strong: rgba(60, 82, 116, 0.24);
+  --color-input-border: rgba(60, 82, 116, 0.28);
+  --color-text: #1c2a41;
+  --color-heading: #111d31;
+  --color-muted: #465a78;
+  --color-subtle: #5e728f;
+  --color-on-elevated: #142033;
+  --color-surface-soft: rgba(236, 241, 248, 0.62);
+  --color-surface-soft-strong: rgba(227, 235, 246, 0.84);
+  --color-surface-elevated: rgba(255, 255, 255, 0.88);
+  --color-surface-elevated-strong: rgba(255, 255, 255, 0.98);
+  --color-surface-inset: rgba(146, 161, 186, 0.13);
+  --color-surface-inset-strong: rgba(146, 161, 186, 0.19);
+  --color-table-head: rgba(148, 163, 184, 0.14);
+  --color-table-divider: rgba(60, 82, 116, 0.11);
+  --color-overlay: rgba(255, 251, 246, 0.7);
+  --color-overlay-strong: rgba(255, 252, 249, 0.96);
+  --color-modal-bg: rgba(255, 250, 245, 0.74);
+  --color-glass-border: rgba(105, 123, 150, 0.18);
+  --shadow-panel: 0 22px 60px rgba(133, 153, 184, 0.18), 0 2px 0 rgba(255, 255, 255, 0.6) inset;
+  --shadow-soft: 0 14px 28px rgba(139, 157, 184, 0.18);
+  --shadow-strong: 0 30px 80px rgba(139, 157, 184, 0.26);
+  --nav-shadow: 0 10px 30px color-mix(in srgb, var(--color-muted) 8%, transparent);
+
+  /* Default Light's denser analysis workspace keeps its existing local overrides. */
+  --analysis-workspace-panel-strong: #f2f6fb;
+  --analysis-workspace-panel-deep: #dfe7f1;
+  --analysis-workspace-text: #17253a;
+  --analysis-workspace-heading: #0b1729;
+  --analysis-workspace-muted: #30445f;
+  --analysis-workspace-subtle: #405776;
+  --analysis-workspace-primary: #2854ca;
+  --analysis-workspace-primary-hover: #1f45ad;
+  --analysis-workspace-primary-soft: #3158b9;
+  --analysis-workspace-primary-pale: #234aa9;
+  --analysis-workspace-cyan: #0d7478;
+  --analysis-workspace-cyan-bright: #076d80;
+}
