@@ -173,12 +173,6 @@
   gap: 12px;
 }
 
-.commentMarkdownHint {
-  margin-inline-end: auto;
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
 .commentComposerActions button,
 .commentLoginButton {
   min-height: 34px;
