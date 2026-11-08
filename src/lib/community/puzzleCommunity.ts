@@ -1,3 +1,4 @@
+import { editedCommunityCommentSchema } from "../../../shared/domain/community/schemas";
 import type { VoteValue } from "../../../shared/domain/voting";
 import { postApi } from "../api/postApi";
 import {
@@ -74,6 +75,17 @@ export const postCommunityComment = (
   parentId: number | null,
 ): Promise<CommunityDiscussion> =>
   communityRequest({ action: "comment", ...targetRequestBody(target), body, parentId });
+
+export const editCommunityComment = (target: CommunityTarget, commentId: number, body: string) =>
+  postApi(
+    "/api/puzzles/community",
+    { action: "editComment", ...targetRequestBody(target), commentId, body },
+    {
+      errorMessage: "Unable to edit comment.",
+      invalidMessage: "The discussion service returned incomplete data.",
+      schema: editedCommunityCommentSchema,
+    },
+  );
 
 export const savePuzzleVote = (puzzleId: number, vote: VoteValue): Promise<PuzzleCommunity> =>
   communityRequest({ action: "vote", puzzleId, vote }).then((result) => {

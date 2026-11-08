@@ -16,6 +16,17 @@ import type { CommunityRepository } from "./repository";
 
 const MAX_COMMENT_LENGTH = 10_000;
 
+const validateCommentBody = (body: string): string => {
+  if (!body.trim() || body.length > MAX_COMMENT_LENGTH) {
+    throw new HttpError(
+      400,
+      `Comment must be between 1 and ${MAX_COMMENT_LENGTH.toLocaleString()} characters.`,
+    );
+  }
+  // Markdown uses indentation and trailing spaces as syntax; store the source verbatim.
+  return body;
+};
+
 export const isPublicCommunityReadAction = (action: unknown): boolean =>
   [
     "load",
@@ -382,13 +393,7 @@ export class CommunityService {
     body: string,
     parentId: number | null,
   ) {
-    const commentBody = body.trim();
-    if (!commentBody || commentBody.length > MAX_COMMENT_LENGTH) {
-      throw new HttpError(
-        400,
-        `Comment must be between 1 and ${MAX_COMMENT_LENGTH.toLocaleString()} characters.`,
-      );
-    }
+    const commentBody = validateCommentBody(body);
     await this.repository.ensureUser(username);
     const commentId = await this.repository.createComment(target, username, commentBody, parentId);
     // Discussion refresh and best-effort notification delivery are independent after the comment
@@ -413,5 +418,13 @@ export class CommunityService {
       notificationDelivery(),
     ]);
     return community;
+  }
+
+  async editComment(target: CommunityTarget, commentId: number, username: string, body: string) {
+    const commentBody = validateCommentBody(body);
+    if (!(await this.repository.updateOwnedComment(target, commentId, username, commentBody))) {
+      throw new HttpError(404, "No comment of yours was found in this discussion.");
+    }
+    return { id: commentId, body: commentBody };
   }
 }

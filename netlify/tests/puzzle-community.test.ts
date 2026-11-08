@@ -323,10 +323,10 @@ describe("puzzle-community function", () => {
     expect(response.statusCode).toBe(401);
   });
 
-  it("requires login for commenting", async () => {
+  it.each(["comment", "editComment"])("requires login for %s", async (action) => {
     const response = await handler({
       httpMethod: "POST",
-      body: JSON.stringify({ action: "comment", puzzleId: 1, body: "Nice puzzle" }),
+      body: JSON.stringify({ action, puzzleId: 1, commentId: 2, body: "Nice puzzle" }),
     });
     expect(response.statusCode).toBe(401);
   });
@@ -364,11 +364,14 @@ describe("puzzle-community function", () => {
     expect(response.statusCode).toBe(401);
   });
 
-  it("rejects cross-site comment and vote mutations", async () => {
+  it.each([
+    { action: "vote", puzzleId: 1, vote: 1 },
+    { action: "editComment", puzzleId: 1, commentId: 2, body: "Nice puzzle" },
+  ])("rejects a cross-site $action mutation", async (input) => {
     const response = await handler({
       httpMethod: "POST",
       headers: { host: "atomic.example", origin: "https://evil.example" },
-      body: JSON.stringify({ action: "vote", puzzleId: 1, vote: 1 }),
+      body: JSON.stringify(input),
     });
 
     expect(response.statusCode).toBe(403);

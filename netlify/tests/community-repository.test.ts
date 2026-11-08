@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ execute: vi.fn() }));
@@ -7,6 +8,29 @@ vi.mock("../archive/client", () => ({
 }));
 
 import { CommunityRepository } from "../features/community/repository";
+
+it("edits only the comment matching the authenticated author and discussion", async () => {
+  const fetch = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
+    const filters = new URL(String(input)).searchParams;
+    expect(init?.method).toBe("PATCH");
+    expect(JSON.parse(String(init?.body))).toEqual({ body: "**new text**" });
+    expect(filters.get("id")).toBe("eq.9");
+    expect(filters.get("target_type")).toBe("eq.match");
+    expect(filters.get("target_context")).toBe("eq.blitz");
+    expect(filters.get("target_id")).toBe("in.(archive-match)");
+    return Response.json(filters.get("username") === "eq.alice" ? [{ id: 9 }] : []);
+  });
+  const repository = new CommunityRepository(
+    createClient("https://db.example", "test-key", { global: { fetch } }),
+  );
+  const target = { type: "match" as const, id: "archive-match", context: "blitz" };
+  await expect(repository.updateOwnedComment(target, 9, "alice", "**new text**")).resolves.toBe(
+    true,
+  );
+  await expect(repository.updateOwnedComment(target, 9, "bob", "**new text**")).resolves.toBe(
+    false,
+  );
+});
 
 describe("CommunityRepository archive identity resolution", () => {
   beforeEach(() => {

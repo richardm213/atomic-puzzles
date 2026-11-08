@@ -174,6 +174,12 @@
   gap: 12px;
 }
 
+.commentMarkdownHint {
+  margin-inline-end: auto;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
 .commentComposerActions button,
 .commentLoginButton {
   min-height: 34px;
@@ -437,26 +443,30 @@
   color: var(--color-heading);
 }
 
-.puzzleCommentBody > p {
+.puzzleCommentText,
+.puzzleCommentComposer.commentEditComposer {
   margin: 7px 0 8px 27px;
+}
+
+.puzzleCommentText {
   color: var(--color-text);
   font-size: 14px;
   line-height: 1.5;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
 }
 
-.commentMention {
-  color: var(--color-primary-soft);
-  font-weight: 650;
-  text-decoration: none;
+.commentComposerActions .commentEditCancel {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-muted);
 }
 
-.commentMention:hover {
-  text-decoration: underline;
+.commentEditComposer .commentComposerActions button:not(:disabled):hover {
+  background: var(--color-panel-deep);
+  color: var(--color-heading);
 }
 
-.commentReplyButton {
+.commentReplyButton,
+.commentEditButton {
   min-height: 26px;
   padding: 0 7px;
   border: 0;
@@ -475,9 +485,21 @@
   margin-right: 5px;
 }
 
-.commentReplyButton:hover {
+.commentReplyButton:hover,
+.commentEditButton:not(:disabled):hover {
   background: var(--color-panel-deep);
   color: var(--color-heading);
+}
+
+.commentEditButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.commentEditButton:focus-visible,
+.commentEditComposer button:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
 }
 
 .puzzleCommunityError,
@@ -555,7 +577,8 @@
     margin-left: 0;
   }
 
-  .puzzleCommentBody > p {
+  .puzzleCommentText,
+  .puzzleCommentComposer.commentEditComposer {
     margin-left: 0;
   }
 
@@ -580,6 +603,11 @@
     margin-left: 0;
     min-height: 34px;
     padding-inline: 9px;
+  }
+
+  .commentEditButton,
+  .commentEditComposer .commentComposerActions button {
+    min-height: 44px;
   }
 
   .commentComposerActions {

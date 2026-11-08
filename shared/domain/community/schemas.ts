@@ -32,6 +32,7 @@ export const communityRequestSchema = z
       "loadDiscussion",
       "vote",
       "comment",
+      "editComment",
       "commentVote",
       "profileComments",
       "profileKarma",
@@ -63,13 +64,13 @@ export const communityRequestSchema = z
     if (["vote", "commentVote"].includes(input.action) && input.vote === undefined) {
       context.addIssue({ code: "custom", message: "A vote is required." });
     }
-    if (input.action === "commentVote" && !input.commentId) {
+    if (["commentVote", "editComment"].includes(input.action) && !input.commentId) {
       context.addIssue({ code: "custom", message: "A comment identifier is required." });
     }
-    if (input.action === "comment" && input.body === undefined) {
+    if (["comment", "editComment"].includes(input.action) && input.body === undefined) {
       context.addIssue({ code: "custom", message: "A comment body is required." });
     }
-    if (["loadDiscussion", "comment", "commentVote"].includes(input.action)) {
+    if (["loadDiscussion", "comment", "editComment", "commentVote"].includes(input.action)) {
       const targetType = input.targetType ?? (input.puzzleId ? "puzzle" : undefined);
       const targetId = input.targetId ?? input.puzzleId;
       if (!targetType || targetId === undefined) {
@@ -81,6 +82,11 @@ export const communityRequestSchema = z
   });
 
 export type CommunityRequest = z.output<typeof communityRequestSchema>;
+
+export const editedCommunityCommentSchema = z.object({
+  id: positiveIntegerSchema,
+  body: z.string(),
+});
 
 export const puzzleVoteCountsSchema = z.object({
   puzzle_id: z.coerce.number(),

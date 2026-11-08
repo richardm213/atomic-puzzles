@@ -383,6 +383,28 @@ export class CommunityRepository {
     }
   }
 
+  async updateOwnedComment(
+    target: CommunityTarget,
+    commentId: number,
+    username: string,
+    body: string,
+  ): Promise<boolean> {
+    const targetIds =
+      target.type === "profile" ? await this.resolveProfileTargetIds(target.id) : [target.id];
+    const result = await this.supabase
+      .from("community_comments")
+      .update({ body })
+      .eq("id", commentId)
+      .eq("username", username)
+      .eq("target_type", target.type)
+      .eq("target_context", target.context)
+      .in("target_id", targetIds)
+      .select("id")
+      .maybeSingle();
+    if (result.error) throw new Error(`Unable to edit comment: ${result.error.message}`);
+    return Boolean(result.data);
+  }
+
   async createComment(
     target: CommunityTarget,
     username: string,
