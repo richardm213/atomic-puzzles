@@ -21,6 +21,7 @@ import {
 import {
   type CommunityDiscussion as CommunityDiscussionData,
   type CommunityTarget,
+  editCommunityComment,
   postCommunityComment,
   type PuzzleComment,
   saveCommunityCommentVote,
@@ -29,10 +30,9 @@ import {
 import type { UsernameSearchSuggestion } from "../../lib/users/usernameSearch";
 import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
-import { PlayerLink } from "../PlayerLink/PlayerLink";
+import { CommentMarkdown } from "../CommentMarkdown/CommentMarkdown";
 
 const MENTION_SEARCH_DELAY_MS = 180;
-const mentionPattern = /(^|[^a-z0-9_-])@([a-z0-9_-]+)/gi;
 
 type ActiveMention = {
   start: number;
@@ -52,30 +52,6 @@ const mentionAtCaret = (value: string, caret: number): ActiveMention | null => {
     end: caret,
     query: query.toLowerCase(),
   };
-};
-
-const CommentBody = ({ body }: { body: string }) => {
-  const parts: Array<string | JSX.Element> = [];
-  let lastIndex = 0;
-  for (const match of body.matchAll(mentionPattern)) {
-    const index = match.index ?? 0;
-    const leadingSpace = match[1] ?? "";
-    const username = match[2];
-    if (!username) continue;
-    parts.push(body.slice(lastIndex, index), leadingSpace);
-    parts.push(
-      <PlayerLink
-        className="commentMention"
-        key={`${index}-${username}`}
-        username={username.toLowerCase()}
-      >
-        @{username}
-      </PlayerLink>,
-    );
-    lastIndex = index + match[0].length;
-  }
-  parts.push(body.slice(lastIndex));
-  return <p>{parts}</p>;
 };
 
 type PuzzleCommunityProps = {
@@ -126,6 +102,11 @@ export const CommunityDiscussion = ({
   const [mentionSuggestions, setMentionSuggestions] = useState<UsernameSearchSuggestion[]>([]);
   const [activeMentionIndex, setActiveMentionIndex] = useState(0);
   const [replyingTo, setReplyingTo] = useState<PuzzleComment | null>(null);
+  const [editDraft, setEditDraft] = useState<{ id: number; body: string; original: string } | null>(
+    null,
+  );
+  const editInputRef = useRef<HTMLTextAreaElement>(null);
+  const editCommentId = editDraft?.id;
   const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set());
   const [commentSort, setCommentSort] = useState<CommentSort>(() =>
     targetType === "tournament" || !allowCommentVotes ? "recent" : "top",
@@ -287,8 +268,40 @@ export const CommunityDiscussion = ({
       });
     },
   });
+  const closeEditor = (id: number) => {
+    setEditDraft((current) => (current?.id === id ? null : current));
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`comment-${id}`)
+        ?.querySelector<HTMLButtonElement>(".commentEditButton")
+        ?.focus();
+    });
+  };
+  const editCommentMutation = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: string }) =>
+      editCommunityComment(currentTarget, id, body),
+    onSuccess: ({ id, body }) => {
+      queryClient.setQueryData<CommunityDiscussionData>(discussionOptions.queryKey, (current) =>
+        current
+          ? {
+              ...current,
+              comments: current.comments.map((comment) =>
+                comment.id === id ? { ...comment, body } : comment,
+              ),
+            }
+          : current,
+      );
+      void queryClient.invalidateQueries({ queryKey: discussionOptions.queryKey });
+      void queryClient.invalidateQueries({ queryKey: communityQueryKeys.siteComments });
+      closeEditor(id);
+    },
+  });
   const pendingVote = voteMutation.isPending;
   const postingComment = postCommentMutation.isPending;
+
+  useEffect(() => {
+    if (editCommentId !== undefined) editInputRef.current?.focus();
+  }, [editCommentId]);
 
   useEffect(() => {
     if (discussionReady || !deferUntilVisible) return;
@@ -316,6 +329,7 @@ export const CommunityDiscussion = ({
   useEffect(() => {
     setCollapsed(new Set());
     setReplyingTo(null);
+    setEditDraft(null);
     setCommentBody("");
     setActiveMention(null);
     setMentionSuggestions([]);
@@ -424,8 +438,8 @@ export const CommunityDiscussion = ({
   };
 
   const handlePostComment = () => {
-    const body = commentBody.trim();
-    if (!target.id || !body || postingComment) return;
+    const body = commentBody;
+    if (!target.id || !body.trim() || postingComment) return;
     if (!requireLogin()) return;
     setActionError("");
     const replyTarget = replyingTo;
@@ -555,6 +569,7 @@ export const CommunityDiscussion = ({
           </ul>
         ) : null}
         <div className="commentComposerActions">
+          <span className="commentMarkdownHint">Markdown supported</span>
           <button
             type="button"
             disabled={!commentBody.trim() || postingComment}
@@ -571,6 +586,11 @@ export const CommunityDiscussion = ({
     const replies = childrenByParent.get(comment.id) ?? [];
     const isCollapsed = collapsed.has(comment.id);
     const hiddenReplyCount = isCollapsed ? countDescendants(comment.id) : 0;
+    const draft = editDraft?.id === comment.id ? editDraft : null;
+    const canEdit =
+      isAuthenticated &&
+      comment.id > 0 &&
+      user?.username?.toLowerCase() === comment.username.toLowerCase();
     return (
       <li className="puzzleComment" key={comment.id} style={{ "--comment-depth": depth } as never}>
         <article
@@ -633,7 +653,11 @@ export const CommunityDiscussion = ({
                   <button
                     className="commentCollapseButton"
                     type="button"
-                    onClick={() => toggleCollapsed(comment.id)}
+                    disabled={Boolean(draft && editCommentMutation.isPending)}
+                    onClick={() => {
+                      if (draft) setEditDraft(null);
+                      toggleCollapsed(comment.id);
+                    }}
                     aria-label={`Collapse comment by ${comment.username}`}
                     aria-expanded="true"
                   >
@@ -644,18 +668,92 @@ export const CommunityDiscussion = ({
                     {formatLocalDateTime(comment.created_at)}
                   </time>
                 </div>
-                <CommentBody body={comment.body} />
-                <button
-                  className="commentReplyButton"
-                  type="button"
-                  onClick={() => {
-                    if (!requireLogin()) return;
-                    setReplyingTo(comment);
-                  }}
-                >
-                  <FontAwesomeIcon icon={faReply} />
-                  Reply
-                </button>
+                {draft && canEdit ? (
+                  <form
+                    className="puzzleCommentComposer commentEditComposer"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      if (
+                        draft.body.trim() &&
+                        draft.body !== draft.original &&
+                        !editCommentMutation.isPending
+                      ) {
+                        editCommentMutation.mutate(draft);
+                      }
+                    }}
+                  >
+                    <textarea
+                      ref={editInputRef}
+                      aria-label="Edit comment (Markdown)"
+                      maxLength={10_000}
+                      rows={3}
+                      value={draft.body}
+                      readOnly={editCommentMutation.isPending}
+                      onChange={(event) => setEditDraft({ ...draft, body: event.target.value })}
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape" && !editCommentMutation.isPending)
+                          closeEditor(draft.id);
+                      }}
+                    />
+                    {editCommentMutation.error ? (
+                      <p className="puzzleCommunityError" role="alert">
+                        {getErrorMessage(editCommentMutation.error, "Unable to edit comment.")}
+                      </p>
+                    ) : null}
+                    <div className="commentComposerActions">
+                      <button
+                        className="commentEditCancel"
+                        type="button"
+                        disabled={editCommentMutation.isPending}
+                        onClick={() => closeEditor(draft.id)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={
+                          !draft.body.trim() ||
+                          draft.body === draft.original ||
+                          editCommentMutation.isPending
+                        }
+                      >
+                        {editCommentMutation.isPending ? "Saving…" : "Save changes"}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <CommentMarkdown className="puzzleCommentText" body={comment.body} />
+                    <button
+                      className="commentReplyButton"
+                      type="button"
+                      onClick={() => {
+                        if (!requireLogin()) return;
+                        setReplyingTo(comment);
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faReply} />
+                      Reply
+                    </button>
+                    {canEdit ? (
+                      <button
+                        className="commentEditButton"
+                        type="button"
+                        disabled={editDraft !== null}
+                        onClick={() => {
+                          editCommentMutation.reset();
+                          setEditDraft({
+                            id: comment.id,
+                            body: comment.body,
+                            original: comment.body,
+                          });
+                        }}
+                      >
+                        Edit
+                      </button>
+                    ) : null}
+                  </>
+                )}
               </div>
             </div>
           )}

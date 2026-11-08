@@ -9,7 +9,7 @@ import { parseJsonBody } from "../../platform/validation";
 import { CommunityRepository } from "./repository";
 import { CommunityService, isPublicCommunityReadAction, readCommunityTarget } from "./service";
 
-const mutationActions = new Set(["vote", "comment", "commentVote"]);
+const mutationActions = new Set(["vote", "comment", "editComment", "commentVote"]);
 
 export const communityRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, communityRequestSchema, "Invalid community request.");
@@ -92,6 +92,12 @@ export const communityRoute = async (event: FunctionEvent) => {
     return respond(
       200,
       await service.voteOnComment(target, input.commentId!, identity.username!, input.vote!),
+    );
+  }
+  if (input.action === "editComment") {
+    return respond(
+      200,
+      await service.editComment(target, input.commentId!, identity.username!, input.body!),
     );
   }
   if (input.action === "comment") {

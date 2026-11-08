@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
+import { CommentMarkdown } from "../../components/CommentMarkdown/CommentMarkdown";
 import { CommunityCommentTargetLink } from "../../components/CommunityCommentTargetLink/CommunityCommentTargetLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
@@ -179,7 +180,7 @@ export const CommentsPage = () => {
                         <span>Comment hidden until you attempt this puzzle.</span>
                       </p>
                     ) : (
-                      <p className="siteCommentBody">{comment.body}</p>
+                      <CommentMarkdown className="siteCommentBody" body={comment.body ?? ""} />
                     )}
                   </div>
                 </article>

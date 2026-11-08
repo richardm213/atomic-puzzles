@@ -1,0 +1,62 @@
+.commentMarkdown {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.commentMarkdown > * {
+  margin-block: 0 8px;
+}
+
+.commentMarkdown > :last-child {
+  margin-bottom: 0;
+}
+
+.commentMarkdown :is(h1, h2, h3, h4, h5, h6) {
+  font-size: 1.125em;
+}
+
+.commentMarkdown :is(ul, ol) {
+  padding-inline-start: 24px;
+}
+
+.commentMarkdown blockquote {
+  margin-inline: 0;
+  padding-inline-start: 12px;
+  border-inline-start: 2px solid var(--color-border-strong);
+  color: var(--color-muted);
+}
+
+.commentMarkdown pre,
+.commentMarkdownTable {
+  max-width: 100%;
+  overflow: auto;
+}
+
+.commentMarkdown :is(th, td) {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+}
+
+.commentMarkdown a {
+  color: var(--color-primary-soft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.commentMarkdown a:hover {
+  color: var(--color-heading);
+}
+
+.commentMarkdown a:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
+}
+
+.commentMarkdown .commentMention {
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.commentMarkdown .commentMention:hover {
+  text-decoration: underline;
+}

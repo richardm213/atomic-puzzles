@@ -16,6 +16,7 @@ const render = (element: ReactElement) => {
 };
 
 const mocks = vi.hoisted(() => ({
+  editCommunityComment: vi.fn(),
   fetchCommunityDiscussion: vi.fn(),
   fetchPuzzleCommunity: vi.fn(),
   isAuthenticated: true,
@@ -37,6 +38,7 @@ vi.mock("../../lib/community/puzzleCommunity", async (importOriginal) => {
   const original = await importOriginal<typeof import("../../lib/community/puzzleCommunity")>();
   return {
     ...original,
+    editCommunityComment: mocks.editCommunityComment,
     fetchCommunityDiscussion: mocks.fetchCommunityDiscussion,
     fetchPuzzleCommunity: mocks.fetchPuzzleCommunity,
     postCommunityComment: mocks.postCommunityComment,
@@ -47,6 +49,12 @@ vi.mock("../../lib/community/puzzleCommunity", async (importOriginal) => {
 
 vi.mock("../../lib/users/usernameSearch", () => ({
   searchUsernameSuggestions: mocks.searchUsernameSuggestions,
+}));
+
+vi.mock("../PlayerLink/PlayerLink", () => ({
+  PlayerLink: ({ children, username }: { children: string; username: string }) => (
+    <a href={`/@/${username}`}>{children}</a>
+  ),
 }));
 
 describe("PuzzleCommunity", () => {
@@ -72,6 +80,7 @@ describe("PuzzleCommunity", () => {
       viewerVote: 0,
     });
     mocks.postCommunityComment.mockReset();
+    mocks.editCommunityComment.mockReset();
     mocks.saveCommunityCommentVote.mockReset();
     mocks.savePuzzleVote.mockReset();
     mocks.searchUsernameSuggestions.mockResolvedValue([
@@ -83,6 +92,73 @@ describe("PuzzleCommunity", () => {
         accountUsername: "seaside_tiramisu",
       },
     ]);
+  });
+
+  it("renders Markdown and legacy links without interpreting unsafe links or HTML", async () => {
+    mocks.fetchCommunityDiscussion.mockResolvedValueOnce({
+      comments: [
+        {
+          id: 9,
+          username: "alice",
+          parent_id: null,
+          body: "**Seeds:** [this table](https://example.com/table)\nhttps://example.com/legacy\n@Bob `@code` [bad](javascript:alert(1)) <img src=x onerror=alert(1)>",
+          created_at: "2026-01-01T00:00:00Z",
+          upvotes: 0,
+          downvotes: 0,
+          score: 0,
+          viewer_vote: 0,
+        },
+      ],
+    });
+    render(<CommunityDiscussion target={{ type: "tournament", id: "awc2026" }} />);
+    const comment = within(await screen.findByRole("article"));
+    expect(comment.getByRole("link", { name: "this table" })).toHaveAttribute(
+      "href",
+      "https://example.com/table",
+    );
+    expect(comment.getByRole("link", { name: "https://example.com/legacy" })).toHaveAttribute(
+      "href",
+      "https://example.com/legacy",
+    );
+    expect(comment.getByRole("link", { name: "@Bob" })).toHaveAttribute("href", "/@/bob");
+    expect(comment.queryByRole("link", { name: /bad|@code/ })).not.toBeInTheDocument();
+    expect(comment.queryByRole("img")).not.toBeInTheDocument();
+    expect(comment.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+  });
+
+  it("opens the author's original Markdown and saves edits without losing the raw source", async () => {
+    const user = userEvent.setup();
+    const target = { type: "tournament" as const, id: "awc2026" };
+    const original = "[this table](https://example.com/table)";
+    const next = "[updated table](https://example.com/table)";
+    const comment = {
+      id: 9,
+      username: "viewer",
+      parent_id: null,
+      body: original,
+      created_at: "2026-01-01T00:00:00Z",
+      upvotes: 0,
+      downvotes: 0,
+      score: 0,
+      viewer_vote: 0,
+    };
+    mocks.fetchCommunityDiscussion.mockResolvedValueOnce({ comments: [comment] });
+    mocks.editCommunityComment.mockImplementationOnce(async () => {
+      mocks.fetchCommunityDiscussion.mockResolvedValueOnce({
+        comments: [{ ...comment, body: next }],
+      });
+      return { id: 9, body: next };
+    });
+    render(<CommunityDiscussion target={target} />);
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const editor = screen.getByRole("textbox", { name: "Edit comment (Markdown)" });
+    expect(editor).toHaveValue(original);
+    expect(editor).toHaveFocus();
+    await user.clear(editor);
+    await user.paste(next);
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(mocks.editCommunityComment).toHaveBeenCalledWith({ ...target, context: "" }, 9, next);
+    expect(await screen.findByRole("link", { name: "updated table" })).toBeInTheDocument();
   });
 
   it("shows puzzle vote feedback before the save request finishes", async () => {
