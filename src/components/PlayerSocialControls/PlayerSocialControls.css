@@ -1,107 +1,162 @@
-.playerSocialControls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.playerFlairPicker summary {
-  min-height: 32px;
-  padding: 0 10px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
+.playerFlairTrigger,
+.playerFlairClose,
+.playerFlairRemove,
+.playerFlairGrid button {
+  min-height: var(--control-height-touch);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
   background: var(--color-panel-strong);
   color: var(--color-text);
   font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  list-style: none;
-}
-
-.playerFlairPicker {
-  position: relative;
-}
-
-.playerFlairPicker summary {
   cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
 }
 
-.playerFlairPicker summary::-webkit-details-marker {
-  display: none;
+.playerFlairTrigger,
+.playerFlairRemove {
+  width: fit-content;
+  padding: 0 var(--space-3);
+  font-size: 13px;
+  font-weight: 650;
 }
 
-.playerFlairPicker summary:hover {
+.playerFlairTrigger {
+  min-height: var(--space-8);
+}
+
+@media (max-width: 640px) {
+  .playerFlairTrigger {
+    min-height: var(--control-height-touch);
+  }
+}
+
+.playerFlairTrigger:hover:not(:disabled),
+.playerFlairPalette button:hover:not(:disabled),
+.playerFlairGrid button[aria-pressed="true"] {
   border-color: var(--color-primary-soft);
   background: var(--color-table-hover);
 }
 
-.playerFlairPicker summary:focus-visible,
+.playerFlairTrigger:active,
+.playerFlairPalette button:active:not(:disabled) {
+  background: var(--color-accent-soft-bg-strong);
+}
+
+.playerFlairTrigger:focus-visible,
 .playerFlairPalette button:focus-visible {
   outline: 2px solid var(--color-primary-ring);
   outline-offset: 2px;
 }
 
+.playerFlairPalette button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* The native modal enters the top layer, outside the settings panel's scroll clip. */
 .playerFlairPalette {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 20;
-  width: min(320px, calc(100vw - 32px));
-  max-height: min(520px, calc(100vh - 96px));
-  padding: 8px;
-  overflow-y: auto;
+  position: fixed;
+  inset: 0;
+  width: min(376px, calc(100% - var(--space-4) * 2));
+  max-width: none;
+  max-height: min(560px, calc(100dvh - var(--space-4) * 2));
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
-  background: var(--color-panel);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
   box-shadow: var(--shadow-panel);
 }
 
+.playerFlairPalette[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.playerFlairPalette::backdrop {
+  background: color-mix(in srgb, var(--color-panel-deep) 60%, transparent);
+}
+
 .playerFlairPaletteHeader {
-  padding: 0 2px 6px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--color-text-muted);
-  font-size: 11px;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.playerFlairPaletteHeader h2 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 17px;
+}
+
+.playerFlairClose {
+  width: var(--control-height-touch);
+  flex: none;
+  padding: 0;
+  font-size: 23px;
+  line-height: 1;
+}
+
+.playerFlairPaletteBody {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.playerFlairRemove {
+  margin-bottom: var(--space-3);
 }
 
 .playerFlairGroup + .playerFlairGroup {
-  margin-top: 8px;
+  margin-top: var(--space-3);
 }
 
 .playerFlairGroup h3 {
-  margin: 0 2px 4px;
-  color: var(--color-text-muted);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  margin: 0 0 var(--space-1);
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .playerFlairGrid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--control-height-touch), 1fr));
+  gap: var(--space-1);
 }
 
-.playerFlairPalette button {
-  width: 34px;
-  height: 34px;
+.playerFlairGrid button {
   padding: 0;
-  border: 1px solid transparent;
+  border-color: transparent;
   border-radius: var(--radius-sm);
   background: transparent;
   font-family: "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
   font-size: 20px;
 }
 
-.playerFlairPalette button:hover,
-.playerFlairPalette button.selected {
-  border-color: var(--color-primary-soft);
-  background: var(--color-table-hover);
+.playerFlairFeedback {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.playerFlairFeedback[role="alert"] {
+  color: var(--color-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playerFlairTrigger,
+  .playerFlairPalette button {
+    transition: none;
+  }
 }
 
 .playerCountryPicker select {

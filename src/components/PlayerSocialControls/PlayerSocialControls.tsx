@@ -1,6 +1,7 @@
 import "./PlayerSocialControls.css";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useId, useRef } from "react";
 
 import { PLAYER_FLAIR_GROUPS, type PlayerFlair } from "../../../shared/domain/playerSocial";
 import { useAuth } from "../../context/AuthContext";
@@ -25,6 +26,8 @@ const countryOptions = isoCountryCodes
   .sort((left, right) => left.displayName.localeCompare(right.displayName));
 
 export const PlayerFlairPicker = ({ username }: { username: string }) => {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   const queryClient = useQueryClient();
   const { isAuthenticated, user } = useAuth();
   const normalizedUsername = normalizeUsername(username);
@@ -45,6 +48,7 @@ export const PlayerFlairPicker = ({ username }: { username: string }) => {
     onError: (_error, _flair, context) => {
       queryClient.setQueryData(socialQueryKey, context?.previousSocial);
     },
+    onSuccess: () => dialogRef.current?.close(),
     onSettled: () => {
       void queryClient.invalidateQueries(playerSocialQueryOptions(normalizedUsername));
     },
@@ -53,22 +57,47 @@ export const PlayerFlairPicker = ({ username }: { username: string }) => {
   if (!social || !isSelf || !isAuthenticated) return null;
 
   return (
-    <div className="playerSocialControls">
-      <details className="playerFlairPicker">
-        <summary>{social.flair ? `${social.flair} Change flair` : "Choose flair"}</summary>
-        <div className="playerFlairPalette" aria-label="Choose profile flair">
-          <div className="playerFlairPaletteHeader">
-            <button
-              type="button"
-              className={!social.flair ? "selected" : ""}
-              aria-label="No flair"
-              aria-pressed={!social.flair}
-              onClick={() => flairMutation.mutate(null)}
-            >
-              ×
-            </button>
-            <span>Remove flair</span>
-          </div>
+    <>
+      <button
+        className="playerFlairTrigger"
+        type="button"
+        aria-haspopup="dialog"
+        onClick={() => {
+          if (!flairMutation.isPending) flairMutation.reset();
+          dialogRef.current?.showModal();
+        }}
+      >
+        {social.flair ? `${social.flair} Change flair` : "Choose flair"}
+      </button>
+      <dialog
+        ref={dialogRef}
+        className="playerFlairPalette"
+        aria-labelledby={titleId}
+        onKeyDown={(event) => {
+          // Let the native dialog handle Escape before the settings panel does.
+          if (event.key === "Escape") event.stopPropagation();
+        }}
+      >
+        <header className="playerFlairPaletteHeader">
+          <h2 id={titleId}>Choose profile flair</h2>
+          <button
+            className="playerFlairClose"
+            type="button"
+            aria-label="Close flair picker"
+            onClick={() => dialogRef.current?.close()}
+          >
+            ×
+          </button>
+        </header>
+        <div className="playerFlairPaletteBody">
+          <button
+            className="playerFlairRemove"
+            type="button"
+            disabled={!social.flair || flairMutation.isPending}
+            onClick={() => flairMutation.mutate(null)}
+          >
+            Remove flair
+          </button>
           {PLAYER_FLAIR_GROUPS.map((group) => (
             <section key={group.label} className="playerFlairGroup">
               <h3>{group.label}</h3>
@@ -77,14 +106,10 @@ export const PlayerFlairPicker = ({ username }: { username: string }) => {
                   <button
                     key={flair}
                     type="button"
-                    className={social.flair === flair ? "selected" : ""}
                     aria-label={`Use ${flair} flair`}
                     aria-pressed={social.flair === flair}
                     disabled={flairMutation.isPending}
-                    onClick={(event) => {
-                      flairMutation.mutate(flair);
-                      event.currentTarget.closest("details")?.removeAttribute("open");
-                    }}
+                    onClick={() => flairMutation.mutate(flair)}
                   >
                     {flair}
                   </button>
@@ -93,8 +118,17 @@ export const PlayerFlairPicker = ({ username }: { username: string }) => {
             </section>
           ))}
         </div>
-      </details>
-    </div>
+        {flairMutation.isPending ? (
+          <p className="playerFlairFeedback" role="status">
+            Saving flair…
+          </p>
+        ) : flairMutation.isError ? (
+          <p className="playerFlairFeedback" role="alert">
+            Unable to update flair. Try again.
+          </p>
+        ) : null}
+      </dialog>
+    </>
   );
 };
 
