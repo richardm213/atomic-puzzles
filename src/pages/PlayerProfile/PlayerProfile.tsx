@@ -1003,7 +1003,6 @@ export const PlayerProfilePage = ({
                   <section
                     key={row.key}
                     className="profileMetricRow"
-                    data-rating-mode={row.key.replace(/-row$/, "")}
                     aria-label={`${row.label} ratings`}
                   >
                     <h2 className="profileMetricRowTitle">{row.label}</h2>
