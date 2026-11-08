@@ -113,9 +113,9 @@ const BOARD_BOTTOM_PADDING = 4;
 export const HEADER_SPACE = 64;
 const CARD_CENTER_ANCHOR_OFFSET = CARD_HEIGHT / 2;
 export const DEFAULT_STAGE_ZOOM = 0.85;
-const MIN_STAGE_ZOOM = 0.55;
-const MAX_STAGE_ZOOM = 1.35;
-export const STAGE_ZOOM_STEP = 0.15;
+export const MIN_STAGE_ZOOM = DEFAULT_STAGE_ZOOM * 0.2;
+export const MAX_STAGE_ZOOM = 1.35;
+const stageZoomPercents = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 75, 85, 100, 115, 130, 145, 159];
 const TOURNAMENT_VIEW_STORAGE_KEY = "tournament-view:v4:";
 export const SEEDS_STAGE_KEY = "seeds";
 
@@ -160,6 +160,16 @@ export const clampZoom = (zoomLevel: unknown): number =>
 
 export const zoomDisplayPercent = (zoomLevel: number): number =>
   Math.round((zoomLevel / DEFAULT_STAGE_ZOOM) * 100);
+
+export const stepStageZoom = (zoomLevel: number, direction: -1 | 1): number => {
+  const percent = zoomDisplayPercent(clampZoom(zoomLevel));
+  const next =
+    direction === 1
+      ? stageZoomPercents.find((step) => step > percent)
+      : stageZoomPercents.filter((step) => step < percent).at(-1);
+  if (next === undefined) return direction === 1 ? MAX_STAGE_ZOOM : MIN_STAGE_ZOOM;
+  return clampZoom((next / 100) * DEFAULT_STAGE_ZOOM);
+};
 
 export const getTournamentViewStorageKey = (tournamentId: string): string =>
   `${TOURNAMENT_VIEW_STORAGE_KEY}${tournamentId}`;

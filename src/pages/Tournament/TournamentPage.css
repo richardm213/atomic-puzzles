@@ -954,7 +954,12 @@ a.tournamentGroupHistoryChip:focus-visible {
   min-width: 86px;
 }
 
-.tournamentZoomButton:hover,
+.tournamentZoomButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tournamentZoomButton:hover:not(:disabled),
 .tournamentZoomValue:hover,
 .tournamentZoomButton:focus-visible,
 .tournamentZoomValue:focus-visible {
@@ -1041,6 +1046,17 @@ a.tournamentGroupHistoryChip:focus-visible {
   align-items: center;
   height: 100%;
   padding: 6px 0 10px 12px;
+}
+
+.tournamentRoundHeaderSticky.isCompact {
+  padding: 0 0 0 2px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.tournamentRoundHeaderSticky.isCompact span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tournamentMatchCard {
@@ -1281,6 +1297,7 @@ a.tournamentGroupHistoryChip:focus-visible {
 
 .tournamentTreeBoardViewport {
   position: relative;
+  overflow: clip;
 }
 
 .tournamentTreeLines {

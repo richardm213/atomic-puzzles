@@ -66,11 +66,13 @@ import {
   getTournamentViewStorageKey,
   HEADER_SPACE,
   isRoundRobinQualifyingStage,
+  MAX_STAGE_ZOOM,
+  MIN_STAGE_ZOOM,
   type PositionedMatch,
   readSavedTournamentView,
   SEEDS_STAGE_KEY,
-  STAGE_ZOOM_STEP,
   type StageLayout,
+  stepStageZoom,
   zoomDisplayPercent,
 } from "./bracketLayout";
 import { buildRoundRobinGroups, type GroupStageHistoryEntry } from "./groupStage";
@@ -736,6 +738,7 @@ const TournamentZoomControls = ({
       className="tournamentZoomButton"
       onClick={onZoomOut}
       aria-label={`Zoom out ${stageLabel}`}
+      disabled={zoomLevel <= MIN_STAGE_ZOOM}
     >
       -
     </button>
@@ -752,6 +755,7 @@ const TournamentZoomControls = ({
       className="tournamentZoomButton"
       onClick={onZoomIn}
       aria-label={`Zoom in ${stageLabel}`}
+      disabled={zoomLevel >= MAX_STAGE_ZOOM}
     >
       +
     </button>
@@ -1007,14 +1011,14 @@ const TournamentStageSection = ({
                 {layout.rounds.map((round, roundIndex) => (
                   <div
                     key={`${stage.key}-${round.roundName}-sticky`}
-                    className="tournamentRoundHeader tournamentRoundHeaderSticky"
+                    className={`tournamentRoundHeader tournamentRoundHeaderSticky${zoomDisplayPercent(zoomLevel) < 65 ? " isCompact" : ""}`}
                     style={{
                       left: `${(BOARD_PADDING + roundIndex * (CARD_WIDTH + COLUMN_GAP)) * zoomLevel}px`,
                       width: `${CARD_WIDTH * zoomLevel}px`,
                     }}
                   >
                     <span>
-                      {stage.key === "qualifying"
+                      {stage.key === "qualifying" || zoomDisplayPercent(zoomLevel) < 65
                         ? getStageRoundShortLabel(stage, round.roundName)
                         : round.roundName}
                     </span>
@@ -1288,7 +1292,9 @@ const BracketTournamentPage = ({
   useEffect(() => {
     if (!bracket || typeof window === "undefined") return undefined;
 
+    window.addEventListener("pagehide", saveViewState);
     return () => {
+      window.removeEventListener("pagehide", saveViewState);
       saveViewState();
     };
   }, [bracket, saveViewState]);
@@ -1399,10 +1405,10 @@ const BracketTournamentPage = ({
     delete headerTrackRefs.current[stageKey];
   };
 
-  const updateStageZoom = (stageKey: string, delta: number): void => {
+  const updateStageZoom = (stageKey: string, direction: -1 | 1): void => {
     setZoomLevels((current) => ({
       ...current,
-      [stageKey]: clampZoom((current[stageKey] || DEFAULT_STAGE_ZOOM) + delta),
+      [stageKey]: stepStageZoom(current[stageKey] ?? DEFAULT_STAGE_ZOOM, direction),
     }));
   };
 
@@ -1695,9 +1701,9 @@ const BracketTournamentPage = ({
             <TournamentZoomControls
               stageLabel={activeStage.label}
               zoomLevel={clampZoom(zoomLevels[activeStage.key] || DEFAULT_STAGE_ZOOM)}
-              onZoomOut={() => updateStageZoom(activeStage.key, -STAGE_ZOOM_STEP)}
+              onZoomOut={() => updateStageZoom(activeStage.key, -1)}
               onZoomReset={() => resetStageZoom(activeStage.key)}
-              onZoomIn={() => updateStageZoom(activeStage.key, STAGE_ZOOM_STEP)}
+              onZoomIn={() => updateStageZoom(activeStage.key, 1)}
             />
           ) : null}
         </div>

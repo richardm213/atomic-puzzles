@@ -2,10 +2,13 @@ import type { TournamentBracketStage, TournamentMatch } from "../../lib/matches/
 import {
   buildStageTreeLayout,
   buildStartRoundState,
+  DEFAULT_STAGE_ZOOM,
   getAwcCurrentRound,
   getStageRoundShortLabel,
   getStartRoundOptions,
   getVisibleRounds,
+  stepStageZoom,
+  zoomDisplayPercent,
 } from "./bracketLayout";
 
 const match = (id: string, winnerTo = ""): TournamentMatch => ({
@@ -43,6 +46,15 @@ const stage: TournamentBracketStage = {
 };
 
 describe("bracket layout", () => {
+  it("steps through the compact zoom range without repeating the saved 65% stop", () => {
+    const levels = [0.55];
+    for (let index = 0; index < 10; index += 1) {
+      levels.push(stepStageZoom(levels[index] ?? DEFAULT_STAGE_ZOOM, -1));
+    }
+    expect(levels.map(zoomDisplayPercent)).toEqual([65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 20]);
+    expect(zoomDisplayPercent(stepStageZoom(levels.at(-1) ?? DEFAULT_STAGE_ZOOM, 1))).toBe(25);
+  });
+
   it("builds deterministic match positions and feeder connectors", () => {
     const layout = buildStageTreeLayout(stage, "Semifinals");
 
