@@ -86,7 +86,8 @@ export const puzzleMotifs: PuzzleMotif[] = [
   {
     tag: "trident",
     name: "Trident",
-    description: "A bishop or queen lines up an attack of two pieces on the same diagonal.",
+    description:
+      "A bishop or queen lines up two pieces on the same diagonal, usually with a pawn in front, and threatens a capture that can’t be stopped.",
   },
   {
     tag: "sacrifice",
