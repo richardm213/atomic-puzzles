@@ -179,6 +179,22 @@ describe("AppSettings", () => {
     ).toEqual({ theme: "ruby", colorMode: "dark" });
   });
 
+  it("restores the previous mode and its board after leaving the dark-only palette", () => {
+    const first = renderSettings();
+    act(() => first.result.current.setColorMode("light"));
+    act(() => first.result.current.setBoardTheme("green"));
+    act(() => first.result.current.setTheme("black"));
+    expect(first.result.current).toMatchObject({ colorMode: "dark", boardTheme: "grey" });
+    act(() => first.result.current.setBoardTheme("wood"));
+    first.unmount();
+
+    const { result } = renderSettings();
+    expect(result.current).toMatchObject({ theme: "black", colorMode: "dark", boardTheme: "wood" });
+    act(() => result.current.setColorMode("dark"));
+    act(() => result.current.setTheme("default"));
+    expect(result.current).toMatchObject({ colorMode: "light", boardTheme: "green" });
+  });
+
   it("persists puzzle and game link targets independently", () => {
     const first = renderSettings();
     expect(first.result.current.puzzleAnalysisTarget).toBe("atomic-puzzles");

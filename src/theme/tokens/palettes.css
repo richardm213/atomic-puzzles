@@ -228,3 +228,58 @@
   --brand-mark-tile: color-mix(in srgb, var(--color-nav-badge) 2%, var(--color-page-top));
   --page-background: linear-gradient(180deg, var(--color-page-top), var(--color-page-bottom));
 }
+
+/* Black changes the materials, not the dark mode's depth or semantic colors. */
+:root[data-palette="black"] {
+  --theme-panel-ink: #191919;
+  --theme-nav-ink: #0d0d0d;
+  --theme-inset-ink: #080808;
+  --theme-raised-ink: #242424;
+  --color-page-top: #080808;
+  --color-page-bottom: #080808;
+  --color-panel-strong: var(--theme-panel-ink);
+  --color-panel-deep: var(--theme-inset-ink);
+  --color-border: rgba(206, 206, 206, 0.2);
+  --color-border-strong: rgba(222, 222, 222, 0.27);
+  --color-input-border: rgba(222, 222, 222, 0.35);
+  --color-text: #e8e8e8;
+  --color-heading: #f6f6f6;
+  --color-muted: #bcbcbc;
+  --color-subtle: #999999;
+
+  --color-primary: #545454;
+  --color-primary-hover: #636363;
+  --color-primary-soft: #cccccc;
+  --color-primary-pale: #eeeeee;
+  --color-primary-text: var(--color-primary-soft);
+  --color-on-primary: var(--color-heading);
+  --color-cyan: #858585;
+  --color-cyan-bright: #c4c4c4;
+  --color-action-fill: var(--color-primary);
+  --color-action-fill-hover: var(--color-primary-hover);
+  --color-accent-soft-bg: rgba(230, 230, 230, 0.09);
+  --color-accent-soft-bg-strong: rgba(230, 230, 230, 0.14);
+  --color-accent-soft-border: var(--color-border-strong);
+  --color-accent-soft-text: var(--color-primary-pale);
+  --color-table-hover: var(--color-accent-soft-bg);
+  --color-primary-ring: #cccccc;
+  --color-nav-badge: #5a5a5a;
+  --color-feature-card-accent: var(--color-primary-soft);
+  --feature-card-tint: 6%;
+  --feature-card-hover-tint: 9%;
+  --page-background: var(--color-page-bottom);
+
+  --brand-wordmark-gradient: linear-gradient(180deg, #f6f6f6, #dedede);
+  --brand-wordmark-shadow: none;
+  --brand-mark-color: #eeeeee;
+  --brand-mark-tile: var(--theme-nav-ink);
+
+  --opening-hue-1: 221;
+  --opening-hue-2: 33;
+  --opening-hue-3: 283;
+  --opening-hue-4: 168;
+  --opening-hue-5: 320;
+  --opening-hue-6: 76;
+  --opening-hue-7: 192;
+  --opening-hue-8: 15;
+}

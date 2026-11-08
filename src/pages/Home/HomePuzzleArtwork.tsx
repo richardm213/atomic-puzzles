@@ -25,6 +25,10 @@ const FENS = {
     primary: "rnbqk1nr/pp3ppp/2p5/1Bbp4/4P3/N3B3/PPP2PPP/R2QK1NR b KQkq - 3 6",
     secondary: "r5k1/1ppn4/p5pp/3p1q2/4p2Q/N1PP4/PP4PN/5R1K b - - 6 20",
   },
+  black: {
+    primary: "r1bqk2r/ppp3p1/4p2p/3p4/1b1P4/P1N5/1P3PP1/R1BQKB1R w KQkq - 0 11",
+    secondary: "rn3r1k/pp6/2p4p/3p4/3P3P/8/PPP1pR2/4R1K1 w - - 0 23",
+  },
 } satisfies Record<Exclude<Theme, "default">, { primary: string; secondary: string }>;
 
 const PIECE_CODES: Record<Role, string> = {

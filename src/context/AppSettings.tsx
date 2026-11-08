@@ -50,11 +50,16 @@ const STORAGE_KEYS = {
   hiddenRatingGraphModes: "profile.ratingGraph.hiddenModes",
 };
 
-export const GEMSTONE_THEMES = ["amethyst", "ruby", "emerald"] as const;
+const GEMSTONE_THEMES = ["amethyst", "ruby", "emerald"] as const;
 const COLOR_MODES = ["dark", "light"] as const;
-const THEMES = ["default", ...GEMSTONE_THEMES] as const;
+const DARK_ONLY_THEME = "black";
+export const CUSTOM_THEMES = [...GEMSTONE_THEMES, DARK_ONLY_THEME] as const;
+const THEMES = ["default", ...CUSTOM_THEMES] as const;
 export type Theme = (typeof THEMES)[number];
 export type ColorMode = (typeof COLOR_MODES)[number];
+
+export const isDarkOnlyTheme = (theme: Theme): theme is typeof DARK_ONLY_THEME =>
+  theme === DARK_ONLY_THEME;
 
 export type LabeledOption = { value: string; label: string };
 
@@ -175,6 +180,7 @@ const DEFAULT_BOARD_THEME_BY_PALETTE: Record<Theme, string> = {
   amethyst: "purple",
   ruby: "ruby",
   emerald: "emerald",
+  black: "grey",
 };
 
 export const getDefaultBoardTheme = (theme: Theme): string => DEFAULT_BOARD_THEME_BY_PALETTE[theme];
@@ -271,12 +277,16 @@ const loadLegacySiteAppearance = (): SiteAppearance => {
 // Keep the old record keys for Default and for the original dark gemstone appearance.
 const boardProfileSchema = z.enum([
   ...COLOR_MODES,
-  ...GEMSTONE_THEMES,
+  ...CUSTOM_THEMES,
   ...GEMSTONE_THEMES.map((theme) => `${theme}-light` as const),
 ]);
 type BoardProfile = z.infer<typeof boardProfileSchema>;
 const getBoardProfile = (theme: Theme, mode: ColorMode): BoardProfile =>
-  theme === "default" ? mode : mode === "light" ? `${theme}-light` : theme;
+  theme === "default"
+    ? mode
+    : mode === "light" && !isDarkOnlyTheme(theme)
+      ? `${theme}-light`
+      : theme;
 const hexColorSchema = z.string().refine(isValidHexColor);
 const boardAppearanceSchema = z.object({
   pieceSet: z.string().refine(isValidPieceSet),
@@ -294,7 +304,8 @@ type BoardAppearanceByTheme = z.infer<typeof boardAppearanceByThemeSchema>;
 
 const getDefaultBoardAppearance = (profile: BoardProfile): BoardAppearance => {
   const theme =
-    GEMSTONE_THEMES.find((gem) => profile === gem || profile === `${gem}-light`) ?? DEFAULT_THEME;
+    CUSTOM_THEMES.find((palette) => profile === palette || profile === `${palette}-light`) ??
+    DEFAULT_THEME;
   return {
     pieceSet: DEFAULT_PIECE_SET,
     boardTheme: getDefaultBoardTheme(theme),
@@ -423,17 +434,22 @@ export const getBoardThemeColors = (
 };
 
 export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
-  const [{ theme, colorMode }, setSiteAppearance] = usePersistedState(
+  const [{ theme, colorMode: preferredColorMode }, setSiteAppearance] = usePersistedState(
     STORAGE_KEYS.siteAppearance,
     siteAppearanceSchema,
     loadLegacySiteAppearance,
   );
+  // A dark-only palette changes the rendered mode, not the user's Light/Dark preference.
+  const colorMode = isDarkOnlyTheme(theme) ? "dark" : preferredColorMode;
   const setTheme = useCallback(
     (theme: Theme) => setSiteAppearance((current) => ({ ...current, theme })),
     [setSiteAppearance],
   );
   const setColorMode = useCallback(
-    (colorMode: ColorMode) => setSiteAppearance((current) => ({ ...current, colorMode })),
+    (colorMode: ColorMode) =>
+      setSiteAppearance((current) =>
+        isDarkOnlyTheme(current.theme) ? current : { ...current, colorMode },
+      ),
     [setSiteAppearance],
   );
   const [boardAppearance, { resetBoardAppearance, setters: boardAppearanceSetters }] =
@@ -557,7 +573,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     const { dataset } = document.documentElement;
     dataset["theme"] = colorMode;
     dataset["palette"] = theme;
-    document.documentElement.toggleAttribute("data-gemstone-theme", theme !== "default");
+    document.documentElement.toggleAttribute(
+      "data-gemstone-theme",
+      theme !== "default" && !isDarkOnlyTheme(theme),
+    );
   }, [theme, colorMode]);
 
   useEffect(() => {

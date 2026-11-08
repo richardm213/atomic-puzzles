@@ -486,6 +486,11 @@
   font-size: 13px;
 }
 
+.navSettingsMenu select:disabled {
+  color: var(--color-muted);
+  cursor: not-allowed;
+}
+
 :root[data-gemstone-theme] .navSettingsMenu select {
   border-color: var(--color-input-border);
 }
