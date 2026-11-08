@@ -4,7 +4,7 @@ import {
   rewardedPuzzleTagVoteResponseSchema,
 } from "../../../shared/domain/puzzles/puzzleTagVotes";
 import { apiRequest, postApi } from "../api/postApi";
-import { announceCoinsEarned } from "../coins/coinEvents";
+import { announceCoinChange } from "../coins/coinEvents";
 
 const endpoint = "/api/puzzles/tags";
 const options = {
@@ -22,7 +22,7 @@ export const loadPuzzleTagVotes = async (puzzleId: number, signal: AbortSignal) 
   ).votes;
 
 export const voteOnPuzzleTag = async (puzzleId: number, tag: string, vote: PuzzleTagVote) => {
-  const { votes, coinAward } = await postApi(
+  const { votes, coinAward, coinDelta } = await postApi(
     endpoint,
     { puzzleId, tag, vote },
     {
@@ -31,8 +31,12 @@ export const voteOnPuzzleTag = async (puzzleId: number, tag: string, vote: Puzzl
       errorMessage: "Unable to save your tag vote.",
     },
   );
-  if (coinAward > 0) {
-    announceCoinsEarned(coinAward, coinAward > 0.1 ? "Tag proposed" : "Tag vote");
+  const change = coinDelta ?? coinAward;
+  if (change !== 0) {
+    announceCoinChange(
+      change,
+      change < 0 ? "Tag reward reversed" : change > 0.1 ? "Tag proposed" : "Tag vote",
+    );
   }
   return votes;
 };

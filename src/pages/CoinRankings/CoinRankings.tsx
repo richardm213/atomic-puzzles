@@ -114,6 +114,9 @@ const transactionDescription = (transaction: CoinTransaction) => {
   }
   if (transaction.reason === "puzzle_tagging") {
     const action = metadataString(transaction, "action");
+    if (action === "reward_reversed") {
+      return `Tag reward reversed${puzzleId ? ` on puzzle #${puzzleId}` : ""}`;
+    }
     const verb =
       action === "proposed" ? "Proposed" : action === "downvoted" ? "Downvoted" : "Upvoted";
     return `${verb} a tag${puzzleId ? ` on puzzle #${puzzleId}` : ""}`;

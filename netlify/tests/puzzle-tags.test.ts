@@ -70,19 +70,22 @@ describe("puzzle tag voting API", () => {
     });
   });
 
-  it("returns a fractional proposal reward without rejecting the saved vote", async () => {
-    const data = { votes: [{ tag: "fork", up: 1, down: 0, vote: 1 }], coinAward: 0.2 };
-    mocks.createClient.mockReturnValue({
-      rpc: vi.fn().mockResolvedValue({ data, error: null }),
-    });
+  it.each([{ coinAward: 0.2 }, { coinAward: 0, coinDelta: -0.35 }])(
+    "returns a signed coin adjustment (%s) without rejecting the saved vote",
+    async (adjustment) => {
+      const data = { votes: [{ tag: "fork", up: 1, down: 0, vote: 1 }], ...adjustment };
+      mocks.createClient.mockReturnValue({
+        rpc: vi.fn().mockResolvedValue({ data, error: null }),
+      });
 
-    const response = await handler({
-      httpMethod: "POST",
-      headers: authHeaders("solver"),
-      body: JSON.stringify({ puzzleId: 42, tag: "fork", vote: 1 }),
-    });
+      const response = await handler({
+        httpMethod: "POST",
+        headers: authHeaders("solver"),
+        body: JSON.stringify({ puzzleId: 42, tag: "fork", vote: 1 }),
+      });
 
-    expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body)).toEqual(data);
-  });
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual(data);
+    },
+  );
 });
