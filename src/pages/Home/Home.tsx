@@ -21,7 +21,6 @@ const TournamentSpotlightCard = ({
 }) => (
   <Link
     className="homeSpotlightCard homeTrophyShortcut"
-    data-series={tournament.seriesKey}
     to="/tournaments/$tournamentId"
     params={{ tournamentId: getTournamentRouteId(tournament.id) }}
   >

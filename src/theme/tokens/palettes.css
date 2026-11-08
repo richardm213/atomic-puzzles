@@ -120,6 +120,9 @@
   );
   --color-accent-soft-border: color-mix(in srgb, var(--color-primary-soft) 34%, transparent);
   --color-accent-soft-text: var(--color-primary-pale);
+  --color-feature-card-accent: var(--color-primary-soft);
+  --feature-card-tint: 11%;
+  --feature-card-hover-tint: 15%;
   --color-table-hover: var(--color-accent-soft-bg);
   --color-primary-ring: var(--color-primary-soft);
   --brand-wordmark-gradient: linear-gradient(
@@ -176,6 +179,8 @@
   --gem-selection-tint: 8%;
   --gem-emphasis-tint: 13%;
   --color-accent-soft-border: color-mix(in srgb, var(--color-primary-soft) 26%, transparent);
+  --feature-card-tint: 6%;
+  --feature-card-hover-tint: 9%;
   --brand-mark-color: var(--color-nav-badge);
   --page-background: linear-gradient(180deg, var(--color-page-top), var(--color-page-bottom));
 }
