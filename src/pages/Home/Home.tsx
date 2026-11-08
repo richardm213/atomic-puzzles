@@ -124,8 +124,8 @@ export const HomePage = () => {
             <Link className="homeSecondaryCta" to="/rankings">
               View rankings
             </Link>
-            <Link className="homeSecondaryCta" to="/analysis">
-              Analyze
+            <Link className="homeSecondaryCta" to="/betting">
+              Betting
             </Link>
           </div>
         </div>
