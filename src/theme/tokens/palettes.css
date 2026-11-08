@@ -72,7 +72,7 @@
 :root[data-palette="ruby"] {
   --gem-hue: 20;
   --gem-action-chroma: 0.18;
-  --gem-accent-chroma: 0.16;
+  --gem-accent-chroma: 0.18;
   --gem-accent-dark-lightness: 72%;
   --gem-nav-hue: 20;
   --gem-nav-chroma: 0.2;
