@@ -1,6 +1,12 @@
 import "./PuzzleTagVotingPanel.css";
 
-import { faCheck, faClock, faEyeSlash, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheck,
+  faChevronRight,
+  faClock,
+  faEyeSlash,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useRef, useState } from "react";
 
@@ -9,7 +15,12 @@ import {
   type PuzzleTagTally,
   type PuzzleTagVote,
 } from "../../../shared/domain/puzzles/puzzleTagVotes";
-import { type PuzzleMotif, puzzleMotifs } from "../../lib/puzzles/puzzleMotifs";
+import {
+  getPuzzleMotifAncestors,
+  getPuzzleMotifTreeRows,
+  type PuzzleMotif,
+  puzzleMotifs,
+} from "../../lib/puzzles/puzzleMotifs";
 import { loadPuzzleTagVotes, voteOnPuzzleTag } from "../../lib/puzzles/puzzleTags";
 import { usePuzzleMotifNames } from "../../lib/puzzles/usePuzzleMotifNames";
 import type { AsyncActionStatus } from "../../types/async";
@@ -88,6 +99,8 @@ export const PuzzleTagVotingPanel = ({
   const [loadVersion, setLoadVersion] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [expandedTags, setExpandedTags] = useState<Set<string>>(new Set());
+  const [expandedPickerTags, setExpandedPickerTags] = useState<Set<string>>(new Set());
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<
     AsyncActionStatus<"saving", "saved", { removed: boolean }>
@@ -101,24 +114,40 @@ export const PuzzleTagVotingPanel = ({
   const talliesByTag = new Map(tallies?.map((tally) => [tally.tag, tally]));
   const visibleTags = getVisiblePuzzleTags(tags, tallies);
   const saving = saveStatus.state === "saving";
-  const normalizedSearch = searchValue.trim().toLowerCase();
-  const netVotes = (tag: string) => {
-    const tally = talliesByTag.get(tag);
-    return tally ? tally.up - tally.down : 0;
-  };
+  const visibleHierarchyTags = new Set(visibleTags.flatMap(getPuzzleMotifAncestors));
+  const visibleRows = getPuzzleMotifTreeRows(
+    puzzleMotifs.filter(({ tag }) => visibleHierarchyTags.has(tag)),
+    expandedTags,
+    "",
+    getName,
+  );
   const matchingMotifs = pickerOpen
-    ? puzzleMotifs
-        .filter(({ name, tag }) =>
-          [name, tag.replaceAll("_", " "), getName(tag)].some((value) =>
-            value.toLowerCase().includes(normalizedSearch),
-          ),
-        )
-        .sort(
-          (first, second) =>
-            netVotes(second.tag) - netVotes(first.tag) ||
-            getName(first.tag).localeCompare(getName(second.tag)),
-        )
+    ? getPuzzleMotifTreeRows(puzzleMotifs, expandedPickerTags, searchValue, getName)
     : [];
+
+  const toggleBranch = (tag: string, picker: boolean) => {
+    (picker ? setExpandedPickerTags : setExpandedTags)((current) => {
+      const next = new Set(current);
+      if (next.has(tag)) next.delete(tag);
+      else next.add(tag);
+      return next;
+    });
+  };
+
+  const branchToggle = (tag: string, picker: boolean) => {
+    const expanded = (picker ? expandedPickerTags : expandedTags).has(tag);
+    return (
+      <button
+        type="button"
+        className="puzzleTagTreeToggle"
+        aria-label={`${expanded ? "Collapse" : "Expand"} ${getName(tag)} tags`}
+        aria-expanded={expanded}
+        onClick={() => toggleBranch(tag, picker)}
+      >
+        <FontAwesomeIcon icon={faChevronRight} aria-hidden="true" />
+      </button>
+    );
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -240,8 +269,17 @@ export const PuzzleTagVotingPanel = ({
           <span>Tags</span>
         </div>
         <div className="puzzleTagVoteAppliedList" aria-label="Tags on this puzzle">
-          <div className="puzzleTagVoteChips">
-            {visibleTags.map(renderTag)}
+          <div className="puzzleTagVoteAppliedTree">
+            {visibleRows.map(({ motif, depth, hasChildren }) => (
+              <div
+                className="puzzleTagTreeRow"
+                key={motif.tag}
+                style={{ paddingInlineStart: `calc(var(--space-4) * ${depth})` }}
+              >
+                {hasChildren ? branchToggle(motif.tag, false) : null}
+                {renderTag(motif.tag)}
+              </div>
+            ))}
             {visibleTags.length === 0 && !canVote ? <em>No tags yet.</em> : null}
           </div>
           {canVote ? (
@@ -277,21 +315,29 @@ export const PuzzleTagVotingPanel = ({
             />
             {tallies ? (
               <ul className="puzzleTagVoteSearchResults" aria-label="Matching tags">
-                {matchingMotifs.map((motif) => (
-                  <li key={motif.tag}>
-                    <button
-                      type="button"
-                      className="puzzleTagVotePickerName"
-                      onClick={(event) => {
-                        dialogTriggerRef.current = event.currentTarget;
-                        setSelectedTag(motif.tag);
-                      }}
-                    >
-                      {getName(motif.tag)}
-                      {talliesByTag.has(motif.tag) && !visibleTags.includes(motif.tag) ? (
-                        <small>Hidden</small>
-                      ) : null}
-                    </button>
+                {matchingMotifs.map(({ motif, depth, hasChildren }) => (
+                  <li
+                    key={motif.tag}
+                    style={{
+                      paddingInlineStart: `calc(var(--space-2) + var(--space-4) * ${depth})`,
+                    }}
+                  >
+                    <div className="puzzleTagTreeRow">
+                      {hasChildren ? branchToggle(motif.tag, true) : null}
+                      <button
+                        type="button"
+                        className="puzzleTagVotePickerName"
+                        onClick={(event) => {
+                          dialogTriggerRef.current = event.currentTarget;
+                          setSelectedTag(motif.tag);
+                        }}
+                      >
+                        {getName(motif.tag)}
+                        {talliesByTag.has(motif.tag) && !visibleTags.includes(motif.tag) ? (
+                          <small>Hidden</small>
+                        ) : null}
+                      </button>
+                    </div>
                     {voteControls(motif)}
                   </li>
                 ))}

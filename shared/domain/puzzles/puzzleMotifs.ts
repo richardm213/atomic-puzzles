@@ -298,6 +298,46 @@ export const normalizePuzzleMotifTags = (value: unknown): string[] => {
 export const getPuzzleMotifParent = (motif: PuzzleMotif): PuzzleMotif | undefined =>
   motif.parentTag ? puzzleMotifs.find((candidate) => candidate.tag === motif.parentTag) : undefined;
 
+export const getPuzzleMotifAncestors = (tag: string): string[] => {
+  const ancestors: string[] = [];
+  let current: string | undefined = tag;
+  while (current && !ancestors.includes(current)) {
+    ancestors.push(current);
+    current = puzzleMotifParentByTag.get(current);
+  }
+  return ancestors;
+};
+
+export const getPuzzleMotifTreeRows = (
+  motifs: PuzzleMotif[],
+  expanded: ReadonlySet<string>,
+  search: string,
+  getName: (tag: string) => string,
+): { motif: PuzzleMotif; depth: number; hasChildren: boolean }[] => {
+  const query = search.trim().toLowerCase();
+  const sorted = [...motifs].sort((a, b) => getName(a.tag).localeCompare(getName(b.tag)));
+  if (query) {
+    return sorted
+      .filter(({ tag, name }) =>
+        [name, tag.replaceAll("_", " "), getName(tag)].some((value) =>
+          value.toLowerCase().includes(query),
+        ),
+      )
+      .map((motif) => ({ motif, depth: 0, hasChildren: false }));
+  }
+  const tags = new Set(motifs.map(({ tag }) => tag));
+  const rows: { motif: PuzzleMotif; depth: number; hasChildren: boolean }[] = [];
+  const visit = (motif: PuzzleMotif, depth: number) => {
+    const children = sorted.filter(({ parentTag }) => parentTag === motif.tag);
+    rows.push({ motif, depth, hasChildren: children.length > 0 });
+    if (expanded.has(motif.tag)) children.forEach((child) => visit(child, depth + 1));
+  };
+  sorted
+    .filter(({ parentTag }) => !parentTag || !tags.has(parentTag))
+    .forEach((root) => visit(root, 0));
+  return rows;
+};
+
 // For display only: pass positive-net tags, leaving stored tags and filters intact.
 export const getMostSpecificPuzzleMotifTags = (tags: readonly string[]): string[] => {
   const superseded = new Set<string>();

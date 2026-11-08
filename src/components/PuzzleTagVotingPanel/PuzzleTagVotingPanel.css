@@ -34,6 +34,40 @@
   gap: var(--space-1);
 }
 
+.puzzleTagVoteAppliedTree {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.puzzleTagTreeRow {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.puzzleTagTreeToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 25px;
+  min-height: 25px;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-inset);
+  color: var(--color-muted);
+}
+
+.puzzleTagTreeToggle[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+
+.puzzleTagTreeToggle:hover {
+  background: var(--color-accent-soft-bg);
+}
+
 .puzzleTagVoteAppliedList em {
   color: var(--color-subtle);
   font-size: 12px;
@@ -412,6 +446,7 @@
 
 @media (pointer: coarse), (max-width: 560px) {
   .puzzleTagVoteDefinitionButton,
+  .puzzleTagTreeToggle,
   .puzzleTagVotesAddButton,
   .puzzleTagVotePicker > input,
   .puzzleTagVotePickerName,

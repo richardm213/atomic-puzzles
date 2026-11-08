@@ -732,6 +732,8 @@ describe("PuzzleSolverPage solution options", () => {
       name: /^View definition for Fork\b/,
     });
     const subtagButton = { name: /^View definition for Epaulette fork\b/ };
+    expect(within(motifs).queryByRole("button", subtagButton)).not.toBeInTheDocument();
+    await user.click(within(motifs).getByRole("button", { name: "Expand Fork tags" }));
     const epauletteButton = await within(motifs).findByRole("button", subtagButton);
     const addTag = screen.getByRole("button", { name: "Add tag" });
     const upvote = within(motifs).getByRole("button", { name: /^Upvote Fork\b/ });
@@ -897,7 +899,7 @@ describe("PuzzleSolverPage solution options", () => {
     await waitFor(() => expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true));
     expect(explanationTab).toBeEnabled();
     await user.click(explanationTab);
-    await user.click(screen.getByRole("button", { name: "Edit", exact: true }));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByRole("textbox", { name: "Puzzle explanation" })).toHaveValue(
       mocks.puzzleExplanation,
     );
