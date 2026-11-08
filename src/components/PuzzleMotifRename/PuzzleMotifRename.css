@@ -1,0 +1,152 @@
+.motifRenameTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  gap: var(--space-1);
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background 200ms ease,
+    color 200ms ease;
+}
+
+.motifRenameTrigger:hover,
+.motifRenameTrigger:focus-visible {
+  background: var(--color-surface-inset);
+  color: var(--color-heading);
+}
+
+.motifRenameTrigger:active {
+  background: var(--color-surface-inset-strong);
+}
+
+.motifRenameDialog {
+  width: min(420px, calc(100% - 2 * var(--space-4)));
+  max-height: calc(100% - 2 * var(--space-4));
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel-strong);
+  color: var(--color-text);
+  box-shadow: var(--shadow-panel);
+}
+
+.motifRenameDialog::backdrop {
+  background: var(--color-modal-bg);
+}
+
+.motifRenameForm {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-6);
+}
+
+.motifRenameForm h2 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 20px;
+}
+
+.motifRenameForm p {
+  margin: var(--space-1) 0 0;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.motifRenameField {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.motifRenameField label {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.motifRenameField input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--control-height-touch);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-inset);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 16px;
+}
+
+.motifRenameField p {
+  color: var(--color-danger);
+}
+
+.motifRenameActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.motifRenameActions button {
+  min-height: var(--control-height-touch);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-inset);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background 200ms ease,
+    border-color 200ms ease;
+}
+
+.motifRenameActions button:hover:not(:disabled) {
+  border-color: var(--color-primary-soft);
+}
+
+.motifRenameActions button:active:not(:disabled) {
+  background: var(--color-surface-inset-strong);
+}
+
+.motifRenameActions .motifRenameSave {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.motifRenameActions .motifRenameSave:hover:not(:disabled),
+.motifRenameActions .motifRenameSave:active:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.motifRenameActions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.motifRenameActions .motifRenameReset {
+  margin-inline-end: auto;
+  padding-inline: var(--space-2);
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-muted);
+}
+
+@media (pointer: coarse), (max-width: 680px) {
+  .motifRenameTrigger {
+    min-width: var(--control-height-touch);
+    min-height: var(--control-height-touch);
+  }
+}

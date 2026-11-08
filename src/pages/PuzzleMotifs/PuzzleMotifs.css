@@ -241,12 +241,20 @@
 }
 
 .motifChildren {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 8px 0 0 17px;
   padding-left: 12px;
   border-left: 1px solid color-mix(in srgb, var(--motif-accent) 38%, var(--color-border));
+}
+
+.motifChildren > .motifFamily {
+  flex: 1 1 min(220px, 100%);
+}
+
+.motifChildren > .motifFamily.hasChildren {
+  flex-basis: 100%;
 }
 
 .motifCard {
@@ -313,8 +321,22 @@
   gap: 7px 12px;
 }
 
+.motifCardActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.motifCardHeading,
+.motifParentLabel {
+  overflow-wrap: anywhere;
+}
+
 .motifCard h2,
-.motifCard h3 {
+.motifCard h3,
+.motifCard h4 {
   margin: 0;
   color: var(--color-heading);
   font-size: 17px;

@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMemo, useRef, useState } from "react";
 
 import { puzzleMotifs } from "../../lib/puzzles/puzzleMotifs";
+import { usePuzzleMotifNames } from "../../lib/puzzles/usePuzzleMotifNames";
 import { filterAvailablePuzzleMotifs } from "./puzzleDashboardTags";
 
 type DashboardTagFilterProps = {
@@ -11,10 +12,6 @@ type DashboardTagFilterProps = {
   onChange: (tags: string[]) => void;
 };
 
-const motifNames = new Map(puzzleMotifs.map((motif) => [motif.tag, motif.name]));
-
-export const getPuzzleTagName = (tag: string): string => motifNames.get(tag) ?? tag;
-
 export const DashboardTagFilter = ({
   disabled,
   selectedTags,
@@ -22,10 +19,11 @@ export const DashboardTagFilter = ({
 }: DashboardTagFilterProps) => {
   const [searchValue, setSearchValue] = useState("");
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const { getName } = usePuzzleMotifNames();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const availableMotifs = useMemo(
-    () => filterAvailablePuzzleMotifs(puzzleMotifs, selectedTags, searchValue),
-    [searchValue, selectedTags],
+    () => filterAvailablePuzzleMotifs(puzzleMotifs, selectedTags, searchValue, getName),
+    [getName, searchValue, selectedTags],
   );
 
   const addTag = (tag: string): void => {
@@ -51,11 +49,11 @@ export const DashboardTagFilter = ({
         <div className="dashboardSelectedTags" aria-label="Selected tags">
           {selectedTags.map((tag) => (
             <span key={tag} className="dashboardSelectedTag">
-              {getPuzzleTagName(tag)}
+              {getName(tag)}
               <button
                 type="button"
-                aria-label={`Remove ${getPuzzleTagName(tag)} tag`}
-                title={`Remove ${getPuzzleTagName(tag)}`}
+                aria-label={`Remove ${getName(tag)} tag`}
+                title={`Remove ${getName(tag)}`}
                 onClick={() => removeTag(tag)}
                 disabled={disabled}
               >
@@ -100,7 +98,7 @@ export const DashboardTagFilter = ({
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => addTag(motif.tag)}
               >
-                <span>{motif.name}</span>
+                <span>{getName(motif.tag)}</span>
                 <small>{motif.tag}</small>
               </button>
             ))

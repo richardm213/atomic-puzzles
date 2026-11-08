@@ -16,8 +16,8 @@ import {
   removePuzzleFromCustomSet,
 } from "../../lib/puzzles/customPuzzleSets";
 import { puzzleCatalogQueryOptions } from "../../lib/puzzles/puzzleQueries";
+import { usePuzzleMotifNames } from "../../lib/puzzles/usePuzzleMotifNames";
 import { getErrorMessage } from "../../utils/errors";
-import { getPuzzleTagName } from "../PuzzleDashboard/DashboardTagFilter";
 
 const SET_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -25,6 +25,7 @@ export const CustomPuzzleSetEditPage = () => {
   const queryClient = useQueryClient();
   const { setId = "" } = useParams({ strict: false });
   const { isAuthenticated, isLoading: isAuthLoading, login } = useAuth();
+  const { getName } = usePuzzleMotifNames();
   const validSetId = SET_ID_PATTERN.test(setId);
   const [pendingPuzzleId, setPendingPuzzleId] = useState("");
   const [addingPuzzles, setAddingPuzzles] = useState(false);
@@ -162,7 +163,7 @@ export const CustomPuzzleSetEditPage = () => {
               </strong>
               <div className="customSetEditFilterTags">
                 {customSet.tags.length ? (
-                  customSet.tags.map((tag) => <span key={tag}>{getPuzzleTagName(tag)}</span>)
+                  customSet.tags.map((tag) => <span key={tag}>{getName(tag)}</span>)
                 ) : (
                   <span>No tag filters</span>
                 )}
@@ -190,7 +191,7 @@ export const CustomPuzzleSetEditPage = () => {
                       </Link>
                       <div className="customSetEditPuzzleTags" aria-label="Puzzle tags">
                         {puzzle?.tags?.length ? (
-                          puzzle.tags.map((tag) => <span key={tag}>{getPuzzleTagName(tag)}</span>)
+                          puzzle.tags.map((tag) => <span key={tag}>{getName(tag)}</span>)
                         ) : (
                           <span className="empty">No tags</span>
                         )}

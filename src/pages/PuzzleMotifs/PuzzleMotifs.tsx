@@ -2,33 +2,101 @@ import "./PuzzleMotifs.css";
 
 import { faMagnifyingGlass, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
+import { PuzzleMotifRename } from "../../components/PuzzleMotifRename/PuzzleMotifRename";
 import { Seo } from "../../components/Seo/Seo";
-import { getPuzzleMotifAnchor, puzzleMotifs } from "../../lib/puzzles/puzzleMotifs";
+import {
+  getPuzzleMotifAnchor,
+  getPuzzleMotifParent,
+  type PuzzleMotif,
+  puzzleMotifs,
+} from "../../lib/puzzles/puzzleMotifs";
+import { usePuzzleMotifNames } from "../../lib/puzzles/usePuzzleMotifNames";
+
+const renderMotif = (
+  motif: PuzzleMotif,
+  childrenByParent: Map<PuzzleMotif["parentTag"], PuzzleMotif[]>,
+  naming: Pick<ReturnType<typeof usePuzzleMotifNames>, "getName" | "canRename">,
+  onFocusFallback: () => void,
+  parent?: PuzzleMotif,
+  depth = 0,
+) => {
+  const children = childrenByParent.get(motif.tag) ?? [];
+  const anchor = getPuzzleMotifAnchor(motif.tag);
+  const Heading = depth === 0 ? "h2" : depth === 1 ? "h3" : "h4";
+  const name = naming.getName(motif.tag);
+
+  return (
+    <div className={`motifFamily ${children.length > 0 ? "hasChildren" : ""}`} key={motif.tag}>
+      <article id={anchor} className={`motifCard ${parent ? "motifCardChild" : "motifCardParent"}`}>
+        {parent ? (
+          <span className="motifParentLabel">Under {naming.getName(parent.tag)}</span>
+        ) : null}
+        <div className="motifCardHeading">
+          <Heading>{name}</Heading>
+          <div className="motifCardActions">
+            <a className="motifTag" href={`#${anchor}`} aria-label={`Link to ${name}`}>
+              #{motif.tag}
+            </a>
+            {naming.canRename ? (
+              <PuzzleMotifRename
+                motif={motif}
+                name={name}
+                showLabel
+                onFocusFallback={onFocusFallback}
+              />
+            ) : null}
+          </div>
+        </div>
+        <p>{motif.description}</p>
+      </article>
+      {children.length > 0 ? (
+        <div className="motifChildren" role="group" aria-label={`${name} submotifs`}>
+          {children.map((child) =>
+            renderMotif(child, childrenByParent, naming, onFocusFallback, motif, depth + 1),
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+};
 
 export const PuzzleMotifsPage = () => {
   const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const { getName, canRename } = usePuzzleMotifNames();
   const normalizedQuery = query.trim().toLowerCase().replace(/^#/, "");
   const matchingMotifs = useMemo(
     () =>
       puzzleMotifs.filter((motif) => {
         if (!normalizedQuery) return true;
-        return [motif.tag, motif.name, motif.description].some((value) =>
+        return [motif.tag, motif.name, getName(motif.tag), motif.description].some((value) =>
           value.toLowerCase().includes(normalizedQuery),
         );
       }),
-    [normalizedQuery],
+    [getName, normalizedQuery],
   );
-  const visibleMotifs = useMemo(() => {
-    if (!normalizedQuery) return puzzleMotifs;
+  const childrenByParent = useMemo(() => {
     const visibleTags = new Set(matchingMotifs.map((motif) => motif.tag));
-    matchingMotifs.forEach((motif) => {
-      if (motif.parentTag) visibleTags.add(motif.parentTag);
-    });
-    return puzzleMotifs.filter((motif) => visibleTags.has(motif.tag));
-  }, [matchingMotifs, normalizedQuery]);
-  const rootMotifs = visibleMotifs.filter((motif) => !motif.parentTag);
+    for (const motif of matchingMotifs) {
+      let parent = getPuzzleMotifParent(motif);
+      while (parent && !visibleTags.has(parent.tag)) {
+        visibleTags.add(parent.tag);
+        parent = getPuzzleMotifParent(parent);
+      }
+    }
+
+    const groups = new Map<PuzzleMotif["parentTag"], PuzzleMotif[]>();
+    for (const motif of puzzleMotifs) {
+      if (!visibleTags.has(motif.tag)) continue;
+      const group = groups.get(motif.parentTag) ?? [];
+      group.push(motif);
+      groups.set(motif.parentTag, group);
+    }
+    return groups;
+  }, [matchingMotifs]);
+  const rootMotifs = childrenByParent.get(undefined) ?? [];
 
   return (
     <div className="motifsPage">
@@ -58,6 +126,7 @@ export const PuzzleMotifsPage = () => {
             <span className="motifsSearchControl">
               <FontAwesomeIcon icon={faMagnifyingGlass} aria-hidden="true" />
               <input
+                ref={searchRef}
                 type="search"
                 value={query}
                 placeholder="Search tags, names, or ideas…"
@@ -84,59 +153,11 @@ export const PuzzleMotifsPage = () => {
           {matchingMotifs.length > 0 ? (
             <section className="motifsIndexSection" aria-label="Motif definitions">
               <div className="motifsGrid">
-                {rootMotifs.map((motif) => {
-                  const childMotifs = visibleMotifs.filter(
-                    (candidate) => candidate.parentTag === motif.tag,
-                  );
-                  return (
-                    <div
-                      className={`motifFamily ${childMotifs.length > 0 ? "hasChildren" : ""}`}
-                      key={motif.tag}
-                    >
-                      <article
-                        id={getPuzzleMotifAnchor(motif.tag)}
-                        className="motifCard motifCardParent"
-                      >
-                        <div className="motifCardHeading">
-                          <h2>{motif.name}</h2>
-                          <a
-                            className="motifTag"
-                            href={`#${getPuzzleMotifAnchor(motif.tag)}`}
-                            aria-label={`Link to ${motif.name}`}
-                          >
-                            #{motif.tag}
-                          </a>
-                        </div>
-                        <p>{motif.description}</p>
-                      </article>
-
-                      {childMotifs.length > 0 ? (
-                        <div className="motifChildren" aria-label={`${motif.name} submotifs`}>
-                          {childMotifs.map((child) => (
-                            <article
-                              key={child.tag}
-                              id={getPuzzleMotifAnchor(child.tag)}
-                              className="motifCard motifCardChild"
-                            >
-                              <span className="motifParentLabel">Under {motif.name}</span>
-                              <div className="motifCardHeading">
-                                <h2>{child.name}</h2>
-                                <a
-                                  className="motifTag"
-                                  href={`#${getPuzzleMotifAnchor(child.tag)}`}
-                                  aria-label={`Link to ${child.name}`}
-                                >
-                                  #{child.tag}
-                                </a>
-                              </div>
-                              <p>{child.description}</p>
-                            </article>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
+                {rootMotifs.map((motif) =>
+                  renderMotif(motif, childrenByParent, { getName, canRename }, () =>
+                    searchRef.current?.focus(),
+                  ),
+                )}
               </div>
             </section>
           ) : (

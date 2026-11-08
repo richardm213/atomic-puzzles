@@ -96,9 +96,40 @@ export const puzzleMotifs: PuzzleMotif[] = [
   },
   {
     tag: "defensive",
-    name: "Defensive",
+    name: "Defensive move",
     description:
       "The opponent threatens mate or an invasion, and only an accurate defensive move keeps the position safe.",
+  },
+  {
+    tag: "prevent_invasion",
+    name: "Prevent invasion",
+    parentTag: "defensive",
+    description:
+      "A defensive move stops an opposing piece from entering the player's position and creating a threat.",
+  },
+  {
+    tag: "prevent_knight_invasion",
+    name: "Prevent knight invasion",
+    parentTag: "prevent_invasion",
+    description: "A defensive move denies an opposing knight a key landing square.",
+  },
+  {
+    tag: "prevent_rook_invasion",
+    name: "Prevent rook invasion",
+    parentTag: "prevent_invasion",
+    description: "A defensive move stops an opposing rook from penetrating along a file or rank.",
+  },
+  {
+    tag: "prevent_queen_invasion",
+    name: "Prevent queen invasion",
+    parentTag: "prevent_invasion",
+    description: "A defensive move closes or guards an entry point for the opposing queen.",
+  },
+  {
+    tag: "prevent_bishop_invasion",
+    name: "Prevent bishop invasion",
+    parentTag: "prevent_invasion",
+    description: "A defensive move stops an opposing bishop from penetrating along a diagonal.",
   },
   {
     tag: "material",

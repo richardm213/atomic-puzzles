@@ -31,9 +31,10 @@ import {
   puzzleCatalogQueryOptions,
   puzzleProgressForUserQueryOptions,
 } from "../../lib/puzzles/puzzleQueries";
+import { usePuzzleMotifNames } from "../../lib/puzzles/usePuzzleMotifNames";
 import { getErrorMessage } from "../../utils/errors";
 import { normalizeUsername } from "../../utils/playerNames";
-import { DashboardTagFilter, getPuzzleTagName } from "../PuzzleDashboard/DashboardTagFilter";
+import { DashboardTagFilter } from "../PuzzleDashboard/DashboardTagFilter";
 
 const customSetQueryKey = ["custom-puzzle-sets"] as const;
 const emptySets: CustomPuzzleSet[] = [];
@@ -42,6 +43,7 @@ type ResultFilter = "all" | "correct" | "incorrect";
 export const CustomPuzzleSetsPage = () => {
   const queryClient = useQueryClient();
   const { isAuthenticated, isLoading: isAuthLoading, login, user } = useAuth();
+  const { getName } = usePuzzleMotifNames();
   const username = normalizeUsername(user?.username);
   const manageDialogRef = useRef<HTMLDialogElement | null>(null);
   const initializedAuthorsForRef = useRef("");
@@ -191,7 +193,7 @@ export const CustomPuzzleSetsPage = () => {
       set.untaggedOnly
         ? "No tags"
         : set.tags.length
-          ? set.tags.map(getPuzzleTagName).join(" + ")
+          ? set.tags.map(getName).join(" + ")
           : "All tags",
     ];
     return parts.join(" · ");

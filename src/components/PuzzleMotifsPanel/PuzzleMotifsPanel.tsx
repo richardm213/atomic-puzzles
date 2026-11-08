@@ -5,8 +5,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { getPuzzleMotifParent, puzzleMotifs } from "../../lib/puzzles/puzzleMotifs";
+import { usePuzzleMotifNames } from "../../lib/puzzles/usePuzzleMotifNames";
 import type { AsyncActionStatus } from "../../types/async";
 import { getErrorMessage } from "../../utils/errors";
+import { PuzzleMotifRename } from "../PuzzleMotifRename/PuzzleMotifRename";
 
 type SaveStatus = AsyncActionStatus;
 
@@ -26,6 +28,7 @@ export const PuzzleMotifsPanel = ({
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>({ state: "idle" });
   const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const { getName, canRename } = usePuzzleMotifNames();
   const selectedMotif = useMemo(
     () => puzzleMotifs.find((motif) => motif.tag === selectedTag) ?? null,
     [selectedTag],
@@ -34,14 +37,18 @@ export const PuzzleMotifsPanel = ({
   const normalizedSearch = searchValue.trim().toLocaleLowerCase();
   const matchingMotifs = normalizedSearch
     ? availableMotifs
-        .filter((motif) =>
-          `${motif.name} ${motif.tag.replaceAll("_", " ")}`
-            .toLocaleLowerCase()
-            .includes(normalizedSearch),
+        .filter(({ name, tag }) =>
+          [name, tag.replaceAll("_", " "), getName(tag)].some((value) =>
+            value.toLocaleLowerCase().includes(normalizedSearch),
+          ),
         )
         .sort((first, second) => {
-          const firstStartsWith = first.name.toLocaleLowerCase().startsWith(normalizedSearch);
-          const secondStartsWith = second.name.toLocaleLowerCase().startsWith(normalizedSearch);
+          const firstStartsWith = getName(first.tag)
+            .toLocaleLowerCase()
+            .startsWith(normalizedSearch);
+          const secondStartsWith = getName(second.tag)
+            .toLocaleLowerCase()
+            .startsWith(normalizedSearch);
           return Number(secondStartsWith) - Number(firstStartsWith);
         })
         .slice(0, 5)
@@ -54,16 +61,11 @@ export const PuzzleMotifsPanel = ({
     if (dialog && !dialog.open) dialog.showModal();
 
     const close = () => setSelectedTag(null);
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
     const handleDialogClick = (event: MouseEvent) => {
       if (event.target === dialog) close();
     };
-    window.addEventListener("keydown", handleKeyDown);
     dialog?.addEventListener("click", handleDialogClick);
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
       dialog?.removeEventListener("click", handleDialogClick);
       if (dialog?.open) dialog.close();
     };
@@ -129,16 +131,16 @@ export const PuzzleMotifsPanel = ({
         <div className="puzzleMotifAppliedList" aria-label="Tags on this puzzle" aria-busy={saving}>
           {tags.length > 0 ? (
             tags.map((tag) => {
-              const motif = puzzleMotifs.find((entry) => entry.tag === tag);
+              const name = getName(tag);
               return (
                 <div className="puzzleMotifAppliedTag" key={tag}>
                   <button
                     type="button"
                     className="puzzleMotifDefinitionButton"
-                    aria-label={`View definition for ${motif?.name ?? tag}`}
+                    aria-label={`View definition for ${name}`}
                     onClick={() => setSelectedTag(tag)}
                   >
-                    {motif?.name ?? tag}
+                    {name}
                   </button>
                 </div>
               );
@@ -186,8 +188,8 @@ export const PuzzleMotifsPanel = ({
                         disabled={saving}
                         onClick={() => void addMotif(motif.tag)}
                       >
-                        <span>{motif.name}</span>
-                        {parentMotif ? <small>{parentMotif.name}</small> : null}
+                        <span>{getName(motif.tag)}</span>
+                        {parentMotif ? <small>{getName(parentMotif.tag)}</small> : null}
                       </button>
                     );
                   })
@@ -228,14 +230,17 @@ export const PuzzleMotifsPanel = ({
         >
           <div className="puzzleMotifDefinitionCard">
             <div className="puzzleMotifDefinitionHeading">
-              <h2 id="puzzle-motif-dialog-title">{selectedMotif.name}</h2>
+              <h2 id="puzzle-motif-dialog-title">{getName(selectedMotif.tag)}</h2>
               <div className="puzzleMotifDefinitionActions">
+                {canRename ? (
+                  <PuzzleMotifRename motif={selectedMotif} name={getName(selectedMotif.tag)} />
+                ) : null}
                 {canManage && tags.includes(selectedMotif.tag) ? (
                   <button
                     type="button"
                     className="puzzleMotifDefinitionRemove"
                     aria-label={`Remove ${selectedMotif.tag}`}
-                    title={`Remove ${selectedMotif.name}`}
+                    title={`Remove ${getName(selectedMotif.tag)}`}
                     disabled={saving}
                     onClick={async () => {
                       if (await saveTags(tags.filter((tag) => tag !== selectedMotif.tag))) {
@@ -275,7 +280,7 @@ export const PuzzleMotifsPanel = ({
                         if (await saveTags(nextTags)) setSelectedTag(null);
                       }}
                     >
-                      {subtag.name}
+                      {getName(subtag.tag)}
                     </button>
                   ))}
                 </div>

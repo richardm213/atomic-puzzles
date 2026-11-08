@@ -7,6 +7,7 @@ export const filterAvailablePuzzleMotifs = (
   motifs: PuzzleMotif[],
   selectedTags: string[],
   searchValue: string,
+  getDisplayName?: (tag: string) => string,
 ): PuzzleMotif[] => {
   const selectedTagSet = new Set(selectedTags);
   const query = searchValue.trim().toLocaleLowerCase();
@@ -15,6 +16,8 @@ export const filterAvailablePuzzleMotifs = (
     if (selectedTagSet.has(motif.tag)) return false;
     if (!query) return true;
 
-    return `${motif.name} ${motif.tag.replaceAll("_", " ")}`.toLocaleLowerCase().includes(query);
+    return [motif.name, motif.tag.replaceAll("_", " "), getDisplayName?.(motif.tag)].some((name) =>
+      name?.toLocaleLowerCase().includes(query),
+    );
   });
 };
