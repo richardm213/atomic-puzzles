@@ -15,6 +15,8 @@
   --color-chesscom-icon-highlight: #a5d877;
   --color-success: #86efac;
   --color-success-strong: #5ee5a4;
+  --color-payout-profit: #25e879;
+  --color-payout-loss: #ff4b55;
   --color-profit-strip-bg: #5ee5a4;
   --color-profit-strip-text: #070c16;
   --color-warning: #facc15;
@@ -57,6 +59,8 @@
   --color-pychess-shadow-hover: rgba(109, 40, 217, 0.2);
   --color-success: #15803d;
   --color-success-strong: #12844c;
+  --color-payout-profit: #087c35;
+  --color-payout-loss: #c91e2d;
   --color-profit-strip-bg: #d1fae5;
   --color-profit-strip-text: #0d6b3a;
   --color-warning: #a86d00;
