@@ -5,7 +5,7 @@ import { JSDOM } from "jsdom";
 const forum = "https://lichess.org/forum/team-atomic-wc/2026-awc-rounds-and-results";
 const archive = "https://atomicpuzzles.org/api/archive-data";
 const currentSupabase = "https://arkicplonaruvmhhvwxd.supabase.co";
-const director = "atomicworldchamp";
+const organizers = new Set(["howlind", "atomicworldchamp"]);
 const firstPage = 18;
 const day = 86_400_000;
 const name = "@([a-z0-9_-]{2,30})";
@@ -19,6 +19,7 @@ const player = (value) => {
   // The director's page-18 spelling for the matchup in the kickoff migration.
   return key === "tolyastarina0991" ? "tolya_starina0995" : key;
 };
+const trustedAuthor = (author, p1, p2) => organizers.has(author) || author === p1 || author === p2;
 const pairKey = (p1, p2) => [player(p1), player(p2)].sort().join("/");
 const dateString = (time) => new Date(time).toISOString().slice(0, 10);
 const played = (row) => Boolean(row.match_id || row.played_on || row.outcome_type || Number(row.s1) || Number(row.s2));
@@ -67,8 +68,8 @@ function scheduleDate(text, post) {
     const time = Date.UTC(2026, month, date);
     return new Date(time).getUTCMonth() === month ? time : null;
   }
-  // A director's multi-fixture announcement can set the date once in the heading.
-  if (post.author === director && /\b(today|tomorrow)\b/i.test(text)) {
+  // An organizer's multi-fixture announcement can set the date once in the heading.
+  if (organizers.has(post.author) && /\b(today|tomorrow)\b/i.test(text)) {
     return Date.parse(dateString(post.time)) + (/\btomorrow\b/i.test(text) ? day : 0);
   }
   return null;
@@ -98,10 +99,12 @@ export function parsePost(post) {
     for (const [pattern, indexes] of resultPatterns) {
       const match = line.match(pattern);
       if (!match) continue;
-      const [p1, p2, s1, s2] = indexes.map((i) => match[i]);
+      const [rawP1, rawP2, s1, s2] = indexes.map((i) => match[i]);
+      const [p1, p2] = [player(rawP1), player(rawP2)];
+      if (!trustedAuthor(post.author, p1, p2)) return [];
       if (Number(s1) === Number(s2) || Math.max(Number(s1), Number(s2)) < 5.5 || !gameIds.length ||
           /\b(?:predict\w*|currently|was up|in progress|if|maybe|will)\b|\?/i.test(line)) break;
-      reports.push({ ...post, type: "result", p1: player(p1), p2: player(p2), s1: Number(s1), s2: Number(s2), gameIds });
+      reports.push({ ...post, type: "result", p1, p2, s1: Number(s1), s2: Number(s2), gameIds });
       break;
     }
   }
@@ -117,10 +120,10 @@ export function parsePost(post) {
       continue;
     }
     const [p1, p2] = [player(match[1]), player(match[2])];
-    if (post.author !== director && ![p1, p2].includes(post.author)) continue;
+    if (!trustedAuthor(post.author, p1, p2)) continue;
     const next = lines[index + 1] ?? "";
     const details = next.match(pairing) ? line : `${line} ${next}`;
-    const at = scheduleTime(details, post.author === director ? heading : "", post);
+    const at = scheduleTime(details, organizers.has(post.author) ? heading : "", post);
     if (at !== null && at > post.time && at - post.time <= 21 * day) {
       reports.push({ ...post, type: "schedule", p1, p2, at });
     }
@@ -335,10 +338,6 @@ async function run() {
         continue;
       }
       await applied(row, { scheduled_at: new Date(report.at).toISOString() }, [], report);
-      continue;
-    }
-    if (![report.p1, report.p2, director].includes(report.author)) {
-      review(report, "Result not posted by a participant or the director");
       continue;
     }
     const row = chooseFixture(rows, report, report.time);
