@@ -887,11 +887,10 @@ export const BettingPage = () => {
               </div>
               {activePredictionGroup && !predictionMarketOnlyCategory ? (
                 <div className="bettingPredictionViewControl">
-                  <span>Market display</span>
                   <div
                     className="bettingPredictionModeToggle"
                     role="group"
-                    aria-label="Market display"
+                    aria-label="Betting view"
                   >
                     {(["book", "market"] as const).map((mode) => (
                       <button

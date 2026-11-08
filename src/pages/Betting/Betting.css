@@ -185,19 +185,11 @@
 .bettingPredictionViewControl {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
   width: fit-content;
   padding: 6px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
   background: color-mix(in srgb, var(--color-panel-strong) 78%, transparent);
-}
-
-.bettingPredictionViewControl > span {
-  padding-left: 6px;
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-  font-weight: 650;
 }
 
 .bettingPredictionModeToggle {
@@ -1629,12 +1621,6 @@
 @media (max-width: 540px) {
   .bettingPredictionViewControl {
     width: 100%;
-    display: grid;
-    gap: 6px;
-  }
-
-  .bettingPredictionViewControl > span {
-    padding: 0 4px;
   }
 
   .bettingPredictionModeToggle {
