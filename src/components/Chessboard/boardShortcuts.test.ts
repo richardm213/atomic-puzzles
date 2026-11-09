@@ -26,11 +26,20 @@ describe("boardShortcutCommand", () => {
         metaKey: false,
         ctrlKey: false,
         altKey: false,
+        shiftKey: false,
       }),
     ).toBeNull();
     expect(
       boardShortcutCommand(new KeyboardEvent("keydown", { key: "ArrowLeft", metaKey: true })),
     ).toBeNull();
+    for (const key of ["ArrowLeft", "ArrowRight"]) {
+      expect(
+        boardShortcutCommand(new KeyboardEvent("keydown", { key, shiftKey: true })),
+      ).toBeNull();
+      expect(boardShortcutCommand(new KeyboardEvent("keydown", { key }))).toBe(
+        key === "ArrowLeft" ? "previous" : "next",
+      );
+    }
   });
 
   it("captures focused solution buttons when requested", () => {
@@ -43,6 +52,7 @@ describe("boardShortcutCommand", () => {
           metaKey: false,
           ctrlKey: false,
           altKey: false,
+          shiftKey: false,
         },
         true,
       ),

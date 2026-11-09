@@ -38,10 +38,10 @@ export const isTextEntryTarget = (target: EventTarget | null): boolean =>
   );
 
 export const boardShortcutCommand = (
-  event: Pick<KeyboardEvent, "key" | "target" | "metaKey" | "ctrlKey" | "altKey">,
+  event: Pick<KeyboardEvent, "key" | "target" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">,
   captureInteractive = false,
 ): BoardShortcutCommand | null => {
-  if (event.metaKey || event.ctrlKey || event.altKey) return null;
+  if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return null;
   if (!(event.target instanceof Element)) return commandByKey[event.key] ?? null;
   if (!captureInteractive && event.target.closest(interactiveSelector)) return null;
   if (
