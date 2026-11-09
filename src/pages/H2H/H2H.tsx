@@ -140,10 +140,13 @@ const defaultH2HModeFilters: Record<Mode, boolean> = {
 };
 
 const presetMatchups = [
+  ["natso", "rabbier"],
+  ["jakestatefarm", "sutcunuri"],
+  ["rechesster", "judebaetorrens"],
+  ["quasabianth", "maxwellssilvrhammer"],
   ["wolfram_ep", "rechesster"],
   ["maxwellssilvrhammer", "wolfram_ep"],
   ["ihatespammers", "natso"],
-  ["natso", "neverofzero"],
   ["maxwellssilvrhammer", "ihatespammers"],
   ["natso", "wolfram_ep"],
   ["lesha2002", "vlad_00"],
@@ -158,9 +161,6 @@ const presetMatchups = [
   ["jakestatefarm", "lesha2002"],
   ["catask", "sutcunuri"],
   ["liangeloball", "natso"],
-  ["soul-fly", "stephanie_s_symphony"],
-  ["neverofzero", "vlad_00"],
-  ["neverofzero", "wolfram_ep"],
   ["jakestatefarm", "vlad_00"],
   ["maxwellssilvrhammer", "opabinia"],
   ["jakestatefarm", "wolfram_ep"],
