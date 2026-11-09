@@ -214,6 +214,7 @@ export const EndgamePracticePage = () => {
     "Escaped",
   );
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [isRetry, setIsRetry] = useState(false);
   const startedAtRef = useRef<number | null>(null);
   const scoredRoundRef = useRef<string | null>(null);
   const roundIdRef = useRef(crypto.randomUUID());
@@ -296,6 +297,7 @@ export const EndgamePracticePage = () => {
       setNavigation(null);
       navigationRef.current = null;
       setStatus("ready");
+      setIsRetry(false);
       readyPositionFenRef.current = null;
       setFailureLabel("Escaped");
       setElapsedMs(0);
@@ -340,6 +342,7 @@ export const EndgamePracticePage = () => {
       preparationControllerRef.current = null;
 
       setPosition(selectedPosition);
+      setIsRetry(false);
       setBoardState(null);
       setNavigation(null);
       navigationRef.current = null;
@@ -402,6 +405,7 @@ export const EndgamePracticePage = () => {
       }
 
       setPosition(selectedPosition);
+      setIsRetry(false);
       readyPositionFenRef.current = selectedPosition.fen;
       setFailureLabel("Escaped");
       roundIdRef.current = crypto.randomUUID();
@@ -411,6 +415,24 @@ export const EndgamePracticePage = () => {
       void prepareEndgamePosition(mode, category);
     })();
   }, [category, mode, resetCopyFeedback, status]);
+
+  const retryPosition = useCallback(() => {
+    if (!attemptIsOver) return;
+    preparationControllerRef.current?.abort();
+    preparationControllerRef.current = null;
+    setBoardState(null);
+    setNavigation(null);
+    navigationRef.current = null;
+    setElapsedMs(0);
+    setFailureLabel("Escaped");
+    readyPositionFenRef.current = null;
+    startedAtRef.current = window.performance.now();
+    roundIdRef.current = crypto.randomUUID();
+    scoredRoundRef.current = null;
+    resetCopyFeedback();
+    setIsRetry(true);
+    setStatus("running");
+  }, [attemptIsOver, resetCopyFeedback]);
 
   const giveUp = useCallback(() => {
     if (status !== "running") return;
@@ -519,6 +541,7 @@ export const EndgamePracticePage = () => {
       startedAtRef.current = null;
       setElapsedMs(finished);
       setStatus("won");
+      if (isRetry) return;
       void updateEndgameLeaderboard({
         action: "record",
         mode,
@@ -542,7 +565,7 @@ export const EndgamePracticePage = () => {
       setFailureLabel(boardState.winner === "black" ? "Lost" : "Escaped");
       setStatus("failed");
     }
-  }, [boardState, elapsedMs, guestId, leaderboardCategory, mode, playerName, status]);
+  }, [boardState, elapsedMs, guestId, isRetry, leaderboardCategory, mode, playerName, status]);
   const statusText =
     status === "won"
       ? "Solved"
@@ -579,6 +602,7 @@ export const EndgamePracticePage = () => {
             aria-label="Endgame practice board"
           >
             <Chessboard
+              key={roundIdRef.current}
               puzzleId={null}
               fen={position.fen}
               orientation="white"
@@ -662,6 +686,11 @@ export const EndgamePracticePage = () => {
                   <small aria-live="polite">{statusText}</small>
                 </div>
               </div>
+              {isRetry ? (
+                <p className="endgameRetryNotice" role="status">
+                  Retry: this time won’t be submitted to the leaderboard.
+                </p>
+              ) : null}
               <label className="endgameModeSelect">
                 <span>Endgame</span>
                 <select
@@ -788,6 +817,14 @@ export const EndgamePracticePage = () => {
             ) : null}
             {attemptIsOver ? (
               <div className="endgameRoundActions">
+                <button
+                  type="button"
+                  className="endgameRetryPositionButton"
+                  onClick={retryPosition}
+                >
+                  <FontAwesomeIcon icon={faRotateRight} aria-hidden="true" />
+                  Try again
+                </button>
                 <button
                   type="button"
                   className="endgameNextPositionButton"

@@ -381,10 +381,12 @@
 .endgameRoundActions {
   display: grid;
   grid-template-columns: 1fr;
+  gap: 8px;
   margin-top: 18px;
 }
 
-.endgameNextPositionButton {
+.endgameNextPositionButton,
+.endgameRetryPositionButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -413,7 +415,8 @@
   background: var(--color-primary-hover);
 }
 
-.endgameNextPositionButton:active {
+.endgameNextPositionButton:active,
+.endgameRetryPositionButton:active {
   transform: translateY(1px);
 }
 
@@ -544,4 +547,21 @@
   .endgamePracticePage * {
     transition-duration: 0.01ms !important;
   }
+}
+
+.endgameRetryNotice {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.endgameRetryPositionButton {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+}
+
+.endgameRetryPositionButton:hover {
+  background: var(--color-panel);
 }
