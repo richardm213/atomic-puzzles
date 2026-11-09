@@ -1212,9 +1212,7 @@
   .gameAnalysisPage .analysisBoardColumn {
     order: -2;
   }
-}
 
-@media (max-width: 799px) and (orientation: portrait) {
   .analysisPage.gameAnalysisPage {
     width: 100%;
   }
@@ -1224,16 +1222,31 @@
   }
 
   .gameAnalysisPlayer {
-    min-height: 44px;
+    min-height: var(--control-height-touch);
+    padding-block: 0;
+  }
+
+  .gameAnalysisPlayerName {
+    line-height: var(--control-height-touch);
+  }
+
+  .gameAnalysisGameNavigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
   }
 
   .gameAnalysisGameNavigationButton {
-    width: 44px;
-    height: 44px;
+    width: var(--control-height-touch);
+    height: var(--control-height-touch);
   }
 
   .gameAnalysisPage .analysisBoardPanel {
     order: -3;
+    /* Align the board and evaluation bar as a unit within the page gutters. */
+    justify-self: start;
   }
 
   .boardClockRow:first-child {
@@ -1281,6 +1294,10 @@
 
   .gameUnderboard {
     order: 2;
+  }
+
+  .gameUnderboardTabs button {
+    min-height: var(--control-height-touch);
   }
 }
 
