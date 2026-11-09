@@ -284,6 +284,7 @@ export const PracticePage = () => {
   } = getBoardMoveState(boardState, practiceRootFen);
   const {
     analysis: atomicDbAnalysis,
+    engineMoves,
     beginVariationPlayback,
     fen: atomicDbFen,
     finishVariationPlayback,
@@ -1556,6 +1557,7 @@ export const PracticePage = () => {
           captureNavigationShortcuts: true,
           solutionNavigation: navigation,
           previewMove: hoveredMoveUci,
+          engineMoves,
           onNavigateHandled: handleNavigationHandled,
           onStateChange: handleBoardStateChange,
         }}

@@ -203,6 +203,7 @@ export const PuzzleSolverPage = () => {
   const [activePuzzleInfoTab, setActivePuzzleInfoTab] = useState<PuzzleInfoTab | null>(null);
   const [solutionNavigation, setSolutionNavigation] = useState<SolutionNavigation | null>(null);
   const [analysisPreviewMove, setAnalysisPreviewMove] = useState<string | null>(null);
+  const [analysisEngineMoves, setAnalysisEngineMoves] = useState<readonly string[] | null>(null);
   const [puzzleSession, dispatchPuzzleSession] = useReducer(
     puzzleSessionReducer,
     undefined,
@@ -1500,6 +1501,7 @@ export const PuzzleSolverPage = () => {
       onCycleOptions={(command) => setSolutionNavigation({ type: "command", command })}
       onPlayLine={(ucis) => setSolutionNavigation({ type: "line", ucis })}
       onHoverMove={setAnalysisPreviewMove}
+      onEngineMovesChange={setAnalysisEngineMoves}
       canGiveUp={puzzleSession.attempt === "wrong" && !isAnalysisMode}
       onGiveUp={handleGiveUp}
       canStepBack={canPlaybackPrevious}
@@ -2083,6 +2085,9 @@ export const PuzzleSolverPage = () => {
                 disabled={dailyLimitReached}
                 captureNavigationShortcuts
                 previewMove={analysisPreviewMove}
+                engineMoves={
+                  isAnalysisMode ? (solutionNavigation ? null : analysisEngineMoves) : undefined
+                }
                 solutionNavigation={solutionNavigation}
                 onNavigateHandled={() => setSolutionNavigation(null)}
                 onAttemptResolved={handleAttemptResolved}

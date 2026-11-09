@@ -31,7 +31,7 @@ export const useChessground = ({
   useEffect(() => {
     if (!elementRef.current) return;
     const initial = initialConfigRef.current;
-    apiRef.current = Chessground(elementRef.current, {
+    const api = Chessground(elementRef.current, {
       fen: initial.fen,
       orientation: initial.orientation,
       coordinates: initial.coordinates,
@@ -52,6 +52,21 @@ export const useChessground = ({
       selectable: { enabled: true },
       drawable: { visible: true },
     });
+    api.set({
+      drawable: {
+        brushes: {
+          ...api.state.drawable.brushes,
+          bestMove: { key: "best-move", color: "var(--color-primary)", opacity: 0.9, lineWidth: 12 },
+          otherEngineMove: {
+            key: "other-engine-move",
+            color: "var(--color-primary)",
+            opacity: 0.35,
+            lineWidth: 9,
+          },
+        },
+      },
+    });
+    apiRef.current = api;
 
     return () => {
       apiRef.current = null;

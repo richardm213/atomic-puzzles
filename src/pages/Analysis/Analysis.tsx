@@ -524,6 +524,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   currentFenRef.current = currentFen;
   const {
     analysis: atomicDbAnalysis,
+    engineMoves,
     beginVariationPlayback,
     fen: atomicDbFen,
     finishVariationPlayback,
@@ -1615,6 +1616,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           solutionNavigation: navigation,
           previewMove: threatMoveUci ?? hoveredExplorerMoveUci,
           previewMoveBrush: threatMoveUci ? "red" : "paleBlue",
+          engineMoves: effectiveThreatMode ? null : engineMoves,
           analysisMarker:
             gameComputerAnalysisEnabled &&
             boardState?.customLineIndex === undefined &&

@@ -28,6 +28,7 @@ import {
   type UciSolutionLine,
 } from "../../lib/chess/pgn";
 import { lichessAnalysisGlyphSvg } from "../../lib/gameAnalysis/lichessAnalysisGlyph";
+import { keyboardShortcutAction } from "../../lib/keyboardShortcuts";
 import type {
   AttemptResolved,
   BoardLineRef,
@@ -45,7 +46,7 @@ import {
   historyMoveKeys,
   historyMoveSans,
 } from "./boardHistory";
-import { useBoardShortcuts } from "./boardShortcuts";
+import { isTextEntryTarget, useBoardShortcuts } from "./boardShortcuts";
 import { buildBoardStyle, buildPieceStyle } from "./boardStyle";
 import { buildPgnHistory } from "./pgnHistory";
 import {
@@ -91,6 +92,7 @@ export type ChessboardProps = {
   solutionNavigation?: SolutionNavigation | null | undefined;
   previewMove?: string | null | undefined;
   previewMoveBrush?: "paleBlue" | "red";
+  engineMoves?: readonly string[] | null | undefined;
   analysisMarker?: { uci: string; symbol: string; fill: string } | null | undefined;
   captureNavigationShortcuts?: boolean;
   enableNavigationShortcuts?: boolean;
@@ -125,7 +127,7 @@ const keyPair = (a: string, b: string): [Key, Key] => [a as Key, b as Key];
 
 const previewMoveShape = (
   uci: string | null | undefined,
-  brush: "paleBlue" | "red" = "paleBlue",
+  brush: "paleBlue" | "red" | "bestMove" | "otherEngineMove",
 ): DrawShape[] => {
   const normalized = uci?.trim().toLowerCase() ?? "";
   if (!/^[a-h][1-8][a-h][1-8]/.test(normalized)) return [];
@@ -165,6 +167,7 @@ const ChessboardComponent = ({
   solutionNavigation,
   previewMove,
   previewMoveBrush = "paleBlue",
+  engineMoves,
   analysisMarker,
   captureNavigationShortcuts = false,
   enableNavigationShortcuts = true,
@@ -187,6 +190,9 @@ const ChessboardComponent = ({
     boardOverrideLightSquare,
     boardOverrideDarkSquare,
     showBoardCoordinates,
+    showBestMoveArrow,
+    setShowBestMoveArrow,
+    keyboardShortcuts,
     enableBoardPremoves,
     boardSoundsEnabled,
     boardSoundSet,
@@ -1261,6 +1267,28 @@ const ChessboardComponent = ({
     cgRef.current?.set({ premovable: { enabled: effectivePremovesEnabled } });
   }, [disabled, effectivePremovesEnabled]);
 
+  const supportsEngineArrows = engineMoves !== undefined;
+  useEffect(() => {
+    if (!supportsEngineArrows) return;
+    const toggleEngineArrows = (event: KeyboardEvent): void => {
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.isComposing ||
+        isTextEntryTarget(event.target) ||
+        (event.target instanceof Element &&
+          event.target.closest("dialog, [role='dialog'], [role='textbox']")) ||
+        keyboardShortcutAction(event, keyboardShortcuts) !== "toggleBestMoveArrow"
+      ) {
+        return;
+      }
+      event.preventDefault();
+      setShowBestMoveArrow((current) => !current);
+    };
+    window.addEventListener("keydown", toggleEngineArrows);
+    return () => window.removeEventListener("keydown", toggleEngineArrows);
+  }, [keyboardShortcuts, setShowBestMoveArrow, supportsEngineArrows]);
+
   useEffect(() => {
     const markerUci = analysisMarker?.uci.trim().toLowerCase() ?? "";
     const markerSvg = analysisMarker
@@ -1275,8 +1303,16 @@ const ChessboardComponent = ({
             } satisfies DrawShape,
           ]
         : [];
-    cgRef.current?.setAutoShapes([...previewMoveShape(previewMove, previewMoveBrush), ...marker]);
-  }, [analysisMarker, previewMove, previewMoveBrush]);
+    const preview = previewMoveShape(previewMove, previewMoveBrush);
+    const engineArrows =
+      !preview.length && showBestMoveArrow && !disabled && engineMoves
+        ? [
+            ...engineMoves.slice(1).flatMap((move) => previewMoveShape(move, "otherEngineMove")),
+            ...previewMoveShape(engineMoves[0], "bestMove"),
+          ]
+        : [];
+    cgRef.current?.setAutoShapes([...engineArrows, ...preview, ...marker]);
+  }, [analysisMarker, disabled, engineMoves, previewMove, previewMoveBrush, showBestMoveArrow]);
 
   useEffect(() => {
     if (!showSolution) return;

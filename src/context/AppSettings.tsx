@@ -51,6 +51,7 @@ const STORAGE_KEYS = {
   lichessLinkTarget: "atomic-puzzles.games.lichess-link-target",
   gameExplorerOnLeft: "atomic-puzzles.games.explorer-on-left",
   localAnalysisEngine: LOCAL_ANALYSIS_ENGINE_STORAGE_KEY,
+  showBestMoveArrow: "atomic-puzzles.analysis.show-best-move-arrow",
   showRatingGraphLines: "profile.ratingGraph.showLines",
   hiddenRatingGraphModes: "profile.ratingGraph.hiddenModes",
 };
@@ -251,6 +252,8 @@ export type AppSettingsContextValue = {
   setGameExplorerOnLeft: Dispatch<SetStateAction<boolean>>;
   localAnalysisEngine: LocalAnalysisEngine;
   setLocalAnalysisEngine: Dispatch<SetStateAction<LocalAnalysisEngine>>;
+  showBestMoveArrow: boolean;
+  setShowBestMoveArrow: Dispatch<SetStateAction<boolean>>;
   showCoinBalance: boolean;
   setShowCoinBalance: Dispatch<SetStateAction<boolean>>;
   showCoinChangePopups: boolean;
@@ -538,6 +541,11 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     DEFAULT_LOCAL_ANALYSIS_ENGINE,
   );
   const previousLocalAnalysisEngineRef = useRef(localAnalysisEngine);
+  const [showBestMoveArrow, setShowBestMoveArrow] = usePersistedState(
+    STORAGE_KEYS.showBestMoveArrow,
+    z.boolean(),
+    false,
+  );
   const [showCoinBalance, setShowCoinBalance] = usePersistedState(
     STORAGE_KEYS.showCoinBalance,
     z.boolean(),
@@ -654,6 +662,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setGameExplorerOnLeft,
       localAnalysisEngine,
       setLocalAnalysisEngine,
+      showBestMoveArrow,
+      setShowBestMoveArrow,
       showCoinBalance,
       setShowCoinBalance,
       showCoinChangePopups,
@@ -703,6 +713,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setGameExplorerOnLeft,
       localAnalysisEngine,
       setLocalAnalysisEngine,
+      showBestMoveArrow,
+      setShowBestMoveArrow,
       showCoinBalance,
       setShowCoinBalance,
       showCoinChangePopups,

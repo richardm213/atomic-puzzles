@@ -2,7 +2,7 @@ import "../../features/analysisWorkspace/AnalysisWorkspace.css";
 
 import { faFlag } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { type CSSProperties, useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useLayoutEffect, useState } from "react";
 
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
@@ -32,6 +32,7 @@ export const PuzzleAnalysisPanel = ({
   onCycleOptions,
   onPlayLine,
   onHoverMove,
+  onEngineMovesChange,
   canGiveUp,
   onGiveUp,
   canStepBack,
@@ -50,6 +51,7 @@ export const PuzzleAnalysisPanel = ({
   onCycleOptions: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
   onPlayLine: (ucis: string[]) => void;
   onHoverMove: (uci: string | null) => void;
+  onEngineMovesChange: (moves: readonly string[] | null) => void;
   canGiveUp: boolean;
   onGiveUp: () => void;
   canStepBack: boolean;
@@ -65,7 +67,7 @@ export const PuzzleAnalysisPanel = ({
     onHoverMove(null);
   }, [onHoverMove]);
 
-  const { analysis } = useAtomicDbBoardAnalysis({
+  const { analysis, engineMoves } = useAtomicDbBoardAnalysis({
     currentFen: fen,
     enabled: analysisActive && engineSettings.enabled,
     atomicDbEnabled: engineSettings.atomicDbEnabled !== false,
@@ -74,6 +76,11 @@ export const PuzzleAnalysisPanel = ({
     showFollowUpMoves: engineSettings.showFollowUpMoves,
     terminalOutcome,
   });
+
+  useLayoutEffect(() => {
+    onEngineMovesChange(engineMoves);
+    return () => onEngineMovesChange(null);
+  }, [engineMoves, onEngineMovesChange]);
 
   return (
     <section
