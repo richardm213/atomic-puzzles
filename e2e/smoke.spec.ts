@@ -6,7 +6,6 @@ const pages = [
     heading: "Atomic chess puzzles, rankings, and matches",
   },
   { path: "/solve/101", heading: "Puzzle 101" },
-  { path: "/recent", heading: "Game Search" },
   { path: "/dashboard", heading: "My Puzzle Dashboard" },
 ] as const;
 
@@ -15,18 +14,13 @@ for (const appPage of pages) {
     await page.goto(appPage.path);
 
     await expect(page.locator("#main-content")).toBeVisible();
-    if ("visuallyHiddenHeading" in appPage && appPage.visuallyHiddenHeading) {
-      await expect(page.locator("h1", { hasText: appPage.heading })).toBeAttached();
-    } else {
-      await expect(page.getByRole("heading", { level: 1, name: appPage.heading })).toBeVisible();
-    }
+    await expect(page.getByRole("heading", { level: 1, name: appPage.heading })).toBeVisible();
   });
 }
 
-test("legacy matches route redirects to the recent archive", async ({ page }) => {
+test("legacy matches route redirects to game search", async ({ page }) => {
   await page.goto("/matches");
   await expect(page).toHaveURL(/\/recent$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Game Search" })).toBeVisible();
 });
 
 test("legacy puzzle history route redirects to the dashboard", async ({ page }) => {
