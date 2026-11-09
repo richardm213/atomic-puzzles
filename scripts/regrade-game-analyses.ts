@@ -117,7 +117,9 @@ const scan = async (wolfrandomIds: ReadonlySet<string>, apply: boolean) => {
     const changed = rows.flatMap((row) => {
       const { wolfrandom, result } = rebuildResult(row, wolfrandomIds);
       if (wolfrandom) totals.wolfrandom += 1;
-      return isDeepStrictEqual(row.result, result) ? [] : [{ row, result }];
+      // Compare the JSON that is actually stored: JSONB round-trips a signed zero as zero.
+      const persisted = JSON.parse(JSON.stringify(result)) as GameAnalysisSummary;
+      return isDeepStrictEqual(row.result, persisted) ? [] : [{ row, result: persisted }];
     });
     if (apply) {
       for (let start = 0; start < changed.length; start += WRITE_CONCURRENCY) {
