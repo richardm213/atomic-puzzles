@@ -21,6 +21,8 @@
     linear-gradient(180deg, var(--color-page-top) 0%, var(--color-page-bottom) 100%);
   --brand-wordmark-gradient: linear-gradient(180deg, #ffffff 0%, var(--color-primary-pale) 100%);
   --brand-wordmark-color: var(--color-heading);
+  --brand-wordmark-background: none;
+  --brand-wordmark-text-fill: currentColor;
   --brand-wordmark-shadow: 0 0 18px rgba(147, 197, 253, 0.18);
   --brand-mark-bg: linear-gradient(
     145deg,
@@ -246,7 +248,9 @@
   --gem-canvas-chroma: 0.008;
   --gem-surface-chroma: 0.008;
   --gem-wash: 3%;
-  --brand-mark-color: oklch(62% 0.23 var(--gem-nav-hue));
+  --brand-mark-color: #ff4545;
+  --brand-wordmark-background: var(--brand-wordmark-gradient);
+  --brand-wordmark-text-fill: transparent;
 }
 
 /* Light gemstones start with Default Light's surfaces, text and borders. */
