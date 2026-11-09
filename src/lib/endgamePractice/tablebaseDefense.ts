@@ -2,7 +2,7 @@ import {
   type AtomicTablebaseResponse,
   probeAtomicTablebase,
 } from "../atomicTablebase/lichessAtomicTablebase";
-import type { EndgameMode } from "./endgamePractice";
+import { isAtomicTablebasePosition } from "../atomicTablebase/material";
 
 export { probeAtomicTablebase };
 
@@ -33,16 +33,43 @@ export const chooseEqualTablebaseDefense = (
 
 /** Only use DTZ as a lower bound, never as an exact mate distance. */
 export const classifyTablebaseStart = (
-  mode: EndgameMode,
   result: AtomicTablebaseResponse,
 ): "accept" | "reject" | "engine" => {
-  if (mode !== "rook-bishop-vs-king") return "engine";
   if (result.checkmate || result.stalemate || result.variant_win || result.variant_loss)
     return "reject";
   if (["draw", "loss", "blessed-loss", "syzygy-loss"].includes(result.category)) return "reject";
-  // Winning KRB vs bare K has no pawn moves or non-terminal captures. A large
-  // DTZ therefore rules out mate in five. Leave a two-ply margin for rounding;
-  // small or missing DTZ remains an engine decision, not an automatic rejection.
+  // Mate also ends a DTZ sequence. A large distance to the next pawn move,
+  // capture or mate rules out a quick mate in any material configuration.
+  // Keep a rounding margin; a small DTZ can just mean an early pawn move or
+  // capture, so it must stay an engine decision, not an automatic rejection.
   const distance = result.precise_dtz ?? result.dtz;
   return result.category === "win" && distance !== null && distance > 11 ? "accept" : "engine";
+};
+
+export const probeEndgameTablebase = async (
+  fen: string,
+  signal: AbortSignal,
+): Promise<AtomicTablebaseResponse | null> => {
+  if (!isAtomicTablebasePosition(fen) || signal.aborted) return null;
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal.addEventListener("abort", abort, { once: true });
+  const timeout = window.setTimeout(abort, 1_200);
+  try {
+    return await probeAtomicTablebase(fen, controller.signal);
+  } catch {
+    return null;
+  } finally {
+    window.clearTimeout(timeout);
+    signal.removeEventListener("abort", abort);
+  }
+};
+
+export const classifyTablebaseEvaluation = (
+  result: AtomicTablebaseResponse,
+): "winning" | "draw" | "lost" | "unknown" => {
+  if (result.category === "win") return "winning";
+  if (["draw", "cursed-win", "blessed-loss"].includes(result.category)) return "draw";
+  if (result.category === "loss") return "lost";
+  return "unknown";
 };

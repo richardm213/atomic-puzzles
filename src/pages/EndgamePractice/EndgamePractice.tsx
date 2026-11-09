@@ -42,8 +42,10 @@ import {
 } from "../../lib/endgamePractice/fairyStockfishEndgame";
 import {
   chooseEqualTablebaseDefense,
+  classifyTablebaseEvaluation,
   classifyTablebaseStart,
   probeAtomicTablebase,
+  probeEndgameTablebase,
 } from "../../lib/endgamePractice/tablebaseDefense";
 import {
   analyzeFairyStockfishPosition,
@@ -144,23 +146,6 @@ const takePreparedPosition = (
   return position;
 };
 
-const probeStart = async (mode: EndgameMode, fen: string, signal: AbortSignal) => {
-  if (mode !== "rook-bishop-vs-king") return "engine" as const;
-  const controller = new AbortController();
-  const abort = () => controller.abort();
-  signal.addEventListener("abort", abort, { once: true });
-  if (signal.aborted) controller.abort();
-  const timeout = window.setTimeout(abort, 1_200);
-  try {
-    return classifyTablebaseStart(mode, await probeAtomicTablebase(fen, controller.signal));
-  } catch {
-    return "engine" as const;
-  } finally {
-    window.clearTimeout(timeout);
-    signal.removeEventListener("abort", abort);
-  }
-};
-
 const prepareEndgamePosition = (
   mode: EndgameMode,
   category: EndgameCategory,
@@ -177,7 +162,8 @@ const prepareEndgamePosition = (
     try {
       for (let attempt = 0; attempt < 12; attempt += 1) {
         const candidate = generateEndgamePosition(mode, positionCategory(mode, category));
-        const tablebase = await probeStart(mode, candidate.fen, controller.signal);
+        const tablebaseResult = await probeEndgameTablebase(candidate.fen, controller.signal);
+        const tablebase = tablebaseResult ? classifyTablebaseStart(tablebaseResult) : "engine";
         if (controller.signal.aborted) return null;
         if (tablebase === "reject") continue;
         if (tablebase === "accept") {
@@ -514,9 +500,10 @@ export const EndgamePracticePage = () => {
       }
     };
 
-    void probeAtomicTablebase(currentFen, controller.signal)
+    void probeEndgameTablebase(currentFen, controller.signal)
       .then(async (result) => {
-        const move = chooseEqualTablebaseDefense(result) ?? (await engineFallback());
+        const move =
+          (result ? chooseEqualTablebaseDefense(result) : null) ?? (await engineFallback());
         await minimumDelay;
         if (!active) return;
         if (move) queueNavigation({ type: "play", uci: move });
@@ -541,18 +528,26 @@ export const EndgamePracticePage = () => {
     if (status !== "running" || currentTurn !== "white" || !boardState) return;
     const controller = new AbortController();
     let active = true;
-    const requestTimeout = window.setTimeout(() => controller.abort(), 4_000);
+    const requestTimeout = window.setTimeout(() => controller.abort(), 5_500);
 
-    void analyzeFairyStockfishPosition(
-      currentFen,
-      1,
-      controller.signal,
-      undefined,
-      "atomic-stockfish",
-    )
-      .then((evaluations) => {
+    void (async () => {
+      const tablebase = await probeEndgameTablebase(currentFen, controller.signal);
+      if (controller.signal.aborted) return "unknown";
+      if (tablebase) {
+        const classification = classifyTablebaseEvaluation(tablebase);
+        if (classification !== "unknown") return classification;
+      }
+      const evaluations = await analyzeFairyStockfishPosition(
+        currentFen,
+        1,
+        controller.signal,
+        undefined,
+        "atomic-stockfish",
+      );
+      return classifyEndgameEngineEvaluation(evaluations);
+    })()
+      .then((evaluation) => {
         if (!active) return;
-        const evaluation = classifyEndgameEngineEvaluation(evaluations);
         if (evaluation !== "draw" && evaluation !== "lost") return;
         startedAtRef.current = null;
         setFailureLabel(evaluation === "draw" ? "Draw" : "Lost");

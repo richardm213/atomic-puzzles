@@ -1,10 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { AtomicTablebaseResponse } from "../atomicTablebase/lichessAtomicTablebase";
 import {
   chooseEqualTablebaseDefense,
+  classifyTablebaseEvaluation,
   classifyTablebaseStart,
   equalBestTablebaseDefenseUcis,
+  probeEndgameTablebase,
 } from "./tablebaseDefense";
 
 const move = (
@@ -48,34 +50,78 @@ describe("tablebase endgame defense", () => {
   });
 });
 
-describe("KRB tablebase start validation", () => {
+describe("tablebase start validation", () => {
   it("accepts a proven win with enough DTZ margin without engine analysis", () => {
-    expect(
-      classifyTablebaseStart("rook-bishop-vs-king", { ...response, category: "win", dtz: 13 }),
-    ).toBe("accept");
+    expect(classifyTablebaseStart({ ...response, category: "win", dtz: 13 })).toBe("accept");
   });
-  it("preserves winning starts when DTZ is small or unknown and leaves other endgames to the engine", () => {
+  it("preserves winning starts when DTZ is small or unknown", () => {
     for (const dtz of [11, 9, null]) {
-      expect(
-        classifyTablebaseStart("rook-bishop-vs-king", { ...response, category: "win", dtz }),
-      ).toBe("engine");
+      expect(classifyTablebaseStart({ ...response, category: "win", dtz })).toBe("engine");
     }
     expect(
-      classifyTablebaseStart("rook-bishop-vs-king", {
+      classifyTablebaseStart({
         ...response,
         category: "unknown",
         dtz: null,
       }),
     ).toBe("engine");
-    expect(classifyTablebaseStart("rook-vs-pawn", { ...response, category: "win", dtz: 13 })).toBe(
-      "engine",
-    );
   });
   it("rejects tablebase draws and losses", () => {
     for (const category of ["draw", "loss"] as const) {
-      expect(classifyTablebaseStart("rook-bishop-vs-king", { ...response, category })).toBe(
-        "reject",
-      );
+      expect(classifyTablebaseStart({ ...response, category })).toBe("reject");
     }
+  });
+});
+
+describe("tablebase round evaluation", () => {
+  it("uses definite outcomes and falls back for uncertain ones", () => {
+    expect(classifyTablebaseEvaluation({ ...response, category: "win" })).toBe("winning");
+    expect(classifyTablebaseEvaluation({ ...response, category: "draw" })).toBe("draw");
+    expect(classifyTablebaseEvaluation({ ...response, category: "loss" })).toBe("lost");
+    expect(classifyTablebaseEvaluation({ ...response, category: "unknown" })).toBe("unknown");
+  });
+});
+
+describe("bounded tablebase access", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+  it("probes supported material and skips positions above the supported piece count", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(response)));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(
+      (await probeEndgameTablebase("7k/8/8/8/8/7p/P7/KQ6 w - - 0 12", new AbortController().signal))
+        ?.category,
+    ).toBe("loss");
+    expect(
+      await probeEndgameTablebase(
+        "7k/8/8/8/8/7p/PPP5/KQ6 w - - 0 12",
+        new AbortController().signal,
+      ),
+    ).toBeNull();
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+  it("falls back promptly when the service hangs or returns an error", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockImplementation(
+      (_url, options) =>
+        new Promise((_resolve, reject) => {
+          options.signal.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const pending = probeEndgameTablebase(
+      "7k/8/8/8/8/8/7p/KQ6 w - - 0 13",
+      new AbortController().signal,
+    );
+    await vi.advanceTimersByTimeAsync(1_200);
+    expect(await pending).toBeNull();
+    fetchMock.mockResolvedValueOnce(new Response("Unavailable", { status: 503 }));
+    expect(
+      await probeEndgameTablebase("7k/8/8/8/8/8/7p/KQ6 w - - 0 14", new AbortController().signal),
+    ).toBeNull();
   });
 });

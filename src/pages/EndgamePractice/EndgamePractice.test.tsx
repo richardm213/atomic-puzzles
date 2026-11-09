@@ -29,6 +29,7 @@ vi.mock("../../lib/practice/fairyStockfish", () => ({
 }));
 vi.mock("../../lib/endgamePractice/tablebaseDefense", () => ({
   probeAtomicTablebase: vi.fn().mockResolvedValue({ moves: [] }),
+  probeEndgameTablebase: vi.fn().mockResolvedValue(null),
   chooseEqualTablebaseDefense: () => null,
 }));
 vi.mock("../../components/Chessboard/Chessboard", () => ({
