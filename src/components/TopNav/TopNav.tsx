@@ -56,10 +56,8 @@ import {
 } from "../PlayerSocialControls/PlayerSocialControls";
 import { KeyboardShortcutSettings } from "./KeyboardShortcutSettings";
 import { NavBrandMark } from "./NavBrandMark";
-import { NavCircleBadge } from "./NavCircleBadge";
 import { NavNotificationsPanel } from "./NavNotificationsPanel";
 import { NavPlayerSearch } from "./NavPlayerSearch";
-import { NavProfileBadge } from "./NavProfileBadge";
 import { navItems } from "./topNavItems";
 
 type OpenPanel =
@@ -584,9 +582,9 @@ export const TopNav = () => {
             >
               <FontAwesomeIcon icon={faBell} />
               {unreadNotificationCount > 0 ? (
-                <NavCircleBadge className="navNotificationCount">
+                <span className="navNotificationCount">
                   {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
-                </NavCircleBadge>
+                </span>
               ) : null}
             </button>
             {notificationsOpen ? (
@@ -614,7 +612,9 @@ export const TopNav = () => {
                 aria-expanded={profileMenuOpen}
                 onClick={() => togglePanel({ type: "profile" })}
               >
-                <NavProfileBadge />
+                <span className="navAuthProfileIcon" aria-hidden="true">
+                  <FontAwesomeIcon icon={faUser} />
+                </span>
                 <span className="navAuthProfile">{user.username}</span>
                 <span className="navAuthProfileCaret" aria-hidden="true">
                   <FontAwesomeIcon icon={faChevronDown} />

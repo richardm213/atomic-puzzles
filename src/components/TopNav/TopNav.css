@@ -13,21 +13,11 @@
   padding: max(8px, env(safe-area-inset-top))
     max(clamp(16px, 2.4vw, 30px), env(safe-area-inset-right)) 8px
     max(clamp(16px, 2.4vw, 30px), env(safe-area-inset-left));
+  border-bottom: 1px solid var(--color-border);
   background: var(--color-nav);
   box-shadow: 0 10px 30px color-mix(in srgb, var(--color-panel-deep) 18%, transparent);
   -webkit-backdrop-filter: blur(20px) saturate(1.12);
   backdrop-filter: blur(20px) saturate(1.12);
-}
-
-/* Keep the divider out of the flex content box so its center stays at half
-   the full navbar height rather than half a pixel above it. */
-.topNav::before {
-  content: "";
-  position: absolute;
-  inset: auto 0 0;
-  height: 1px;
-  background: var(--color-border);
-  pointer-events: none;
 }
 
 .mobileMenuButton {
@@ -78,7 +68,6 @@
   width: var(--nav-brand-mark-size);
   height: var(--nav-brand-mark-size);
   display: block;
-  align-self: center;
   flex: 0 0 var(--nav-brand-mark-size);
   object-fit: contain;
   filter: var(--brand-mark-filter, none);
@@ -952,27 +941,27 @@
 }
 
 .navNotificationCount {
-  --nav-circle-ink: white;
-
   position: absolute;
   top: -2px;
   right: -3px;
   min-width: 13px;
   height: 13px;
   padding: 0 3px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-nav-badge);
+  color: white;
   font-size: 9px;
   font-weight: 650;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
 :root[data-theme="light"] .navNotificationCount {
   --notification-badge-ink: var(--color-nav-badge);
-  --nav-circle-fill: color-mix(
-    in srgb,
-    var(--notification-badge-ink) 9%,
-    var(--color-panel-strong)
-  );
-  --nav-circle-ink: var(--notification-badge-ink);
+  background: color-mix(in srgb, var(--notification-badge-ink) 9%, var(--color-panel-strong));
+  color: var(--notification-badge-ink);
 }
 
 .navNotificationsPopup {
@@ -1238,26 +1227,18 @@
   box-shadow: none;
 }
 
-.navCircleBadge {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  border-radius: 999px;
-  background: var(--nav-circle-fill, var(--color-nav-badge));
-  color: var(--nav-circle-ink, var(--color-on-primary));
-  line-height: 1;
-}
-
-.navProfileBadge {
+.navAuthProfileIcon {
   width: 26px;
   height: 26px;
-}
-
-.navProfileBadge > svg {
-  display: block;
-  width: 12px;
-  height: 12px;
-  fill: currentColor;
+  flex: 0 0 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-nav-badge);
+  color: var(--color-on-primary);
+  font-size: 11px;
+  line-height: 1;
 }
 
 .navAuthProfileCaret {
@@ -1280,7 +1261,7 @@
   transform: rotate(180deg);
 }
 
-.navAuthProfileGroup.open .navProfileBadge {
+.navAuthProfileGroup.open .navAuthProfileIcon {
   box-shadow: 0 0 0 3px var(--color-primary-ring);
 }
 
