@@ -5,6 +5,7 @@
   --color-primary-hover: #2447c2;
   --color-primary-soft: #9cbcff;
   --color-primary-pale: #cedbff;
+  --color-nav-badge: #216ce0;
   --color-cyan: #168aa1;
   --color-cyan-bright: #52c7e8;
   --color-on-primary: #eff6ff;
@@ -38,6 +39,7 @@
   --color-primary-hover: #2048bc;
   --color-primary-soft: #315fd6;
   --color-primary-pale: #244fbf;
+  --color-nav-badge: #1e60d2;
   --color-cyan: #0e7c79;
   --color-cyan-bright: #08788e;
   --color-accent-soft-bg: rgba(15, 142, 163, 0.09);
