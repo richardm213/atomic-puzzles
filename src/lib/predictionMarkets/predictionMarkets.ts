@@ -155,6 +155,7 @@ export const predictionOutcomeAbbreviation = (
     maracker: "mara",
     sutcunuri: "sut",
     howlind: "howlin",
+    sircachetes: "sirca",
     quasabianth: "quasa",
     judebaetorrens: "jude",
     theatomicstorm: "storm",
