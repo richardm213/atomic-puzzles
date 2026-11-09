@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { AtomicTablebaseResponse } from "../atomicTablebase/lichessAtomicTablebase";
-import { chooseEqualTablebaseDefense, equalBestTablebaseDefenseUcis } from "./tablebaseDefense";
+import {
+  chooseEqualTablebaseDefense,
+  classifyTablebaseStart,
+  equalBestTablebaseDefenseUcis,
+} from "./tablebaseDefense";
 
 const move = (
   uci: string,
@@ -41,5 +45,37 @@ describe("tablebase endgame defense", () => {
   it("selects uniformly among tablebase-equal defenses", () => {
     expect(chooseEqualTablebaseDefense(response, () => 0)).toBe("d6e6");
     expect(chooseEqualTablebaseDefense(response, () => 0.99)).toBe("d6c6");
+  });
+});
+
+describe("KRB tablebase start validation", () => {
+  it("accepts a proven win with enough DTZ margin without engine analysis", () => {
+    expect(
+      classifyTablebaseStart("rook-bishop-vs-king", { ...response, category: "win", dtz: 13 }),
+    ).toBe("accept");
+  });
+  it("preserves winning starts when DTZ is small or unknown and leaves other endgames to the engine", () => {
+    for (const dtz of [11, 9, null]) {
+      expect(
+        classifyTablebaseStart("rook-bishop-vs-king", { ...response, category: "win", dtz }),
+      ).toBe("engine");
+    }
+    expect(
+      classifyTablebaseStart("rook-bishop-vs-king", {
+        ...response,
+        category: "unknown",
+        dtz: null,
+      }),
+    ).toBe("engine");
+    expect(classifyTablebaseStart("rook-vs-pawn", { ...response, category: "win", dtz: 13 })).toBe(
+      "engine",
+    );
+  });
+  it("rejects tablebase draws and losses", () => {
+    for (const category of ["draw", "loss"] as const) {
+      expect(classifyTablebaseStart("rook-bishop-vs-king", { ...response, category })).toBe(
+        "reject",
+      );
+    }
   });
 });
