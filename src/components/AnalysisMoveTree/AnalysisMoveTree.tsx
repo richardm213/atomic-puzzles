@@ -7,7 +7,6 @@ import { useCallback, useState } from "react";
 
 import {
   buildIndexedSolutionMoveTree,
-  findMainChild,
   type IndexedSolutionMoveNode,
   movePrefix,
   orderedChildren,
@@ -25,6 +24,17 @@ import {
   matchingLineIndexes,
   variationOptions,
 } from "../VariationTree/VariationTree";
+
+const BLOCK_VARIATION_MIN_PLIES = 5;
+
+const isLongVariation = (node: IndexedSolutionMoveNode): boolean => {
+  let current: IndexedSolutionMoveNode | undefined = node;
+  for (let plies = 1; current; plies++) {
+    if (plies >= BLOCK_VARIATION_MIN_PLIES || current.children.size > 1) return true;
+    current = current.children.values().next().value;
+  }
+  return false;
+};
 
 export const AnalysisMoveTree = ({
   lines,
@@ -69,26 +79,28 @@ export const AnalysisMoveTree = ({
     options.find((option) => option.lineIndex === activeLine)?.move ?? options[0]?.move;
   const tree = buildIndexedSolutionMoveTree(lines);
 
-  const renderNode = (
+  const renderMove = (
     node: IndexedSolutionMoveNode,
     ply: number,
     keyPrefix: string,
     forceMoveNumber = false,
-  ): ReactNode[] => {
-    const displayPly = initialPly + ply;
+  ): ReactNode => {
+    const prefix = movePrefix(initialPly + ply, forceMoveNumber);
     const indexes = [...node.lineIndexes].sort((left, right) => left - right);
     const targetLine = node.lineIndexes.has(activeLine) ? activeLine : (indexes[0] ?? 0);
     const mainlineAssessment = node.lineIndexes.has(0) ? assessments[ply] : undefined;
     const visibleAssessment =
       mainlineAssessment?.classification === "best" ? undefined : mainlineAssessment;
-    const content: ReactNode[] = [
+    const current = node.lineIndexes.has(activeLine) && currentPly === ply + 1;
+    return (
       <button
         key={`${keyPrefix}-move-${ply}-${node.move}`}
         type="button"
-        className={`analysisTreeMove ${visibleAssessment?.classification ?? ""} ${node.lineIndexes.has(activeLine) && currentPly === ply + 1 ? "active" : ""}`}
-        aria-current={
-          node.lineIndexes.has(activeLine) && currentPly === ply + 1 ? "step" : undefined
-        }
+        className={`analysisTreeMove ${visibleAssessment?.classification ?? ""} ${current ? "active" : ""}`}
+        aria-label={[prefix.trim(), node.move, visibleAssessment?.classification]
+          .filter(Boolean)
+          .join(" ")}
+        aria-current={current ? "step" : undefined}
         onClick={() => {
           onSelect(targetLine, ply);
         }}
@@ -107,54 +119,48 @@ export const AnalysisMoveTree = ({
         }
         title={onAnnotate || onDelete ? "Right-click to edit move" : undefined}
       >
-        {movePrefix(displayPly, forceMoveNumber)}
+        {prefix ? <span className="analysisTreeMoveNumber">{prefix.trim()}</span> : null}
         {node.move}
         {visibleAssessment ? (
           <b aria-label={visibleAssessment.classification}>{visibleAssessment.symbol}</b>
         ) : null}
-      </button>,
-    ];
-    const children = orderedChildren(node);
-    const main = findMainChild(children);
-    children
-      .filter((child) => child !== main)
-      .forEach((variation, index) => {
-        const key = `${keyPrefix}-variation-${ply}-${index}`;
-        content.push(
-          <span key={key} className="analysisTreeVariation">
-            <span className="analysisTreeParen" aria-hidden="true">
-              (
-            </span>
-            {renderNode(variation, ply + 1, key, (initialPly + ply + 1) % 2 === 1)}
-            <span className="analysisTreeParen" aria-hidden="true">
-              )
-            </span>
-          </span>,
-        );
-      });
-    if (main) content.push(...renderNode(main, ply + 1, `${keyPrefix}-main`));
-    return content;
+      </button>
+    );
   };
 
-  const roots = orderedChildren(tree);
-  const main = findMainChild(roots);
-  const content = main ? renderNode(main, 0, "root-main", initialPly % 2 === 1) : [];
-  roots
-    .filter((node) => node !== main)
-    .forEach((variation, index) => {
-      const key = `root-variation-${index}`;
-      content.push(
-        <span key={key} className="analysisTreeVariation">
-          <span className="analysisTreeParen" aria-hidden="true">
-            (
+  const renderContinuations = (
+    parent: IndexedSolutionMoveNode,
+    ply: number,
+    keyPrefix: string,
+    preferredLine: number,
+    forceMoveNumber = false,
+  ): ReactNode[] => {
+    const children = orderedChildren(parent);
+    const main = children.find((child) => child.lineIndexes.has(preferredLine)) ?? children[0];
+    if (!main) return [];
+    const variations = children.filter((child) => child !== main);
+    return [
+      renderMove(main, ply, keyPrefix, forceMoveNumber),
+      ...variations.map((variation, index) => {
+        const key = `${keyPrefix}-variation-${ply}-${index}`;
+        const block = !inline || isLongVariation(variation);
+        return (
+          <span key={key} className={`analysisTreeVariation${block ? " block" : ""}`}>
+            {block ? null : <span aria-hidden="true">(</span>}
+            {renderMove(variation, ply, key, true)}
+            {renderContinuations(
+              variation,
+              ply + 1,
+              key,
+              variation.firstOccurrence?.lineIndex ?? 0,
+            )}
+            {block ? null : <span aria-hidden="true">)</span>}
           </span>
-          {renderNode(variation, 0, key, initialPly % 2 === 1)}
-          <span className="analysisTreeParen" aria-hidden="true">
-            )
-          </span>
-        </span>,
-      );
-    });
+        );
+      }),
+      ...renderContinuations(main, ply + 1, keyPrefix, preferredLine, variations.length > 0),
+    ];
+  };
 
   return (
     <>
@@ -200,7 +206,7 @@ export const AnalysisMoveTree = ({
         role="list"
         aria-label="Analysis variations"
       >
-        {content}
+        {renderContinuations(tree, 0, "root", 0, initialPly % 2 === 1)}
       </div>
       {annotationTarget && (onAnnotate || onDelete) ? (
         <MoveAnnotationMenu

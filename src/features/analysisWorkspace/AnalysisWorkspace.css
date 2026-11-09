@@ -221,11 +221,16 @@ body:has(.analysisPage),
 }
 
 .analysisMovePanel {
+  --move-content-start-outset: calc(var(--space-1) / 2);
+  --move-content-end-outset: var(--space-1);
+
   min-width: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 2px;
   min-height: 0;
+  margin-inline: calc(-1 * var(--move-content-start-outset))
+    calc(-1 * var(--move-content-end-outset));
   overflow: hidden;
 }
 
@@ -235,6 +240,10 @@ body:has(.analysisPage),
 
 .analysisEngineBlock {
   min-width: 0;
+}
+
+.analysisMovePanel > .analysisEngineBlock {
+  margin-inline: var(--move-content-start-outset) var(--move-content-end-outset);
 }
 
 .analysisMoveContent {
@@ -247,6 +256,11 @@ body:has(.analysisPage),
 
 .analysisMoveContent .analysisMoveList {
   overflow: visible;
+}
+
+.analysisMoveContent > .analysisTree {
+  padding-block: var(--space-1) var(--space-2);
+  padding-inline: var(--space-1);
 }
 
 .analysisMoveContent > .solutionOptions {
@@ -280,7 +294,7 @@ body:has(.analysisPage),
   display: grid;
   grid-template-columns: 38px repeat(2, minmax(0, 1fr));
   align-items: center;
-  min-height: 36px;
+  min-height: var(--space-8);
 }
 
 .analysisMoveList li:nth-child(odd) {
@@ -294,20 +308,20 @@ body:has(.analysisPage),
   justify-content: flex-end;
   padding-right: 9px;
   color: var(--color-subtle);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
 .analysisMoveList button {
-  min-height: 36px;
+  min-height: var(--space-8);
   align-self: stretch;
   padding: 0 10px;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: var(--color-text);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 650;
   text-align: left;
 }
@@ -316,7 +330,6 @@ body:has(.analysisPage),
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 1px;
 }
 
 .analysisMoveList button > b {

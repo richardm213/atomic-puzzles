@@ -87,18 +87,31 @@
 .analysisTree {
   padding: 5px 8px 10px;
   color: var(--color-muted);
-  font-size: 14px;
-  line-height: 2.25;
+  font-size: 12px;
+  line-height: 1.85;
 }
 
 .analysisTreeMove {
   display: inline-flex;
   align-items: center;
-  gap: 1px;
-  min-height: 28px;
-  margin: 1px 2px;
-  padding: 1px 5px;
+  min-height: 24px;
+  margin: 1px 1px 2px;
+  padding: 1px 2px;
+  font-weight: 550;
+  line-height: 1.25;
   vertical-align: middle;
+}
+
+.analysisTreeMoveNumber {
+  margin-inline-end: 2px;
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.analysisTreeMove.active .analysisTreeMoveNumber {
+  color: inherit;
 }
 
 .analysisTreeMove > b {
@@ -126,20 +139,12 @@
   color: var(--color-subtle);
 }
 
-.analysisTreeParen {
-  padding: 0 1px;
-  font-weight: 650;
-}
-
-.analysisTree.nonInline .analysisTreeVariation {
+.analysisTreeVariation.block {
   display: block;
-  margin-left: 14px;
-  padding-left: 8px;
-  border-left: 2px solid color-mix(in srgb, var(--color-border) 76%, transparent);
-}
-
-.analysisTree.nonInline .analysisTreeParen {
-  display: none;
+  margin-block: var(--space-1);
+  margin-inline-start: var(--space-1);
+  padding-inline-start: var(--space-2);
+  border-inline-start: 1px solid var(--color-border);
 }
 
 @media (max-width: 480px) {
@@ -149,17 +154,16 @@
   }
 
   .analysisContinuationMoves button,
-  .analysisContinuationArrows button,
-  .analysisTreeMove {
+  .analysisContinuationArrows button {
     min-height: 44px;
+  }
+
+  .analysisTreeMove {
+    min-height: calc(var(--control-height-touch) - var(--space-1));
   }
 
   .analysisContinuationArrows button {
     width: 44px;
     height: 44px;
-  }
-
-  .analysisTree {
-    line-height: 2.8;
   }
 }
