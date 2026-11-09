@@ -253,7 +253,8 @@ export const PredictionMarketPage = () => {
         legacyOutcome = "yes";
       } else if (
         marketGroup?.id === "awc-2026-round-of-16" ||
-        marketGroup?.id === "awc-2026-quarterfinals"
+        marketGroup?.id === "awc-2026-quarterfinals" ||
+        marketGroup?.id === "awc-2026-losers-round-1"
       ) {
         const matchup = definitionById.get(bet.marketId);
         legacyOutcome =

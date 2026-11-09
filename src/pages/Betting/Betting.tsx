@@ -89,22 +89,21 @@ const predictionDisplayModeStorageKey = "betting:prediction-display-mode";
 const defaultMarketCategory = "AWC Quarterfinals";
 const predictionMarketCategories = [
   "AWC Quarterfinals",
-  "AWC Round of 16",
+  "AWC Losers 1",
   "2026 AWC Champion",
+  "AWC Round of 16",
   "Ban",
   "Shield",
-  "2027 AWC",
 ] as const;
 const predictionGroupIdByCategory: Record<PredictionMarketCategory, string> = {
   "AWC Quarterfinals": "awc-2026-quarterfinals",
+  "AWC Losers 1": "awc-2026-losers-round-1",
   "AWC Round of 16": "awc-2026-round-of-16",
   "2026 AWC Champion": "awc-2026-champion",
-  "2027 AWC": "awc-2027-champion",
   Ban: "ban-2026",
   Shield: "november-atomic-shield-2026",
 };
-const isAwcWinnerCategory = (category: string): boolean =>
-  category === "2026 AWC Champion" || category === "2027 AWC";
+const isAwcWinnerCategory = (category: string): boolean => category === "2026 AWC Champion";
 const winnerNoMarketId = AWC_NOT_TO_WIN_MARKET_ID;
 const marketCategorySlug = (category: string): string => {
   const normalizedCategory = category
@@ -123,7 +122,6 @@ const marketCategoryFromSearch = (
   const requestedMarket = new URLSearchParams(search).get("market") ?? "";
   if (requestedMarket === "markets") return "Ban";
   if (requestedMarket === "champion") return "2026 AWC Champion";
-  if (requestedMarket === "2027-awc-winner") return "2027 AWC";
   return (
     categories.find((category) => marketCategorySlug(category) === requestedMarket) ??
     defaultMarketCategory
@@ -914,7 +912,8 @@ export const BettingPage = () => {
                   <section
                     className={`bettingMarketGroup bettingPredictionBookGroup${
                       activePredictionGroup.id === "awc-2026-round-of-16" ||
-                      activePredictionGroup.id === "awc-2026-quarterfinals"
+                      activePredictionGroup.id === "awc-2026-quarterfinals" ||
+                      activePredictionGroup.id === "awc-2026-losers-round-1"
                         ? " bettingPredictionBookGroup--singleColumn"
                         : ""
                     }`}
