@@ -1235,24 +1235,12 @@
     --color-nav-badge,
     color-mix(in srgb, var(--color-primary) 68%, var(--color-panel-strong))
   );
-  --profile-icon-shadow: 0 2px 7px color-mix(in srgb, var(--profile-icon-fill) 32%, transparent);
-
   width: 26px;
   height: 26px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   flex: 0 0 26px;
   border-radius: 50%;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, white 14%, transparent), transparent),
-    var(--profile-icon-fill);
   color: var(--color-on-primary);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, white 10%, transparent) inset,
-    var(--profile-icon-shadow);
-  font-size: 11px;
-  line-height: 1;
 }
 
 .navAuthProfileCaret {
@@ -1276,10 +1264,7 @@
 }
 
 .navAuthProfileGroup.open .navAuthProfileIcon {
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, white 10%, transparent) inset,
-    0 0 0 3px var(--color-primary-ring),
-    var(--profile-icon-shadow);
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
 }
 
 .navAuthProfile {

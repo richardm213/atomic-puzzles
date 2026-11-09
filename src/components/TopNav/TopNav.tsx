@@ -58,6 +58,7 @@ import { KeyboardShortcutSettings } from "./KeyboardShortcutSettings";
 import { NavBrandMark } from "./NavBrandMark";
 import { NavNotificationsPanel } from "./NavNotificationsPanel";
 import { NavPlayerSearch } from "./NavPlayerSearch";
+import { NavProfileBadge } from "./NavProfileBadge";
 import { navItems } from "./topNavItems";
 
 type OpenPanel =
@@ -610,9 +611,7 @@ export const TopNav = () => {
                 aria-expanded={profileMenuOpen}
                 onClick={() => togglePanel({ type: "profile" })}
               >
-                <span className="navAuthProfileIcon" aria-hidden="true">
-                  <FontAwesomeIcon icon={faUser} />
-                </span>
+                <NavProfileBadge />
                 <span className="navAuthProfile">{user.username}</span>
                 <span className="navAuthProfileCaret" aria-hidden="true">
                   <FontAwesomeIcon icon={faChevronDown} />
