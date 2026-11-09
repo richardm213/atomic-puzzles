@@ -67,6 +67,8 @@
 
   width: var(--nav-brand-mark-size);
   height: var(--nav-brand-mark-size);
+  display: block;
+  align-self: center;
   flex: 0 0 var(--nav-brand-mark-size);
   object-fit: contain;
   filter: var(--brand-mark-filter, none);
@@ -75,6 +77,9 @@
 
 .brandMarkFilter {
   position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
 }
 
 .brandMarkFilterInk {

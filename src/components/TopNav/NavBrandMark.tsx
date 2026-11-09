@@ -3,7 +3,7 @@ import { type CSSProperties, useId } from "react";
 import type { ColorMode } from "../../context/AppSettings";
 import { appAssetPath } from "../../utils/appAssetPath";
 
-export const NavBrandMark = ({ mode, tinted }: { mode: ColorMode; tinted: boolean }) => {
+export const NavBrandMark = ({ mode }: { mode: ColorMode }) => {
   const filterId = useId();
   const isLight = mode === "light";
   // Map the original tile and nucleus luminances to the palette's two inks.
@@ -13,33 +13,31 @@ export const NavBrandMark = ({ mode, tinted }: { mode: ColorMode; tinted: boolea
 
   return (
     <>
-      {tinted ? (
-        <svg className="brandMarkFilter" width="0" height="0" aria-hidden="true" focusable="false">
-          <defs>
-            <filter
-              id={filterId}
-              x="0"
-              y="0"
-              width="100%"
-              height="100%"
-              colorInterpolationFilters="sRGB"
-            >
-              <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" />
-              <feComponentTransfer>
-                <feFuncA type="linear" slope={slope} intercept={intercept} />
-              </feComponentTransfer>
-              <feComponentTransfer result="tone">
-                <feFuncA type="gamma" amplitude="1" exponent="0.88" offset="0" />
-              </feComponentTransfer>
-              <feFlood className="brandMarkFilterInk" result="ink" />
-              <feComposite in="ink" in2="tone" operator="in" result="shadedInk" />
-              <feFlood className="brandMarkFilterTile" result="tile" />
-              <feComposite in="shadedInk" in2="tile" operator="over" result="tintedMark" />
-              <feComposite in="tintedMark" in2="SourceAlpha" operator="in" />
-            </filter>
-          </defs>
-        </svg>
-      ) : null}
+      <svg className="brandMarkFilter" width="0" height="0" aria-hidden="true" focusable="false">
+        <defs>
+          <filter
+            id={filterId}
+            x="0"
+            y="0"
+            width="100%"
+            height="100%"
+            colorInterpolationFilters="sRGB"
+          >
+            <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" />
+            <feComponentTransfer>
+              <feFuncA type="linear" slope={slope} intercept={intercept} />
+            </feComponentTransfer>
+            <feComponentTransfer result="tone">
+              <feFuncA type="gamma" amplitude="1" exponent="0.88" offset="0" />
+            </feComponentTransfer>
+            <feFlood className="brandMarkFilterInk" result="ink" />
+            <feComposite in="ink" in2="tone" operator="in" result="shadedInk" />
+            <feFlood className="brandMarkFilterTile" result="tile" />
+            <feComposite in="shadedInk" in2="tile" operator="over" result="tintedMark" />
+            <feComposite in="tintedMark" in2="SourceAlpha" operator="in" />
+          </filter>
+        </defs>
+      </svg>
       <img
         className="brandMarkImage"
         src={appAssetPath(`/images/brand/atomic-logo-${mode}.png`)}
@@ -47,9 +45,7 @@ export const NavBrandMark = ({ mode, tinted }: { mode: ColorMode; tinted: boolea
         width="30"
         height="30"
         aria-hidden="true"
-        style={
-          tinted ? ({ "--brand-mark-filter": `url("#${filterId}")` } as CSSProperties) : undefined
-        }
+        style={{ "--brand-mark-filter": `url("#${filterId}")` } as CSSProperties}
       />
     </>
   );
