@@ -390,22 +390,30 @@
   --result-column-width: 34px;
 }
 
+.gameMatchCrosstableStrip.dense {
+  --result-column-width: 16px;
+}
+
+.gameMatchCrosstableStrip.matches.dense {
+  --result-column-width: 30px;
+}
+
 .gameMatchResults {
   min-width: 0;
   display: grid;
   grid-template-columns: repeat(var(--game-count), minmax(var(--result-column-width), 1fr));
   margin: 0;
   padding: 0;
+  background: var(--color-panel-strong);
   list-style: none;
 }
 
 .gameMatchResults li {
   min-width: var(--result-column-width);
-  background: var(--color-surface-inset);
 }
 
 .gameMatchResults li:nth-child(even) {
-  background: color-mix(in srgb, var(--color-surface-inset-strong) 72%, transparent);
+  background: color-mix(in srgb, var(--color-surface-inset) 48%, transparent);
 }
 
 .gameMatchResultLink {
@@ -423,17 +431,20 @@
 }
 
 .gameMatchResultLink .win {
-  color: var(--color-success);
+  color: color-mix(in srgb, var(--color-success) 75%, var(--color-text));
   font-weight: 800;
 }
 
 .gameMatchResultLink .loss {
-  opacity: 0.38;
+  color: color-mix(in srgb, var(--color-danger) 75%, var(--color-text));
+}
+
+.gameMatchResultLink .draw {
+  color: var(--color-muted);
 }
 
 .gameMatchResultLink:hover .score {
   background: var(--color-table-hover);
-  opacity: 1;
 }
 
 .gameMatchResultLink:focus-visible {
@@ -457,52 +468,11 @@
 .gameMatchCrosstableStrip.dense .gameMatchResultLink,
 .gameMatchCrosstableStrip.dense .gameMatchPlayers,
 .gameMatchCrosstableStrip.dense .gameMatchTotals {
-  grid-template-rows: repeat(2, 30px);
+  grid-template-rows: repeat(2, 26px);
 }
 
-.gameMatchCrosstableStrip.dense .gameMatchResults {
-  background: color-mix(in srgb, var(--color-panel-strong) 88%, var(--color-surface-inset));
-}
-
-.gameMatchCrosstableStrip.dense .gameMatchResults li,
-.gameMatchCrosstableStrip.dense .gameMatchResults li:nth-child(even) {
-  background: transparent;
-}
-
-.gameMatchCrosstableStrip.dense .gameMatchResultLink .score {
-  font-weight: 600;
-}
-
-.gameMatchCrosstableStrip.dense .gameMatchResultLink .loss {
-  color: var(--color-danger);
-  opacity: 0.38;
-}
-
-.gameMatchCrosstableStrip.dense .gameMatchResultLink .draw {
-  color: var(--color-muted);
-}
-
-.gameMatchResults li.current,
-.gameMatchCrosstableStrip.dense .gameMatchResults li.current {
-  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-panel-strong));
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-primary-soft) 52%, transparent);
-}
-
-.gameMatchResults li.current .score,
-.gameMatchCrosstableStrip.dense .gameMatchResults li.current .score {
-  opacity: 1;
-}
-
-.gameMatchResults li.current .win,
-.gameMatchCrosstableStrip.dense .gameMatchResults li.current .win {
-  color: var(--color-success);
-}
-
-.gameMatchResults li.current .loss,
-.gameMatchResults li.current .draw,
-.gameMatchCrosstableStrip.dense .gameMatchResults li.current .loss,
-.gameMatchCrosstableStrip.dense .gameMatchResults li.current .draw {
-  color: var(--color-muted);
+.gameMatchResults li.current {
+  box-shadow: inset 0 0 0 2px var(--color-primary-ring);
 }
 
 .gameMatchCrosstableStrip.dense .gameMatchResultLink .score,
@@ -1048,7 +1018,6 @@
   position: sticky;
   z-index: 3;
   right: 0;
-  background: color-mix(in srgb, var(--color-primary) 20%, var(--color-panel-strong));
   box-shadow: -1px 0 0 var(--color-border);
 }
 
@@ -1262,10 +1231,6 @@
 
     min-width: calc(var(--game-count) * var(--result-column-width) + 144px);
     grid-template-columns: minmax(0, 1fr) fit-content(100px) 44px;
-  }
-
-  .gameMatchCrosstableStrip.matches {
-    --result-column-width: 34px;
   }
 
   .gameMatchResults {

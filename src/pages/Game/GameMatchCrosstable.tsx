@@ -22,8 +22,8 @@ const scoreForPlayer = (game: ParsedMatchGame, username: string): number => {
 };
 
 const resultLabel = (score: number): string => (score === 0.5 ? "½" : String(score));
-const resultClass = (score: number): string =>
-  score === 1 ? "score win" : score === 0 ? "score loss" : "score draw";
+const resultClass = (score: number, opponentScore: number): string =>
+  score > opponentScore ? "score win" : score < opponentScore ? "score loss" : "score draw";
 
 type CrosstableResult = {
   id: string;
@@ -140,6 +140,7 @@ const Crosstable = ({
                 key={result.id}
                 ref={result.current ? currentResultRef : undefined}
                 className={result.current ? "current" : ""}
+                aria-current={result.current ? "true" : undefined}
               >
                 {result.link}
               </li>
@@ -253,8 +254,8 @@ export const GameMatchCrosstable = ({
             title={`Match ${index + 1} · ${date}`}
             aria-label={`Open the first game of match ${index + 1}, played ${date}`}
           >
-            <span className={resultClass(playerOne)}>{resultLabel(playerOne)}</span>
-            <span className={resultClass(playerTwo)}>{resultLabel(playerTwo)}</span>
+            <span className={resultClass(playerOne, playerTwo)}>{resultLabel(playerOne)}</span>
+            <span className={resultClass(playerTwo, playerOne)}>{resultLabel(playerTwo)}</span>
           </Link>
         ),
       };
@@ -290,8 +291,8 @@ export const GameMatchCrosstable = ({
           className="gameMatchResultLink"
           title={`Game ${index + 1}`}
         >
-          <span className={resultClass(playerOne)}>{resultLabel(playerOne)}</span>
-          <span className={resultClass(playerTwo)}>{resultLabel(playerTwo)}</span>
+          <span className={resultClass(playerOne, playerTwo)}>{resultLabel(playerOne)}</span>
+          <span className={resultClass(playerTwo, playerOne)}>{resultLabel(playerTwo)}</span>
         </Link>
       ),
     };
