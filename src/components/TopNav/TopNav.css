@@ -951,34 +951,29 @@
   color: var(--color-heading);
 }
 
-.navNotificationsButton > span {
+.navNotificationCount {
+  --nav-circle-ink: white;
+
   position: absolute;
   top: -4px;
   right: -5px;
-  display: inline-grid;
-  place-items: center;
   min-width: 17px;
   height: 17px;
   padding: 0 3px;
   border: 2px solid var(--color-nav);
-  border-radius: 999px;
-  background: var(
-    --color-nav-badge,
-    linear-gradient(135deg, var(--notification-accent), var(--color-cyan))
-  );
-  color: white;
   font-size: 9px;
   font-weight: 650;
-  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-:root[data-theme="light"] .navNotificationsButton > span {
-  --notification-badge-ink: var(--color-nav-badge, var(--color-primary));
-
-  background: color-mix(in srgb, var(--notification-badge-ink) 9%, var(--color-panel-strong));
-  color: var(--notification-badge-ink);
-  box-shadow: none;
+:root[data-theme="light"] .navNotificationCount {
+  --notification-badge-ink: var(--color-nav-badge);
+  --nav-circle-fill: color-mix(
+    in srgb,
+    var(--notification-badge-ink) 9%,
+    var(--color-panel-strong)
+  );
+  --nav-circle-ink: var(--notification-badge-ink);
 }
 
 .navNotificationsPopup {
@@ -1244,17 +1239,26 @@
   box-shadow: none;
 }
 
-.navAuthProfileIcon {
-  --profile-icon-fill: var(
-    --color-nav-badge,
-    color-mix(in srgb, var(--color-primary) 68%, var(--color-panel-strong))
-  );
+.navCircleBadge {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 999px;
+  background: var(--nav-circle-fill, var(--color-nav-badge));
+  color: var(--nav-circle-ink, var(--color-on-primary));
+  line-height: 1;
+}
+
+.navProfileBadge {
   width: 26px;
   height: 26px;
+}
+
+.navProfileBadge > svg {
   display: block;
-  flex: 0 0 26px;
-  border-radius: 50%;
-  color: var(--color-on-primary);
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
 }
 
 .navAuthProfileCaret {
@@ -1277,7 +1281,7 @@
   transform: rotate(180deg);
 }
 
-.navAuthProfileGroup.open .navAuthProfileIcon {
+.navAuthProfileGroup.open .navProfileBadge {
   box-shadow: 0 0 0 3px var(--color-primary-ring);
 }
 

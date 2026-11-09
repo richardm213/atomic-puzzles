@@ -56,6 +56,7 @@ import {
 } from "../PlayerSocialControls/PlayerSocialControls";
 import { KeyboardShortcutSettings } from "./KeyboardShortcutSettings";
 import { NavBrandMark } from "./NavBrandMark";
+import { NavCircleBadge } from "./NavCircleBadge";
 import { NavNotificationsPanel } from "./NavNotificationsPanel";
 import { NavPlayerSearch } from "./NavPlayerSearch";
 import { NavProfileBadge } from "./NavProfileBadge";
@@ -583,7 +584,9 @@ export const TopNav = () => {
             >
               <FontAwesomeIcon icon={faBell} />
               {unreadNotificationCount > 0 ? (
-                <span>{unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}</span>
+                <NavCircleBadge className="navNotificationCount">
+                  {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                </NavCircleBadge>
               ) : null}
             </button>
             {notificationsOpen ? (
