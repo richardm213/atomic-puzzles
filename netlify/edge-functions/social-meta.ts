@@ -41,6 +41,10 @@ const staticMetadata: Record<string, SocialMetadata> = {
     title: "Atomic Opening Rankings",
     description: "Rank meaningful opening choices using AtomicDB evaluations.",
   },
+  "/rankings/how-ratings-work": {
+    title: "How Atomic Chess Ratings Work",
+    description: "Learn how Atomic Puzzles calculates its monthly and yearly player rankings.",
+  },
   "/rankings/tour": {
     title: "Atomic Chess Tour Rankings",
     description: "View the rolling two-year Atomic Chess Tour standings.",
@@ -241,7 +245,10 @@ const dynamicMetadata = (segments: string[]): SocialMetadata | null => {
 };
 
 export const metadataForPath = (pathname: string): SocialMetadata => {
-  const normalizedPath = pathname.length > 1 ? pathname.replace(/\/+$/, "") : "/";
+  const normalizedPath = pathname === "/index.html" ? "/" : pathname.replace(/\/+$/, "") || "/";
+  // The SPA shell is a deployment artifact, not a public landing page.
+  if (normalizedPath === "/app.html") return { title: SITE_NAME, robots: "noindex" };
+  if (normalizedPath.startsWith("/analysis/")) return staticMetadata["/analysis"];
   const knownMetadata = staticMetadata[normalizedPath];
   if (knownMetadata) return knownMetadata;
 
@@ -294,7 +301,7 @@ export const injectSocialMetadata = (
 export default async (request: Request, context: EdgeContext): Promise<Response> => {
   const response = await context.next();
   const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("text/html")) return response;
+  if (!response.ok || !contentType.includes("text/html")) return response;
 
   const url = new URL(request.url);
   const metadata = metadataForPath(url.pathname);

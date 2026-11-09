@@ -1,6 +1,7 @@
 import "./RouteFallback.css";
 
 import { type ErrorComponentProps, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 const RouteFallbackShell = ({
   title,
@@ -35,6 +36,17 @@ export const RouteErrorFallback = ({ reset }: ErrorComponentProps) => (
   />
 );
 
-export const RouteNotFoundFallback = () => (
-  <RouteFallbackShell title="Page not found" message="This address does not match a page." />
-);
+export const RouteNotFoundFallback = () => {
+  useEffect(() => {
+    // The host returns the SPA shell for deep links; only the router knows this URL is missing.
+    const robots = document.createElement("meta");
+    robots.name = "robots";
+    robots.content = "noindex";
+    document.head.appendChild(robots);
+    return () => robots.remove();
+  }, []);
+
+  return (
+    <RouteFallbackShell title="Page not found" message="This address does not match a page." />
+  );
+};

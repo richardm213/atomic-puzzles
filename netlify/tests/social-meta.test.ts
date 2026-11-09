@@ -56,6 +56,45 @@ describe("social link metadata", () => {
     ]);
   });
 
+  it("consolidates shared analysis positions under the same canonical as the rendered board", async () => {
+    const response = await socialMeta(
+      new Request("https://atomicpuzzles.org/analysis/8/8/8/8/8/8/8/K6k_w_-_-_0_1"),
+      {
+        next: () =>
+          Promise.resolve(
+            new Response("<html><head></head></html>", {
+              headers: { "Content-Type": "text/html" },
+            }),
+          ),
+      },
+    );
+    expect(await response.text()).toContain(
+      'rel="canonical" href="https://atomicpuzzles.org/analysis"',
+    );
+  });
+
+  it("does not index the standalone SPA shell or rewrite a hosting redirect", async () => {
+    const context = {
+      next: () =>
+        Promise.resolve(
+          new Response("<html><head></head></html>", {
+            headers: { "Content-Type": "text/html" },
+          }),
+        ),
+    };
+    const shell = await socialMeta(new Request("https://atomicpuzzles.org/app.html"), context);
+    expect(await shell.text()).toContain('<meta name="robots" content="noindex"');
+
+    const redirect = new Response("<html><head></head></html>", {
+      status: 301,
+      headers: { "Content-Type": "text/html", Location: "/recent" },
+    });
+    const response = await socialMeta(new Request("https://atomicpuzzles.org/matches"), {
+      next: () => Promise.resolve(redirect),
+    });
+    expect(response).toBe(redirect);
+  });
+
   it("replaces the static homepage tags instead of duplicating them", () => {
     const source = `<!doctype html><html><head>
       <meta name="description" content="Homepage copy" />
