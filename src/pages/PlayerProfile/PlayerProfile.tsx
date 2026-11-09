@@ -55,7 +55,6 @@ import {
   ChessComProfileIcon,
   getAliasProfileHref,
   getAliasProfileSourceLabel,
-  getOpeningTone,
   LichessProfileIcon,
   NON_COUNTED_ALIAS_MESSAGE,
   profileResultToneClass,
@@ -115,7 +114,7 @@ import {
   formatScore,
   formatSignedDecimal,
 } from "../../utils/formatters";
-import { getOpeningDisplayLabel, getOpeningMoveLine } from "../../utils/openings";
+import { ATOMIC_OPENINGS_PATH, getOpeningTag } from "../../utils/openings";
 import { normalizeUsername } from "../../utils/playerNames";
 import { useProfileFilters } from "./useProfileFilters";
 
@@ -945,16 +944,25 @@ export const PlayerProfilePage = ({
               </div>
               {profileOpenings.length ? (
                 <div className="profileOpeningTags" aria-label="Recognized atomic openings">
-                  {profileOpenings.map((opening) => (
-                    <span
-                      key={`opening-${opening}`}
-                      className="profileOpeningTag"
-                      data-opening-tone={getOpeningTone(opening)}
-                      title={getOpeningMoveLine(opening)}
-                    >
-                      {getOpeningDisplayLabel(opening)}
-                    </span>
-                  ))}
+                  {profileOpenings.map((opening) => {
+                    const tag = getOpeningTag(opening);
+                    const label = tag?.label ?? opening.trim();
+                    const tagProps = {
+                      className: "profileOpeningTag",
+                      "data-opening-tone": tag?.tone,
+                      title: tag?.pgn,
+                    };
+
+                    return tag?.anchor ? (
+                      <Link key={opening} to={ATOMIC_OPENINGS_PATH} hash={tag.anchor} {...tagProps}>
+                        {label}
+                      </Link>
+                    ) : (
+                      <span key={opening} {...tagProps}>
+                        {label}
+                      </span>
+                    );
+                  })}
                 </div>
               ) : null}
             </div>

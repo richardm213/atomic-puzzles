@@ -313,6 +313,3 @@ export const getOpeningTag = (opening: string): OpeningTagDetails | undefined =>
 
 export const getOpeningDisplayLabel = (opening: string): string =>
   getOpeningTag(opening)?.label ?? String(opening || "").trim();
-
-export const getOpeningMoveLine = (opening: string): string | undefined =>
-  normalizeOpeningKey(opening) === "2n" ? TWO_KNIGHTS_OPENING_LINE : undefined;
