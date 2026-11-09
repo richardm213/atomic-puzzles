@@ -143,6 +143,10 @@ const presetMatchups = [
   ["jakestatefarm", "sutcunuri"],
   ["rechesster", "judebaetorrens"],
   ["quasabianth", "maxwellssilvrhammer"],
+  ["crepuscular", "maracker"],
+  ["dandan2016", "tolya_starina0995"],
+  ["renaudmerle", "theatomicstorm"],
+  ["howlind", "sircachetes"],
   ["wolfram_ep", "rechesster"],
   ["maxwellssilvrhammer", "wolfram_ep"],
   ["ihatespammers", "natso"],
@@ -170,7 +174,7 @@ const presetMatchups = [
   ["grandlapin", "wolfram_ep"],
   ["gannet", "grandlapin"],
 ] as const;
-const presetBatchSize = 6;
+const presetBatchSize = 8;
 
 const h2hModeFiltersSchema = z
   .union([z.array(z.string()), z.record(z.string(), z.unknown())])
