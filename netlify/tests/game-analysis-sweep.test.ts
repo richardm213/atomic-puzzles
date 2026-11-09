@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { parseStoredAtomicDbPosition } from "../../shared/domain/gameAnalysis";
 import {
   gameAnalysisNeedsSubmission,
   gameAnalysisPollIndexes,
@@ -8,6 +9,7 @@ import {
   gameAnalysisRequestParameters,
   gameAnalysisSubmissionLimit,
   gameAnalysisSweepPositionLimit,
+  isCompletedAtomicDbPosition,
   parseAtomicDbQueueSize,
   uniqueGameAnalysisPositionIndexes,
 } from "../features/gameAnalysis/service";
@@ -62,6 +64,19 @@ describe("game analysis sweep", () => {
   it("skips jobs whose positions have all been submitted", () => {
     expect(gameAnalysisNeedsSubmission({ queued_positions: 54, total_positions: 54 })).toBe(false);
     expect(gameAnalysisNeedsSubmission({ queued_positions: 5, total_positions: 91 })).toBe(true);
+  });
+
+  it("finishes a below-budget search with a backed mate, but not an unconfirmed score", () => {
+    const fen = "r4k2/1p2R3/2p5/p2p4/2B5/2P5/1Pn2P2/2K3R1 b - - 8 24";
+    const query = { status: "UNKNOWN", score: -10_000, best_move: "d5c4" };
+    const analysis = {
+      budget_nodes: 46_288,
+      lines: [{ move: "d5c4", mate: -1, pv: ["d5c4", "g1g8"] }],
+    };
+    expect(
+      isCompletedAtomicDbPosition(parseStoredAtomicDbPosition(fen, { ...query, analysis })),
+    ).toBe(true);
+    expect(isCompletedAtomicDbPosition(parseStoredAtomicDbPosition(fen, query))).toBe(false);
   });
 
   it("rotates the polled position when a large queue gives each job one lookup", () => {
