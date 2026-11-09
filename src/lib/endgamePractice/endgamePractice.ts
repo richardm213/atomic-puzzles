@@ -257,23 +257,23 @@ const generateMaterialPosition = (mode: EndgameMode, random: () => number): Endg
       const rookCutsRanks =
         (whiteKingRank < rookRank && rookRank < blackKingRank) ||
         (blackKingRank < rookRank && rookRank < whiteKingRank);
-      // Count only the box on the defender's side of both rook lines. An area
-      // limit keeps roomy narrow boxes (1x6, 2x3), unlike a minimum side length.
-      const boxWidth = blackKingFile < rookFile ? rookFile : 7 - rookFile;
-      const boxHeight = blackKingRank < rookRank ? rookRank - 1 : 8 - rookRank;
       const bishopBlocksRook = bishop[0] === rook[0] || bishop[1] === rook[1];
       if (
         squareDistance(whiteKing, blackKing) < 4 ||
         squareDistance(rook, blackKing) < 2 ||
         bishopBlocksRook ||
-        boxWidth * boxHeight < 6 ||
         (!rookCutsFiles && !rookCutsRanks)
       ) {
         continue;
       }
     }
     const fen = buildFen(pieces);
-    if (isUsableFen(fen) && !hasImmediateWhiteWinFromFen(fen) && hasSafeRookContinuation(fen)) {
+    if (
+      isUsableFen(fen) &&
+      !hasImmediateWhiteWinFromFen(fen) &&
+      (mode !== "rook-bishop-vs-king" || !hasForcedWhiteWinWithinTwo(fen)) &&
+      hasSafeRookContinuation(fen)
+    ) {
       const blackPawn = pieces.find((piece) => piece.symbol === "p");
       return {
         fen,
@@ -381,6 +381,36 @@ const hasImmediateWhiteWin = (position: Atomic): boolean => {
 export const hasImmediateWhiteWinFromFen = (fen: string): boolean => {
   const position = createPosition(fen);
   return position ? hasImmediateWhiteWin(position) : false;
+};
+
+// Bounded, exact tactical screening for pawnless KRB positions. Unknown branches
+// are retained: a small box alone is not proof that a position mates too soon.
+export const hasForcedWhiteWinWithinTwo = (fen: string, maxNodes = 512): boolean => {
+  const position = createPosition(fen);
+  if (!position || position.turn !== "white" || position.board.pawn.nonEmpty()) return false;
+  let nodes = 0;
+  const forcedWin = (current: Atomic, plies: number): boolean | undefined => {
+    if (++nodes > maxNodes) return undefined;
+    const outcome = current.outcome();
+    if (outcome) return outcome.winner === "white";
+    if (plies === 0) return false;
+    const moves = legalMoves(current);
+    if (!moves.length) return false;
+    let unknown = false;
+    for (const move of moves) {
+      const next = current.clone();
+      next.play(move);
+      const result = forcedWin(next, plies - 1);
+      if (current.turn === "white" && result === true) return true;
+      if (current.turn === "black" && result === false) return false;
+      if (result === undefined) {
+        unknown = true;
+        if (nodes > maxNodes) return undefined;
+      }
+    }
+    return unknown ? undefined : current.turn === "black";
+  };
+  return forcedWin(position, 3) === true;
 };
 
 // A rook alone cannot mate a bare king in atomic. Avoid spending engine time

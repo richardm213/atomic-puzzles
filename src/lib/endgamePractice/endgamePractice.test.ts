@@ -8,6 +8,7 @@ import {
   defenderReplyFens,
   generateEndgamePosition,
   hasBlackPawn,
+  hasForcedWhiteWinWithinTwo,
   hasImmediateWhiteWinFromFen,
   hasSafeRookContinuation,
   pawnEndgameCategories,
@@ -322,21 +323,25 @@ describe("rook candidate material screening", () => {
   });
 });
 
-it("keeps KRB rook boxes roomy without excluding narrow boxes of sufficient area", () => {
-  let seed = 57;
-  const random = () => (seed = (seed * 16_807) % 2_147_483_647) / 2_147_483_647;
-  const areas = new Set<number>();
-  for (let sample = 0; sample < 200; sample += 1) {
-    const generated = generateEndgamePosition("rook-bishop-vs-king", "no-pawn", random);
-    const setup = parseFen(generated.fen).unwrap();
-    const rook = [...setup.board.pieces("white", "rook")][0]!;
-    const king = setup.board.kingOf("black")!;
-    const width = king % 8 < rook % 8 ? rook % 8 : 7 - (rook % 8);
-    const height =
-      Math.floor(king / 8) < Math.floor(rook / 8) ? Math.floor(rook / 8) : 7 - Math.floor(rook / 8);
-    expect(width * height).toBeGreaterThanOrEqual(6);
-    areas.add(width * height);
-  }
-  expect(areas.has(6)).toBe(true);
-  expect(areas.has(8)).toBe(true);
+describe("bounded KRB tactical screening", () => {
+  it("rejects a proven mate in two but retains it when the proof budget is exhausted", () => {
+    const fen = "8/7k/6R1/8/8/3B4/8/1K6 w - - 0 1";
+    expect(hasImmediateWhiteWinFromFen(fen)).toBe(false);
+    expect(hasForcedWhiteWinWithinTwo(fen)).toBe(true);
+    expect(hasForcedWhiteWinWithinTwo(fen, 1)).toBe(false);
+  });
+
+  it("preserves cramped but longer winning positions", () => {
+    // Atomic-Stockfish confirms these tiny-box positions as mate in 7, 6 and 10.
+    for (const [seed, fen] of [
+      [3, "5kB1/2R5/8/8/8/2K5/8/8 w - - 0 1"],
+      [34, "8/8/7B/8/8/8/2R5/K3k3 w - - 0 1"],
+      [53, "7k/4R3/8/8/8/7K/8/2B5 w - - 0 1"],
+    ] as const) {
+      expect(hasForcedWhiteWinWithinTwo(fen)).toBe(false);
+      let state: number = seed;
+      const random = () => (state = (state * 16_807) % 2_147_483_647) / 2_147_483_647;
+      expect(generateEndgamePosition("rook-bishop-vs-king", "no-pawn", random).fen).toBe(fen);
+    }
+  });
 });
