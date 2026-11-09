@@ -6,6 +6,8 @@
   );
   --analysis-mistake: var(--color-warning);
   --analysis-blunder: var(--color-rating-blitz);
+  /* The evaluation bar occupies the first 20px beside the board. */
+  --analysis-column-gap: max(var(--space-6), var(--board-layout-gap));
   --analysis-board-column-height: calc(var(--analysis-board-size, 516px) + 170px);
   --analysis-side-panel-max-height: calc(100dvh - clamp(72px, 10vh, 96px));
   --analysis-side-panel-height: min(
@@ -14,32 +16,31 @@
   );
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
-  width: min(100%, max(980px, calc(var(--analysis-board-size, 516px) + 392px)));
+  width: min(100%, max(1200px, calc(var(--analysis-board-size, 516px) + 426px)));
   margin: 0 auto;
-  padding: clamp(8px, 1.2vw, 14px) var(--page-gutter);
+  padding-block: clamp(8px, 1.2vw, 14px);
+  padding-inline: max(var(--board-layout-gutter), env(safe-area-inset-left))
+    max(var(--board-layout-gutter), env(safe-area-inset-right));
   display: grid;
   grid-template-columns:
     minmax(0, var(--analysis-board-size, 516px))
-    clamp(340px, 28vw, 400px);
+    minmax(var(--board-layout-controls-min), 1fr);
   align-items: start;
   justify-content: center;
-  column-gap: 26px;
+  column-gap: var(--analysis-column-gap);
   row-gap: clamp(8px, 1.2vw, 12px);
 }
 
-@media (min-width: 1600px) {
+@media (width > 560px) {
   .analysisPage:not(.gameAnalysisPage) {
-    width: min(100%, calc(var(--analysis-board-size, 640px) + 426px));
-    grid-template-columns: minmax(0, var(--analysis-board-size, 640px)) minmax(360px, 400px);
-    column-gap: 26px;
-  }
-}
-
-@media (min-width: 2400px) {
-  .analysisPage:not(.gameAnalysisPage) {
-    width: min(100%, calc(var(--analysis-board-size, 760px) + 446px));
-    grid-template-columns: minmax(0, var(--analysis-board-size, 760px)) minmax(380px, 420px);
-    column-gap: 26px;
+    /* Center the board and a readable control rail on desktop; stay fluid in narrow windows. */
+    width: min(
+      100%,
+      calc(
+        var(--analysis-board-size, 516px) + var(--board-layout-controls-width) +
+          var(--analysis-column-gap) + 2 * var(--board-layout-gutter)
+      )
+    );
   }
 }
 
@@ -1503,7 +1504,15 @@ button.analysisLichessLink {
   font-size: 12px;
 }
 
-@media (max-width: 799px) and (orientation: portrait) {
+@media (max-width: 680px) {
+  .analysisBoardPanel .atomicDbEvalBar {
+    /* Chessground rounds the playing surface to whole device pixels per square. */
+    max-height: var(---cg-height, 100%);
+  }
+}
+
+/* Keep the two-column shell fluid until the board needs its own row. */
+@media (max-width: 560px) {
   .analysisPage {
     --analysis-side-panel-height: min(
       max(520px, calc(var(--analysis-board-size, 516px) * 0.92)),
@@ -1532,7 +1541,7 @@ button.analysisLichessLink {
   }
 }
 
-@media (max-width: 799px) and (orientation: portrait) {
+@media (max-width: 560px) {
   .analysisPage {
     --analysis-side-panel-height: auto;
     padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right));
@@ -1630,25 +1639,7 @@ button.analysisLichessLink {
   }
 }
 
-@media (max-width: 799px) and (orientation: landscape) {
-  .analysisPage {
-    --analysis-side-panel-height: min(78dvh, 620px);
-    width: 100%;
-    padding: 8px max(10px, env(safe-area-inset-right)) 12px max(10px, env(safe-area-inset-left));
-    grid-template-columns:
-      minmax(0, min(55vmin, var(--analysis-board-size, 516px)))
-      minmax(200px, 240px);
-    column-gap: 26px;
-    row-gap: 12px;
-  }
-
-  .analysisRightPanel,
-  .practicePanel {
-    height: var(--analysis-side-panel-height);
-    min-height: 0;
-    max-height: var(--analysis-side-panel-height);
-  }
-
+@media (pointer: coarse), (max-width: 560px) {
   .analysisBoardResizeHandle,
   .gameAnalysisPanelResizeHandle {
     display: none;

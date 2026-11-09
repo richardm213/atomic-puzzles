@@ -12,7 +12,7 @@ import { makeFen } from "chessops/fen";
 import { makeSan } from "chessops/san";
 import { makeUci, parseSquare } from "chessops/util";
 import type { Atomic } from "chessops/variant";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAppSettings } from "../../context/AppSettings";
 import { playBoardMoveSound } from "../../lib/boardSounds/boardSounds";
@@ -94,6 +94,7 @@ export type ChessboardProps = {
   previewMoveBrush?: "paleBlue" | "red";
   engineMoves?: readonly string[] | null | undefined;
   analysisMarker?: { uci: string; symbol: string; fill: string } | null | undefined;
+  dimensionsRef?: RefObject<HTMLElement>;
   captureNavigationShortcuts?: boolean;
   enableNavigationShortcuts?: boolean;
   preserveAnalysisHistoryOnSolutionChange?: boolean;
@@ -169,6 +170,7 @@ const ChessboardComponent = ({
   previewMoveBrush = "paleBlue",
   engineMoves,
   analysisMarker,
+  dimensionsRef,
   captureNavigationShortcuts = false,
   enableNavigationShortcuts = true,
   preserveAnalysisHistoryOnSolutionChange = false,
@@ -1252,6 +1254,7 @@ const ChessboardComponent = ({
 
   useChessground({
     elementRef,
+    dimensionsRef,
     apiRef: cgRef,
     fen,
     orientation,

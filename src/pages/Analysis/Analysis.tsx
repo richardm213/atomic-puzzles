@@ -100,11 +100,8 @@ const EXPLORER_OPEN_STORAGE_KEY = "atomic-puzzles.analysis.explorer-open";
 const DEFAULT_ANALYSIS_BOARD_SIZE = 516;
 const MIN_ANALYSIS_BOARD_SIZE = 320;
 const MAX_ANALYSIS_BOARD_SIZE = 920;
-const ANALYSIS_DESKTOP_RESERVED_WIDTH = 430;
-// The game layout compresses its side columns before stacking them. Reserving the old 700px
-// made the board collapse while there was still ample horizontal room for all three columns.
-const GAME_THREE_COLUMN_RESERVED_WIDTH = 620;
-const GAME_TWO_COLUMN_RESERVED_WIDTH = 360;
+const BOARD_STACK_QUERY = "(max-width: 560px)";
+const GAME_THREE_COLUMN_MIN_WIDTH = 980;
 const DEFAULT_PLAYER_START_DATE = "2025-01";
 const SPEED_FILTERS: Array<{ key: ExplorerSpeed; label: string; value: ExplorerSpeedValue }> = [
   { key: "hyperbullet", label: "Hyper", value: 2 },
@@ -177,8 +174,7 @@ const clampAnalysisBoardSize = (size: number, maxSize = MAX_ANALYSIS_BOARD_SIZE)
   );
 
 const isSingleColumnLayout = (): boolean =>
-  typeof window !== "undefined" &&
-  window.matchMedia("(max-width: 799px) and (orientation: portrait)").matches;
+  typeof window !== "undefined" && window.matchMedia(BOARD_STACK_QUERY).matches;
 
 const getMaxAnalysisBoardSize = (isGame = false): number => {
   if (typeof window === "undefined") return MAX_ANALYSIS_BOARD_SIZE;
@@ -188,39 +184,34 @@ const getMaxAnalysisBoardSize = (isGame = false): number => {
     return Math.max(MIN_ANALYSIS_BOARD_SIZE, Math.min(MAX_ANALYSIS_BOARD_SIZE, viewportWidth - 20));
   }
 
-  if (isGame) {
-    const reservedWidth =
-      viewportWidth < 1260 ? GAME_TWO_COLUMN_RESERVED_WIDTH : GAME_THREE_COLUMN_RESERVED_WIDTH;
-    return Math.max(
-      MIN_ANALYSIS_BOARD_SIZE,
-      Math.min(MAX_ANALYSIS_BOARD_SIZE, viewportWidth - reservedWidth),
-    );
-  }
-
-  if (viewportWidth <= 980) {
-    return Math.min(MAX_ANALYSIS_BOARD_SIZE, 720);
-  }
-
+  // Match the fluid two-column gutter, gap, and control minimum in the workspace.
+  const controls = Math.min(
+    340,
+    Math.max(220, viewportWidth * 0.38),
+    Math.max(184, viewportWidth * 0.6 - 150),
+  );
+  const gutters = 2 * Math.min(16, Math.max(8, viewportWidth * 0.013));
+  const gap = Math.min(26, Math.max(24, viewportWidth * 0.02));
+  // Use the same tapered side columns as the three-column game grid.
+  const detailsMax = Math.min(330, Math.max(300, viewportWidth * 0.025 + 270));
+  const gameDetails = Math.min(detailsMax, Math.max(184, viewportWidth * 0.22 - 27));
+  const gameControls = Math.min(400, Math.max(244, viewportWidth * 0.36 - 102));
+  const reservedWidth =
+    isGame && viewportWidth >= GAME_THREE_COLUMN_MIN_WIDTH
+      ? gameDetails + gameControls + gutters + 2 * gap
+      : controls + gutters + gap;
   return Math.max(
     MIN_ANALYSIS_BOARD_SIZE,
-    Math.min(MAX_ANALYSIS_BOARD_SIZE, viewportWidth - ANALYSIS_DESKTOP_RESERVED_WIDTH),
+    Math.min(MAX_ANALYSIS_BOARD_SIZE, viewportWidth - reservedWidth),
   );
 };
 
-const getResponsiveAnalysisBoardFloor = (viewportWidth: number, isGame = false): number => {
+const getResponsiveAnalysisBoardFloor = (viewportWidth: number): number => {
   if (isSingleColumnLayout()) return Math.max(MIN_ANALYSIS_BOARD_SIZE, viewportWidth - 20);
-  if (viewportWidth >= 3000) return 820;
-  if (viewportWidth >= 2400) return 760;
-  if (viewportWidth >= 1800) return 680;
-  if (viewportWidth >= 1600) return 640;
-  if (viewportWidth >= 1080) return 600;
-  if (!isGame && viewportWidth >= 800) {
-    return Math.round(Math.max(380, Math.min(600, viewportWidth * 0.52)));
-  }
-  if (isGame && viewportWidth >= 781) {
-    return Math.round(Math.max(380, viewportWidth * 0.48));
-  }
-  return MIN_ANALYSIS_BOARD_SIZE;
+  const preferred = viewportWidth < 1280
+    ? Math.min(600, viewportWidth / 2)
+    : Math.min(820, 600 + (viewportWidth - 1280) / 8);
+  return Math.round(Math.max(MIN_ANALYSIS_BOARD_SIZE, preferred));
 };
 
 const defaultExplorerOpen = (): boolean => !isSingleColumnLayout();
@@ -228,7 +219,7 @@ const defaultExplorerOpen = (): boolean => !isSingleColumnLayout();
 const boardSizeSchema = z.coerce
   .number()
   .positive()
-  .transform((size) => clampAnalysisBoardSize(size, getMaxAnalysisBoardSize()));
+  .transform((size) => clampAnalysisBoardSize(size));
 const notationLayoutSchema = z.enum(["inline", "non-inline"]);
 
 const validMonthFilter = (value: unknown): string => {
@@ -612,7 +603,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
         onRequest: () => void handleAtomicDbRequest(),
       }
     : null;
-  const responsiveBoardFloor = getResponsiveAnalysisBoardFloor(viewportWidth, Boolean(game));
+  const responsiveBoardFloor = getResponsiveAnalysisBoardFloor(viewportWidth);
   const displayedBoardSize = Math.min(
     Math.max(boardSize, responsiveBoardFloor),
     getMaxAnalysisBoardSize(Boolean(game)),
@@ -625,7 +616,8 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const showExplorerResults = !filtersOpen;
   const playerRatingValue = clampRating(minRating);
   const activeStartDate = explorerScope === "player" ? playerStartDate : generalStartDate;
-  const moveGameExplorerLeft = Boolean(game && gameExplorerOnLeft && viewportWidth >= 1260);
+  const wideGameLayout = viewportWidth >= GAME_THREE_COLUMN_MIN_WIDTH;
+  const moveGameExplorerLeft = Boolean(game && gameExplorerOnLeft && wideGameLayout);
   const explorerInAnalysisPanel = explorerOpen && !moveGameExplorerLeft;
   const resolvedGamePanelHeight = gamePanelHeight ?? defaultGamePanelHeight;
   const rightPanelStyle = {
@@ -1581,7 +1573,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
         ) : null}
       </div>
 
-      {singleColumnLayout ? null : gameDetails}
+      {wideGameLayout ? gameDetails : null}
 
       {usernamePickerOpen ? (
         <UsernamePickerModal
@@ -1707,6 +1699,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           {...(atomicDbRequest ? { atomicDbRequest } : {})}
         />
       ) : null}
+      {!singleColumnLayout && !wideGameLayout ? gameDetails : null}
     </AnalysisWorkspaceLayout>
   );
 };

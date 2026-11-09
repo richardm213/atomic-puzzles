@@ -1,7 +1,3 @@
-.gameAnalysisPage {
-  padding-inline: clamp(8px, 1vw, 14px);
-}
-
 .gameAnalysisSidebar {
   min-width: 0;
   padding: 0;
@@ -1061,7 +1057,7 @@
   font-weight: 800;
 }
 
-@media (min-width: 800px), (orientation: landscape) {
+@media (width > 560px) {
   .gameAnalysisPage .analysisRightPanel {
     align-self: start;
     contain: size;
@@ -1112,19 +1108,33 @@
   user-select: none;
 }
 
-@media (min-width: 1260px) {
+@media (min-width: 980px) {
   .analysisPage.gameAnalysisPage {
-    width: 100%;
+    --game-details-width: clamp(
+      184px,
+      calc(22vw - 27px),
+      clamp(300px, calc(2.5vw + 270px), 330px)
+    );
+    --game-controls-min: clamp(244px, calc(36vw - 102px), var(--board-layout-controls-width));
+
+    width: min(
+      100%,
+      calc(
+        var(--analysis-board-size) + var(--game-details-width) + var(--board-layout-controls-width) +
+          2 * (var(--analysis-column-gap) + var(--board-layout-gutter))
+      )
+    );
     grid-template-columns:
-      clamp(250px, 18vw, 300px) minmax(0, var(--analysis-board-size))
-      clamp(340px, 28vw, 400px);
-    column-gap: 26px;
+      var(--game-details-width)
+      minmax(0, var(--analysis-board-size))
+      minmax(var(--game-controls-min), 1fr);
   }
 
   .gameAnalysisPage .gameAnalysisSidebarRail {
     grid-column: 1;
     grid-row: 1;
     align-self: start;
+    margin-inline-end: calc(-1 * var(--analysis-column-gap) / 2);
   }
 
   .gameAnalysisPage .analysisBoardColumn {
@@ -1143,35 +1153,9 @@
   }
 }
 
-@media (min-width: 1600px) {
+@media (560px < width < 980px) {
   .analysisPage.gameAnalysisPage {
     width: 100%;
-    grid-template-columns: minmax(280px, 310px) minmax(0, var(--analysis-board-size)) minmax(
-        360px,
-        400px
-      );
-    column-gap: 26px;
-  }
-}
-
-@media (min-width: 2400px) {
-  .analysisPage.gameAnalysisPage {
-    width: 100%;
-    grid-template-columns: minmax(300px, 330px) minmax(0, var(--analysis-board-size)) minmax(
-        360px,
-        400px
-      );
-    column-gap: 26px;
-  }
-}
-
-@media (min-width: 800px) and (max-width: 1259px), (max-width: 799px) and (orientation: landscape) {
-  .analysisPage.gameAnalysisPage {
-    width: 100%;
-    grid-template-columns:
-      minmax(0, var(--analysis-board-size))
-      clamp(340px, 28vw, 400px);
-    column-gap: 26px;
   }
 
   .gameAnalysisPage .analysisBoardColumn {
@@ -1181,30 +1165,21 @@
 
   .gameAnalysisPage .gameAnalysisRightRail {
     grid-column: 2;
-    grid-row: 1 / 4;
+    grid-row: 1 / 3;
   }
 
-  .gameAnalysisPage .gameAnalysisSidebarRail {
+  .gameAnalysisPage .gameUnderboard {
     grid-column: 1;
     grid-row: 2;
   }
 
-  .gameAnalysisPage .gameUnderboard {
+  .gameAnalysisPage .gameAnalysisSidebarRail {
     grid-column: 1;
     grid-row: 3;
   }
 }
 
-@media (max-width: 799px) and (orientation: landscape) {
-  .analysisPage.gameAnalysisPage {
-    grid-template-columns:
-      minmax(0, min(55vmin, var(--analysis-board-size)))
-      minmax(200px, 240px);
-    column-gap: 26px;
-  }
-}
-
-@media (max-width: 799px) and (orientation: portrait) {
+@media (max-width: 560px) {
   .gameAnalysisPanelResizeHandle {
     display: none;
   }
@@ -1215,6 +1190,10 @@
 
   .analysisPage.gameAnalysisPage {
     width: 100%;
+  }
+
+  .analysisRightPanel.gameAnalysisPanel {
+    padding-block-start: var(--space-1);
   }
 
   .analysisRightPanel.gameAnalysisPanel:not(.customExplorerSplit):not(.explorerCollapsed) {
@@ -1268,6 +1247,7 @@
 
   .gameAnalysisPage .boardClockRow:nth-child(3) {
     order: -2;
+    margin-block-end: 0;
   }
 
   .gameMatchCrosstable {

@@ -135,7 +135,7 @@ export const BoardWorkspace = ({
         aria-label={boardAriaLabel}
         tabIndex={boardTabIndex}
       >
-        <Chessboard {...chessboardProps} />
+        <Chessboard {...chessboardProps} dimensionsRef={boardPanelRef} />
         {boardOverlay}
       </div>
       {boardAfter}
