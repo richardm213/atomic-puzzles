@@ -58,6 +58,10 @@ const topics = {
   enPassant: ["en-passant", "En passant"],
   queenAttacks: ["queen-attacks", "Watch for open queen lines"],
   knightInvasions: ["knight-invasions", "Stop the knight before it forks"],
+  starterOpenings: ["opening-lines", "Starter openings"],
+  twoKnightsOpening: ["two-knights-opening", "Two Knights (2N)"],
+  nf3E3Opening: ["nf3-e3-opening", "Nf3 e3 (Atomic Attack)"],
+  nh3D4Opening: ["nh3-d4-opening", "Nh3 d4"],
   development: ["development", "How to study an atomic opening"],
   kingTargets: ["king-targets", "Find targets beside the king"],
   sacrifices: ["sacrifices", "Sacrifices and material"],
@@ -70,19 +74,24 @@ const topics = {
 
 const contents = [
   ["rules", "The rules", [topics.blast, topics.kings, topics.specialMoves, topics.enPassant]],
-  ["opening", "The opening", [topics.queenAttacks, topics.knightInvasions, topics.development]],
-  ["middlegame", "The middlegame", [topics.kingTargets, topics.sacrifices, topics.blastDefense]],
+  [
+    "opening",
+    "Opening",
+    [topics.queenAttacks, topics.knightInvasions, topics.starterOpenings, topics.development],
+  ],
+  ["middlegame", "Middlegame", [topics.kingTargets, topics.sacrifices, topics.blastDefense]],
   [
     "endgame",
-    "The endgame",
+    "Endgame",
     [topics.connectedKings, topics.twoQueens, topics.pawnRaces, topics.extraMaterial],
   ],
-  ["practice", "How to practice", []],
+  ["how-to-play", "How to play", []],
+  ["practice", "How to improve", []],
 ] as const;
 
-const Topic = ({ name }: { name: keyof typeof topics }) => {
+const Topic = ({ name, as: Heading = "h3" }: { name: keyof typeof topics; as?: "h3" | "h4" }) => {
   const [id, label] = topics[name];
-  return <h3 id={id}>{label}</h3>;
+  return <Heading id={id}>{label}</Heading>;
 };
 
 const replayFenAt = (id: GuideExampleId, ply: number) => {
@@ -163,7 +172,7 @@ export const AtomicChessGuideContent = ({
         <h2 id="rules-title">The rules</h2>
         <Topic name="blast" />
         <p>
-          Start from the normal chess position. The blast is centered on the square where the
+          Start from the normal chess position. The explosion is centered on the square where the
           capturing piece lands. Both pieces involved in the capture are removed, along with
           neighboring pieces of either color, including diagonally adjacent ones. A neighboring pawn
           survives unless it made the capture or was captured.
@@ -176,7 +185,7 @@ export const AtomicChessGuideContent = ({
               blast: "b6",
               marked: "b7",
               description:
-                "Black can capture the queen on b6 with the pawn from a7. The knight on c6 and the pawn on b7 are also inside the outlined blast.",
+                "Black can capture the queen on b6 with the pawn from a7. The dashed outline shows that the explosion also reaches the knight on c6 and the pawn on b7.",
             },
             {
               title: "After …axb6",
@@ -222,7 +231,7 @@ export const AtomicChessGuideContent = ({
                 "White's king is on a1, far from the blast. Although the black rook on a2 gives check, Rxe7 wins by exploding the black king on f8.",
             },
           ]}
-          caption="Compare the same capture, Rxe7, with White’s king in two different places. Check the blast around your own king before counting an explosion as a win."
+          caption="Compare the same capture, Rxe7, with White’s king in two different places. Before counting an explosion as a win, check whether it reaches your own king."
         />
         <Example id="winInCheck" />
         <p>
@@ -251,7 +260,7 @@ export const AtomicChessGuideContent = ({
               blast: "h2",
               marked: "g1",
               description:
-                "After White castles kingside, Black’s bishop on d6 can capture the pawn on h2. The dashed blast outline includes the boxed white king on g1.",
+                "After White castles kingside, Black’s bishop on d6 can capture the pawn on h2. The dashed outline shows that the explosion reaches the boxed white king on g1.",
             },
           ]}
           caption="Both castles are legal. From e7, the bishop has no capture next to the king. From d6, it wins immediately with 1…Bxh2#, exploding the king on g1."
@@ -270,22 +279,38 @@ export const AtomicChessGuideContent = ({
       </section>
 
       <section id="opening" aria-labelledby="opening-title">
-        <h2 id="opening-title">The opening</h2>
+        <h2 id="opening-title">Opening</h2>
         <p>
-          In atomic chess, the opening can decide the game before either side develops a knight or
-          bishop. Take a familiar start from standard chess: after 1. e4 d5, White takes on d5 and
-          loses on Black’s very next move.
+          Many atomic games are won or lost in the opening. A move that looks like ordinary
+          development can give your opponent a winning capture next to your king, and you won’t get
+          another turn to fix it. That’s why it’s worth studying the opening early, even if you
+          don’t want to memorize long lines.
         </p>
         <p>
-          That’s why the first few moves are worth studying. A capture next to the king can end the
-          game, even if the target is defended. A routine developing move can give your opponent the
-          one turn they need.
+          Develop traps in openings you’d still be happy to play if your opponent sees them coming.
+          For each trap, learn which natural-looking reply it punishes and what you’ll play if your
+          opponent avoids it. Then study the traps you face from the defending side: start from the
+          losing position, go back a move or two, and find where you could have cut off the attack.
         </p>
+        <p>When you replay an opening, look for three ways an attack can reach either king:</p>
+        <ul>
+          <li>
+            <strong>Early queen attacks:</strong> Which targets next to the king can the queen
+            reach? If you block one route, can it switch to another?
+          </li>
+          <li>
+            <strong>Knight invasions:</strong> Where can the knight jump next, and which squares
+            beside the king could it attack from there?
+          </li>
+          <li>
+            <strong>Open files and diagonals:</strong> If a pawn moves or a capture clears several
+            squares, what lines open up, and who can use them first?
+          </li>
+        </ul>
         <Topic name="queenAttacks" />
         <p>
-          Before taking a pawn, picture the board after the blast. When White takes on d5, both
-          pawns disappear, opening a straight line from Black’s queen on d8 to the pawn on d2 beside
-          White’s king.
+          Visualize the board after an explosion before you capture. After 1. e4 d5 2. exd5, both
+          pawns disappear. Black’s queen on d8 has a clear path to d2, right beside White’s king.
         </p>
         <Example id="queenFile" />
         <p>
@@ -296,28 +321,108 @@ export const AtomicChessGuideContent = ({
         <Example id="queenAngles" />
         <Topic name="knightInvasions" />
         <p>
-          Against a knight, look one jump ahead. After 1. Nf3, the danger isn’t the knight on f3;
-          it’s Ne5 next. From e5 it can take either d7 or f7, and either capture would explode
-          Black’s king.
+          After 1. Nf3, Black needs to keep the knight from invading. The immediate threat is 2.
+          Ne5, forking the pawns on d7 and f7. This isn’t a fork that wins a pawn: either capture
+          explodes the king on e8 and ends the game.
+        </p>
+        <p>
+          Natural replies like 1…e6 and 1…c5 leave e5 open and both pawns in place. Once the knight
+          gets to e5, moving one pawn won’t save you. In the replay below, 2…d5 takes away the
+          target on d7 but leaves 3. Nxf7#.
         </p>
         <Example id="knight" />
         <p>
-          Compare 1…f6: Black can now take the knight if it jumps to e5, with the blast safely away
-          from the king. The lesson isn’t to play …f6 by default; it’s to stop the knight before you
-          have two targets to defend.
+          Compare 1…f6. The pawn covers both e5 and g5, another square from which the knight could
+          attack f7. If White jumps to e5 anyway, Black can play 2…fxe5 before the knight gets a
+          chance to capture. The explosion on e5 is safely away from Black’s king.
         </p>
         <Example id="knightDefense" />
+        <section aria-labelledby="opening-lines">
+          <Topic name="starterOpenings" />
+          <Topic name="twoKnightsOpening" as="h4" />
+          <p>
+            <span className="atomicChessExampleLine">1. Nf3 f6 2. Nc3</span> is one of White’s
+            strongest choices in{" "}
+            <LinkComponent href="/rankings/openings">engine analysis</LinkComponent>. It’s also a
+            staple in practice: 2. Nc3 was the most played move after 1. Nf3 f6 in the Atomic
+            Puzzles explorer from November 2025 through October 2026.
+          </p>
+          <p>
+            After 2…Nh6, Black wants to jump to g4 and threaten Nxf2#, exploding White’s king. White
+            can cover g4 with 3. h3 or occupy it with 3. g4, as in the replay. Occupying the square
+            turns the knight jump into a capture, so the knight itself explodes instead of staying
+            on g4. There’s also 3. Ne5 fxe5 4. d4, where White gives up a knight and then opens the
+            c1-bishop’s line to h6.
+          </p>
+          <p>
+            Prepare 2…c6 separately. It covers b5 and d5, but a knight sacrifice can still open the
+            way for the queen to travel through h5, b5, and b6, a maneuver that also turns up in Nf3
+            e3 theory.
+          </p>
+          <Example id="twoKnightsOpening" />
+
+          <Topic name="nf3E3Opening" as="h4" />
+          <p>
+            <span className="atomicChessExampleLine">1. Nf3 f6 2. e3</span> is the historical
+            favorite after …f6 in the explorer’s full archive. On Lichess, you’ll meet many spammers
+            of this opening who know all the main lines by heart. That’s why it’s worth preparing a
+            defense even if you never play it as White. Learn what changes after 2…d5 and 2…e6
+            rather than memorizing one reply to everything. You can also reach the 2…e6 position via
+            1. e3 e6 2. Nf3 f6.
+          </p>
+          <p>
+            The board shows 2…d5 3. Ng5 fxg5, but Black doesn’t have to take the knight. After
+            3…Bg4, the bishop aims down the squares White just cleared: f3, e2, and finally d1.
+            White has to deal with Bxd1#, since taking the queen would explode the king on e1.
+          </p>
+          <p>
+            Like Two Knights, this opening often sends both players deep into familiar theory. What
+            sets it apart is the position you’re playing for: White often emerges a pawn or two up
+            with the queens gone, then has to grind out the win. As{" "}
+            <a href="https://lichess.org/forum/general-chess-discussion/why-does-everyone-hate-nf3-e3-in-atomic">
+              Wolfram_EP notes on Lichess
+            </a>
+            , Black can still have counterplay. Try playing the replay position after 6. Qxc7 from
+            both sides. As White, learn which trades help you convert the extra pawns; as Black,
+            look for threats that keep White from using them.
+          </p>
+          <Example id="nf3E3Opening" />
+
+          <Topic name="nh3D4Opening" as="h4" />
+          <p>
+            <span className="atomicChessExampleLine">1. Nh3 h6 2. d4</span> is the least
+            conventional of the three, but it’s just as theory-heavy. It gives you more room for
+            tactical play: where Nf3 e3 often leads to a queenless grind, Nh3 d4 can start a fight
+            on move three with both queens still on the board. The move order has also grown more
+            common in the game archive over the past year.
+          </p>
+          <p>
+            After 2…e6, White’s 3. Bg5 threatens to take the queen on d8 and explode the king beside
+            it. Black can take the bishop with 3…hxg5, but the explosion clears g5 for 4. Ng5, and
+            now the knight threatens Nxf7#. The replay follows the more common 3…f6, which blocks
+            the line to d8 and attacks the bishop. After 4. Bf4, Black has several ways to continue;{" "}
+            <a href="https://lichess.org/study/SuwIxql6/nQ6yidC8">catask’s study</a> has separate
+            chapters for …e5, …d6, and …Bb4+.
+          </p>
+          <p>
+            As Black, look at 2…d5 as a separate defense. The pawn on e7 hasn’t moved, so Bg5 would
+            threaten Bxe7# instead of Bxd8#. Black has also cleared d7 for the c8-bishop. Don’t
+            assume the replies you learned against 2…e6 carry over.
+          </p>
+          <Example id="nh3D4Opening" />
+        </section>
         <Topic name="development" />
         <p>
-          Start with one opening for each color. For each early reply, ask what capture it threatens
-          or prevents, and what happens if you ignore it. Once there’s no immediate threat, develop
-          normally—but prefer moves that also cover an entry square or keep a line to your king
-          closed.
+          Start with one opening as White and a defense as Black. Study the first move where the
+          line branches, not just the moves you already know. Look for threats that recur across
+          different replies, and memorize the exact order where one wrong move loses. Then play a
+          few games from the position where your notes end; that’s the part you’ll need to handle on
+          your own.
         </p>
       </section>
 
       <section id="middlegame" aria-labelledby="middlegame-title">
-        <h2 id="middlegame-title">The middlegame</h2>
+        <h2 id="middlegame-title">Middlegame</h2>
         <Topic name="kingTargets" />
         <p>
           A protected piece can still be a winning target if capturing it explodes the king.
@@ -341,6 +446,11 @@ export const AtomicChessGuideContent = ({
           counterattack, or a capture that removes your attacker. If there is no immediate win, the
           material you gave up still matters.
         </p>
+        <p>
+          If you’re down material, don’t rush to win it back. A pawn push that opens a file or
+          drives a piece away can give you the next threat. If you’re ahead, check for that
+          counterplay before spending a turn trying to trade.
+        </p>
         <Topic name="blastDefense" />
         <p>
           When you are under attack, inspect your own captures before retreating. You may be able to
@@ -356,7 +466,7 @@ export const AtomicChessGuideContent = ({
       </section>
 
       <section id="endgame" aria-labelledby="endgame-title">
-        <h2 id="endgame-title">The endgame</h2>
+        <h2 id="endgame-title">Endgame</h2>
         <Topic name="connectedKings" />
         <p>
           In standard chess, you use your king to push the opposing king away. In atomic, the
@@ -418,8 +528,13 @@ export const AtomicChessGuideContent = ({
         <p>
           Keep the kings apart and restrict the defender’s safe squares. A queen can control escape
           routes from a distance; bringing your king too close may give the defender the connection
-          it needs. Before simplifying, check the ending you are entering. Removing the last pawn or
-          exchanging an attacking piece can turn a win into a draw.
+          it needs.
+        </p>
+        <p>
+          Before trading, look at what will survive the explosion. Reducing the position to kings
+          and pawns is sometimes called <em>pawnitization</em>. A position that was winning with an
+          extra piece can be drawn after that trade. Count the moves to promotion and check whether
+          a king can blockade the passed pawn before you commit.
         </p>
         <p>
           Try <LinkComponent href="/puzzles/endgames">endgame practice</LinkComponent> to work on
@@ -429,27 +544,48 @@ export const AtomicChessGuideContent = ({
         </p>
       </section>
 
+      <section id="how-to-play" aria-labelledby="how-to-play-title">
+        <h2 id="how-to-play-title">How to play</h2>
+        <ul>
+          <li>
+            <a href="https://lichess.org/">Play on Lichess</a>: choose{" "}
+            <strong>Create a game</strong> and select <strong>Atomic</strong> as the variant.
+          </li>
+          <li>
+            <a href="https://www.chess.com/variants/atomic">Play on Chess.com</a>: open the Atomic
+            variant in your browser, choose a time control, and start a game.
+          </li>
+        </ul>
+        <p>
+          Start with a slower clock. Give yourself time to visualize the explosion before you
+          capture and to check what your opponent can take next.
+        </p>
+      </section>
+
       <section id="practice" aria-labelledby="practice-title">
-        <h2 id="practice-title">How to practice</h2>
-        <p>
-          Start with short <LinkComponent href="/solve">atomic chess puzzles</LinkComponent>&#32;
-          and explain the winning threat to yourself before making a move. Puzzle solving requires a
-          Lichess login. After an attempt, review the explanation and analysis, especially the
-          opponent’s best defense.
-        </p>
-        <p>
-          Use the <LinkComponent href="/analysis">analysis board</LinkComponent> to test a line,
-          then <LinkComponent href="/practice">practice openings</LinkComponent> against moves from
-          the game database. Play atomic games on
-          <a href="https://lichess.org/variant/atomic"> Lichess</a> and review the first threat you
-          missed, rather than only the final losing move.
-        </p>
-        <p>
-          You can also search the <LinkComponent href="/recent">game archive</LinkComponent>, find
-          players in the <LinkComponent href="/rankings">rankings</LinkComponent>, and follow
-          <LinkComponent href="/tournaments"> Atomic World Championship games </LinkComponent>
-          to see how experienced players handle the same ideas.
-        </p>
+        <h2 id="practice-title">How to improve</h2>
+        <ol>
+          <li>
+            <strong>Review the first threat you missed.</strong> On the{" "}
+            <LinkComponent href="/analysis">analysis board</LinkComponent>, go back before the final
+            mistake. Find the move that let the attack start, then try a different reply.
+          </li>
+          <li>
+            <strong>Practice what cost you the game.</strong> If you missed a winning capture, solve{" "}
+            <LinkComponent href="/solve">atomic puzzles</LinkComponent> and explain the threat
+            before moving. If the same opening trap keeps catching you, replay it from the defending
+            side in <LinkComponent href="/practice">opening practice</LinkComponent>. If you got
+            ahead but couldn’t finish, try{" "}
+            <LinkComponent href="/puzzles/endgames">endgame practice</LinkComponent>. Puzzle solving
+            requires a Lichess login.
+          </li>
+          <li>
+            <strong>See how stronger players handle it.</strong> Find the opening in the{" "}
+            <LinkComponent href="/recent">game archive</LinkComponent> or replay{" "}
+            <LinkComponent href="/tournaments">Atomic World Championship games</LinkComponent>.
+            Pause where you’re unsure what to play and choose a move before revealing theirs.
+          </li>
+        </ol>
       </section>
     </article>
   );
