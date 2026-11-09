@@ -36,7 +36,7 @@ describe("buildAliasesLookup", () => {
           },
           {
             alias: "ExactCase960",
-            displayAlias: "ExactCase960",
+            displayAlias: "exactcase960",
             source: "pychess",
             isCounted: true,
             banned: false,

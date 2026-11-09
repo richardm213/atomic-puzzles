@@ -31,7 +31,7 @@ export const buildAliasesLookup = (rows: AliasIdentityRow[]): AliasLookup => {
       ...new Set(
         row.accounts
           .filter((account) => account.source === "pychess")
-          .map((account) => account.displayAlias || account.alias)
+          .map((account) => account.alias)
           .filter(Boolean),
       ),
     ];

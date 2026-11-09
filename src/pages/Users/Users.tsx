@@ -421,7 +421,7 @@ const UsersTablePage = () => {
                         <div id={`user-aliases-${row.username}`} className="usersAliasList">
                           {row.aliases.map((alias) => (
                             <span key={`${row.username}-${alias}`} className="usersAliasText">
-                              {alias}
+                              {alias.toLowerCase()}
                             </span>
                           ))}
                         </div>

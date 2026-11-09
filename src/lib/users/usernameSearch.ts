@@ -142,7 +142,7 @@ export const searchUsernameSuggestions = async (
           matchingAccounts.every((account) => account.source === "pychess");
         if (options.excludePyChessAliases && isPyChessOnlyAlias) return;
         const matchedName = pyChessAccount
-          ? String(pyChessAccount.displayAlias || pyChessAccount.alias).trim()
+          ? String(pyChessAccount.alias).trim()
           : normalizedMatchedName;
         const rank = getSuggestionRank(query, normalizedMatchedName, member.matchType);
         if (rank === null) return;

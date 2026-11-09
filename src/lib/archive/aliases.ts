@@ -43,7 +43,7 @@ export const getAliasIdentityUsernames = (
     .map(normalizeUsername)
     .filter(Boolean);
   const accountNames = (identity?.accounts ?? []).flatMap((account) =>
-    [account.alias, account.displayAlias]
+    (account.source === "pychess" ? [account.alias] : [account.alias, account.displayAlias])
       .map((value) =>
         account.source === "pychess" ? String(value).trim() : normalizeUsername(value),
       )
@@ -100,7 +100,7 @@ const createChessComAccount = (
 
 const createPyChessAccount = (alias: string, banned: boolean, bot: boolean): AliasAccount => ({
   alias,
-  displayAlias: alias,
+  displayAlias: normalizeUsername(alias),
   source: "pychess",
   isCounted: true,
   banned,
@@ -147,7 +147,7 @@ const mergeAliasAccounts = (accounts: AliasAccount[] = []): AliasAccount[] => {
     if (!alias) return;
 
     const displayAlias =
-      source === "chesscom"
+      source !== "lichess"
         ? normalizeUsername(account.displayAlias || account.alias)
         : String(account.displayAlias || "").trim() || alias;
     accountsByKey.set(`${source}:${alias}`, {

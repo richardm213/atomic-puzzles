@@ -244,13 +244,13 @@ export const UsernamePickerModal = ({
                   className={`${color}${isSelected ? " active" : ""}`}
                   disabled={isDisabled}
                   key={username}
-                  aria-label={`${username}, ${color} player`}
+                  aria-label={`${username.toLowerCase()}, ${color} player`}
                   onClick={() => {
                     if (!isDisabled) onSelectUsername(username);
                   }}
                 >
                   <span className={`playerColorMarker ${color}`} aria-hidden="true" />
-                  <span className="analysisGameUsernameLabel">{username}</span>
+                  <span className="analysisGameUsernameLabel">{username.toLowerCase()}</span>
                 </button>
               );
             })}
@@ -273,12 +273,12 @@ export const UsernamePickerModal = ({
                       onSelectUsername(recentUsername);
                     }}
                   >
-                    {recentUsername}
+                    {recentUsername.toLowerCase()}
                   </button>
                   <button
                     type="button"
                     className="remove"
-                    aria-label={`Remove ${recentUsername} from recent searches`}
+                    aria-label={`Remove ${recentUsername.toLowerCase()} from recent searches`}
                     onClick={() => onRemoveRecentUsername(recentUsername)}
                   >
                     <FontAwesomeIcon icon={faXmark} />
@@ -324,7 +324,7 @@ export const UsernamePickerModal = ({
                           if (!isDisabled) onSelectUsername(username);
                         }}
                       >
-                        {username}
+                        {username.toLowerCase()}
                       </button>
                     );
                   })}

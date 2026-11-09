@@ -254,7 +254,13 @@ export const PlayerProfilePage = ({
     enabled: !historyOnly && Boolean(canonicalUsername),
   });
   const coinGiftRecipientUsername = coinGiftAccountQuery.data ?? null;
-  const profileDisplayUsername = String(username || "").trim() || canonicalUsername;
+  const requestedProfileUsername = String(username || "").trim() || canonicalUsername;
+  const profileDisplayUsername = profileAliasEntry?.accounts.some(
+    (account) =>
+      account.source === "pychess" && normalizeUsername(account.alias) === normalizedUsername,
+  )
+    ? requestedProfileUsername.toLowerCase()
+    : requestedProfileUsername;
   const {
     matchFiltersOpen,
     toggleMatchFilters,
@@ -1158,11 +1164,13 @@ export const PlayerProfilePage = ({
                   {(aliasesExpanded ? aliasDisplayRows : aliasDisplayRows.slice(0, 8)).map(
                     ({ alias, displayAlias, source, isCounted }) => {
                       const sourceLabel = getAliasProfileSourceLabel(source);
-                      const externalAlias = displayAlias || alias;
+                      const externalAlias = source === "pychess" ? alias : displayAlias || alias;
+                      const aliasLabel =
+                        source === "pychess" ? externalAlias.toLowerCase() : externalAlias;
                       return (
                         <div key={`alias-${source}-${alias}`} className="profileAliasRow">
                           <span className="profileAliasName">
-                            <span>{externalAlias}</span>
+                            <span>{aliasLabel}</span>
                             {source === "lichess" && !isCounted ? (
                               <span
                                 className="profileAliasStatus"
@@ -1195,8 +1203,8 @@ export const PlayerProfilePage = ({
                             href={getAliasProfileHref(source, externalAlias)}
                             target="_blank"
                             rel="noreferrer"
-                            aria-label={`Open ${externalAlias} on ${sourceLabel}`}
-                            title={`Open ${externalAlias} on ${sourceLabel}`}
+                            aria-label={`Open ${aliasLabel} on ${sourceLabel}`}
+                            title={`Open ${aliasLabel} on ${sourceLabel}`}
                           >
                             {source === "chesscom" ? (
                               <ChessComProfileIcon />

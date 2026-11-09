@@ -235,25 +235,27 @@ export const NavPlayerSearch = ({ onNavigate }: { onNavigate: () => void }) => {
                     onMouseEnter={() => setActiveSuggestionIndex(index)}
                   >
                     <span className="navSearchResultPrimary">
-                      <span className="navSearchResultName">{suggestion.matchedName}</span>
+                      <span className="navSearchResultName">
+                        {suggestion.matchedName.toLowerCase()}
+                      </span>
                     </span>
                     <PlayerLink
                       className="navSearchResultDefault"
                       username={suggestion.matchedName}
-                      aria-label={`Open ${suggestion.matchedName}'s profile`}
+                      aria-label={`Open ${suggestion.matchedName.toLowerCase()}'s profile`}
                       onClick={reset}
                     />
                     <div
                       className="navSearchResultActions"
                       role="group"
-                      aria-label={`${suggestion.matchedName} links`}
+                      aria-label={`${suggestion.matchedName.toLowerCase()} links`}
                     >
                       {suggestion.accountUsername ? (
                         <Link
                           className="navSearchResultAction"
                           to="/@/$username/puzzles"
                           params={{ username: suggestion.accountUsername }}
-                          aria-label={`Open ${suggestion.matchedName}'s puzzle dashboard`}
+                          aria-label={`Open ${suggestion.matchedName.toLowerCase()}'s puzzle dashboard`}
                           title="Puzzle dashboard"
                           onClick={reset}
                         >
@@ -264,7 +266,7 @@ export const NavPlayerSearch = ({ onNavigate }: { onNavigate: () => void }) => {
                         <TournamentPlayerLink
                           className="navSearchResultAction"
                           username={suggestion.matchedName}
-                          aria-label={`Open ${suggestion.matchedName}'s tournament history`}
+                          aria-label={`Open ${suggestion.matchedName.toLowerCase()}'s tournament history`}
                           title="Tournament history"
                           onClick={reset}
                         >
@@ -274,7 +276,7 @@ export const NavPlayerSearch = ({ onNavigate }: { onNavigate: () => void }) => {
                       <PlayerLink
                         className="navSearchResultAction"
                         username={suggestion.matchedName}
-                        aria-label={`Open ${suggestion.matchedName}'s profile`}
+                        aria-label={`Open ${suggestion.matchedName.toLowerCase()}'s profile`}
                         title="Profile"
                         onClick={reset}
                       >

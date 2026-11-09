@@ -130,7 +130,7 @@ describe("buildAliasIdentityRowsFromArchiveRows", () => {
     expect(rows[0]?.accounts[0]).toMatchObject({ banned: false, bot: true });
   });
 
-  it("preserves exact-case PyChess aliases as a separate account source", () => {
+  it("lowercases PyChess display names while preserving case-sensitive account identifiers", () => {
     const rows = buildAliasIdentityRowsFromArchiveRows([
       {
         alias: "ExactCase960",
@@ -145,7 +145,7 @@ describe("buildAliasIdentityRowsFromArchiveRows", () => {
     expect(rows[0]?.accounts).toEqual([
       expect.objectContaining({
         alias: "ExactCase960",
-        displayAlias: "ExactCase960",
+        displayAlias: "exactcase960",
         source: "pychess",
       }),
     ]);
@@ -180,7 +180,7 @@ describe("getAliasIdentityUsernames", () => {
           },
           {
             alias: "ExactCase960",
-            displayAlias: "ExactCase960",
+            displayAlias: "exactcase960",
             source: "pychess",
             isCounted: true,
             banned: false,
