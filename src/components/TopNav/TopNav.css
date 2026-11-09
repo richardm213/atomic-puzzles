@@ -955,12 +955,11 @@
   --nav-circle-ink: white;
 
   position: absolute;
-  top: -4px;
-  right: -5px;
-  min-width: 17px;
-  height: 17px;
+  top: -2px;
+  right: -3px;
+  min-width: 13px;
+  height: 13px;
   padding: 0 3px;
-  border: 2px solid var(--color-nav);
   font-size: 9px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
