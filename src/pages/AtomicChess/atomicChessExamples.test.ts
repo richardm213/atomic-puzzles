@@ -1,7 +1,9 @@
+import { INITIAL_FEN } from "chessops/fen";
 import { expect, it } from "vitest";
 
 import { buildPgnHistory } from "../../components/Chessboard/pgnHistory";
 import { tryCreateAtomicPosition } from "../../components/Chessboard/puzzlePlayback";
+import { atomicOpenings, getOpeningTag, getOpeningVariations } from "../../utils/openings";
 import { atomicChessExamples } from "./atomicChessExamples";
 
 it("replays the guide examples as legal atomic chess", () => {
@@ -10,6 +12,41 @@ it("replays the guide examples as legal atomic chess", () => {
     if (!replay.ok) throw new Error(`${id}: ${replay.error}`);
     expect(replay.history.plies.length, id).toBeGreaterThan(1);
   }
+});
+
+it("replays every opening line through its final move under atomic rules", () => {
+  for (const opening of atomicOpenings) {
+    const lines = [
+      { name: opening.name, pgn: opening.setup },
+      ...(opening.branches?.flatMap((branch) => [
+        ...(branch.setup ? [{ name: branch.reply, pgn: branch.setup }] : []),
+        ...(branch.groups?.map((group) => ({ name: group.name, pgn: group.setup })) ?? []),
+      ]) ?? []),
+      ...getOpeningVariations(opening),
+    ];
+    for (const { name, pgn } of lines) {
+      const label = `${opening.name}: ${name}`;
+      const replay = buildPgnHistory(INITIAL_FEN, pgn);
+      if (!replay.ok) throw new Error(`${label}: ${replay.error}`);
+      const san = pgn
+        .replace(/\d+\.\s*/g, "")
+        .trim()
+        .split(/\s+/);
+      expect(
+        replay.history.plies.slice(1).map((ply) => ply.san),
+        label,
+      ).toEqual(san);
+    }
+  }
+});
+
+it("resolves profile tags to their setup or variation without turning categories into lines", () => {
+  expect(getOpeningTag(" Nf3 e3 ")).toMatchObject({ anchor: "nf3-e3", pgn: "1. Nf3 f6 2. e3" });
+  expect(getOpeningTag("2n h3")).toMatchObject({
+    anchor: "two-knights-nh6-h3",
+    pgn: expect.stringContaining("Nh6 3. h3"),
+  });
+  expect(getOpeningTag("all around")?.anchor).toBeUndefined();
 });
 
 it("forces separation and then mates in the two-queen lesson", () => {

@@ -128,6 +128,20 @@
   margin-bottom: 0;
 }
 
+.atomicChessIntroLinks {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-6);
+  margin-top: var(--space-2);
+}
+
+.atomicChessIntroLinks > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height-touch);
+  font-weight: 650;
+}
+
 .atomicChessGuide section,
 .atomicChessGuide h3[id],
 .atomicChessGuide h4[id] {

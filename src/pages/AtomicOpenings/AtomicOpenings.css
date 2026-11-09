@@ -1,0 +1,133 @@
+.atomicOpenings .motifGlossaryIndex {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-4);
+  columns: auto;
+}
+
+.atomicOpenings .motifGlossaryIndex > li > a {
+  font-weight: 650;
+}
+
+.atomicOpenings > .motifDefinition {
+  padding-block: var(--space-6) 0;
+}
+
+.atomicOpeningToggle {
+  align-content: center;
+  min-height: var(--control-height-touch);
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-heading);
+  cursor: pointer;
+  scroll-margin-top: calc(var(--nav-height) + var(--space-4));
+}
+
+.atomicOpeningToggle :is(h2, h3, h4, h5, h6) {
+  display: inline;
+  margin: 0;
+  color: inherit;
+}
+
+.atomicOpeningToggle :is(h5, h6) {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.atomicOpeningToggle:hover {
+  background: var(--color-surface-inset);
+}
+
+.atomicOpeningToggle:active {
+  background: var(--color-surface-inset-strong);
+}
+
+.atomicOpeningToggle:focus-visible {
+  outline: 2px solid var(--color-primary-soft);
+  outline-offset: 2px;
+}
+
+.atomicOpeningToggle:target {
+  color: var(--color-primary-pale);
+}
+
+.atomicOpeningDisclosureBody {
+  position: relative;
+  margin-inline-start: var(--space-3);
+  padding-inline-start: var(--space-3);
+  border-inline-start: 1px solid var(--color-border);
+}
+
+.atomicOpeningRail {
+  display: none;
+}
+
+@media (pointer: fine) {
+  .atomicOpeningRail {
+    position: absolute;
+    z-index: 1;
+    inset-block: 0;
+    inset-inline-start: calc(-1 * var(--space-2) - 1px);
+    display: block;
+    inline-size: calc(2 * var(--space-2) + 1px);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .atomicOpeningRail:hover {
+    background: var(--color-surface-inset);
+  }
+
+  .atomicOpeningRail:active {
+    background: var(--color-surface-inset-strong);
+  }
+}
+
+.atomicOpeningLine > .atomicOpeningDisclosureBody {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.atomicOpeningGlossaryReturn {
+  margin-top: var(--space-4);
+}
+
+.atomicOpeningGlossaryReturn > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height-touch);
+  font-size: 14px;
+}
+
+.atomicOpeningDisclosureBody > details[open] + details {
+  margin-top: var(--space-8);
+}
+
+.atomicOpeningSetup + details {
+  margin-top: var(--space-6);
+}
+
+@media (max-width: 600px) {
+  .atomicOpenings .motifGlossaryIndex {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .atomicOpeningDisclosureBody {
+    margin-inline-start: var(--space-1);
+    padding-inline-start: var(--space-2);
+  }
+
+  .atomicOpenings .motifReplayMoves button {
+    min-width: var(--control-height-touch);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atomicOpenings .motifGlossaryIndex a,
+  .atomicOpenings .motifReplay button {
+    transition: none;
+  }
+}

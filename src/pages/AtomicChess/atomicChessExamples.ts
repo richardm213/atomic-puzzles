@@ -1,4 +1,5 @@
 import { TACTICAL_MOTIFS_PATH } from "../../../shared/seo";
+import { NF3_E3_D5_GUIDE_LINE, NH3_D4_E6_GUIDE_LINE } from "../../utils/openings";
 import type { MotifExample } from "../PuzzleMotifs/motifExamples";
 
 export type GuideExample = MotifExample & {
@@ -80,7 +81,7 @@ export const atomicChessExamples = {
   nf3E3Opening: {
     name: "Nf3 e3: from a knight sacrifice to a material edge",
     fen: start,
-    pgn: "1. Nf3 f6 2. e3 d5 3. Ng5 fxg5 4. Qh5+ g6 5. Qe5 Be6 6. Qxc7 b5 7. Nc3 Bf5 8. Ne4 Bg4",
+    pgn: NF3_E3_D5_GUIDE_LINE,
     note: "Pause after 6. Qxc7. The explosion removes both queens and Black’s b8-knight. White is two pawns up, but Black still has both rooks and both bishops. The game is far from over.",
     sourceUrl: "https://lichess.org/study/EIRATbRx/J7sp9wiF",
     sourceName: "Lichess study — Nf3 e3 Megastudy",
@@ -88,7 +89,7 @@ export const atomicChessExamples = {
   nh3D4Opening: {
     name: "Nh3 d4: the early bishop attack",
     fen: start,
-    pgn: "1. Nh3 h6 2. d4 e6 3. Bg5 f6 4. Bf4 e5 5. Na3 a6 6. c3",
+    pgn: NH3_D4_E6_GUIDE_LINE,
     note: "Pause after 4…e5. Black’s pawn attacks the bishop again, but this time White develops the other knight instead of retreating. The line stays sharp without a single capture.",
     sourceUrl: "https://lichess.org/study/MbzU8mpy/W0MSLxia",
     sourceName: "Wolfram_EP — 1. Nh3 h6 2. d4",

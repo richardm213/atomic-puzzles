@@ -2,6 +2,7 @@ import { type ComponentProps, type ComponentType, type ReactNode, useRef, useSta
 
 import { TACTICAL_MOTIFS_PATH } from "../../../shared/seo";
 import { buildPgnHistory } from "../../components/Chessboard/pgnHistory";
+import { ATOMIC_OPENINGS_PATH } from "../../utils/openings";
 import type { ReplayFocusRequest } from "../PuzzleMotifs/PuzzleMotifExample";
 import { atomicChessExamples, type GuideExample, type GuideExampleId } from "./atomicChessExamples";
 import { GuideBoardFigure } from "./GuideBoardDiagram";
@@ -164,6 +165,9 @@ export const AtomicChessGuideContent = ({
           in the capture are removed, along with adjacent pieces other than pawns. You win by
           exploding the opposing king or by checkmate.
         </p>
+        <div className="atomicChessIntroLinks">
+          <LinkComponent href={ATOMIC_OPENINGS_PATH}>Browse openings and variations</LinkComponent>
+        </div>
       </section>
 
       <GuideContents />
