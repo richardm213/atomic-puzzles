@@ -37,6 +37,25 @@ describe("social link metadata", () => {
     expect(response.status).toBe(200);
   });
 
+  it("keeps the static guide canonical pointed at the served directory URL", async () => {
+    const response = await socialMeta(
+      new Request("https://atomicpuzzles.org/atomic-chess/?utm_source=share"),
+      {
+        next: () =>
+          Promise.resolve(
+            new Response(
+              '<html><head><link rel="canonical" href="https://atomicpuzzles.org/atomic-chess/" /></head></html>',
+              { headers: { "Content-Type": "text/html" } },
+            ),
+          ),
+      },
+    );
+    const html = await response.text();
+    expect(html.match(/rel="canonical" href="[^"]+"/g)).toEqual([
+      'rel="canonical" href="https://atomicpuzzles.org/atomic-chess/"',
+    ]);
+  });
+
   it("replaces the static homepage tags instead of duplicating them", () => {
     const source = `<!doctype html><html><head>
       <meta name="description" content="Homepage copy" />

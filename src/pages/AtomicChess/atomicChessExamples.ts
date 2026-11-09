@@ -1,3 +1,4 @@
+import { TACTICAL_MOTIFS_PATH } from "../../../shared/seo";
 import type { MotifExample } from "../PuzzleMotifs/motifExamples";
 
 export type GuideExample = MotifExample & {
@@ -15,7 +16,7 @@ export const atomicChessExamples = {
     name: "What disappears in an explosion",
     fen: "r1bqkbnr/pp1p3p/1Qn1ppp1/8/8/4P3/PPPP1PPP/RNB1KB1R b KQkq - 0 1",
     pgn: "1... axb6",
-    note: "Play …axb6. Both the queen and the capturing pawn disappear, along with the rook on a8 and knight on c6. The nearby pawns stay on the board.",
+    note: "Play …axb6. The queen, the capturing pawn, and the knight on c6 disappear. The adjacent pawn on b7 survives, and the rook on a8 is outside the blast.",
     sourceUrl: "https://lichess.org/study/uf9GpQyI/kWUMaN4c",
     sourceName: "ijh — Atomic Rules",
   },
@@ -56,7 +57,7 @@ export const atomicChessExamples = {
     fen: "rnbqkb1r/p1p1p1pp/5n2/1p1p4/3P4/2NQ4/PPP1PPPP/R1B1KB1R w KQkq - 2 6",
     pgn: "6. Qg6+ hxg6 7. Bg5",
     note: "White gives up the queen to remove the h-pawn. After …hxg6, Bg5 threatens to capture e7 beside Black’s king. Look at the resulting threats before judging the material count.",
-    sourceUrl: "/tactical-motifs#sacrifice",
+    sourceUrl: `${TACTICAL_MOTIFS_PATH}#sacrifice`,
     sourceName: "Atomic Puzzles — Sacrifice",
   },
   connectedKings: {

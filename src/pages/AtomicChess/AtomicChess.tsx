@@ -6,6 +6,7 @@ import type { ComponentProps } from "react";
 
 import {
   ATOMIC_CHESS_DESCRIPTION,
+  ATOMIC_CHESS_PATH,
   ATOMIC_CHESS_STRUCTURED_DATA,
   ATOMIC_CHESS_TITLE,
 } from "../../../shared/seo";
@@ -33,7 +34,7 @@ export const AtomicChessPage = () => (
     <Seo
       title={ATOMIC_CHESS_TITLE}
       description={ATOMIC_CHESS_DESCRIPTION}
-      path="/atomic-chess"
+      path={ATOMIC_CHESS_PATH}
       structuredData={ATOMIC_CHESS_STRUCTURED_DATA}
     />
     <AtomicChessGuideContent LinkComponent={GuideLink} ExampleComponent={GuideReplay} />

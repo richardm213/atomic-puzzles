@@ -11,6 +11,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { ComponentProps, ComponentType, ReactNode } from "react";
 
+import { ATOMIC_CHESS_PATH } from "../../../shared/seo";
 import { HomeAnchor } from "./HomeHeroLead";
 
 export const HomeCardContent = ({
@@ -43,13 +44,14 @@ export const HomeShortcuts = ({
 }) =>
   group === "primary" ? (
     <>
-      <LinkComponent className="homeSpotlightCard" href="/atomic-chess">
+      {/* Use the static guide URL verbatim; the client router strips trailing slashes. */}
+      <HomeAnchor className="homeSpotlightCard" href={ATOMIC_CHESS_PATH}>
         <HomeCardContent
-          title="New to atomic chess?"
-          description="Learn the rules and strategies."
+          title="Atomic chess guide"
+          description="Learn the rules and replay key tactics."
           artwork={<FontAwesomeIcon icon={faBookOpen} />}
         />
-      </LinkComponent>
+      </HomeAnchor>
 
       <LinkComponent className="homeSpotlightCard homeBettingShortcut" href="/betting">
         <HomeCardContent

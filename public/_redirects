@@ -27,6 +27,7 @@
 /api/game-analysis-worker-background    /.netlify/functions/game-analysis-worker-background    200
 /api/game-analysis-sweep-worker-background    /.netlify/functions/game-analysis-sweep-worker-background    200
 /api/game-analysis-submit-worker-background    /.netlify/functions/game-analysis-submit-worker-background    200
-/puzzles/motifs    /tactical-motifs    301
-/atomic-chess    /atomic-chess/index.html    200
+/puzzles/motifs    /tactical-motifs/    301
+/tactical-motifs/index.html    /tactical-motifs/    301!
+/atomic-chess/index.html    /atomic-chess/    301!
 /*    /app.html   200

@@ -2,10 +2,17 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { injectSocialMetadata, metadataForPath } from "../netlify/edge-functions/social-meta.ts";
-import { ATOMIC_CHESS_STRUCTURED_DATA, HOME_STRUCTURED_DATA, SITE_URL } from "../shared/seo.ts";
+import {
+  ATOMIC_CHESS_PATH,
+  ATOMIC_CHESS_STRUCTURED_DATA,
+  canonicalUrlForPath,
+  HOME_STRUCTURED_DATA,
+  TACTICAL_MOTIFS_PATH,
+} from "../shared/seo.ts";
 import { AtomicChessGuideContent } from "../src/pages/AtomicChess/AtomicChessGuideContent.tsx";
 import { HomeHeroLead } from "../src/pages/Home/HomeHeroLead.tsx";
 import { HomeShortcuts } from "../src/pages/Home/HomeShortcuts.tsx";
+import { PuzzleMotifsContent } from "../src/pages/PuzzleMotifs/PuzzleMotifsContent.tsx";
 
 export const homeSeoPlugin = () => ({
   name: "atomic-public-static-html",
@@ -24,14 +31,16 @@ export const homeSeoPlugin = () => ({
       // Keep homepage content out of all other SPA routes' initial HTML.
       this.emitFile({ type: "asset", fileName: "app.html", source: shell });
       const renderPage = (path, content, structuredData, styles = []) => {
-        const jsonLd = JSON.stringify(structuredData).replaceAll("<", "\\u003c");
-        const head = styles.map((href) => `<link rel="stylesheet" href="/${href}" />`).join("\n");
-        return injectSocialMetadata(shell, metadataForPath(path), `${SITE_URL}${path}`)
-          .replace('<div id="root"></div>', `<div id="root">${renderToStaticMarkup(content)}</div>`)
-          .replace(
-            "</head>",
-            `${head}<script type="application/ld+json" data-seo-json-ld="true">${jsonLd}</script>\n</head>`,
+        const tags = styles.map((href) => `<link rel="stylesheet" href="/${href}" />`);
+        if (structuredData) {
+          const jsonLd = JSON.stringify(structuredData).replaceAll("<", "\\u003c");
+          tags.push(
+            `<script type="application/ld+json" data-seo-json-ld="true">${jsonLd}</script>`,
           );
+        }
+        return injectSocialMetadata(shell, metadataForPath(path), canonicalUrlForPath(path))
+          .replace('<div id="root"></div>', `<div id="root">${renderToStaticMarkup(content)}</div>`)
+          .replace("</head>", `${tags.join("\n")}\n</head>`);
       };
       entry.source = renderPage(
         "/",
@@ -56,26 +65,47 @@ export const homeSeoPlugin = () => ({
         ),
         HOME_STRUCTURED_DATA,
       );
-      const guideChunk = Object.values(bundle).find(
-        (file) =>
-          file.type === "chunk" && file.facadeModuleId?.endsWith("/AtomicChess/AtomicChess.tsx"),
-      );
-      const guideStyles = [...(guideChunk?.viteMetadata?.importedCss ?? [])];
-      if (!guideStyles.length) throw new Error("Atomic chess guide stylesheet is missing");
-      this.emitFile({
-        type: "asset",
-        fileName: "atomic-chess/index.html",
-        source: renderPage(
-          "/atomic-chess",
-          createElement(
-            "main",
-            { className: "page atomicChessPage" },
-            createElement(AtomicChessGuideContent),
+      const emitDirectoryPage = (path, routeModule, className, Content, structuredData) => {
+        const chunk = Object.values(bundle).find(
+          (file) => file.type === "chunk" && file.facadeModuleId?.endsWith(routeModule),
+        );
+        // Shared route styles may live on a dependency rather than the route chunk.
+        const visited = new Set();
+        const styles = new Set();
+        const collectStyles = (file) => {
+          if (file?.type !== "chunk" || visited.has(file.fileName)) return;
+          visited.add(file.fileName);
+          for (const dependency of file.imports) collectStyles(bundle[dependency]);
+          for (const href of file.viteMetadata?.importedCss ?? []) {
+            if (!shell.includes(`href="/${href}"`)) styles.add(href);
+          }
+        };
+        collectStyles(chunk);
+        if (!styles.size) throw new Error(`Static page stylesheet is missing for ${path}`);
+        this.emitFile({
+          type: "asset",
+          fileName: `${path.slice(1)}index.html`,
+          source: renderPage(
+            path,
+            createElement("main", { className }, createElement(Content)),
+            structuredData,
+            [...styles],
           ),
-          ATOMIC_CHESS_STRUCTURED_DATA,
-          guideStyles,
-        ),
-      });
+        });
+      };
+      emitDirectoryPage(
+        ATOMIC_CHESS_PATH,
+        "/AtomicChess/AtomicChess.tsx",
+        "page atomicChessPage",
+        AtomicChessGuideContent,
+        ATOMIC_CHESS_STRUCTURED_DATA,
+      );
+      emitDirectoryPage(
+        TACTICAL_MOTIFS_PATH,
+        "/PuzzleMotifs/PuzzleMotifs.tsx",
+        "motifsPage",
+        PuzzleMotifsContent,
+      );
     },
   },
 });

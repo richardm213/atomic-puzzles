@@ -1,5 +1,6 @@
 import type { ComponentProps, ComponentType } from "react";
 
+import { TACTICAL_MOTIFS_PATH } from "../../../shared/seo";
 import { atomicChessExamples, type GuideExampleId } from "./atomicChessExamples";
 
 const Anchor = ({ children, ...props }: ComponentProps<"a">) => <a {...props}>{children}</a>;
@@ -26,9 +27,9 @@ export const AtomicChessGuideContent = ({
         <LinkComponent href="/">Back to home</LinkComponent>
         <h1>Atomic chess: rules and strategy</h1>
         <p>
-          In atomic chess, captures cause explosions. The piece you capture disappears, your
-          capturing piece disappears, and nearby pieces can disappear with them. Explode your
-          opponent’s king and you win. That changes how you attack, defend, and play an ending.
+          Atomic chess is a variant in which every capture causes an explosion. Both pieces involved
+          in the capture are removed, along with adjacent pieces other than pawns. You win by
+          exploding the opposing king or by checkmate.
         </p>
       </header>
 
@@ -149,7 +150,7 @@ export const AtomicChessGuideContent = ({
         </p>
         <p>
           For more replayable examples of forks, clearance, pins, and explosion defense, visit the
-          <LinkComponent href="/tactical-motifs"> tactical motifs page</LinkComponent>.
+          <a href={TACTICAL_MOTIFS_PATH}> tactical motifs page</a>.
         </p>
       </section>
 

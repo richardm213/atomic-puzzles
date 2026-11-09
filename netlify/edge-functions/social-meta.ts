@@ -5,6 +5,8 @@ import {
   HOME_DESCRIPTION,
   HOME_TITLE,
   SITE_NAME,
+  TACTICAL_MOTIFS_DESCRIPTION,
+  TACTICAL_MOTIFS_TITLE,
 } from "../../shared/seo.ts";
 
 export type SocialMetadata = {
@@ -88,8 +90,8 @@ const staticMetadata: Record<string, SocialMetadata> = {
     description: "Practice timed atomic queen endgames and compare leaderboard results.",
   },
   "/tactical-motifs": {
-    title: "Atomic Puzzle Motifs",
-    description: "Explore the tactical motifs used to classify Atomic Puzzles.",
+    title: TACTICAL_MOTIFS_TITLE,
+    description: TACTICAL_MOTIFS_DESCRIPTION,
   },
   "/solve/sets": {
     title: "Atomic Puzzle Sets",

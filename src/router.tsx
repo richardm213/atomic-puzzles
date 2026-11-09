@@ -196,7 +196,6 @@ const requirePuzzleLogin = (Page: ComponentType) => {
 const AuthenticatedPuzzleDashboardPage = requirePuzzleLogin(PuzzleDashboardPage);
 const AuthenticatedCustomPuzzleSetsPage = requirePuzzleLogin(CustomPuzzleSetsPage);
 const AuthenticatedCustomPuzzleSetEditPage = requirePuzzleLogin(CustomPuzzleSetEditPage);
-const AuthenticatedPuzzleMotifsPage = requirePuzzleLogin(PuzzleMotifsPage);
 const AuthenticatedPuzzleSetsPage = requirePuzzleLogin(PuzzleSetsPage);
 const AuthenticatedPuzzleSolverPage = requirePuzzleLogin(PuzzleSolverPage);
 const AuthenticatedPuzzleSubmissionPage = requirePuzzleLogin(PuzzleSubmissionPage);
@@ -665,7 +664,7 @@ const legacyPuzzleLeaderboardRoute = createRoute({
 const puzzleMotifsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/tactical-motifs",
-  component: AuthenticatedPuzzleMotifsPage,
+  component: PuzzleMotifsPage,
 });
 
 const legacyPuzzleMotifsRoute = createRoute({

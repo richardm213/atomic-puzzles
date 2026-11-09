@@ -87,7 +87,7 @@ export const navItems: NavItem[] = [
       {
         to: "/tactical-motifs",
         label: "Tactical motifs",
-        isActive: (pathname) => pathname === "/tactical-motifs",
+        isActive: (pathname) => /^\/tactical-motifs\/?$/.test(pathname),
       },
       {
         to: "/puzzles/endgames",

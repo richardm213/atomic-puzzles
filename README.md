@@ -209,18 +209,25 @@ The app is set up like a standard static SPA build:
 - Build command: `npm run build`
 - Output directory: `dist`
 
-The build also renders the homepage content and `/atomic-chess` guide as static HTML using
+The build also renders the homepage content and `/atomic-chess/` guide as static HTML using
 `scripts/home-seo-plugin.js`. Those pages share their content with the React routes. Keep the
 `/app.html` SPA fallback in `public/_redirects`: other routes must not receive the homepage body.
 The guide's embedded replays load in the browser; its text and source links remain readable
-without JavaScript.
+without JavaScript. Netlify serves the guide from a directory, so its canonical URL, homepage
+link, and sitemap entry all end in a slash.
+
+`/tactical-motifs/` uses the same build-time rendering for its glossary, definitions, and
+example move lists. Replays are available to guests; signing in is only needed to customize names.
 
 `public/sitemap.xml` lists canonical public landing pages and is advertised in `public/robots.txt`.
 Update it when adding another public landing page; omit private routes and filtered search URLs.
-After deploying SEO changes, submit `https://atomicpuzzles.org/sitemap.xml` in Google Search
-Console and inspect `/` and `/atomic-chess` to request indexing. Use Search Console's indexing
-and performance reports to assess Google visibility; a sitemap or an indexed page does not
-promise a particular ranking.
+After deployment, confirm `/atomic-chess` and `/atomic-chess/index.html` resolve to
+`/atomic-chess/` and that the final HTML has a single self-referencing canonical tag.
+In Google Search Console, inspect `https://atomicpuzzles.org/atomic-chess/`, check the
+Google-selected canonical, and request indexing. Submit `https://atomicpuzzles.org/sitemap.xml`
+if it hasn't been submitted. In Performance, filter to the exact query `atomic chess` and check
+the Pages tab for impressions and clicks on the guide versus the homepage. An indexed page
+does not promise a particular ranking.
 
 The opening explorer uses Turso in both local development and production; it does not fall back to
 a local SQLite file. Configure these environment variables in `.env.local` and in Netlify:
