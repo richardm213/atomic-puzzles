@@ -1,4 +1,11 @@
-import { ATOMIC_CHESS_DESCRIPTION, ATOMIC_CHESS_TITLE, canonicalUrlForPath, HOME_DESCRIPTION, HOME_TITLE, SITE_NAME } from "../../shared/seo";
+import {
+  ATOMIC_CHESS_DESCRIPTION,
+  ATOMIC_CHESS_TITLE,
+  canonicalUrlForPath,
+  HOME_DESCRIPTION,
+  HOME_TITLE,
+  SITE_NAME,
+} from "../../shared/seo.ts";
 
 export type SocialMetadata = {
   title: string;
