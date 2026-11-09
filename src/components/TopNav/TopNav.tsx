@@ -26,9 +26,7 @@ import { type ChangeEvent, useCallback, useEffect, useRef, useState } from "reac
 import { atomic960Enabled, modeLabels, publicModeOptions } from "../../constants/matches";
 import {
   type ColorMode,
-  CUSTOM_THEMES,
   getBoardThemeColors,
-  isDarkOnlyTheme,
   type Theme,
   useAppSettings,
 } from "../../context/AppSettings";
@@ -204,15 +202,12 @@ export const TopNav = () => {
     setShowCoinChangePopups,
   } = useAppSettings();
   const normalizedAuthUsername = normalizeUsername(user?.username);
-  const canUseCustomThemes =
-    normalizedAuthUsername === "admin" || normalizedAuthUsername === "seaside_tiramisu";
   const themeAccess = useMutation({
     mutationFn: checkRedCharcoalAccess,
     onSuccess: (owned) => {
       if (owned) setTheme("ruby");
     },
   });
-  const darkOnlyTheme = canUseCustomThemes && isDarkOnlyTheme(theme);
   const isProfilePage = /^\/@\/[^/]+\/?$/.test(pathname);
   const [profileUsername, setProfileUsername] = useState(() =>
     getStoredProfileUsername(user?.username),
@@ -280,10 +275,10 @@ export const TopNav = () => {
   }, [normalizedAuthUsername, profileMenuOpen]);
 
   useEffect(() => {
-    if (!isLoading && theme !== "default" && theme !== "ruby" && !canUseCustomThemes) {
+    if (!isLoading && theme !== "default" && theme !== "ruby") {
       setTheme("default");
     }
-  }, [canUseCustomThemes, isLoading, setTheme, theme]);
+  }, [isLoading, setTheme, theme]);
 
   const resolvedProfileUsername = profileUsername || normalizedAuthUsername;
 
@@ -915,12 +910,12 @@ export const TopNav = () => {
                     </label>
                     <select
                       id="site-theme-select"
-                      value={canUseCustomThemes || theme === "ruby" ? theme : "default"}
+                      value={theme === "ruby" ? "ruby" : "default"}
                       disabled={themeAccess.isPending}
                       onChange={(event) => {
                         const nextTheme = event.target.value as Theme;
                         themeAccess.reset();
-                        if (nextTheme === "ruby" && !canUseCustomThemes) {
+                        if (nextTheme === "ruby") {
                           if (!isAuthenticated) {
                             void login(window.location.pathname + window.location.search);
                             return;
@@ -928,22 +923,12 @@ export const TopNav = () => {
                           themeAccess.mutate();
                           return;
                         }
-                        if (nextTheme !== "default" && !canUseCustomThemes) return;
+                        if (nextTheme !== "default") return;
                         setTheme(nextTheme);
                       }}
                     >
                       <option value="default">Default</option>
-                      {CUSTOM_THEMES.filter(
-                        (palette) => canUseCustomThemes || palette === "ruby",
-                      ).map((palette) => (
-                        <option key={palette} value={palette}>
-                          {palette === "emerald"
-                            ? "Forest Green"
-                            : palette === "ruby"
-                              ? "Red Charcoal"
-                              : palette.charAt(0).toUpperCase() + palette.slice(1)}
-                        </option>
-                      ))}
+                      <option value="ruby">Red Charcoal</option>
                     </select>
                     {themeAccess.data === false ? (
                       <Link to="/shop" onClick={() => setOpenPanel(null)}>
@@ -963,11 +948,10 @@ export const TopNav = () => {
                     <select
                       id="site-color-mode-select"
                       value={colorMode}
-                      disabled={darkOnlyTheme}
                       onChange={(event) => setColorMode(event.target.value as ColorMode)}
                     >
-                      <option value="dark">{darkOnlyTheme ? "Dark only" : "Dark"}</option>
-                      {darkOnlyTheme ? null : <option value="light">Light</option>}
+                      <option value="dark">Dark</option>
+                      <option value="light">Light</option>
                     </select>
                   </div>
                 </div>

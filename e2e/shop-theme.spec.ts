@@ -3,6 +3,17 @@ import { expect, test } from "./fixtures";
 test("Red Charcoal unlocks once and ownership is checked only when explicitly selected", async ({
   page,
 }) => {
+  await page.route("**/api/auth/session", (route) =>
+    route.fulfill({ json: { user: { username: "seaside_tiramisu" } } }),
+  );
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("atomic-puzzles.site-appearance")) {
+      localStorage.setItem(
+        "atomic-puzzles.site-appearance",
+        JSON.stringify({ theme: "amethyst", colorMode: "dark" }),
+      );
+    }
+  });
   let purchased = false;
   let accessChecks = 0;
   let purchases = 0;
@@ -57,7 +68,9 @@ test("Red Charcoal unlocks once and ownership is checked only when explicitly se
     return route.fulfill({ status: 400, json: { error: "Unexpected test request" } });
   });
   await page.goto("/shop");
+  await expect(page.locator("html")).toHaveAttribute("data-palette", "default");
   await page.getByRole("button", { name: "Open settings", exact: true }).click();
+  await expect(page.getByLabel("Theme", { exact: true }).getByRole("option")).toHaveCount(2);
   await page.getByLabel("Theme", { exact: true }).selectOption("ruby");
   await expect(page.getByRole("link", { name: "Unlock Red Charcoal · 100 coins" })).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("data-palette", "default");
