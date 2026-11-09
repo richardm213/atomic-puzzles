@@ -120,6 +120,10 @@ const PuzzleSolverPage = lazyRouteComponent(
   () => import("./pages/PuzzleSolver/PuzzleSolver"),
   "PuzzleSolverPage",
 );
+const GuestPuzzleTrial = lazyRouteComponent(
+  () => import("./pages/PuzzleSolver/GuestPuzzleTrial"),
+  "GuestPuzzleTrial",
+);
 const PuzzleSubmissionPage = lazyRouteComponent(
   () => import("./pages/PuzzleSubmission/PuzzleSubmission"),
   "PuzzleSubmissionPage",
@@ -555,7 +559,13 @@ const legacyMatchRoute = createRoute({
 const solveRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve",
-  component: AuthenticatedPuzzleSolverPage,
+  component: function SolveRoute() {
+    return (
+      <RequireAuthentication signedOutFallback={<GuestPuzzleTrial />}>
+        <PuzzleSolverPage />
+      </RequireAuthentication>
+    );
+  },
 });
 
 const dashboardRoute = createRoute({
