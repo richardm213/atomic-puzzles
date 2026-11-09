@@ -442,7 +442,7 @@ export const TopNav = () => {
         aria-label="Go to Atomic Puzzles home page"
         aria-current={pathname === "/" ? "page" : undefined}
       >
-        <NavBrandMark mode={colorMode} />
+        <NavBrandMark />
         <span>Atomic Puzzles</span>
       </Link>
       <button

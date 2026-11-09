@@ -1,15 +1,11 @@
 import { type CSSProperties, useId } from "react";
 
-import type { ColorMode } from "../../context/AppSettings";
 import { appAssetPath } from "../../utils/appAssetPath";
 
-export const NavBrandMark = ({ mode }: { mode: ColorMode }) => {
+export const NavBrandMark = () => {
   const filterId = useId();
-  const isLight = mode === "light";
-  // Map the original tile and nucleus luminances to the palette's two inks.
-  // A gentle gamma lift keeps the fine orbit strokes vivid against the muted tile.
-  const slope = isLight ? -1.62 : 1.51;
-  const intercept = isLight ? 1.6 : -0.344;
+  // All palettes and modes share the same artwork and alpha mask, so changing
+  // appearance only recolors the logo without changing its visible footprint.
 
   return (
     <>
@@ -25,7 +21,7 @@ export const NavBrandMark = ({ mode }: { mode: ColorMode }) => {
           >
             <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" />
             <feComponentTransfer>
-              <feFuncA type="linear" slope={slope} intercept={intercept} />
+              <feFuncA type="linear" slope="1.51" intercept="-0.344" />
             </feComponentTransfer>
             <feComponentTransfer result="tone">
               <feFuncA type="gamma" amplitude="1" exponent="0.88" offset="0" />
@@ -40,7 +36,7 @@ export const NavBrandMark = ({ mode }: { mode: ColorMode }) => {
       </svg>
       <img
         className="brandMarkImage"
-        src={appAssetPath(`/images/brand/atomic-logo-${mode}.png`)}
+        src={appAssetPath("/images/brand/atomic-logo-dark.png")}
         alt=""
         width="30"
         height="30"
