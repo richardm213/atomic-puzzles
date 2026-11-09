@@ -1,5 +1,8 @@
+import { INITIAL_FEN } from "chessops/fen";
+
+import { atomicOpenings, getOpeningVariations } from "./atomicOpenings";
 import { atomicWinChance } from "./atomicWinChance";
-import { fenAfterAtomicMove } from "./puzzles/solutionPgn";
+import { buildSolutionMoveTree, fenAfterAtomicMove, parseSolutionUciLines } from "./chess/pgn";
 
 export const GAME_ANALYSIS_COST = 1;
 export const GAME_ANALYSIS_BUDGET_NODES = 128_000_000;
@@ -319,6 +322,7 @@ const colorAccuracy = (
 
 export const gameAccuracyForEvaluations = (
   evaluations: readonly number[],
+  blackMovesFirst = false,
 ): { whiteAccuracy: number; blackAccuracy: number } => {
   if (evaluations.length <= 1) return { whiteAccuracy: 100, blackAccuracy: 100 };
   const winPercents = evaluations.map(winPercent);
@@ -333,7 +337,7 @@ export const gameAccuracyForEvaluations = (
     windows.push(winPercents.slice(index, index + windowSize));
   }
   const moves = Array.from({ length: moveCount }, (_, index) => {
-    const color: "white" | "black" = index % 2 === 0 ? "white" : "black";
+    const color: "white" | "black" = (index % 2 === 0) !== blackMovesFirst ? "white" : "black";
     const previous = winPercents[index]!;
     const next = winPercents[index + 1]!;
     return {
@@ -385,19 +389,51 @@ export const averageCentipawnLossForEvaluations = (
   };
 };
 
+const positionKey = (fen: string): string => fen.trim().split(/\s+/).slice(0, 4).join(" ");
+const standardStartKey = positionKey(INITIAL_FEN);
+let openingBook: ReturnType<typeof buildSolutionMoveTree> | undefined;
+
+export const catalogOpeningPlyCount = (initialFen: string, moves: Iterable<string>): number => {
+  if (positionKey(initialFen) !== standardStartKey) return 0;
+  openingBook ??= buildSolutionMoveTree(
+    atomicOpenings.flatMap((opening) =>
+      [opening.setup, ...getOpeningVariations(opening).map(({ pgn }) => pgn)].flatMap((pgn) =>
+        parseSolutionUciLines(INITIAL_FEN, pgn).map((line) => line.map(({ uci }) => uci)),
+      ),
+    ),
+  );
+  // A move is in the book only in a catalogued move order. Stop at the first deviation.
+  let node = openingBook;
+  let plies = 0;
+  for (const move of moves) {
+    const next = node.children.get(move.toLowerCase());
+    if (!next) break;
+    node = next;
+    plies += 1;
+  }
+  return plies;
+};
+
 export const applyGameAnalysisOpeningReview = (
   summary: GameAnalysisSummary,
   { wolfrandom }: { wolfrandom: boolean },
 ): GameAnalysisSummary => {
   const blackMovesFirst = !wolfrandom && summary.positions[0]?.fen.trim().split(/\s+/)[1] === "b";
+  const bookPlies = wolfrandom
+    ? 0
+    : catalogOpeningPlyCount(
+        summary.positions[0]?.fen ?? "",
+        summary.assessments.map(({ uci }) => uci),
+      );
   const openingPlies = wolfrandom
     ? Array.from({ length: WOLFRANDOM_RANDOMIZED_PLIES }, (_, index) => index + 1)
     : blackMovesFirst
       ? [1, 2, 4]
       : [1, 2, 3];
-  const ignoredPlies = new Set<number>();
+  const ignoredPlies = new Set<number>(Array.from({ length: bookPlies }, (_, index) => index + 1));
   const allowedMatePlies = new Set<number>();
   for (const ply of openingPlies) {
+    if (ignoredPlies.has(ply)) continue;
     const before = summary.positions[ply - 1];
     const after = summary.positions[ply];
     if (
@@ -429,14 +465,17 @@ export const applyGameAnalysisOpeningReview = (
   }
   const accuracyStart = wolfrandom
     ? WOLFRANDOM_RANDOMIZED_PLIES
-    : GAME_ANALYSIS_INITIAL_ACCURACY_PLIES;
+    : Math.max(GAME_ANALYSIS_INITIAL_ACCURACY_PLIES, bookPlies);
 
   return {
     ...summary,
     assessments,
     whiteCounts,
     blackCounts,
-    ...gameAccuracyForEvaluations(summary.evaluations.slice(accuracyStart)),
+    ...gameAccuracyForEvaluations(
+      summary.evaluations.slice(accuracyStart),
+      blackMovesFirst !== (accuracyStart % 2 === 1),
+    ),
     ...averageCentipawnLossForEvaluations(summary.evaluations, {
       ignoredPlies,
       allowedMatePlies,

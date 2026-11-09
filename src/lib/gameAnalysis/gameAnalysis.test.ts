@@ -1,8 +1,10 @@
+import { INITIAL_FEN } from "chessops/fen";
 import { describe, expect, it, vi } from "vitest";
 
 import {
   applyGameAnalysisOpeningReview,
   buildGameAnalysisSummary,
+  buildGamePositionFens,
   evaluationsForPositions,
   parseStoredAtomicDbPosition,
   type StoredAtomicDbPosition,
@@ -112,6 +114,29 @@ describe("AtomicDB game analysis classification", () => {
     expect(summary.evaluations).toEqual([0, -400, 400, -400, -100, -500]);
   });
 
+  it("skips catalog moves, even if they allow mate, and grades the first move outside the line", () => {
+    // Two Knights through 3. g4, then Black deviates with 3…a6.
+    const moves = ["g1f3", "f7f6", "b1c3", "g8h6", "g2g4", "a7a6", "d2d4"];
+    const scores = [0, 10_000, 0, 0, 300, 400, 10_000, -10_000];
+    const positions = buildGamePositionFens(INITIAL_FEN, moves).map((fen, index) =>
+      position(fen, scores[index]!, moves[index] ?? "b8c6"),
+    );
+    const raw = buildGameAnalysisSummary(moves, positions);
+    const review = applyGameAnalysisOpeningReview(raw, { wolfrandom: false });
+
+    expect(raw.assessments[0]?.classification).toBe("blunder");
+    expect(raw.assessments[4]?.classification).toBe("blunder");
+    expect(review.assessments.slice(0, 5).map(({ classification }) => classification)).toEqual(
+      Array(5).fill("best"),
+    );
+    expect(review.assessments[5]?.classification).toBe("blunder");
+    expect(review.blackAverageCentipawnLoss).toBe(1400);
+    expect(review.whiteAverageCentipawnLoss).toBe(0);
+    expect(review.blackAccuracy).toBeLessThan(100);
+    expect(review.whiteAccuracy).toBe(100);
+    expect(review.evaluations).toEqual(raw.evaluations);
+  });
+
   it("counts a newly allowed opening mate but not a missed mate", () => {
     const forcedMate = position(WHITE_FEN, 0, "e1d1");
     forcedMate.lines[0]!.mate = 1;
@@ -158,8 +183,8 @@ describe("AtomicDB game analysis classification", () => {
     after.lines[0]!.cp = null;
     const grade = (before: StoredAtomicDbPosition) =>
       buildGameAnalysisSummary(["h1h2"], [before, after]).assessments[0];
-    const grades = [-1_000, -1_200, -1_500, -2_000].map((cp) =>
-      grade(position(BLACK_FEN, cp, "h1g1"))?.classification,
+    const grades = [-1_000, -1_200, -1_500, -2_000].map(
+      (cp) => grade(position(BLACK_FEN, cp, "h1g1"))?.classification,
     );
 
     expect(grades).toEqual(["blunder", "mistake", "inaccuracy", "best"]);
