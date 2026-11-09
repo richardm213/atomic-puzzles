@@ -28,7 +28,7 @@
     var(--color-panel-deep)
   );
   --brand-mark-border: color-mix(in srgb, var(--color-primary-soft) 58%, transparent);
-  --brand-mark-color: var(--color-nav-badge);
+  --brand-mark-color: #8cf5ff;
   --brand-mark-tile: transparent;
   --brand-mark-shadow:
     0 0 0 1px color-mix(in srgb, white 8%, transparent) inset,
