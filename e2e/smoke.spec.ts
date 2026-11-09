@@ -39,3 +39,18 @@ test("community root redirects to puzzle rankings", async ({ page }) => {
   await page.goto("/community");
   await expect(page).toHaveURL(/\/community\/puzzles$/);
 });
+
+test("endgame selection survives refresh and browser history", async ({ page }) => {
+  await page.route("https://tablebase.lichess.ovh/**", (route) => route.abort());
+  await page.goto("/puzzles/endgames?mode=rook-bishop-vs-king");
+  const selector = page.getByRole("combobox", { name: "Endgame", exact: true });
+  await expect(selector).toHaveValue("rook-bishop-vs-king");
+  await selector.selectOption("two-queens");
+  await expect(page).toHaveURL(/mode=two-queens/);
+  await page.reload();
+  await expect(selector).toHaveValue("two-queens");
+  await page.goBack();
+  await expect(selector).toHaveValue("rook-bishop-vs-king");
+  await page.goForward();
+  await expect(selector).toHaveValue("two-queens");
+});

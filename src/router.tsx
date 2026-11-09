@@ -18,6 +18,7 @@ import {
   RouteNotFoundFallback,
 } from "./components/RouteFallback/RouteFallback";
 import { RouteLoadingFallback } from "./components/RouteLoadingFallback/RouteLoadingFallback";
+import { parseEndgameMode } from "./lib/endgamePractice/endgameModes";
 import { queryClient } from "./lib/query/queryClient";
 import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
 import { HomePage } from "./pages/Home/Home";
@@ -353,6 +354,9 @@ const practiceRoute = createRoute({
 const endgamePracticeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/puzzles/endgames",
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { mode?: ReturnType<typeof parseEndgameMode> } => ({ mode: parseEndgameMode(search.mode) }),
   component: EndgamePracticePage,
 });
 

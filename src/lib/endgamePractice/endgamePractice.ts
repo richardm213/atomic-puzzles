@@ -4,15 +4,9 @@ import { makeUci } from "chessops/util";
 import { Atomic } from "chessops/variant";
 
 import { serializeSanLinesToPgn } from "../puzzles/solutionPgn";
+import type { EndgameMode } from "./endgameModes";
+export type { EndgameMode } from "./endgameModes";
 
-export type EndgameMode =
-  | "pawn-duel"
-  | "blockade"
-  | "two-queens"
-  | "rook-vs-pawn"
-  | "rook-bishop-vs-king"
-  | "rook-pawn-vs-king"
-  | "rook-pawn-vs-pawn";
 export type PawnFileCategory = "rook-file" | "knight-file" | "regular-file";
 export type PawnRankCategory = "rank-3" | "rank-regular" | "rank-7";
 export type EndgameCategory = `${PawnFileCategory}:${PawnRankCategory}` | "no-pawn";

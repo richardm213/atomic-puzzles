@@ -2,7 +2,6 @@ import {
   type AtomicTablebaseResponse,
   probeAtomicTablebase,
 } from "../atomicTablebase/lichessAtomicTablebase";
-
 import type { EndgameMode } from "./endgamePractice";
 
 export { probeAtomicTablebase };

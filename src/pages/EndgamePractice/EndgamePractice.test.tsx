@@ -5,6 +5,11 @@ import { afterEach, expect, it, vi } from "vitest";
 import type { ChessboardState } from "../../types/chessboard";
 import { EndgamePracticePage } from "./EndgamePractice";
 
+vi.mock("@tanstack/react-router", () => ({
+  useSearch: () => ({ mode: "pawn-duel" }),
+  useNavigate: () => vi.fn(),
+}));
+
 const mocks = vi.hoisted(() => ({
   leaderboard: vi.fn().mockResolvedValue({ entries: [], ownBest: null }),
 }));

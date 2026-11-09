@@ -10,6 +10,7 @@ import {
   faRotateRight,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
@@ -21,6 +22,7 @@ import {
   type EndgameLeaderboardEntry,
   updateEndgameLeaderboard,
 } from "../../lib/endgamePractice/endgameLeaderboard";
+import { endgameModes } from "../../lib/endgamePractice/endgameModes";
 import {
   buildEndgamePgn,
   categoryLabel,
@@ -224,11 +226,13 @@ const preloadDefenderTablebases = (fen: string, signal: AbortSignal): Promise<vo
 
 export const EndgamePracticePage = () => {
   const { user } = useAuth();
+  const { mode: urlMode = "pawn-duel" } = useSearch({ from: "/puzzles/endgames" });
+  const navigate = useNavigate();
   const [initialSetup] = useState(() => {
-    const category = randomPawnCategory();
-    return { category, position: generateEndgamePosition("pawn-duel", category) };
+    const category = usesPawnCategories(urlMode) ? randomPawnCategory() : "no-pawn";
+    return { category, position: generateEndgamePosition(urlMode, category) };
   });
-  const [mode, setMode] = useState<EndgameMode>("pawn-duel");
+  const [mode, setMode] = useState<EndgameMode>(urlMode);
   const [category, setCategory] = useState<EndgameCategory>(initialSetup.category);
   const [position, setPosition] = useState(initialSetup.position);
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
@@ -333,6 +337,15 @@ export const EndgamePracticePage = () => {
     },
     [resetCopyFeedback],
   );
+
+  useEffect(() => {
+    if (urlMode === mode) return;
+    const nextCategory = usesPawnCategories(urlMode) ? randomPawnCategory() : "no-pawn";
+    setMode(urlMode);
+    setCategory(nextCategory);
+    nextCategoryRef.current = null;
+    createReadyPosition(urlMode, nextCategory);
+  }, [urlMode, mode, createReadyPosition]);
 
   const startRound = useCallback(() => {
     preparationControllerRef.current?.abort();
@@ -722,27 +735,14 @@ export const EndgamePracticePage = () => {
                   value={mode}
                   disabled={status === "running" || status === "preparing"}
                   onChange={(event) => {
-                    const nextMode = event.target.value as EndgameMode;
-                    const nextCategory = usesPawnCategories(nextMode)
-                      ? randomPawnCategory()
-                      : "no-pawn";
-                    setMode(nextMode);
-                    setCategory(nextCategory);
-                    nextCategoryRef.current = null;
-                    createReadyPosition(nextMode, nextCategory);
+                    void navigate({
+                      to: "/puzzles/endgames",
+                      search: { mode: event.target.value as EndgameMode },
+                      resetScroll: false,
+                    });
                   }}
                 >
-                  {(
-                    [
-                      "pawn-duel",
-                      "blockade",
-                      "two-queens",
-                      "rook-vs-pawn",
-                      "rook-bishop-vs-king",
-                      "rook-pawn-vs-king",
-                      "rook-pawn-vs-pawn",
-                    ] as const
-                  ).map((option) => (
+                  {endgameModes.map((option) => (
                     <option key={option} value={option}>
                       {modeLabel(option)}
                     </option>
