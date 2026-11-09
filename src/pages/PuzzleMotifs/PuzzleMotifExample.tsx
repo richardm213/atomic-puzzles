@@ -12,10 +12,12 @@ import { buildPgnHistory } from "../../components/Chessboard/pgnHistory";
 import type { SolutionNavigation } from "../../types/chessboard";
 import type { MotifExample } from "./motifExamples";
 
+export type ReplayFocusRequest = { tag?: string; pointer: boolean };
+
 type ReplayProps = {
   example: MotifExample;
   name: string;
-  focusRequest: { tag: string; pointer: boolean } | null;
+  focusRequest: ReplayFocusRequest | null;
 };
 
 const focusReplay = (element: HTMLDivElement, pointer: boolean) => {
@@ -31,7 +33,11 @@ const Replay = ({ example, name, focusRequest }: ReplayProps) => {
   const navigation = useMemo<SolutionNavigation>(() => ({ type: "solution", line: 0, ply }), [ply]);
   useLayoutEffect(() => {
     if (!focusRequest || !replayRef.current) return;
-    document.getElementById(focusRequest.tag)?.scrollIntoView({ block: "start" });
+    if (focusRequest.tag) {
+      document.getElementById(focusRequest.tag)?.scrollIntoView({ block: "start" });
+    } else {
+      replayRef.current.scrollIntoView({ block: "nearest" });
+    }
     focusReplay(replayRef.current, focusRequest.pointer);
   }, [focusRequest]);
   if (!history.ok || history.history.plies.length < 2) return null;
