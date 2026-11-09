@@ -28,6 +28,10 @@ create table if not exists public.shop_redemptions (
   cost integer not null default 500 check (
     (item_key = 'username_change' and cost = 100)
     or (item_key = 'atomicdb_analysis_12h' and cost = 200)
+    -- Preserve purchases made before these shop prices changed.
+    or (item_key = 'discord_nitro_month' and cost in (400, 500))
+    or (item_key = 'lichess_patron_month' and cost in (500, 600))
+    or (item_key = 'next_prize_tournament_format' and cost in (1000, 1500))
     or cost = case
       when item_key = 'discord_nitro_month' then 400
       when item_key = 'discord_nitro_year' then 4000
