@@ -54,6 +54,65 @@ export const atomicTourAwardExpiryDate = (playedOn: string): string => {
   return `${expiryYear}-${expiryMonth}-${expiryDay}`;
 };
 
+type QualifierAwardTiming = {
+  award_key: string;
+  awarded_on: string;
+  expires_on: string;
+  points: number;
+};
+
+export const atomicTourQualifierAwardChanges = (
+  before: QualifierAwardTiming[],
+  after: QualifierAwardTiming[],
+) => {
+  const previous = new Map(before.map((award) => [award.award_key, award]));
+  const next = new Map(after.map((award) => [award.award_key, award]));
+  return [...new Set([...previous.keys(), ...next.keys()])]
+    .map((key) => [previous.get(key), next.get(key)] as const)
+    .filter(
+      ([a, b]) =>
+        a?.awarded_on !== b?.awarded_on ||
+        a?.expires_on !== b?.expires_on ||
+        a?.points !== b?.points,
+    );
+};
+
+export const atomicTourMonthlySnapshotDates = (candidates: string[], today: string): string[] => {
+  const byMonth = new Map<string, string>();
+  for (const date of [...candidates, today]) {
+    if (date > today) continue;
+    const month = date.slice(0, 7);
+    if (date > (byMonth.get(month) ?? "")) byMonth.set(month, date);
+  }
+  return [...byMonth.values()].sort();
+};
+
+export const atomicTourQualifierSnapshotRefreshDates = (
+  changes: ReturnType<typeof atomicTourQualifierAwardChanges>,
+  snapshotDates: string[],
+  today: string,
+): string[] => {
+  if (!changes.length) return [today];
+
+  const newAwardDates = changes.flatMap(([, award]) =>
+    award ? [award.awarded_on, award.expires_on] : [],
+  );
+  const dates = atomicTourMonthlySnapshotDates([...snapshotDates, ...newAwardDates], today);
+  const existing = new Set(snapshotDates);
+  const affected = new Set([today]);
+  const pointsOn = (award: QualifierAwardTiming | undefined, date: string) =>
+    award && award.awarded_on <= date && date < award.expires_on ? award.points : 0;
+  for (const [index, date] of dates.entries()) {
+    if (existing.has(date) && !changes.some(([a, b]) => pointsOn(a, date) !== pointsOn(b, date))) {
+      continue;
+    }
+    affected.add(date);
+    // The following snapshot's movement is measured against this one.
+    if (dates[index + 1]) affected.add(dates[index + 1]!);
+  }
+  return [...affected].sort();
+};
+
 export const atomicTourStageForRound = (
   round: string,
   hasChampionshipMatch = false,

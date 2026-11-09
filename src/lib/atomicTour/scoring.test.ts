@@ -8,6 +8,8 @@ import {
   atomicTourLosersBracketWinPoints,
   atomicTourMainStageForResults,
   atomicTourPlacementAfterChampionship,
+  atomicTourQualifierAwardChanges,
+  atomicTourQualifierSnapshotRefreshDates,
   atomicTourQualifierWinEarnsPoints,
   atomicTourQualifierWinPoints,
   atomicTourStageForFinalRank,
@@ -143,6 +145,35 @@ describe("Atomic Tour scoring", () => {
     expect(atomicTourQualifierWinPoints(1000, 0, 3, "a960e")).toBe(20);
     expect(atomicTourQualifierWinPoints(1000, 1, 3, "a960e")).toBe(20);
     expect(atomicTourQualifierWinPoints(1000, 2, 3, "a960e")).toBe(20);
+  });
+
+  it("refreshes the match month and affected movement when a qualifier is backdated", () => {
+    const oldAward = {
+      award_key: "qualifier",
+      awarded_on: "2025-12-20",
+      expires_on: "2028-01-31",
+      points: 30,
+    };
+    const corrected = {
+      ...oldAward,
+      awarded_on: "2025-09-04",
+      expires_on: "2027-10-31",
+    };
+    const dates = ["2025-08-31", "2025-10-31", "2025-11-30", "2025-12-31"];
+    expect(
+      atomicTourQualifierSnapshotRefreshDates(
+        atomicTourQualifierAwardChanges([oldAward], [corrected]),
+        dates,
+        "2025-12-31",
+      ),
+    ).toEqual(["2025-09-04", "2025-10-31", "2025-11-30", "2025-12-31"]);
+    expect(
+      atomicTourQualifierSnapshotRefreshDates(
+        atomicTourQualifierAwardChanges([corrected], [corrected]),
+        dates,
+        "2025-12-31",
+      ),
+    ).toEqual(["2025-12-31"]);
   });
 
   it("excludes qualifier walkovers except an AWC Q2 walkover after a played Q1 win", () => {

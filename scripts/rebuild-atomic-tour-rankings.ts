@@ -9,7 +9,10 @@ import {
   type AtomicTourMainResult,
   type AtomicTourMainStage,
   atomicTourMainStageForResults,
+  atomicTourMonthlySnapshotDates,
   atomicTourPlacementAfterChampionship,
+  atomicTourQualifierAwardChanges,
+  atomicTourQualifierSnapshotRefreshDates,
   atomicTourQualifierWinEarnsPoints,
   atomicTourQualifierWinPoints,
   atomicTourStageForFinalRank,
@@ -192,11 +195,11 @@ const awardKey = (...parts: string[]): string =>
     .filter(Boolean)
     .join(":");
 
-const knockoutAwards = (
+const knockoutAwards = async (
   event: CatalogRow,
   matches: MatchRow[],
   seededPlayers: ReadonlySet<string>,
-): PointAward[] => {
+): Promise<PointAward[]> => {
   const tier = atomicTourEventPoints[event.id] ?? atomicTourEventPoints[event.series_key];
   if (!tier) return [];
   const fallbackDate = event.end_date ?? today;
@@ -393,59 +396,63 @@ const knockoutAwards = (
     }
   }
 
+  const qualifierMatches = matches.filter((match) => match.bracket === "qualifying");
   const qualifierRounds = [
-    ...new Set(
-      matches
-        .filter((match) => match.bracket === "qualifying")
-        .map((match) => match.round.trim())
-        .filter(Boolean),
-    ),
+    ...new Set(qualifierMatches.map((match) => match.round.trim()).filter(Boolean)),
   ].sort((left, right) => qualifierRoundOrder(left) - qualifierRoundOrder(right));
-  matches
-    .filter((match) => match.bracket === "qualifying" && isBonusEligibleResult(match))
-    .forEach((match) => {
-      const player = winner(match);
-      if (!player || excludedPlayers.has(player)) return;
-      const roundIndex = Math.max(0, qualifierRounds.indexOf(match.round.trim()));
-      const wonPlayedFirstRound = matches.some(
-        (candidate) =>
-          candidate.bracket === "qualifying" &&
-          qualifierRounds.indexOf(candidate.round.trim()) === 0 &&
-          normalize(candidate.outcome_type) !== "withdrawal" &&
-          winner(candidate) === player,
-      );
-      if (
-        !atomicTourQualifierWinEarnsPoints({
-          seriesKey: event.series_key,
-          roundIndex,
-          outcomeType: match.outcome_type,
-          wonPlayedFirstRound,
-        })
+  const firstRoundWinners = new Set(
+    qualifierMatches
+      .filter(
+        (match) =>
+          match.round.trim() === qualifierRounds[0] &&
+          normalize(match.outcome_type) !== "withdrawal",
       )
-        return;
-      const awardedOn = match.played_on ?? fallbackDate;
-      awards.push({
-        award_key: awardKey(event.id, player, "qualifier-win", match.id),
-        tournament_id: event.id,
-        player_name: player,
-        source_type: "placement",
-        source_key: match.id,
-        awarded_on: awardedOn,
-        expires_on: atomicTourAwardExpiryDate(awardedOn),
-        points: atomicTourQualifierWinPoints(
-          tier,
-          roundIndex,
-          qualifierRounds.length,
-          event.series_key,
-        ),
-        description:
-          event.series_key === "a960e"
-            ? "group-stage win"
-            : `qualifier win, ${qualifierRounds.length - roundIndex} ${
-                qualifierRounds.length - roundIndex === 1 ? "round" : "rounds"
-              } from main draw`,
-      });
+      .map(winner),
+  );
+  for (const match of qualifierMatches) {
+    if (!isBonusEligibleResult(match)) continue;
+    const player = winner(match);
+    if (!player || excludedPlayers.has(player)) continue;
+    const roundIndex = Math.max(0, qualifierRounds.indexOf(match.round.trim()));
+    if (
+      !atomicTourQualifierWinEarnsPoints({
+        seriesKey: event.series_key,
+        roundIndex,
+        outcomeType: match.outcome_type,
+        wonPlayedFirstRound: firstRoundWinners.has(player),
+      })
+    )
+      continue;
+    const awardedOn =
+      match.played_on ||
+      (event.series_key === "awc" ? await matchDate(match.match_id, "") : fallbackDate);
+    if (!awardedOn) {
+      console.warn(`Skipping undated AWC qualifier award: ${event.id}/${match.id}`);
+      continue;
+    }
+    const roundsRemaining = qualifierRounds.length - roundIndex;
+    awards.push({
+      award_key: awardKey(event.id, player, "qualifier-win", match.id),
+      tournament_id: event.id,
+      player_name: player,
+      source_type: "placement",
+      source_key: match.id,
+      awarded_on: awardedOn,
+      expires_on: atomicTourAwardExpiryDate(awardedOn),
+      points: atomicTourQualifierWinPoints(
+        tier,
+        roundIndex,
+        qualifierRounds.length,
+        event.series_key,
+      ),
+      description:
+        event.series_key === "a960e"
+          ? "group-stage win"
+          : `qualifier win, ${roundsRemaining} ${
+              roundsRemaining === 1 ? "round" : "rounds"
+            } from main draw`,
     });
+  }
   return awards;
 };
 
@@ -580,7 +587,7 @@ const run = async () => {
       addParticipant(participants, event.id, match.p1);
       addParticipant(participants, event.id, match.p2);
     });
-    awards.push(...knockoutAwards(event, eventMatches, seededPlayers));
+    awards.push(...(await knockoutAwards(event, eventMatches, seededPlayers)));
   }
   for (const season of requestedEventId ? [] : atomicChessLeagueSeasons) {
     const tournamentId = `acl-s${season.number}`;
@@ -620,14 +627,40 @@ const run = async () => {
     awards.push(...wolfarenaAwards(wolfarena, wolfarenaArchive.payload));
   }
 
-  let existingAwardsQuery = supabase.from("atomic_tour_point_awards").select("award_key");
+  let existingAwardsQuery = supabase
+    .from("atomic_tour_point_awards")
+    .select("award_key,awarded_on,expires_on,points,description");
   if (requestedEventId)
     existingAwardsQuery = existingAwardsQuery.eq("tournament_id", requestedEventId);
   const { data: existingAwards, error: existingAwardsError } = await existingAwardsQuery;
   if (existingAwardsError) throw existingAwardsError;
-  const existingAwardKeys = (existingAwards as Array<{ award_key: string }>).map(
-    ({ award_key }) => award_key,
-  );
+  const existingAwardKeys = existingAwards.map(({ award_key }) => award_key);
+  let eventSnapshotDates = [today];
+  if (events.get(requestedEventId)?.series_key === "awc") {
+    const isQualifier = (award: { description: string }) =>
+      award.description.startsWith("qualifier win,");
+    const changes = atomicTourQualifierAwardChanges(
+      existingAwards.filter(isQualifier),
+      awards.filter(isQualifier),
+    );
+    if (changes.length) {
+      const snapshots = await loadAllPages(async (from, size) => {
+        const { data, error } = await supabase
+          .from("atomic_tour_ranking_snapshots")
+          .select("snapshot_date")
+          .order("snapshot_date")
+          .order("player_name")
+          .range(from, from + size - 1);
+        if (error) throw error;
+        return data;
+      }, pageSize);
+      eventSnapshotDates = atomicTourQualifierSnapshotRefreshDates(
+        changes,
+        [...new Set(snapshots.map(({ snapshot_date }) => snapshot_date))],
+        today,
+      );
+    }
+  }
   for (let offset = 0; offset < existingAwardKeys.length; offset += 200) {
     const { error } = await supabase
       .from("atomic_tour_point_awards")
@@ -642,17 +675,12 @@ const run = async () => {
     if (error) throw error;
   }
 
-  const materialDateByMonth = new Map<string, string>();
-  for (const award of awards) {
-    for (const changeDate of [award.awarded_on, award.expires_on]) {
-      if (changeDate > today) continue;
-      const month = changeDate.slice(0, 7);
-      const existingDate = materialDateByMonth.get(month);
-      if (!existingDate || changeDate > existingDate) materialDateByMonth.set(month, changeDate);
-    }
-  }
-  materialDateByMonth.set(today.slice(0, 7), today);
-  const snapshotDates = requestedEventId ? [today] : [...materialDateByMonth.values()];
+  const snapshotDates = requestedEventId
+    ? eventSnapshotDates
+    : atomicTourMonthlySnapshotDates(
+        awards.flatMap(({ awarded_on, expires_on }) => [awarded_on, expires_on]),
+        today,
+      );
   if (!requestedEventId) {
     while (true) {
       const { data: existingSnapshots, error: existingSnapshotsError } = await supabase
@@ -675,7 +703,7 @@ const run = async () => {
       if (error) throw error;
     }
   }
-  for (const snapshotDate of snapshotDates.sort()) {
+  for (const snapshotDate of snapshotDates) {
     const { error } = await supabase.rpc("refresh_atomic_tour_ranking", {
       p_snapshot_date: snapshotDate,
     });
@@ -771,7 +799,7 @@ const run = async () => {
   }
   process.stdout.write(
     requestedEventId
-      ? `Updated ${requestedEventId} with ${awards.length} point awards and refreshed the live ranking; preserved historical snapshots and removed ${staleEntryCount} stale event entries.\n`
+      ? `Updated ${requestedEventId} with ${awards.length} point awards; refreshed ${snapshotDates.length} monthly ranking snapshots and removed ${staleEntryCount} stale event entries.\n`
       : `Published ${awards.length} Atomic Tour point awards and ${snapshotDates.length} material snapshots; removed ${staleEntryCount} stale event entries.\n`,
   );
 };

@@ -50,6 +50,9 @@ earlier third round 1%. A one-round AWC qualifying draw therefore awards 2%, whi
 draw awards 1%, 1.5%, and 2% in sequence. Atomic 960 group-stage wins are a fixed 20 points each.
 Played wins and wins by disqualification count. Qualifier walkovers do not, except for an AWC Q2
 walkover after a played Q1 win. Byes and unplayed pairings do not earn points.
+AWC qualifier points count in the month the match was played, not the month the tournament ended.
+An eligible walkover uses its documented decision date, or the date advancement was first confirmed
+when the exact decision date is unavailable. Undated awards wait for a verified date.
 
 ## Ranking behavior
 
