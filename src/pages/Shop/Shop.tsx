@@ -37,7 +37,8 @@ import {
 import { appAssetPath } from "../../utils/appAssetPath";
 import { getErrorMessage } from "../../utils/errors";
 
-const CHEST_PRICE_IMAGE = "/images/coins/gold-coin-chest.png";
+const COIN_PRICE_IMAGE = "/images/coins/gold-coin-stack-v2.png";
+const BAG_PRICE_IMAGE = "/images/coins/gold-coin-sack.png";
 
 type ShopCategory = "all" | "discord" | "lichess" | "site";
 
@@ -63,7 +64,7 @@ const shopItems: {
     name: "Red Charcoal theme",
     cost: SHOP_ITEM_COSTS.theme_red_charcoal,
     icon: { kind: "fontawesome", icon: faPalette },
-    priceImage: "/images/coins/gold-coin-stack-v2.png",
+    priceImage: COIN_PRICE_IMAGE,
   },
   {
     key: "username_change",
@@ -71,7 +72,7 @@ const shopItems: {
     name: "Change username",
     cost: SHOP_ITEM_COSTS.username_change,
     icon: { kind: "fontawesome", icon: faUserPen },
-    priceImage: "/images/coins/gold-coin-stack-v2.png",
+    priceImage: COIN_PRICE_IMAGE,
     description: "Admin approval required",
   },
   {
@@ -80,7 +81,7 @@ const shopItems: {
     name: "1 month Discord Nitro Basic",
     cost: SHOP_ITEM_COSTS.discord_nitro_month,
     icon: { kind: "fontawesome", icon: faDiscord },
-    priceImage: CHEST_PRICE_IMAGE,
+    priceImage: COIN_PRICE_IMAGE,
   },
   {
     key: "discord_nitro_year",
@@ -88,7 +89,7 @@ const shopItems: {
     name: "1 year Discord Nitro Basic",
     cost: SHOP_ITEM_COSTS.discord_nitro_year,
     icon: { kind: "fontawesome", icon: faDiscord },
-    priceImage: "/images/coins/gold-coin-sack.png",
+    priceImage: BAG_PRICE_IMAGE,
   },
   {
     key: "discord_nitro_full_month",
@@ -96,7 +97,7 @@ const shopItems: {
     name: "1 month Discord Nitro Nitro",
     cost: SHOP_ITEM_COSTS.discord_nitro_full_month,
     icon: { kind: "fontawesome", icon: faDiscord },
-    priceImage: CHEST_PRICE_IMAGE,
+    priceImage: BAG_PRICE_IMAGE,
   },
   {
     key: "discord_nitro_full_year",
@@ -104,7 +105,7 @@ const shopItems: {
     name: "1 year Discord Nitro Nitro",
     cost: SHOP_ITEM_COSTS.discord_nitro_full_year,
     icon: { kind: "fontawesome", icon: faDiscord },
-    priceImage: "/images/coins/gold-coin-sack.png",
+    priceImage: BAG_PRICE_IMAGE,
   },
   {
     key: "flowers_500",
@@ -112,7 +113,7 @@ const shopItems: {
     name: "500 Flowers",
     cost: SHOP_ITEM_COSTS.flowers_500,
     icon: { kind: "emoji", value: "🌸" },
-    priceImage: CHEST_PRICE_IMAGE,
+    priceImage: COIN_PRICE_IMAGE,
   },
   {
     key: "lichess_patron_month",
@@ -120,7 +121,7 @@ const shopItems: {
     name: "1 month Lichess Patron",
     cost: SHOP_ITEM_COSTS.lichess_patron_month,
     icon: { kind: "lichess" },
-    priceImage: CHEST_PRICE_IMAGE,
+    priceImage: COIN_PRICE_IMAGE,
   },
 ];
 
