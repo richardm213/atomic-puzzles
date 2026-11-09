@@ -321,3 +321,22 @@ describe("rook candidate material screening", () => {
     expect(hasSafeRookContinuation("7k/8/8/8/8/8/P7/KR6 w - - 0 1")).toBe(true);
   });
 });
+
+it("keeps KRB rook boxes roomy without excluding narrow boxes of sufficient area", () => {
+  let seed = 57;
+  const random = () => (seed = (seed * 16_807) % 2_147_483_647) / 2_147_483_647;
+  const areas = new Set<number>();
+  for (let sample = 0; sample < 200; sample += 1) {
+    const generated = generateEndgamePosition("rook-bishop-vs-king", "no-pawn", random);
+    const setup = parseFen(generated.fen).unwrap();
+    const rook = [...setup.board.pieces("white", "rook")][0]!;
+    const king = setup.board.kingOf("black")!;
+    const width = king % 8 < rook % 8 ? rook % 8 : 7 - (rook % 8);
+    const height =
+      Math.floor(king / 8) < Math.floor(rook / 8) ? Math.floor(rook / 8) : 7 - Math.floor(rook / 8);
+    expect(width * height).toBeGreaterThanOrEqual(6);
+    areas.add(width * height);
+  }
+  expect(areas.has(6)).toBe(true);
+  expect(areas.has(8)).toBe(true);
+});

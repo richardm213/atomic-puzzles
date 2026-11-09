@@ -257,11 +257,16 @@ const generateMaterialPosition = (mode: EndgameMode, random: () => number): Endg
       const rookCutsRanks =
         (whiteKingRank < rookRank && rookRank < blackKingRank) ||
         (blackKingRank < rookRank && rookRank < whiteKingRank);
+      // Count only the box on the defender's side of both rook lines. An area
+      // limit keeps roomy narrow boxes (1x6, 2x3), unlike a minimum side length.
+      const boxWidth = blackKingFile < rookFile ? rookFile : 7 - rookFile;
+      const boxHeight = blackKingRank < rookRank ? rookRank - 1 : 8 - rookRank;
       const bishopBlocksRook = bishop[0] === rook[0] || bishop[1] === rook[1];
       if (
         squareDistance(whiteKing, blackKing) < 4 ||
         squareDistance(rook, blackKing) < 2 ||
         bishopBlocksRook ||
+        boxWidth * boxHeight < 6 ||
         (!rookCutsFiles && !rookCutsRanks)
       ) {
         continue;

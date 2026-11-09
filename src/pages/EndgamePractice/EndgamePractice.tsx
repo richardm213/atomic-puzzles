@@ -97,7 +97,7 @@ const defenderHasEscapingPawn = (mode: EndgameMode): boolean =>
   mode === "rook-pawn-vs-pawn";
 
 const PREPARED_POSITION_KEY =
-  "atomic-puzzles:endgame-practice:prepared-position:atomic-stockfish:v2";
+  "atomic-puzzles:endgame-practice:prepared-position:atomic-stockfish:v3";
 const preparedPositions = new Map<string, EndgamePosition>();
 const pendingPositions = new Map<string, Promise<EndgamePosition | null>>();
 
