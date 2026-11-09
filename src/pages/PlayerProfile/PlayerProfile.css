@@ -895,18 +895,28 @@
     box-shadow 140ms ease;
 }
 
-.profileAliasLichessLink {
-  color: color-mix(in srgb, var(--color-primary) 82%, #0f172a);
-  background: color-mix(in srgb, var(--color-primary-ring) 72%, white 28%);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 36%, var(--color-border));
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-primary) 12%, transparent);
+.profileAliasLichessLink,
+.profileAliasChessComLink {
+  --alias-icon-color: var(--color-primary-soft);
+  --alias-icon-hover: var(--link-hover-color);
+
+  color: var(--alias-icon-color);
+  background: color-mix(in srgb, var(--alias-icon-color) 11%, transparent);
+  border-color: color-mix(in srgb, var(--alias-icon-color) 34%, transparent);
+  box-shadow: none;
 }
 
 .profileAliasChessComLink {
-  color: color-mix(in srgb, #5c8f22 82%, #0f172a);
-  background: color-mix(in srgb, #c8e89a 70%, white 30%);
-  border: 1px solid color-mix(in srgb, #7fa650 46%, var(--color-border));
-  box-shadow: 0 6px 16px color-mix(in srgb, #7fa650 14%, transparent);
+  --alias-icon-color: oklch(from var(--color-primary-soft) l c calc(h + 65));
+  --alias-icon-hover: oklch(from var(--link-hover-color) l c calc(h + 65));
+  --color-chesscom-icon-shadow: color-mix(
+    in srgb,
+    var(--alias-icon-color) 50%,
+    var(--color-panel-deep)
+  );
+  --color-chesscom-icon-body: currentColor;
+  --color-chesscom-icon-front: color-mix(in srgb, currentColor 78%, var(--color-heading));
+  --color-chesscom-icon-highlight: var(--color-heading);
 }
 
 .profileAliasPyChessLink {
@@ -922,19 +932,19 @@
 }
 
 .profileAliasLichessLink:hover,
-.profileAliasLichessLink:focus-visible {
-  background: color-mix(in srgb, var(--color-primary-ring) 88%, white 12%);
-  border-color: color-mix(in srgb, var(--color-primary) 62%, var(--color-border));
-  color: color-mix(in srgb, var(--color-primary-hover) 86%, #0f172a);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-primary) 16%, transparent);
-}
-
+.profileAliasLichessLink:focus-visible,
 .profileAliasChessComLink:hover,
 .profileAliasChessComLink:focus-visible {
-  background: color-mix(in srgb, #c8e89a 84%, white 16%);
-  border-color: color-mix(in srgb, #7fa650 70%, var(--color-border));
-  color: color-mix(in srgb, #4d7e18 86%, #0f172a);
-  box-shadow: 0 10px 22px color-mix(in srgb, #7fa650 18%, transparent);
+  color: var(--alias-icon-hover);
+  background: color-mix(in srgb, var(--alias-icon-color) 17%, transparent);
+  border-color: color-mix(in srgb, var(--alias-icon-color) 62%, var(--color-border));
+  box-shadow: none;
+}
+
+.profileAliasLichessLink:focus-visible,
+.profileAliasChessComLink:focus-visible {
+  outline: 3px solid var(--alias-icon-color);
+  outline-offset: 2px;
 }
 
 .profileAliasPyChessLink:hover,
@@ -995,43 +1005,13 @@
   box-shadow: none;
 }
 
-:root:not([data-theme="light"]) .profileAliasLichessLink {
-  color: var(--color-gold);
-  background: var(--color-warning-soft-bg);
-  border: 1px solid var(--color-warning-soft-border);
-  box-shadow: none;
-}
-
 :root:not([data-theme="light"]) .profileAliasPyChessLink {
   border-width: 1px;
   box-shadow: none;
 }
 
-:root:not([data-theme="light"]) .profileAliasChessComLink {
-  color: #9ed26a;
-  background: color-mix(in srgb, #365314 36%, var(--color-panel-strong));
-  border: 1px solid color-mix(in srgb, #84cc16 48%, var(--color-border));
-  box-shadow: none;
-}
-
-:root:not([data-theme="light"]) .profileAliasLichessLink:hover,
-:root:not([data-theme="light"]) .profileAliasLichessLink:focus-visible {
-  background: color-mix(in srgb, var(--color-warning-soft-bg) 80%, var(--color-panel-strong));
-  border-color: color-mix(in srgb, var(--color-warning-soft-border) 80%, var(--color-gold));
-  color: var(--color-gold);
-  box-shadow: none;
-}
-
 :root:not([data-theme="light"]) .profileAliasPyChessLink:hover,
 :root:not([data-theme="light"]) .profileAliasPyChessLink:focus-visible {
-  box-shadow: none;
-}
-
-:root:not([data-theme="light"]) .profileAliasChessComLink:hover,
-:root:not([data-theme="light"]) .profileAliasChessComLink:focus-visible {
-  background: color-mix(in srgb, #365314 48%, var(--color-panel-strong));
-  border-color: color-mix(in srgb, #84cc16 68%, var(--color-border));
-  color: #b7e889;
   box-shadow: none;
 }
 
@@ -1042,20 +1022,6 @@
 :root[data-theme="light"] .profileAliasTooltipLink:hover,
 :root[data-theme="light"] .profileAliasTooltipLink:focus-visible {
   color: #2f62dd;
-}
-
-:root[data-theme="light"] .profileAliasLichessLink {
-  color: var(--color-gold);
-  background: color-mix(in srgb, var(--color-accent-warm) 20%, var(--color-panel-strong));
-  border-color: color-mix(in srgb, var(--color-accent-warm) 56%, var(--color-border));
-}
-
-:root[data-theme="light"] .profileAliasLichessLink:hover,
-:root[data-theme="light"] .profileAliasLichessLink:focus-visible {
-  color: var(--color-warning);
-  background: color-mix(in srgb, var(--color-accent-warm) 30%, var(--color-panel-strong));
-  border-color: var(--color-accent-warm-strong);
-  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-accent-warm) 18%, transparent);
 }
 
 :root[data-theme="light"] .profileOpeningTag {
