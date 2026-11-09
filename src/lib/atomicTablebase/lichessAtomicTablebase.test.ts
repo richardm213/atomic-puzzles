@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { probeAtomicTablebase } from "./lichessAtomicTablebase";
@@ -33,8 +35,21 @@ describe("Lichess atomic tablebase cache", () => {
     await probeAtomicTablebase(fen);
     expect(fetchMock).toHaveBeenCalledOnce();
 
-    vi.advanceTimersByTime(2 * 60_000 + 1);
+    vi.advanceTimersByTime(16 * 60_000);
     await probeAtomicTablebase(fen);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+});
+
+it("allows real tablebase requests through the deployed connection policy", async () => {
+  const fetchMock = vi.fn().mockResolvedValue(response());
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    await probeAtomicTablebase("8/8/8/8/8/8/4k3/KQ6 w - - 0 99");
+    const url = new URL(String(fetchMock.mock.calls[0]?.[0]));
+    const policy = readFileSync("public/_headers", "utf8").match(/connect-src ([^;]+)/)?.[1];
+    expect(policy?.split(/\s+/)).toContain(url.origin);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

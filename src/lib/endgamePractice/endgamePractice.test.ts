@@ -9,6 +9,7 @@ import {
   generateEndgamePosition,
   hasBlackPawn,
   hasImmediateWhiteWinFromFen,
+  hasSafeRookContinuation,
   pawnEndgameCategories,
 } from "./endgamePractice";
 
@@ -311,5 +312,12 @@ describe("endgame defender", () => {
   it("returns no move when it is not the defender's turn", () => {
     const generated = generateEndgamePosition("blockade", "regular-file:rank-regular", () => 0.3);
     expect(chooseDefenderMove(generated.fen, () => 0.5)).toBeNull();
+  });
+});
+
+describe("rook candidate material screening", () => {
+  it("rejects a lone rook against a bare king but keeps a viable promotion route", () => {
+    expect(hasSafeRookContinuation("7k/8/8/8/8/8/8/KR6 w - - 0 1")).toBe(false);
+    expect(hasSafeRookContinuation("7k/8/8/8/8/8/P7/KR6 w - - 0 1")).toBe(true);
   });
 });

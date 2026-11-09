@@ -222,13 +222,15 @@ const materialPiecesByMode: Partial<Record<EndgameMode, readonly MaterialPiece[]
 const generateMaterialPosition = (mode: EndgameMode, random: () => number): EndgamePosition => {
   const material = materialPiecesByMode[mode];
   if (!material) throw new Error(`Unsupported material endgame mode: ${mode}`);
-  const offset = Math.floor(random() * boardSquares.length);
-
   for (let attempt = 0; attempt < 8_000; attempt += 1) {
     const occupied = new Set<string>();
     const pieces = material.map((piece, pieceIndex) => {
       const candidates = piece.allowedSquares ?? boardSquares;
-      let squareIndex = (offset + attempt * 17 + pieceIndex * 23) % candidates.length;
+      let squareIndex =
+        (Math.floor(random() * candidates.length) +
+          attempt * (17 + pieceIndex * 2) +
+          pieceIndex * 23) %
+        candidates.length;
       while (occupied.has(candidates[squareIndex] as string)) {
         squareIndex = (squareIndex + 1) % candidates.length;
       }
@@ -266,7 +268,7 @@ const generateMaterialPosition = (mode: EndgameMode, random: () => number): Endg
       }
     }
     const fen = buildFen(pieces);
-    if (isUsableFen(fen) && !hasImmediateWhiteWinFromFen(fen)) {
+    if (isUsableFen(fen) && !hasImmediateWhiteWinFromFen(fen) && hasSafeRookContinuation(fen)) {
       const blackPawn = pieces.find((piece) => piece.symbol === "p");
       return {
         fen,
@@ -324,7 +326,11 @@ export const generateEndgamePosition = (
           ...(whitePawn ? [{ square: whitePawn, symbol: "P" }] : []),
         ];
         const fen = buildFen(pieces);
-        return isUsableFen(fen) && !hasImmediateWhiteWinFromFen(fen) ? [fen] : [];
+        return isUsableFen(fen) &&
+          !hasImmediateWhiteWinFromFen(fen) &&
+          (mode !== "rook-pawn-vs-pawn" || hasSafeRookContinuation(fen))
+          ? [fen]
+          : [];
       });
       if (safePositions.length) {
         return { fen: choice(safePositions, random), mode, category, pawnSquare };
@@ -361,8 +367,7 @@ const legalMoves = (position: Atomic): Move[] => {
 const hasImmediateWhiteWin = (position: Atomic): boolean => {
   if (position.turn !== "white") return false;
   return legalMoves(position).some((move) => {
-    const next = createPosition(makeFen(position.toSetup()));
-    if (!next) return false;
+    const next = position.clone();
     next.play(move);
     return next.outcome()?.winner === "white";
   });
@@ -371,6 +376,29 @@ const hasImmediateWhiteWin = (position: Atomic): boolean => {
 export const hasImmediateWhiteWinFromFen = (fen: string): boolean => {
   const position = createPosition(fen);
   return position ? hasImmediateWhiteWin(position) : false;
+};
+
+// A rook alone cannot mate a bare king in atomic. Avoid spending engine time
+// on setups where every first move lets Black win or remove all mating material.
+export const hasSafeRookContinuation = (fen: string): boolean => {
+  const position = createPosition(fen);
+  if (!position || position.turn !== "white" || position.hasInsufficientMaterial("white"))
+    return false;
+  return legalMoves(position).some((move) => {
+    const next = position.clone();
+    next.play(move);
+    if (next.outcome()) return next.outcome()?.winner === "white";
+    if (next.hasInsufficientMaterial("white")) return false;
+    return !legalMoves(next).some((reply) => {
+      const defended = next.clone();
+      defended.play(reply);
+      const outcome = defended.outcome();
+      return (
+        defended.hasInsufficientMaterial("white") ||
+        (outcome !== undefined && outcome.winner !== "white")
+      );
+    });
+  });
 };
 
 export const defenderReplyFens = (fen: string): string[] => {

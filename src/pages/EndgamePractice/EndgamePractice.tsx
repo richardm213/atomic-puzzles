@@ -35,6 +35,7 @@ import {
 } from "../../lib/endgamePractice/endgamePractice";
 import {
   classifyEndgameEngineEvaluation,
+  ENDGAME_EVALUATION_DEPTH,
   engineStartIsLongerThanMateInFive,
 } from "../../lib/endgamePractice/fairyStockfishEndgame";
 import {
@@ -95,7 +96,8 @@ const defenderHasEscapingPawn = (mode: EndgameMode): boolean =>
   mode === "rook-vs-pawn" ||
   mode === "rook-pawn-vs-pawn";
 
-const PREPARED_POSITION_KEY = "atomic-puzzles:endgame-practice:prepared-position:sf14:v1";
+const PREPARED_POSITION_KEY =
+  "atomic-puzzles:endgame-practice:prepared-position:atomic-stockfish:v2";
 const preparedPositions = new Map<string, EndgamePosition>();
 const pendingPositions = new Map<string, Promise<EndgamePosition | null>>();
 
@@ -153,13 +155,26 @@ const prepareEndgamePosition = (
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 16_000);
     try {
-      for (let attempt = 0; attempt < 4; attempt += 1) {
+      for (let attempt = 0; attempt < 12; attempt += 1) {
         const candidate = generateEndgamePosition(mode, positionCategory(mode, category));
+        let rejectedEarly = false;
         const evaluations = await analyzeFairyStockfishPosition(
           candidate.fen,
           1,
           controller.signal,
+          undefined,
+          "atomic-stockfish",
+          {
+            refresh: true,
+            stopWhen: (candidates) => {
+              rejectedEarly =
+                (candidates[0]?.depth ?? 0) >= ENDGAME_EVALUATION_DEPTH &&
+                !engineStartIsLongerThanMateInFive(candidates);
+              return rejectedEarly;
+            },
+          },
         );
+        if (rejectedEarly) continue;
         if (engineStartIsLongerThanMateInFive(evaluations)) {
           storePreparedPosition(key, candidate);
           return candidate;
@@ -322,19 +337,6 @@ export const EndgamePracticePage = () => {
         return;
       }
 
-      const tablebaseTimeout = window.setTimeout(() => controller.abort(), 16_000);
-      try {
-        await preloadDefenderTablebases(selectedPosition.fen, controller.signal);
-      } catch {
-        if (preparationControllerRef.current === controller) {
-          preparationControllerRef.current = null;
-          setStatus("ready");
-        }
-        return;
-      } finally {
-        window.clearTimeout(tablebaseTimeout);
-      }
-      if (controller.signal.aborted || preparationControllerRef.current !== controller) return;
       preparationControllerRef.current = null;
 
       setPosition(selectedPosition);
@@ -357,6 +359,21 @@ export const EndgamePracticePage = () => {
       }
     })();
   }, [attemptIsOver, category, mode, position, status]);
+
+  // Tablebases improve defense, but an unavailable service must not prevent a
+  // round from starting: defender moves already fall back to Atomic-Stockfish.
+  useEffect(() => {
+    if (status !== "running") return;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 16_000);
+    void preloadDefenderTablebases(position.fen, controller.signal)
+      .catch(() => undefined)
+      .finally(() => window.clearTimeout(timeout));
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [position.fen, status]);
 
   const startOver = useCallback(() => {
     if (status !== "running") return;
@@ -425,8 +442,12 @@ export const EndgamePracticePage = () => {
     const engineFallback = async (): Promise<string | null> => {
       try {
         return (
-          (await findFairyStockfishMove(currentFen, controller.signal)) ??
-          chooseDefenderMove(currentFen)
+          (await findFairyStockfishMove(
+            currentFen,
+            controller.signal,
+            undefined,
+            "atomic-stockfish",
+          )) ?? chooseDefenderMove(currentFen)
         );
       } catch {
         return chooseDefenderMove(currentFen);
@@ -462,7 +483,13 @@ export const EndgamePracticePage = () => {
     let active = true;
     const requestTimeout = window.setTimeout(() => controller.abort(), 4_000);
 
-    void analyzeFairyStockfishPosition(currentFen, 1, controller.signal)
+    void analyzeFairyStockfishPosition(
+      currentFen,
+      1,
+      controller.signal,
+      undefined,
+      "atomic-stockfish",
+    )
       .then((evaluations) => {
         if (!active) return;
         const evaluation = classifyEndgameEngineEvaluation(evaluations);

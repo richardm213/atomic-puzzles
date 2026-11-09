@@ -535,10 +535,12 @@ const waitForBestMove = (
   signal?: AbortSignal,
   requestedLineCount = 1,
   onProgress?: EngineProgressListener,
+  stopWhen?: (candidates: EngineCandidate[]) => boolean,
 ): Promise<{ bestMoveLine: string; candidates: EngineCandidate[] }> =>
   new Promise((resolve, reject) => {
     const candidatesByRank = new Map<number, EngineCandidate>();
     let abortRequested = false;
+    let stoppedEarly = false;
     let lastProgressAt = Number.NEGATIVE_INFINITY;
     const timeout = window.setTimeout(() => {
       engine.postMessage("stop");
@@ -555,6 +557,14 @@ const waitForBestMove = (
         const candidate = parseEngineCandidate(line);
         if (candidate) {
           candidatesByRank.set(candidate.multipv, candidate);
+          if (
+            !stoppedEarly &&
+            candidatesByRank.size >= requestedLineCount &&
+            stopWhen?.([...candidatesByRank.values()].sort((a, b) => a.multipv - b.multipv))
+          ) {
+            stoppedEarly = true;
+            engine.postMessage("stop");
+          }
           const now = performance.now();
           if (
             onProgress &&
@@ -601,6 +611,7 @@ const searchFairyStockfish = async (
   thinkTimeMs = randomThinkTimeMs(),
   multiPvCount = MULTIPV_COUNT,
   onProgress?: EngineProgressListener,
+  stopWhen?: (candidates: EngineCandidate[]) => boolean,
 ): Promise<{ bestMove: string | null; candidates: EngineCandidate[] }> => {
   let lastFailure: unknown = new Error("Fairy-Stockfish failed");
 
@@ -616,7 +627,7 @@ const searchFairyStockfish = async (
         configuredMultiPvCounts[kind] = multiPvCount;
       }
       engine.postMessage(`position fen ${fen}`);
-      const bestMoveResult = waitForBestMove(engine, signal, multiPvCount, onProgress);
+      const bestMoveResult = waitForBestMove(engine, signal, multiPvCount, onProgress, stopWhen);
       engine.postMessage(`go movetime ${thinkTimeMs}`);
       const { bestMoveLine, candidates } = await bestMoveResult;
       const fallbackMove = bestMoveLine.match(/^bestmove\s+(\S+)/)?.[1] ?? "";
@@ -670,10 +681,13 @@ export const analyzeFairyStockfishPosition = async (
   signal?: AbortSignal,
   onProgress?: EngineProgressListener,
   engineOverride?: LocalAnalysisEngine,
+  options: { refresh?: boolean; stopWhen?: (candidates: EngineCandidate[]) => boolean } = {},
 ): Promise<EngineCandidate[]> => {
   const engine = engineOverride ?? readLocalAnalysisEngine();
   const requestedLineCount = Math.min(MULTIPV_COUNT, Math.max(1, Math.floor(lineCount)));
-  const cachedSearch = readCachedEvaluation(engine, fen, requestedLineCount);
+  const cachedSearch = options.refresh
+    ? null
+    : readCachedEvaluation(engine, fen, requestedLineCount);
   let publishedCandidates = cachedSearch?.candidates ?? [];
   const handleProgress = (candidates: EngineCandidate[]): void => {
     cacheEvaluationIfDeepEnough(engine, fen, candidates, requestedLineCount);
@@ -697,6 +711,7 @@ export const analyzeFairyStockfishPosition = async (
               MAX_THINK_TIME_MS,
               requestedLineCount,
               handleProgress,
+              options.stopWhen,
             ),
           signal,
         )
@@ -718,8 +733,9 @@ export const findFairyStockfishMove = (
   fen: string,
   signal?: AbortSignal,
   excludedMoves: ReadonlySet<string> = new Set(),
+  engineOverride?: LocalAnalysisEngine,
 ): Promise<string | null> => {
-  const engine = readLocalAnalysisEngine();
+  const engine = engineOverride ?? readLocalAnalysisEngine();
   const requestedLineCount = Math.min(
     MULTIPV_COUNT,
     Math.max(PRACTICE_MULTIPV_COUNT, excludedMoves.size + 1),
