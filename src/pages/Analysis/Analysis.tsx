@@ -22,7 +22,7 @@ import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import { pairPlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
-import { useAppSettings } from "../../context/AppSettings";
+import { useAppSettings, useKeyboardShortcutSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { AnalysisEngineExplorerPanels } from "../../features/analysisWorkspace/AnalysisEngineExplorerPanels";
 import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
@@ -60,6 +60,7 @@ import {
   sameSolutionMove,
   serializeSanLinesToPgn,
 } from "../../lib/chess/pgn";
+import { keyboardShortcutAction } from "../../lib/keyboardShortcuts";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { atomicDbPositionUrl, requestAtomicDbAnalysis } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
@@ -363,6 +364,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const navigate = useNavigate();
   const auth = useAuth();
   const { gameExplorerOnLeft } = useAppSettings();
+  const keyboardShortcuts = useKeyboardShortcutSettings();
   const { _splat: fenPath } = useParams({ strict: false });
   const locationSearch = typeof window === "undefined" ? "" : window.location.search;
   const analysisHandoff = useMemo(
@@ -1153,30 +1155,29 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
 
   useEffect(() => {
     const handleAnalysisShortcut = (event: KeyboardEvent): void => {
-      const key = event.key.toLowerCase();
-      const shortcutIndex = shortcutIndexFromKeyboardEvent(event);
-      const isSpacebarShortcut = key === " " || key === "spacebar";
+      const action = keyboardShortcutAction(event, keyboardShortcuts);
+      const shortcutIndex = shortcutIndexFromKeyboardEvent(event, keyboardShortcuts);
+      const isSpacebarShortcut = action === "playBestMove";
       const isExplorerMoveShortcut = shortcutIndex !== null && !isSpacebarShortcut;
-
       if (
-        (key !== "e" &&
-          key !== "f" &&
-          key !== "k" &&
-          key !== "x" &&
-          key !== "z" &&
+        !action ||
+        event.defaultPrevented ||
+        (![
+          "toggleExplorer",
+          "flipBoard",
+          "toggleFollowUps",
+          "toggleThreat",
+          "toggleGameAnalysis",
+        ].includes(action) &&
           !isSpacebarShortcut &&
-          !isExplorerMoveShortcut) ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey
-      ) {
+          !isExplorerMoveShortcut)
+      )
         return;
-      }
 
       if (isTextEntryTarget(event.target)) return;
 
       if (isSpacebarShortcut) {
-        // Space is reserved for move playback on this page, even while no move is available.
+        // Reserve the playback shortcut even when no move is available.
         event.preventDefault();
         if (usernamePickerOpen || filtersOpen) return;
 
@@ -1207,17 +1208,17 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
         return;
       }
 
-      if (key === "e") {
+      if (action === "toggleExplorer") {
         setExplorerOpen((open) => !open);
-      } else if (key === "z" && game) {
+      } else if (action === "toggleGameAnalysis" && game) {
         event.preventDefault();
         setGameComputerAnalysisEnabled((enabled) => !enabled);
-      } else if (key === "k") {
+      } else if (action === "toggleFollowUps") {
         setAtomicDbEngineSettings((current) => ({
           ...current,
           showFollowUpMoves: !current.showFollowUpMoves,
         }));
-      } else if (key === "x") {
+      } else if (action === "toggleThreat") {
         if (positionAnalysisActive && threatFen !== null) {
           setThreatMode((enabled) => !enabled);
         }
@@ -1244,6 +1245,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     setExplorerOpen,
     threatFen,
     usernamePickerOpen,
+    keyboardShortcuts,
   ]);
 
   const openingExplorerPanel = explorerOpen ? (

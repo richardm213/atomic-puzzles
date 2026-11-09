@@ -79,7 +79,8 @@ vi.mock("../../context/AuthContext", () => ({
   }),
 }));
 
-vi.mock("../../context/AppSettings", () => ({
+vi.mock("../../context/AppSettings", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../context/AppSettings")>()),
   useAppSettings: () => ({ showPuzzleTimer: true, puzzleAnalysisTarget: "atomic-puzzles" }),
 }));
 
@@ -541,7 +542,7 @@ describe("PuzzleSolverPage solution options", () => {
     await waitFor(() => expect(prefetchedIds).toHaveLength(3));
 
     const nextButton = screen.getAllByRole("button", { name: "Next" })[0]!;
-    await user.click(nextButton);
+    await user.keyboard("{Shift>}{ArrowRight}{/Shift}");
     expect(screen.getByText("Waiting for puzzle data...")).toBeInTheDocument();
 
     resolvePrefetch(prefetchedIds.map(puzzleDetails));
@@ -556,6 +557,8 @@ describe("PuzzleSolverPage solution options", () => {
     expect(navigatedPuzzleIds.slice(-2)).toHaveLength(2);
     expect(new Set(navigatedPuzzleIds.slice(-2))).toHaveLength(2);
     expect(navigatedPuzzleIds.slice(-2)).not.toContain("1");
+    await user.keyboard("{Shift>}{ArrowLeft}{/Shift}");
+    expect(mocks.navigate.mock.calls.at(-1)?.[0].params?.puzzleId).toBe(navigatedPuzzleIds.at(-2));
   });
 
   it.each([

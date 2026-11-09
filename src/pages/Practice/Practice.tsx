@@ -34,6 +34,7 @@ import type { OpeningDatabaseMove } from "../../components/OpeningDatabaseDispla
 import { Seo } from "../../components/Seo/Seo";
 import { ShareExportPanel } from "../../components/ShareExportPanel/ShareExportPanel";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
+import { useKeyboardShortcutSettings } from "../../context/AppSettings";
 import { AnalysisEngineExplorerPanels } from "../../features/analysisWorkspace/AnalysisEngineExplorerPanels";
 import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
 import {
@@ -61,6 +62,7 @@ import {
   getBoardMoveState,
 } from "../../lib/analysis/boardState";
 import { apiRequest } from "../../lib/api/postApi";
+import { keyboardShortcutAction, keyboardShortcutHint } from "../../lib/keyboardShortcuts";
 import { movePrefix } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
@@ -196,6 +198,9 @@ const chooseOpponentMove = (moves: PracticeMove[], mode: OpponentMode): Practice
 };
 
 export const PracticePage = () => {
+  const keyboardShortcuts = useKeyboardShortcutSettings();
+  const pauseShortcutHint = keyboardShortcutHint(keyboardShortcuts, "pausePractice");
+  const explorerShortcutHint = keyboardShortcutHint(keyboardShortcuts, "toggleExplorer");
   const navigate = useNavigate();
   const routeParams = useParams({ strict: false });
   const routeOpponents =
@@ -965,31 +970,30 @@ export const PracticePage = () => {
 
   useEffect(() => {
     const handlePracticeShortcut = (event: KeyboardEvent): void => {
-      const key = event.key.toLowerCase();
-      const shortcutIndex = shortcutIndexFromKeyboardEvent(event);
-      const isSpacebarShortcut = key === " " || key === "spacebar";
+      const action = keyboardShortcutAction(event, keyboardShortcuts);
+      const shortcutIndex = shortcutIndexFromKeyboardEvent(event, keyboardShortcuts);
+      const isSpacebarShortcut = action === "playBestMove";
       const isMoveShortcut = shortcutIndex !== null && !isSpacebarShortcut;
-
       if (
         usernamePickerOpen ||
-        (key !== "a" &&
-          key !== "e" &&
-          key !== "f" &&
-          key !== "k" &&
-          key !== "q" &&
+        !action ||
+        event.defaultPrevented ||
+        (![
+          "pausePractice",
+          "toggleExplorer",
+          "flipBoard",
+          "toggleFollowUps",
+          "alternatePracticeMove",
+        ].includes(action) &&
           !isSpacebarShortcut &&
-          !isMoveShortcut) ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey
-      ) {
+          !isMoveShortcut)
+      )
         return;
-      }
 
       if (isTextEntryTarget(event.target)) return;
 
       if (isSpacebarShortcut) {
-        // Space is reserved for move playback on this page, even while no move is available.
+        // Reserve the playback shortcut even when no move is available.
         event.preventDefault();
         if (settingsOpen) return;
 
@@ -1019,17 +1023,17 @@ export const PracticePage = () => {
       }
 
       event.preventDefault();
-      if (key === "e") {
+      if (action === "toggleExplorer") {
         setMovesOpen((open) => !open);
         setSettingsOpen(false);
-      } else if (key === "k") {
+      } else if (action === "toggleFollowUps") {
         setAtomicDbEngineSettings((current) => ({
           ...current,
           showFollowUpMoves: !current.showFollowUpMoves,
         }));
-      } else if (key === "a") {
+      } else if (action === "pausePractice") {
         toggleGamePaused();
-      } else if (key === "q") {
+      } else if (action === "alternatePracticeMove") {
         requestAlternateAutoMove();
       } else {
         flipPracticeSide();
@@ -1054,6 +1058,7 @@ export const PracticePage = () => {
     status,
     toggleGamePaused,
     usernamePickerOpen,
+    keyboardShortcuts,
   ]);
 
   const clampMovePanelHeight = useCallback((nextHeight: number): number | null => {
@@ -1431,7 +1436,7 @@ export const PracticePage = () => {
               aria-label={
                 gamePaused ? (sessionStarted ? "Resume game" : "Start game") : "Pause game"
               }
-              title={gamePaused ? "Start or resume game (A)" : "Pause game (A)"}
+              title={`${gamePaused ? "Start or resume game" : "Pause game"}${pauseShortcutHint ? ` (${pauseShortcutHint})` : ""}`}
             >
               <FontAwesomeIcon icon={gamePaused ? faPlay : faPause} aria-hidden="true" />
             </button>
@@ -1513,7 +1518,7 @@ export const PracticePage = () => {
             setMovesOpen((open) => !open);
           }}
           toggleAriaLabel={movesOpen ? "Show database moves" : "Hide database moves"}
-          toggleTitle={movesOpen ? "Show database moves (E)" : "Hide database moves (E)"}
+          toggleTitle={`${movesOpen ? "Show database moves" : "Hide database moves"}${explorerShortcutHint ? ` (${explorerShortcutHint})` : ""}`}
         />
       </AnalysisWorkspacePanel>
 

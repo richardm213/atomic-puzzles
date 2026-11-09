@@ -355,7 +355,7 @@
   border-top: 1px solid var(--color-border);
 }
 
-.navSettingsMenu.boardSettingsPage > :not(.navSettingsBoardPage) {
+.navSettingsMenu.nestedSettingsPage > :not(.navSettingsBoardPage):not(.navSettingsKeyboardPage) {
   display: none;
 }
 
@@ -1786,4 +1786,65 @@
   .navSearchSlot {
     display: none;
   }
+}
+
+.navSettingsMenu.keyboardSettingsPage {
+  width: 380px;
+}
+
+.navShortcutInstructions {
+  margin: var(--space-3) 0;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.navShortcutError {
+  color: var(--color-danger);
+  font-size: 14px;
+}
+
+.navShortcutSection h3 {
+  margin: 0 0 var(--space-2);
+}
+
+.navShortcutRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 142px;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 48px;
+}
+
+.navShortcutEnabled {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-text);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.navShortcutBinding {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2);
+  text-align: center;
+  cursor: pointer;
+}
+
+.navSettingsKeyboardPage .navSettingsPageHeader {
+  min-height: 44px;
+  grid-template-columns: 44px 1fr 44px;
+}
+
+.navSettingsKeyboardPage .navSettingsBackButton {
+  width: 44px;
+  height: 44px;
+}
+
+.navSettingsKeyboardPage .navSettingsCheckbox,
+.navSettingsKeyboardPage .navSecondaryButton {
+  min-height: 44px;
 }

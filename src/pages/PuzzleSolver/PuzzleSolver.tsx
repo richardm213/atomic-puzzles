@@ -47,6 +47,7 @@ import {
 } from "../../components/VariationTree/VariationTree";
 import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
+import { useBoardItemShortcuts } from "../../hooks/useBoardItemShortcuts";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { boardLineNavigation, getBoardLineState } from "../../lib/analysis/boardState";
 import { ApiError } from "../../lib/api/postApi";
@@ -1116,6 +1117,11 @@ export const PuzzleSolverPage = () => {
     if (previousPuzzle) replaceUrlWithPuzzle(previousPuzzle.puzzleId);
   };
 
+  const { previousHint, nextHint, previousAria, nextAria } = useBoardItemShortcuts({
+    onPrevious: canGoToPreviousPuzzle ? handlePreviousPuzzle : undefined,
+    onNext: canGoToNextPuzzle ? handleNextPuzzle : undefined,
+  });
+
   const handleSelectSolutionTab = () => {
     if (!canRevealSolution) return;
 
@@ -1821,7 +1827,8 @@ export const PuzzleSolverPage = () => {
                   <button
                     type="button"
                     aria-label="Previous"
-                    title="Previous puzzle"
+                    title={`Previous puzzle${previousHint ? ` (${previousHint})` : ""}`}
+                    aria-keyshortcuts={previousAria}
                     onClick={handlePreviousPuzzle}
                     disabled={!canGoToPreviousPuzzle}
                   >
@@ -1830,7 +1837,8 @@ export const PuzzleSolverPage = () => {
                   <button
                     type="button"
                     aria-label="Next"
-                    title="Next puzzle"
+                    title={`Next puzzle${nextHint ? ` (${nextHint})` : ""}`}
+                    aria-keyshortcuts={nextAria}
                     onClick={handleNextPuzzle}
                     disabled={!canGoToNextPuzzle}
                   >
@@ -2190,10 +2198,22 @@ export const PuzzleSolverPage = () => {
 
       {isMobileLayout ? (
         <div className="mobileBottomNav" aria-label="Puzzle navigation">
-          <button type="button" onClick={handlePreviousPuzzle} disabled={!canGoToPreviousPuzzle}>
+          <button
+            type="button"
+            onClick={handlePreviousPuzzle}
+            disabled={!canGoToPreviousPuzzle}
+            title={`Previous puzzle${previousHint ? ` (${previousHint})` : ""}`}
+            aria-keyshortcuts={previousAria}
+          >
             Prev
           </button>
-          <button type="button" onClick={handleNextPuzzle} disabled={!canGoToNextPuzzle}>
+          <button
+            type="button"
+            onClick={handleNextPuzzle}
+            disabled={!canGoToNextPuzzle}
+            title={`Next puzzle${nextHint ? ` (${nextHint})` : ""}`}
+            aria-keyshortcuts={nextAria}
+          >
             Next
           </button>
         </div>

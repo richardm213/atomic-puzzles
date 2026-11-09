@@ -5,9 +5,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { useKeyboardShortcutSettings } from "../../context/AppSettings";
 import type { AtomicDbAnalysisState } from "../../hooks/useAtomicDbAnalysis";
 import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { atomicLegalMoveCount } from "../../lib/chess/pgn";
+import {
+  keyboardShortcutAction,
+  keyboardShortcutAria,
+  keyboardShortcutHint,
+} from "../../lib/keyboardShortcuts";
 import { localAnalysisEngineLabel } from "../../lib/practice/localAnalysisEngine";
 import {
   atomicDbPositionUrl,
@@ -94,6 +100,8 @@ export const AtomicDbEngineControls = ({
   notationInline,
   onToggleNotation,
 }: AtomicDbEngineControlsProps) => {
+  const keyboardShortcuts = useKeyboardShortcutSettings();
+  const engineShortcutHint = keyboardShortcutHint(keyboardShortcuts, "toggleEngine");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const view = useRetainedAtomicDbView(analysis, fen);
@@ -134,10 +142,7 @@ export const AtomicDbEngineControls = ({
     const toggleFromKeyboard = (event: KeyboardEvent): void => {
       if (
         event.defaultPrevented ||
-        event.key.toLowerCase() !== "l" ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
+        keyboardShortcutAction(event, keyboardShortcuts) !== "toggleEngine" ||
         isTextEntryTarget(event.target)
       ) {
         return;
@@ -150,7 +155,7 @@ export const AtomicDbEngineControls = ({
 
     window.addEventListener("keydown", toggleFromKeyboard);
     return () => window.removeEventListener("keydown", toggleFromKeyboard);
-  }, [onDisable, setSettings]);
+  }, [onDisable, setSettings, keyboardShortcuts]);
 
   return (
     <div className="atomicDbHeaderControls" aria-label="Position analysis controls">
@@ -158,9 +163,9 @@ export const AtomicDbEngineControls = ({
         type="button"
         className={`atomicDbEngineToggle ${settings.enabled ? "active" : ""}`}
         aria-label="Toggle position analysis"
-        aria-keyshortcuts="L"
+        aria-keyshortcuts={keyboardShortcutAria(keyboardShortcuts, "toggleEngine")}
         aria-pressed={settings.enabled}
-        title="Toggle analysis (L)"
+        title={`Toggle analysis${engineShortcutHint ? ` (${engineShortcutHint})` : ""}`}
         onClick={() => {
           setSettings((current) => ({ ...current, enabled: !current.enabled }));
           onDisable();
@@ -229,7 +234,7 @@ export const AtomicDbEngineControls = ({
             <label className="atomicDbFollowUpSetting">
               <span>Follow-up moves</span>
               <span className="atomicDbSettingShortcut" aria-hidden="true">
-                K
+                {keyboardShortcutHint(keyboardShortcuts, "toggleFollowUps")}
               </span>
               <input
                 type="checkbox"
@@ -246,7 +251,7 @@ export const AtomicDbEngineControls = ({
               <label className="atomicDbFollowUpSetting">
                 <span>Threat mode</span>
                 <span className="atomicDbSettingShortcut" aria-hidden="true">
-                  X
+                  {keyboardShortcutHint(keyboardShortcuts, "toggleThreat")}
                 </span>
                 <input
                   type="checkbox"

@@ -28,6 +28,25 @@ describe("AppSettings", () => {
     expect(renderSettings().result.current.localAnalysisEngine).toBe("fairy-stockfish-14");
   });
 
+  it("restores customized and disabled keyboard shortcuts after remounting", () => {
+    const settings = renderSettings();
+    act(() =>
+      settings.result.current.setKeyboardShortcuts((current) => ({
+        ...current,
+        enabled: false,
+        bindings: {
+          ...current.bindings,
+          nextItem: { enabled: false, keys: ["n"] },
+        },
+      })),
+    );
+    settings.unmount();
+    const saved = renderSettings().result.current.keyboardShortcuts;
+    expect(saved.enabled).toBe(false);
+    expect(saved.bindings.nextItem).toEqual({ enabled: false, keys: ["n"] });
+    expect(saved.bindings.previousMove.keys).toContain("ArrowLeft");
+  });
+
   it("keeps board sounds opt-in", () => {
     const first = renderSettings();
     expect(first.result.current.boardSoundsEnabled).toBe(false);

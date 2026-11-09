@@ -2,13 +2,12 @@ import { faArrowLeft, faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
 
 import { BoardClock } from "../../components/BoardClock/BoardClock";
-import { isTextEntryTarget } from "../../components/Chessboard/boardShortcuts";
 import { lichessIcons } from "../../components/PlayerHoverCard/lichessIcons";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { modeLabels } from "../../constants/matches";
+import { useBoardItemShortcuts } from "../../hooks/useBoardItemShortcuts";
 import type { ArchiveGame } from "../../lib/archive/games";
 import { decodeGameResult } from "../../lib/archive/games";
 import { gameTerminationLabel } from "../../lib/games/termination";
@@ -190,35 +189,18 @@ export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
   const previousGameId = previousGame?.id;
   const nextGameId = nextGame?.id;
 
-  useEffect(() => {
-    if (!previousGameId && !nextGameId) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        !event.shiftKey ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.altKey ||
-        event.defaultPrevented ||
-        event.repeat ||
-        event.isComposing ||
-        isTextEntryTarget(event.target) ||
-        (event.target instanceof Element &&
-          event.target.closest("[contenteditable], [role='textbox'], dialog, [role='dialog']"))
-      )
-        return;
-      const gameId =
-        event.key === "ArrowLeft"
-          ? previousGameId
-          : event.key === "ArrowRight"
-            ? nextGameId
-            : undefined;
-      if (!gameId) return;
-      event.preventDefault();
-      void navigate({ to: "/game/$gameId", params: { gameId } });
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [navigate, previousGameId, nextGameId]);
+  const { previousHint, nextHint, previousAria, nextAria } = useBoardItemShortcuts({
+    onPrevious: previousGameId
+      ? () => {
+          void navigate({ to: "/game/$gameId", params: { gameId: previousGameId } });
+        }
+      : undefined,
+    onNext: nextGameId
+      ? () => {
+          void navigate({ to: "/game/$gameId", params: { gameId: nextGameId } });
+        }
+      : undefined,
+  });
 
   if (games.length <= 1 || currentIndex < 0) return null;
 
@@ -234,8 +216,8 @@ export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
             to="/game/$gameId"
             params={{ gameId: previousGame.id }}
             aria-label={`Previous game, game ${currentIndex}`}
-            title={`Previous game, game ${currentIndex} (Shift + ←)`}
-            aria-keyshortcuts="Shift+ArrowLeft"
+            title={`Previous game, game ${currentIndex}${previousHint ? ` (${previousHint})` : ""}`}
+            aria-keyshortcuts={previousAria}
           >
             <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
           </Link>
@@ -244,7 +226,7 @@ export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
             type="button"
             className="gameAnalysisGameNavigationButton"
             aria-label="No previous game"
-            title="No previous game (Shift + ←)"
+            title={`No previous game${previousHint ? ` (${previousHint})` : ""}`}
             disabled
           >
             <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
@@ -256,8 +238,8 @@ export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
             to="/game/$gameId"
             params={{ gameId: nextGame.id }}
             aria-label={`Next game, game ${currentIndex + 2}`}
-            title={`Next game, game ${currentIndex + 2} (Shift + →)`}
-            aria-keyshortcuts="Shift+ArrowRight"
+            title={`Next game, game ${currentIndex + 2}${nextHint ? ` (${nextHint})` : ""}`}
+            aria-keyshortcuts={nextAria}
           >
             <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
           </Link>
@@ -266,7 +248,7 @@ export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
             type="button"
             className="gameAnalysisGameNavigationButton"
             aria-label="No next game"
-            title="No next game (Shift + →)"
+            title={`No next game${nextHint ? ` (${nextHint})` : ""}`}
             disabled
           >
             <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />

@@ -56,6 +56,7 @@ import {
   PlayerCountryPicker,
   PlayerFlairPicker,
 } from "../PlayerSocialControls/PlayerSocialControls";
+import { KeyboardShortcutSettings } from "./KeyboardShortcutSettings";
 import { NavBrandMark } from "./NavBrandMark";
 import { NavNotificationsPanel } from "./NavNotificationsPanel";
 import { NavPlayerSearch } from "./NavPlayerSearch";
@@ -93,7 +94,7 @@ const setStoredProfileUsername = (username: string, profileUsername: string): vo
 
 export const TopNav = () => {
   const [openPanel, setOpenPanel] = useState<OpenPanel | null>(null);
-  const [settingsPage, setSettingsPage] = useState<"main" | "board">("main");
+  const [settingsPage, setSettingsPage] = useState<"main" | "board" | "keyboard">("main");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const topNavRef = useRef<HTMLElement | null>(null);
   const navDropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -756,10 +757,13 @@ export const TopNav = () => {
           </button>
           {settingsOpen ? (
             <div
-              className={`navSettingsMenu ${settingsPage === "board" ? "boardSettingsPage" : ""}`}
+              className={`navSettingsMenu ${settingsPage !== "main" ? "nestedSettingsPage" : ""} ${settingsPage === "keyboard" ? "keyboardSettingsPage" : ""}`}
               role="dialog"
               aria-label="Site settings"
             >
+              {settingsPage === "keyboard" ? (
+                <KeyboardShortcutSettings onBack={() => setSettingsPage("main")} />
+              ) : null}
               {settingsPage === "board" ? (
                 <div className="navSettingsBoardPage">
                   <div className="navSettingsPageHeader">
@@ -1210,6 +1214,14 @@ export const TopNav = () => {
                       onClick={() => setSettingsPage("board")}
                     >
                       <span>Board settings</span>
+                      <FontAwesomeIcon icon={faChevronRight} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="navSettingsPageLink"
+                      onClick={() => setSettingsPage("keyboard")}
+                    >
+                      <span>Keyboard shortcuts</span>
                       <FontAwesomeIcon icon={faChevronRight} aria-hidden="true" />
                     </button>
                   </div>

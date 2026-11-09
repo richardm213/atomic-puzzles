@@ -22,6 +22,11 @@ import {
   isBoardSoundSet,
 } from "../lib/boardSounds/boardSounds";
 import {
+  DEFAULT_KEYBOARD_SHORTCUTS,
+  type KeyboardShortcutSettings,
+  keyboardShortcutSettingsSchema,
+} from "../lib/keyboardShortcuts";
+import {
   DEFAULT_LOCAL_ANALYSIS_ENGINE,
   LOCAL_ANALYSIS_ENGINE_STORAGE_KEY,
   type LocalAnalysisEngine,
@@ -188,6 +193,8 @@ const DEFAULT_BOARD_THEME_BY_PALETTE: Record<Theme, string> = {
 export const getDefaultBoardTheme = (theme: Theme): string => DEFAULT_BOARD_THEME_BY_PALETTE[theme];
 
 export type AppSettingsContextValue = {
+  keyboardShortcuts: KeyboardShortcutSettings;
+  setKeyboardShortcuts: Dispatch<SetStateAction<KeyboardShortcutSettings>>;
   theme: Theme;
   setTheme: (theme: Theme) => void;
   colorMode: ColorMode;
@@ -436,6 +443,11 @@ export const getBoardThemeColors = (
 };
 
 export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
+  const [keyboardShortcuts, setKeyboardShortcuts] = usePersistedState(
+    "atomic-puzzles.keyboard-shortcuts",
+    keyboardShortcutSettingsSchema,
+    DEFAULT_KEYBOARD_SHORTCUTS,
+  );
   const [{ theme, colorMode: preferredColorMode }, setSiteAppearance] = usePersistedState(
     STORAGE_KEYS.siteAppearance,
     siteAppearanceSchema,
@@ -591,6 +603,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
 
   const value = useMemo<AppSettingsContextValue>(
     () => ({
+      keyboardShortcuts,
+      setKeyboardShortcuts,
       theme,
       setTheme,
       colorMode,
@@ -641,6 +655,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowCoinChangePopups,
     }),
     [
+      keyboardShortcuts,
+      setKeyboardShortcuts,
       theme,
       setTheme,
       colorMode,
@@ -699,3 +715,7 @@ export const useAppSettings = (): AppSettingsContextValue => {
   }
   return context;
 };
+
+// Standalone board embeds keep the default bindings without requiring the site shell.
+export const useKeyboardShortcutSettings = (): KeyboardShortcutSettings =>
+  useContext(AppSettingsContext)?.keyboardShortcuts ?? DEFAULT_KEYBOARD_SHORTCUTS;
