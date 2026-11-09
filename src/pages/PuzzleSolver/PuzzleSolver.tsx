@@ -125,6 +125,10 @@ const PUZZLE_RATING_EDITOR = "seaside_tiramisu";
 const PUZZLE_EXPLANATION_LEGACY_AUTHOR = "admin";
 const PUZZLE_EXPLANATION_LEGACY_EDITOR = "seaside_tiramisu";
 
+// Keep in sync with the stacked layout in PuzzleSolver.css.
+const PUZZLE_STACKED_LAYOUT_QUERY =
+  "(max-width: 460px), (max-width: 600px) and (min-height: calc(min(100vw - 16px, 548px) + 184px))";
+
 const SOLUTION_UNLOCK_HINT = "Make at least one attempt before viewing the solution.";
 const SERVER_CUSTOM_SET_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -374,9 +378,7 @@ export const PuzzleSolverPage = () => {
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
 
-    const mediaQuery = window.matchMedia(
-      "(max-width: 680px), (min-width: 681px) and (max-width: 799px) and (orientation: portrait), (max-width: 1024px) and (max-height: 500px) and (orientation: landscape)",
-    );
+    const mediaQuery = window.matchMedia(PUZZLE_STACKED_LAYOUT_QUERY);
     const updateLayout = () => setIsMobileLayout(mediaQuery.matches);
     updateLayout();
 

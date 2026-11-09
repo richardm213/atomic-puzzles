@@ -150,7 +150,7 @@
   background: var(--color-primary-hover);
 }
 
-@media (max-width: 680px) {
+@media (max-width: 560px) {
   .guestPuzzleTrial {
     --guest-board-size: clamp(
       180px,
