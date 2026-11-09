@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   averageCentipawnLossForEvaluations,
+  buildGameAnalysisSummary,
   CLASSIFICATION_SYMBOLS,
   evaluationsForPositions,
   GAME_ANALYSIS_STATUSES,
@@ -92,6 +93,13 @@ const summarySchema = z
         })),
       };
     });
+    // Regrade complete saved reviews with the current rules, without another engine search.
+    if (positions.length === summary.assessments.length + 1) {
+      return buildGameAnalysisSummary(
+        summary.assessments.map(({ uci }) => uci),
+        positions,
+      );
+    }
     const evaluations = evaluationsForPositions(positions);
     const normalizeCounts = (counts: typeof summary.whiteCounts) => ({
       ...counts,

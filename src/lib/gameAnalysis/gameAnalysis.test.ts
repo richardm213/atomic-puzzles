@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   buildGameAnalysisSummary,
@@ -8,6 +8,10 @@ import {
   parseStoredAtomicDbPosition,
   type StoredAtomicDbPosition,
 } from "../../../shared/domain/gameAnalysis";
+import { fetchGameAnalysis } from "./gameAnalysis";
+
+const WHITE_FEN = "8/8/8/8/8/8/4P3/4K2k w - - 0 1";
+const BLACK_FEN = "8/8/8/8/4P3/8/8/4K2k b - - 0 1";
 
 const position = (fen: string, cp: number, bestMove: string): StoredAtomicDbPosition => ({
   fen,
@@ -106,18 +110,123 @@ describe("AtomicDB game analysis classification", () => {
     expect(summary.evaluations).toEqual([0, -1, 400, -400, -400]);
   });
 
-  it("does not create excellent or good move categories", () => {
-    const summary = buildGameAnalysisSummary(
-      ["e2e4"],
-      [
-        position("8/8/8/8/8/8/4P3/4K2k w - - 0 1", 0, "e2e3"),
-        position("8/8/8/8/4P3/8/8/4K2k b - - 0 1", 44, "h1g1"),
-      ],
+  it("grades unrounded win-chance loss at Lichess's 5, 10, and 15 point cutoffs", () => {
+    const grades = [54, 55, 110, 111, 168, 169].map(
+      (cp) =>
+        buildGameAnalysisSummary(
+          ["e2e4"],
+          [position(WHITE_FEN, 0, "e2e4"), position(BLACK_FEN, cp, "h1g1")],
+        ).assessments[0]?.classification,
+    );
+    expect(grades).toEqual(["best", "inaccuracy", "inaccuracy", "mistake", "mistake", "blunder"]);
+  });
+
+  it("grades newly allowed mate from Black's pre-move deficit, not from the mate distance", () => {
+    const after = position(WHITE_FEN, 0, "e2e3");
+    after.lines[0]!.mate = 5;
+    after.lines[0]!.cp = null;
+    const grade = (before: StoredAtomicDbPosition) =>
+      buildGameAnalysisSummary(["h1h2"], [before, after]).assessments[0]?.classification;
+    const grades = [-699, -700, -1_200, -1_500, -1_501].map((cp) =>
+      grade(position(BLACK_FEN, cp, "h1g1")),
     );
 
-    expect(summary.assessments[0]?.classification).toBe("best");
-    expect(summary.whiteCounts.excellent).toBe(0);
-    expect(summary.whiteCounts.good).toBe(0);
+    expect(grades).toEqual(["blunder", "mistake", "mistake", "mistake", "inaccuracy"]);
+    const alreadyMated = position(BLACK_FEN, -10_000, "h1g1");
+    alreadyMated.lines[0]!.mate = -8;
+    expect(grade(alreadyMated)).toBe("best");
+  });
+
+  it("treats a new 100-pawn advantage for either opponent like newly allowed mate", () => {
+    const grade = (before: number, after: number) =>
+      buildGameAnalysisSummary(
+        ["h1h2"],
+        [position(BLACK_FEN, before, "h1g1"), position(WHITE_FEN, after, "e2e3")],
+      ).assessments[0]?.classification;
+
+    expect(grade(-1_200, 10_000)).toBe("mistake");
+    expect(grade(-1_200, 9_999)).toBe("best");
+    expect(grade(-10_000, 10_000)).toBe("best");
+
+    const whiteBefore = position(WHITE_FEN, -1_200, "e2e3");
+    const blackAfter = position(BLACK_FEN, 10_000, "h1g1");
+    const whiteGrade = () =>
+      buildGameAnalysisSummary(["e2e4"], [whiteBefore, blackAfter]).assessments[0]?.classification;
+    expect(whiteGrade()).toBe("mistake");
+    blackAfter.lines[0]!.mate = 5;
+    expect(whiteGrade()).toBe("mistake");
+  });
+
+  it("grades a missed forced mate by the remaining advantage", () => {
+    const before = position(WHITE_FEN, 0, "e2e3");
+    const after = position(BLACK_FEN, 0, "h1g1");
+    const forcedMate = (stored: StoredAtomicDbPosition, winner: 1 | -1) => ({
+      ...stored,
+      closure: "MATE_PV",
+      score: winner * 10_000,
+      point: winner * 9_995,
+    });
+    const grade = (start: StoredAtomicDbPosition, end: StoredAtomicDbPosition) =>
+      buildGameAnalysisSummary(["e2e4"], [start, end]).assessments[0]?.classification;
+
+    const mateBefore = forcedMate(before, 1);
+    const grades = [-699, -700, -1_200, -1_500, -1_501, -10_000].map((score) =>
+      grade(mateBefore, { ...after, score }),
+    );
+    expect(grades).toEqual(["blunder", "mistake", "mistake", "mistake", "inaccuracy", "best"]);
+    expect(grade({ ...before, score: 10_000 }, { ...after, score: -1_200 })).toBe("mistake");
+    expect(grade(forcedMate(before, 1), forcedMate(after, -1))).toBe("best");
+  });
+
+  it("loads a saved review with updated grades and counts from the saved evaluations", async () => {
+    const positions = [position(WHITE_FEN, 0, "e2e3"), position(BLACK_FEN, 169, "h1g1")];
+    const legacyCounts = { best: 0, excellent: 0, good: 0, inaccuracy: 1, mistake: 0, blunder: 0 };
+    const fetchReview = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json({
+        analysis: {
+          gameId: "example",
+          status: "ready",
+          requestedBy: "player",
+          totalPositions: 2,
+          completedPositions: 2,
+          queuedPositions: 2,
+          cost: 1,
+          error: null,
+          result: {
+            positions,
+            assessments: [
+              {
+                ply: 1,
+                uci: "e2e4",
+                classification: "inaccuracy",
+                symbol: "?!",
+                winPercentBefore: 50,
+                winPercentAfter: 34.9,
+                winPercentLoss: 15.1,
+                bestMove: "e2e3",
+              },
+            ],
+            evaluations: [0, -169],
+            whiteCounts: legacyCounts,
+            blackCounts: { ...legacyCounts, inaccuracy: 0 },
+          },
+          createdAt: "",
+          updatedAt: "",
+          completedAt: "",
+        },
+      }),
+    );
+    try {
+      const analysis = await fetchGameAnalysis("example");
+      expect(analysis?.result?.assessments[0]).toMatchObject({
+        classification: "blunder",
+        symbol: "??",
+      });
+      expect(analysis?.result?.whiteCounts).toMatchObject({ inaccuracy: 0, blunder: 1 });
+      expect(fetchReview).toHaveBeenCalledTimes(1);
+    } finally {
+      fetchReview.mockRestore();
+    }
   });
 
   it("excludes Wolfrandom's first three moves per side from negative review", () => {

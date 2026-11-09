@@ -214,19 +214,68 @@ export const evaluationsForPositions = (positions: readonly StoredAtomicDbPositi
 const ceiledCentipawns = (centipawns: number): number =>
   Math.max(-1_000, Math.min(1_000, centipawns));
 
-const winPercent = (centipawns: number): number =>
-  50 + 50 * (2 / (1 + Math.exp(-0.00368208 * ceiledCentipawns(centipawns))) - 1);
+const winningChances = (centipawns: number): number =>
+  2 / (1 + Math.exp(-0.00368208 * centipawns)) - 1;
 
-const classificationFor = (
-  loss: number,
-  playedMove: string,
-  bestMove: string | null,
-): MoveClassification => {
-  if (bestMove === playedMove || loss < 12) return "best";
-  if (loss < 20) return "inaccuracy";
-  if (loss < 35) return "mistake";
+const winPercent = (centipawns: number): number =>
+  50 + 50 * winningChances(ceiledCentipawns(centipawns));
+
+type ReviewScore = { type: "cp"; value: number } | { type: "mate"; value: 1 | -1 };
+
+const reviewScoreForPosition = (position: StoredAtomicDbPosition): ReviewScore => {
+  const outcome = terminalCentipawns(position.status, position.fen);
+  if (outcome === 0) return { type: "cp", value: 0 };
+  if (outcome !== null) return { type: "mate", value: outcome > 0 ? 1 : -1 };
+  // AtomicDB's backed mate PV encodes its winner in the terminal score.
+  const { score, closure, bestMove: best } = position;
+  if (closure === "MATE_PV" && (score === 10_000 || score === -10_000)) {
+    return { type: "mate", value: score > 0 ? 1 : -1 };
+  }
+  const line = best
+    ? position.lines.find((entry) => (entry.move ?? entry.pv[0]) === best)
+    : position.lines[0];
+  const mate = position.candidates?.find((entry) => entry.move === best)?.mate ?? line?.mate;
+  if (typeof mate === "number") return { type: "mate", value: mate > 0 ? 1 : -1 };
+  return { type: "cp", value: positionCentipawns(position) };
+};
+
+const decisiveOutcome = (score: ReviewScore): -1 | 0 | 1 => {
+  // AtomicDB can report a decisive result as 100 pawns instead of a mate distance.
+  if (score.type === "mate") return score.value;
+  if (score.value >= 10_000) return 1;
+  if (score.value <= -10_000) return -1;
+  return 0;
+};
+
+const decisiveLossGrade = (advantage: number): MoveClassification => {
+  if (advantage > 1_500) return "inaccuracy";
+  if (advantage >= 700) return "mistake";
   return "blunder";
 };
+
+const classificationFor = (before: ReviewScore, after: ReviewScore): MoveClassification => {
+  // Both scores are from the side to move. After the move, that is the opponent.
+  const beforeOutcome = decisiveOutcome(before);
+  const afterOutcome = decisiveOutcome(after);
+  if (beforeOutcome !== -1 && afterOutcome === 1) {
+    return decisiveLossGrade(before.type === "cp" ? -before.value : 0);
+  }
+  if (beforeOutcome === 1 && afterOutcome !== -1) {
+    return decisiveLossGrade(after.type === "cp" ? -after.value : 0);
+  }
+
+  // Lichess grades CP swings on the unclipped [-1, 1] scale (0.1 = 5 percentage points).
+  if (before.type === "cp" && after.type === "cp") {
+    const loss = winningChances(before.value) + winningChances(after.value);
+    if (loss >= 0.3) return "blunder";
+    if (loss >= 0.2) return "mistake";
+    if (loss >= 0.1) return "inaccuracy";
+  }
+  return "best";
+};
+
+const reviewWinPercent = (score: ReviewScore): number =>
+  score.type === "mate" ? winPercent(score.value * 1_000) : 50 + 50 * winningChances(score.value);
 
 export const CLASSIFICATION_SYMBOLS: Record<MoveClassification, string> = {
   best: "✓",
@@ -375,13 +424,14 @@ export const buildGameAnalysisSummary = (
   }
 
   const evaluations = evaluationsForPositions(positions);
+  const reviewScores = positions.map(reviewScoreForPosition);
   const assessments = moves.map((uci, index): GameMoveAssessment => {
-    const before = positions[index]!;
-    const after = positions[index + 1]!;
-    const beforeChance = winPercent(positionCentipawns(before));
-    const afterChance = 100 - winPercent(positionCentipawns(after));
+    const beforeScore = reviewScores[index]!;
+    const afterScore = reviewScores[index + 1]!;
+    const beforeChance = reviewWinPercent(beforeScore);
+    const afterChance = 100 - reviewWinPercent(afterScore);
     const loss = Math.max(0, beforeChance - afterChance);
-    const classification = classificationFor(loss, uci, before.bestMove);
+    const classification = classificationFor(beforeScore, afterScore);
     return {
       ply: index + 1,
       uci,
@@ -390,7 +440,7 @@ export const buildGameAnalysisSummary = (
       winPercentBefore: Math.round(beforeChance * 10) / 10,
       winPercentAfter: Math.round(afterChance * 10) / 10,
       winPercentLoss: Math.round(loss * 10) / 10,
-      bestMove: before.bestMove,
+      bestMove: positions[index]!.bestMove,
     };
   });
   const whiteAssessments = assessments.filter((assessment) => assessment.ply % 2 === 1);
