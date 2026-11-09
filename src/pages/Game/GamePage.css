@@ -174,18 +174,36 @@
 .gameAnalysisMetaRow {
   min-width: 0;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: 44px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
 }
 
 .gameAnalysisModeIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
   color: color-mix(in srgb, var(--color-heading) 76%, var(--color-muted));
   font-family: "Lichess Icons", sans-serif;
   font-size: 30px;
   font-weight: 400;
   line-height: 1;
   text-align: center;
+  text-decoration: none;
+  transition: color 140ms ease;
+}
+
+.gameAnalysisModeIcon:hover,
+.gameAnalysisModeIcon:focus-visible {
+  color: var(--link-hover-color);
+}
+
+.gameAnalysisModeIcon:focus-visible {
+  outline: 3px solid var(--color-primary-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .analysisRightPanel.gameAnalysisPanel:not(.customExplorerSplit):not(.explorerCollapsed) {

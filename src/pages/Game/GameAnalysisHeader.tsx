@@ -11,6 +11,7 @@ import type { ArchiveGame } from "../../lib/archive/games";
 import { decodeGameResult } from "../../lib/archive/games";
 import { gameTerminationLabel } from "../../lib/games/termination";
 import { loadRawMatchById } from "../../lib/matches/data";
+import { buildExternalGameUrl } from "../../lib/matches/routes";
 import { getTournamentMatchLocation, getTournamentRouteId } from "../../lib/matches/tournaments";
 import { formatLocalDateTime } from "../../utils/formatters";
 
@@ -133,13 +134,16 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
   return (
     <header className="gameAnalysisHeader">
       <div className="gameAnalysisMetaRow">
-        <span
+        <a
           className="gameAnalysisModeIcon"
-          aria-label={`${modeLabels[game.mode]} game`}
-          title={modeLabels[game.mode]}
+          href={buildExternalGameUrl(game.game_id, { source: game.source })}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`View original ${modeLabels[game.mode]} game`}
+          title="View original game"
         >
           {gameModeIcons[game.mode]}
-        </span>
+        </a>
         <div className="gameAnalysisMeta">
           <div className="gameAnalysisMetaPrimary">
             <span>{game.time_control}</span>
