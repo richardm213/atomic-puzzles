@@ -6,7 +6,7 @@ const pages = [
     heading: "Atomic chess puzzles, rankings, and matches",
   },
   { path: "/solve/101", heading: "Puzzle 101" },
-  { path: "/recent", heading: "Recent Match Archive" },
+  { path: "/recent", heading: "Game Search" },
   { path: "/dashboard", heading: "My Puzzle Dashboard" },
 ] as const;
 
@@ -26,7 +26,7 @@ for (const appPage of pages) {
 test("legacy matches route redirects to the recent archive", async ({ page }) => {
   await page.goto("/matches");
   await expect(page).toHaveURL(/\/recent$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Recent Match Archive" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Game Search" })).toBeVisible();
 });
 
 test("legacy puzzle history route redirects to the dashboard", async ({ page }) => {
