@@ -246,7 +246,7 @@
   --gem-canvas-chroma: 0.008;
   --gem-surface-chroma: 0.008;
   --gem-wash: 3%;
-  --brand-mark-color: oklch(64% var(--gem-nav-chroma, 0.22) var(--gem-nav-hue));
+  --brand-mark-color: oklch(62% 0.23 var(--gem-nav-hue));
 }
 
 /* Light gemstones start with Default Light's surfaces, text and borders. */
