@@ -1382,9 +1382,12 @@ export const BettingPage = () => {
                         predictionSportsbookQuantity > 0 &&
                         !predictionSportsbookFullyMatched ? (
                           <InlineState kind="error">
-                            {predictionSportsbookQuote.availableQuantity > 0
-                              ? `Only ${predictionSportsbookQuote.availableQuantity.toLocaleString()} contracts are available at this price. Lower the bet amount or use Order book view.`
-                              : "No contracts are available at this price. Use Order book view to place a limit order."}
+                            Only{" "}
+                            {predictionSportsbookQuote.fillCostCoins.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}{" "}
+                            coins are available at this price.
                           </InlineState>
                         ) : null}
                         {predictionSportsbookInsufficientBalance ? (
