@@ -536,6 +536,19 @@
   white-space: normal;
 }
 
+.h2hMatchTableRow {
+  cursor: pointer;
+}
+
+.h2hMatchTableRow:hover {
+  background: var(--color-accent-soft-bg);
+}
+
+.h2hMatchTableRow:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: -2px;
+}
+
 .h2hMatchTableRow.expanded {
   background: var(--color-accent-soft-bg-strong);
 }

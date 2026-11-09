@@ -31,7 +31,6 @@ import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLin
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
 import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
-import { RowExpansionButton } from "../../components/RowExpansionButton/RowExpansionButton";
 import { Seo } from "../../components/Seo/Seo";
 import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
 import { usePersistedState } from "../../hooks/usePersistedState";
@@ -765,7 +764,21 @@ export const H2HPage = () => {
 
                         return (
                           <Fragment key={match.key}>
-                            <tr className={`h2hMatchTableRow${isExpanded ? " expanded" : ""}`}>
+                            <tr
+                              className={`h2hMatchTableRow${isExpanded ? " expanded" : ""}`}
+                              tabIndex={0}
+                              aria-expanded={isExpanded}
+                              onClick={(event) => {
+                                if ((event.target as Element).closest("a, button")) return;
+                                toggleMatch();
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.target !== event.currentTarget) return;
+                                if (event.key !== "Enter" && event.key !== " ") return;
+                                event.preventDefault();
+                                toggleMatch();
+                              }}
+                            >
                               <td>
                                 <LichessGameLink
                                   gameId={match.firstGameId}
@@ -803,11 +816,6 @@ export const H2HPage = () => {
                               </td>
                               <td>
                                 <div className="tableRowActions">
-                                  <RowExpansionButton
-                                    expanded={isExpanded}
-                                    label={`${isExpanded ? "Hide" : "Show"} match details`}
-                                    onToggle={toggleMatch}
-                                  />
                                   <MatchPageLink match={match} title="Open match page in new tab" />
                                 </div>
                               </td>
