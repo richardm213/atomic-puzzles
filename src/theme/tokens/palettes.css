@@ -246,7 +246,7 @@
   --brand-mark-color: #ff4545;
 }
 
-/* Light gemstones inherit Default Light's surfaces, text and borders. */
+/* Light gemstones start with Default Light's surfaces, text and borders. */
 :root[data-theme="light"][data-gemstone-theme] {
   --gem-action-lightness: 47%;
   --gem-action-hover-lightness: 41%;
@@ -260,6 +260,45 @@
   --brand-mark-color: var(--color-nav-badge);
   --brand-mark-tile: color-mix(in srgb, var(--color-nav-badge) 2%, var(--color-page-top));
   --page-background: linear-gradient(180deg, var(--color-page-top), var(--color-page-bottom));
+}
+
+/* Ruby Light pairs clear crimson accents with neutral charcoal text and a faint red wash. */
+:root[data-theme="light"][data-palette="ruby"] {
+  --color-primary: #c42f3b;
+  --color-primary-hover: #a82330;
+  --color-primary-soft: #be2937;
+  --color-primary-pale: #9e2430;
+  --color-primary-ring: rgba(190, 41, 55, 0.4);
+  --color-page-top: #fcfbfc;
+  --color-page-bottom: #f5f6f8;
+  --color-panel: rgba(255, 255, 255, 0.96);
+  --color-panel-deep: #ececef;
+  --color-nav: rgba(255, 255, 255, 0.95);
+  --color-text: #322d31;
+  --color-heading: #242126;
+  --color-muted: #625b63;
+  --color-subtle: #716971;
+  --color-on-elevated: #2b252b;
+  --color-border: rgba(66, 51, 58, 0.15);
+  --color-border-strong: rgba(66, 51, 58, 0.23);
+  --color-input-border: rgba(66, 51, 58, 0.28);
+  --color-surface-soft: rgba(245, 244, 246, 0.72);
+  --color-surface-soft-strong: rgba(237, 236, 239, 0.85);
+  --color-surface-inset: rgba(109, 91, 99, 0.08);
+  --color-surface-inset-strong: rgba(109, 91, 99, 0.13);
+  --color-table-head: rgba(109, 91, 99, 0.07);
+  --color-table-divider: rgba(66, 51, 58, 0.1);
+  --color-glass-border: rgba(109, 91, 99, 0.18);
+  --shadow-panel: 0 18px 44px rgba(64, 44, 51, 0.08), 0 1px 0 white inset;
+  --shadow-soft: 0 12px 26px rgba(64, 44, 51, 0.08);
+  --shadow-strong: 0 26px 64px rgba(64, 44, 51, 0.18);
+  --page-background:
+    radial-gradient(ellipse 70% 42% at 14% 0%, rgba(196, 47, 59, 0.045), transparent 78%),
+    linear-gradient(180deg, var(--color-page-top), var(--color-page-bottom));
+
+  /* Preserve the established navigation logo and profile badge colors. */
+  --brand-wordmark-color: oklch(35% 0.06 20);
+  --brand-mark-tile: color-mix(in srgb, var(--color-nav-badge) 2%, #f7f9fc);
 }
 
 /* Black changes the materials, not the dark mode's depth or semantic colors. */

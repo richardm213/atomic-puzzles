@@ -1,11 +1,30 @@
 import { act, renderHook } from "@testing-library/react";
 
-import { AppSettingsProvider, useAppSettings } from "./AppSettings";
+import { AppSettingsProvider, getBoardThemeColors, useAppSettings } from "./AppSettings";
 
 const renderSettings = () => renderHook(useAppSettings, { wrapper: AppSettingsProvider });
 
 describe("AppSettings", () => {
   beforeEach(() => window.localStorage.clear());
+
+  it("keeps Ruby's dark board and custom colors while using a separate light board", () => {
+    const rubyDark = getBoardThemeColors("ruby");
+    const rubyLight = getBoardThemeColors(
+      "ruby",
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "light",
+    );
+    expect(rubyLight).not.toEqual(rubyDark);
+    for (const colorMode of ["light", "dark"] as const) {
+      expect(
+        getBoardThemeColors("ruby", undefined, undefined, "ruby", "#123456", "#654321", colorMode),
+      ).toEqual({ light: "#123456", dark: "#654321" });
+    }
+  });
 
   it("ignores the legacy timer opt-in but preserves a current opt-out", () => {
     window.localStorage.setItem("atomic-puzzles.puzzles.show-timer-v2", "false");

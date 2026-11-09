@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import { getBoardThemeColors } from "../../context/AppSettings";
+import { type ColorMode, getBoardThemeColors } from "../../context/AppSettings";
 
 type Rgb = { r: number; g: number; b: number };
 
@@ -116,6 +116,7 @@ export const buildBoardStyle = (
   boardColorOverrideTheme: string,
   boardOverrideLightSquare: string,
   boardOverrideDarkSquare: string,
+  colorMode: ColorMode = "dark",
 ): BoardCssVars => {
   const palette = getBoardThemeColors(
     boardTheme,
@@ -124,6 +125,7 @@ export const buildBoardStyle = (
     boardColorOverrideTheme,
     boardOverrideLightSquare,
     boardOverrideDarkSquare,
+    colorMode,
   );
   const texture = boardTextureConfig[boardTheme];
   const lightCoordColor = mixHexColors(palette.light, "#000000", 0.45);

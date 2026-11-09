@@ -88,7 +88,15 @@ const PuzzleDiagram = ({
 
 export const HomePuzzleArtwork = () => {
   const { theme, colorMode } = useAppSettings();
-  const colors = getBoardThemeColors(getDefaultBoardTheme(theme));
+  const colors = getBoardThemeColors(
+    getDefaultBoardTheme(theme),
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    colorMode,
+  );
 
   return (
     <div className="homePuzzlePreview" aria-hidden="true">

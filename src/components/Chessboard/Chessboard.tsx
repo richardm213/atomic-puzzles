@@ -179,6 +179,7 @@ const ChessboardComponent = ({
 }: ChessboardProps) => {
   const {
     pieceSet,
+    colorMode,
     boardTheme,
     customLightSquare,
     customDarkSquare,
@@ -266,9 +267,11 @@ const ChessboardComponent = ({
         boardColorOverrideTheme,
         boardOverrideLightSquare,
         boardOverrideDarkSquare,
+        colorMode,
       ),
     [
       boardTheme,
+      colorMode,
       customDarkSquare,
       customLightSquare,
       boardColorOverrideTheme,

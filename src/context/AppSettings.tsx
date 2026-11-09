@@ -427,6 +427,7 @@ export const getBoardThemeColors = (
   boardColorOverrideTheme = "",
   boardOverrideLightSquare: string = DEFAULT_CUSTOM_LIGHT_SQUARE,
   boardOverrideDarkSquare: string = DEFAULT_CUSTOM_DARK_SQUARE,
+  colorMode: ColorMode = "dark",
 ): BoardSquareColors => {
   if (boardTheme === "custom") {
     return { light: customLightSquare, dark: customDarkSquare };
@@ -434,6 +435,10 @@ export const getBoardThemeColors = (
 
   if (boardColorOverrideTheme === boardTheme && !isImageBoardTheme(boardTheme)) {
     return { light: boardOverrideLightSquare, dark: boardOverrideDarkSquare };
+  }
+
+  if (boardTheme === "ruby" && colorMode === "light") {
+    return { light: "#f3e9dc", dark: "#b7645b" };
   }
 
   return (

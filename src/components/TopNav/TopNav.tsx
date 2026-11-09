@@ -237,6 +237,7 @@ export const TopNav = () => {
     boardColorOverrideTheme,
     boardOverrideLightSquare,
     boardOverrideDarkSquare,
+    colorMode,
   );
   const currentLocation = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
