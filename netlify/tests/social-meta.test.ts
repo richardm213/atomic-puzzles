@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { injectSocialMetadata, metadataForPath } from "../edge-functions/social-meta";
+import socialMeta, { injectSocialMetadata, metadataForPath } from "../edge-functions/social-meta";
 
 describe("social link metadata", () => {
   it("creates puzzle-specific metadata without revealing the solution", () => {
@@ -16,6 +16,25 @@ describe("social link metadata", () => {
       title: "Practice against HowlinD",
       description: "Practice atomic openings against games played by HowlinD.",
     });
+  });
+
+  it("canonicalizes alternate hosts and tracking URLs without changing the response status", async () => {
+    const response = await socialMeta(
+      new Request("https://www.atomicpuzzles.org/rankings/?utm_source=share"),
+      {
+        next: () =>
+          Promise.resolve(
+            new Response("<html><head></head><body>Rankings</body></html>", {
+              headers: { "Content-Type": "text/html", "Content-Length": "64" },
+            }),
+          ),
+      },
+    );
+    const html = await response.text();
+    expect(html).toContain('rel="canonical" href="https://atomicpuzzles.org/rankings"');
+    expect(html).not.toContain("utm_source");
+    expect(response.headers.has("Content-Length")).toBe(false);
+    expect(response.status).toBe(200);
   });
 
   it("replaces the static homepage tags instead of duplicating them", () => {

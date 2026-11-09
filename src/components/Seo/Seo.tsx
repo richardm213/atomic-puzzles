@@ -1,10 +1,9 @@
 import { useEffect } from "react";
 
+import { canonicalUrlForPath, HOME_DESCRIPTION, SITE_NAME, SITE_URL } from "../../../shared/seo";
 import type { StructuredData } from "../../types/seo";
 
-const SITE_NAME = "Atomic Puzzles";
-const DEFAULT_DESCRIPTION =
-  "Atomic chess puzzles, rankings, game search, and player profiles for the Lichess atomic scene.";
+const DEFAULT_DESCRIPTION = HOME_DESCRIPTION;
 const DEFAULT_ROBOTS = "index,follow";
 
 export type SeoProps = {
@@ -14,11 +13,6 @@ export type SeoProps = {
   robots?: string;
   type?: string;
   structuredData?: StructuredData;
-};
-
-const absoluteUrl = (path: string): string => {
-  if (typeof window === "undefined") return path;
-  return new window.URL(path, window.location.origin).toString();
 };
 
 const ensureMetaTag = (attributeName: string, attributeValue: string): HTMLMetaElement => {
@@ -69,8 +63,8 @@ export const Seo = ({
 }: SeoProps) => {
   useEffect(() => {
     const pageTitle = title || SITE_NAME;
-    const canonicalUrl = absoluteUrl(path);
-    const ogImageUrl = absoluteUrl("/favicon.ico");
+    const canonicalUrl = canonicalUrlForPath(path);
+    const ogImageUrl = `${SITE_URL}/search-favicon.png`;
 
     document.title = pageTitle;
     document.documentElement.lang = "en";

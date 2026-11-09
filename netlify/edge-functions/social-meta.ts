@@ -1,7 +1,4 @@
-const SITE_NAME = "Atomic Puzzles";
-const HOME_TITLE = "Atomic Puzzles | Atomic Chess Training & Rankings";
-const HOME_DESCRIPTION =
-  "Solve atomic chess puzzles, compare monthly and yearly rankings, study recent matches, and explore player profiles.";
+import { ATOMIC_CHESS_DESCRIPTION, ATOMIC_CHESS_TITLE, canonicalUrlForPath, HOME_DESCRIPTION, HOME_TITLE, SITE_NAME } from "../../shared/seo";
 
 export type SocialMetadata = {
   title: string;
@@ -18,6 +15,7 @@ const staticMetadata: Record<string, SocialMetadata> = {
     title: HOME_TITLE,
     description: HOME_DESCRIPTION,
   },
+  "/atomic-chess": { title: ATOMIC_CHESS_TITLE, description: ATOMIC_CHESS_DESCRIPTION },
   "/solve": {
     title: "Solve Atomic Chess Puzzles",
     description: "Solve atomic chess puzzles drawn from real games and community analysis.",
@@ -291,7 +289,7 @@ export default async (request: Request, context: EdgeContext): Promise<Response>
 
   const url = new URL(request.url);
   const metadata = metadataForPath(url.pathname);
-  const canonicalUrl = `${url.origin}${url.pathname}`;
+  const canonicalUrl = canonicalUrlForPath(url.pathname);
   const html = injectSocialMetadata(await response.text(), metadata, canonicalUrl);
   const headers = new Headers(response.headers);
   headers.delete("content-length");
@@ -318,6 +316,7 @@ export const config = {
     "/*.png",
     "/*.svg",
     "/*.txt",
+    "/*.xml",
     "/*.webmanifest",
     "/*.woff2",
   ],

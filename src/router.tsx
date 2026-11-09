@@ -22,6 +22,10 @@ import { queryClient } from "./lib/query/queryClient";
 import { AuthCallbackPage } from "./pages/AuthCallback/AuthCallback";
 import { HomePage } from "./pages/Home/Home";
 
+const AtomicChessPage = lazyRouteComponent(
+  () => import("./pages/AtomicChess/AtomicChess"),
+  "AtomicChessPage",
+);
 const ArenasPage = lazyRouteComponent(() => import("./pages/Arenas/Arenas"), "ArenasPage");
 const CalendarPage = lazyRouteComponent(() => import("./pages/Calendar/Calendar"), "CalendarPage");
 const BettingPage = lazyRouteComponent(() => import("./pages/Betting/Betting"), "BettingPage");
@@ -218,6 +222,12 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: HomePage,
+});
+
+const atomicChessRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/atomic-chess",
+  component: AtomicChessPage,
 });
 
 const rankingsRoute = createRoute({
@@ -840,6 +850,7 @@ const lichessAuthCallbackRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  atomicChessRoute,
   rankingsRoute,
   yearlyRankingsRoute,
   usersRoute,

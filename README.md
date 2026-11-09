@@ -209,6 +209,19 @@ The app is set up like a standard static SPA build:
 - Build command: `npm run build`
 - Output directory: `dist`
 
+The build also renders the homepage content and `/atomic-chess` guide as static HTML using
+`scripts/home-seo-plugin.js`. Those pages share their content with the React routes. Keep the
+`/app.html` SPA fallback in `public/_redirects`: other routes must not receive the homepage body.
+The guide's embedded replays load in the browser; its text and source links remain readable
+without JavaScript.
+
+`public/sitemap.xml` lists canonical public landing pages and is advertised in `public/robots.txt`.
+Update it when adding another public landing page; omit private routes and filtered search URLs.
+After deploying SEO changes, submit `https://atomicpuzzles.org/sitemap.xml` in Google Search
+Console and inspect `/` and `/atomic-chess` to request indexing. Use Search Console's indexing
+and performance reports to assess Google visibility; a sitemap or an indexed page does not
+promise a particular ranking.
+
 The opening explorer uses Turso in both local development and production; it does not fall back to
 a local SQLite file. Configure these environment variables in `.env.local` and in Netlify:
 
