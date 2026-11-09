@@ -91,12 +91,9 @@
 }
 
 .homeBrand span {
-  background: var(--brand-wordmark-gradient);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  -webkit-text-fill-color: currentColor;
   font-weight: 650;
-  color: transparent;
+  color: var(--brand-wordmark-color);
   text-shadow: var(--brand-wordmark-shadow);
   transition:
     color 140ms ease,
