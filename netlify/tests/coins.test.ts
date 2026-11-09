@@ -395,39 +395,67 @@ describe("coins function", () => {
     );
   });
 
-  it("returns only the signed-in player’s redemption history", async () => {
-    const limit = vi.fn(async () => ({
-      data: [
-        {
-          id: 12,
-          item_key: "flowers_500",
-          cost: 500,
-          status: "pending",
-          created_at: "2026-09-30T12:00:00.000Z",
-          fulfilled_at: null,
-        },
-      ],
-      error: null,
-    }));
-    const orderById = vi.fn(() => ({ limit }));
-    const orderByCreatedAt = vi.fn(() => ({ order: orderById }));
-    const eq = vi.fn(() => ({ order: orderByCreatedAt }));
-    const select = vi.fn(() => ({ eq }));
-    const from = vi.fn(() => ({ select }));
-    mocks.createClient.mockReturnValue({ from });
-    const cookie = createSiteSessionCookie("History_User", {});
-
-    const response = await handler({
-      httpMethod: "POST",
-      headers: { cookie: cookie.split(";")[0] },
-      body: JSON.stringify({ action: "history" }),
-    });
-
-    expect(from).toHaveBeenCalledWith("shop_redemptions");
-    expect(eq).toHaveBeenCalledWith("username", "history_user");
-    expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body).result).toHaveLength(1);
-  });
+  it.each([1, 50])(
+    "keeps availability purchases in signed-in history with %i recent entries",
+    async (count) => {
+      const recent = Array.from({ length: count }, (_, index) => ({
+        id: index + 10,
+        item_key: "flowers_500",
+        cost: 500,
+        status: "pending",
+        created_at: new Date().toISOString(),
+        fulfilled_at: null,
+      }));
+      const oldTheme = {
+        ...recent[0],
+        id: 1,
+        item_key: "theme_red_charcoal",
+        status: "fulfilled",
+        created_at: "2020-01-01T00:00:00Z",
+        fulfilled_at: "2020-01-01T00:00:00Z",
+      };
+      const patron = { ...recent[0], id: 2, item_key: "lichess_patron_month" };
+      const query = {
+        select: vi.fn(),
+        eq: vi.fn(),
+        neq: vi.fn(),
+        order: vi.fn(),
+        limit: vi.fn(async () => ({ data: recent, error: null })),
+        or: vi.fn(async () => ({ data: [recent[0], oldTheme, patron], error: null })),
+      };
+      query.select.mockReturnValue(query);
+      query.eq.mockReturnValue(query);
+      query.neq.mockReturnValue(query);
+      query.order.mockReturnValue(query);
+      const from = vi.fn(() => query);
+      mocks.createClient.mockReturnValue({ from });
+      const cookie = createSiteSessionCookie("History_User", {});
+      const response = await handler({
+        httpMethod: "POST",
+        headers: { cookie: cookie.split(";")[0] },
+        body: JSON.stringify({ action: "history" }),
+      });
+      expect(response.statusCode).toBe(200);
+      expect(from).toHaveBeenCalledWith("shop_redemptions");
+      expect(query.eq).toHaveBeenCalledWith("username", "history_user");
+      expect(query.eq).toHaveBeenCalledTimes(count === 50 ? 2 : 1);
+      const result = JSON.parse(response.body).result;
+      expect(result).toHaveLength(count === 50 ? 52 : count);
+      expect(
+        result.filter((purchase: { id: number }) => purchase.id === recent[0]!.id),
+      ).toHaveLength(1);
+      if (count === 50) {
+        expect(result).toEqual(expect.arrayContaining([oldTheme, patron]));
+        expect(query.neq).toHaveBeenCalledWith("status", "cancelled");
+        expect(query.or).toHaveBeenCalledWith(expect.stringContaining("item_key.like.theme_*"));
+        expect(query.or).toHaveBeenCalledWith(
+          expect.stringContaining("item_key.eq.lichess_patron_month"),
+        );
+      } else {
+        expect(query.or).not.toHaveBeenCalled();
+      }
+    },
+  );
 
   it("loads past admin redemptions from databases without request details", async () => {
     const legacyRow = {

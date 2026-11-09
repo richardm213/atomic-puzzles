@@ -437,14 +437,38 @@ export const coinsRoute = async (event: FunctionEvent) => {
   }
   if (input.action === "history") {
     const supabase = createServerSupabase("Atomic Coins service");
+    const columns = "id,item_key,cost,status,created_at,fulfilled_at";
     const { data, error } = await supabase
       .from("shop_redemptions")
-      .select("id,item_key,cost,status,created_at,fulfilled_at")
+      .select(columns)
       .eq("username", username)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(50);
     if (error) throw new Error(`Unable to load purchase history: ${error.message}`);
+    if (data?.length === 50) {
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0, 0, 0, 0);
+      // Keep purchases that control shop availability even after they leave the recent list.
+      const { data: availabilityPurchases, error: availabilityError } = await supabase
+        .from("shop_redemptions")
+        .select(columns)
+        .eq("username", username)
+        .neq("status", "cancelled")
+        .or(
+          `item_key.like.theme_*,and(item_key.eq.lichess_patron_month,created_at.gte.${monthStart.toISOString()})`,
+        );
+      if (availabilityError)
+        throw new Error(`Unable to load purchase history: ${availabilityError.message}`);
+      const purchases = new Map(
+        [...data, ...(availabilityPurchases ?? [])].map((purchase) => [purchase.id, purchase]),
+      );
+      const result = [...purchases.values()].sort(
+        (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id,
+      );
+      return identityResponse(identity, 200, { result });
+    }
     return identityResponse(identity, 200, { result: data });
   }
   let canonicalRecipientUsername = input.action === "give" ? input.recipientUsername : "";

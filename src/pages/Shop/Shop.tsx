@@ -18,7 +18,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { SHOP_ITEM_COSTS, SHOP_REOPENS_AT } from "../../../shared/domain/coins";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
-import { useAppSettings } from "../../context/AppSettings";
+import { type Theme, useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import {
@@ -54,9 +54,11 @@ const shopItems: {
   icon: ShopItemIcon;
   priceImage: string;
   description?: string;
+  theme?: Theme;
 }[] = [
   {
     key: "theme_red_charcoal",
+    theme: "ruby",
     category: "site",
     name: "Red Charcoal theme",
     cost: SHOP_ITEM_COSTS.theme_red_charcoal,
@@ -248,8 +250,7 @@ export const ShopPage = () => {
         );
       }
       const purchasedItem = shopItems.find((item) => item.key === variables.itemKey);
-      if (variables.itemKey === "theme_red_charcoal" && data.status === "fulfilled")
-        setTheme("ruby");
+      if (purchasedItem?.theme && data.status === "fulfilled") setTheme(purchasedItem.theme);
       setPurchaseToast(`${purchasedItem?.name ?? "Purchase"} confirmed`);
       if (purchaseToastTimeoutRef.current !== null) {
         window.clearTimeout(purchaseToastTimeoutRef.current);
@@ -270,21 +271,36 @@ export const ShopPage = () => {
     },
   });
   const balance = summary.data?.balance ?? 0;
-  const ownsRedCharcoal =
-    redemptionHistory.data?.some(
-      (item) => item.itemKey === "theme_red_charcoal" && item.status === "fulfilled",
-    ) ?? false;
+  const now = new Date();
+  const unavailableItemKeys = new Set(
+    redemptionHistory.data
+      ?.filter((purchase) => {
+        if (purchase.id <= 0 || purchase.status === "cancelled") return false;
+        const item = shopItems.find((candidate) => candidate.key === purchase.itemKey);
+        if (item?.theme) return purchase.status === "fulfilled";
+        const purchasedAt = new Date(purchase.createdAt);
+        return (
+          purchase.itemKey === "lichess_patron_month" &&
+          purchasedAt.getUTCFullYear() === now.getUTCFullYear() &&
+          purchasedAt.getUTCMonth() === now.getUTCMonth()
+        );
+      })
+      .map((purchase) => purchase.itemKey),
+  );
   const economyBan = summary.data?.economyBan ?? null;
   const busy = daily.isPending || redeem.isPending;
   const errorValue = summary.error ?? daily.error ?? redeem.error;
   const error = getErrorMessage(errorValue, "");
 
   const redeemItem = (item: (typeof shopItems)[number]) => {
-    if (item.key === "theme_red_charcoal" && ownsRedCharcoal) {
-      setTheme("ruby");
+    if (
+      unavailableItemKeys.has(item.key) ||
+      shopClosed ||
+      balance < item.cost ||
+      busy ||
+      economyBan
+    )
       return;
-    }
-    if (shopClosed || balance < item.cost || busy || economyBan) return;
     redeem.reset();
     setRequestedUsername("");
     setSelectedReward(item);
@@ -538,7 +554,11 @@ export const ShopPage = () => {
             </div>
             <div className="shopItems">
               {shopItems
-                .filter((item) => category === "all" || item.category === category)
+                .filter(
+                  (item) =>
+                    !unavailableItemKeys.has(item.key) &&
+                    (category === "all" || item.category === category),
+                )
                 .sort((a, b) => a.cost - b.cost)
                 .map((item) => (
                   <article className="shopItem" key={item.key}>
@@ -566,19 +586,14 @@ export const ShopPage = () => {
                     </div>
                     <button
                       type="button"
-                      disabled={
-                        !(item.key === "theme_red_charcoal" && ownsRedCharcoal) &&
-                        (shopClosed || balance < item.cost || busy || Boolean(economyBan))
-                      }
+                      disabled={shopClosed || balance < item.cost || busy || Boolean(economyBan)}
                       onClick={() => redeemItem(item)}
                     >
-                      {item.key === "theme_red_charcoal" && ownsRedCharcoal
-                        ? "Use theme"
-                        : shopClosed
-                          ? "Closed"
-                          : redeem.isPending && redeem.variables?.itemKey === item.key
-                            ? "Buying…"
-                            : "Buy"}
+                      {shopClosed
+                        ? "Closed"
+                        : redeem.isPending && redeem.variables?.itemKey === item.key
+                          ? "Buying…"
+                          : "Buy"}
                     </button>
                   </article>
                 ))}

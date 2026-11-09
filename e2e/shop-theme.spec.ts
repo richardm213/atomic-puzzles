@@ -75,7 +75,7 @@ test("Red Charcoal unlocks once and ownership is checked only when explicitly se
     .click();
   await expect(page.getByRole("dialog").getByRole("button", { name: "Buying…" })).toBeDisabled();
   await expect(page.locator("html")).toHaveAttribute("data-palette", "default");
-  await expect(item.getByRole("button", { name: "Use theme" })).toHaveCount(0);
+  await expect(item).toBeVisible();
   confirmPayment();
   await expect(page.getByRole("dialog").getByRole("alert")).toContainText("Purchase rejected");
   await expect(
@@ -84,16 +84,25 @@ test("Red Charcoal unlocks once and ownership is checked only when explicitly se
       .getByText("200", { exact: true }),
   ).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("data-palette", "default");
-  await expect(item.getByRole("button", { name: "Use theme" })).toHaveCount(0);
+  await expect(item).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "Buy for 100", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-palette", "ruby");
-  await expect(item.getByRole("button", { name: "Use theme" })).toBeVisible();
+  await expect(item).toHaveCount(0);
   await expect(
     page
       .getByRole("region", { name: "Coin balance and daily bonus" })
       .getByText("100", { exact: true }),
   ).toBeVisible();
-  await item.getByRole("button", { name: "Use theme" }).click();
+  await page
+    .getByRole("group", { name: "Shop category" })
+    .getByRole("button", { name: "Site", exact: true })
+    .click();
+  await expect(item).toHaveCount(0);
+  await page
+    .getByRole("group", { name: "Shop category" })
+    .getByRole("button", { name: "All", exact: true })
+    .click();
+  await expect(item).toHaveCount(0);
   expect(purchases).toBe(1);
   expect(accessChecks).toBe(1);
 
@@ -103,7 +112,7 @@ test("Red Charcoal unlocks once and ownership is checked only when explicitly se
   await expect(page.locator("html")).toHaveAttribute("data-palette", "ruby");
   expect(accessChecks).toBe(2);
   await page.reload();
-  await expect(item.getByRole("button", { name: "Use theme" })).toBeVisible();
+  await expect(item).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("data-palette", "ruby");
   await page.getByRole("button", { name: "Open settings", exact: true }).click();
   await expect(page.getByLabel("Theme", { exact: true })).toHaveValue("ruby");
@@ -159,4 +168,64 @@ test("shop categories filter rewards and show prices in ascending order", async 
   await expect(theme).toBeVisible();
   await expect(discord).toBeVisible();
   await expect(lichess).toBeVisible();
+});
+
+test("Patron hides after a confirmed purchase and returns in the next UTC month", async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(new Date("2026-11-18T12:00:00Z"));
+  let purchased = false;
+  const history = [
+    { id: 1, status: "fulfilled", created_at: "2026-10-31T23:59:00Z" },
+    { id: 2, status: "cancelled", created_at: "2026-11-01T00:00:00Z" },
+  ];
+  await page.route("**/api/coins", (route) => {
+    const { action, itemKey } = route.request().postDataJSON();
+    if (action === "summary")
+      return route.fulfill({
+        json: {
+          result: {
+            balance: purchased ? 400 : 1000,
+            dailyClaimAvailable: false,
+          },
+        },
+      });
+    if (action === "history")
+      return route.fulfill({
+        json: {
+          result: history.map((purchase) => ({
+            ...purchase,
+            item_key: "lichess_patron_month",
+            cost: 600,
+            fulfilled_at: purchase.status === "fulfilled" ? purchase.created_at : null,
+          })),
+        },
+      });
+    if (action === "redeem") {
+      expect(itemKey).toBe("lichess_patron_month");
+      purchased = true;
+      history.push({ id: 3, status: "pending", created_at: "2026-11-18T12:00:00Z" });
+      return route.fulfill({
+        json: { result: { balance: 400, redemptionId: 3, status: "pending" } },
+      });
+    }
+    return route.fulfill({ status: 400, json: { error: "Unexpected test request" } });
+  });
+  await page.goto("/shop");
+  const patron = page
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { name: "1 month Lichess Patron", exact: true }) });
+  const categories = page.getByRole("group", { name: "Shop category" });
+  await expect(patron).toBeVisible();
+  await patron.getByRole("button", { name: "Buy", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Buy for 600", exact: true }).click();
+  await expect(patron).toHaveCount(0);
+  await categories.getByRole("button", { name: "Lichess", exact: true }).click();
+  await expect(patron).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Purchase history", exact: true })).toBeVisible();
+  await expect(patron).toHaveCount(0);
+  await page.clock.setFixedTime(new Date("2026-12-01T00:00:00Z"));
+  await page.reload();
+  await expect(patron).toBeVisible();
 });
