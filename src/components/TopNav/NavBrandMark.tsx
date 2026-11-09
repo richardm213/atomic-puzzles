@@ -1,11 +1,25 @@
 import { type CSSProperties, useId } from "react";
 
+import type { ColorMode } from "../../context/AppSettings";
 import { appAssetPath } from "../../utils/appAssetPath";
 
-export const NavBrandMark = () => {
+export const NavBrandMark = ({ originalMode }: { originalMode?: ColorMode }) => {
   const filterId = useId();
-  // All palettes and modes share the same artwork and alpha mask, so changing
-  // appearance only recolors the logo without changing its visible footprint.
+
+  if (originalMode) {
+    return (
+      <img
+        className="brandMarkImage"
+        src={appAssetPath(
+          originalMode === "light" ? "/images/brand/atomic-logo-light.png" : "/favicon.ico",
+        )}
+        alt=""
+        width="30"
+        height="30"
+        aria-hidden="true"
+      />
+    );
+  }
 
   return (
     <>
