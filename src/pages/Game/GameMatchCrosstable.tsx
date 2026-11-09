@@ -151,8 +151,12 @@ const Crosstable = ({
             <PlayerLink username={playerTwo}>{playerTwo}</PlayerLink>
           </div>
           <div className="gameMatchTotals" aria-label="Crosstable score">
-            <strong>{formatScore(playerOneTotal)}</strong>
-            <strong>{formatScore(playerTwoTotal)}</strong>
+            <strong className={resultClass(playerOneTotal, playerTwoTotal)}>
+              {formatScore(playerOneTotal)}
+            </strong>
+            <strong className={resultClass(playerTwoTotal, playerOneTotal)}>
+              {formatScore(playerTwoTotal)}
+            </strong>
           </div>
         </div>
       </div>
