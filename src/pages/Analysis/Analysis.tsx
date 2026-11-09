@@ -176,12 +176,15 @@ const clampAnalysisBoardSize = (size: number, maxSize = MAX_ANALYSIS_BOARD_SIZE)
     ),
   );
 
+const isSingleColumnLayout = (): boolean =>
+  typeof window !== "undefined" &&
+  window.matchMedia("(max-width: 799px) and (orientation: portrait)").matches;
+
 const getMaxAnalysisBoardSize = (isGame = false): number => {
   if (typeof window === "undefined") return MAX_ANALYSIS_BOARD_SIZE;
 
   const viewportWidth = window.innerWidth;
-  const singleColumn = window.matchMedia("(max-width: 799px) and (orientation: portrait)").matches;
-  if (singleColumn) {
+  if (isSingleColumnLayout()) {
     return Math.max(MIN_ANALYSIS_BOARD_SIZE, Math.min(MAX_ANALYSIS_BOARD_SIZE, viewportWidth - 20));
   }
 
@@ -205,10 +208,7 @@ const getMaxAnalysisBoardSize = (isGame = false): number => {
 };
 
 const getResponsiveAnalysisBoardFloor = (viewportWidth: number, isGame = false): number => {
-  const singleColumn =
-    typeof window !== "undefined" &&
-    window.matchMedia("(max-width: 799px) and (orientation: portrait)").matches;
-  if (singleColumn) return Math.max(MIN_ANALYSIS_BOARD_SIZE, viewportWidth - 20);
+  if (isSingleColumnLayout()) return Math.max(MIN_ANALYSIS_BOARD_SIZE, viewportWidth - 20);
   if (viewportWidth >= 3000) return 820;
   if (viewportWidth >= 2400) return 760;
   if (viewportWidth >= 1800) return 680;
@@ -223,9 +223,7 @@ const getResponsiveAnalysisBoardFloor = (viewportWidth: number, isGame = false):
   return MIN_ANALYSIS_BOARD_SIZE;
 };
 
-const defaultExplorerOpen = (): boolean =>
-  typeof window === "undefined" ||
-  !window.matchMedia("(max-width: 799px) and (orientation: portrait)").matches;
+const defaultExplorerOpen = (): boolean => !isSingleColumnLayout();
 
 const boardSizeSchema = z.coerce
   .number()
@@ -411,6 +409,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === "undefined" ? 1440 : window.innerWidth,
   );
+  const [singleColumnLayout, setSingleColumnLayout] = useState(isSingleColumnLayout);
   const [notationLayout, setNotationLayout] = usePersistedState(
     NOTATION_LAYOUT_STORAGE_KEY,
     notationLayoutSchema,
@@ -729,6 +728,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   useEffect(() => {
     const handleWindowResize = (): void => {
       setViewportWidth(window.innerWidth);
+      setSingleColumnLayout(isSingleColumnLayout());
     };
 
     handleWindowResize();
@@ -1458,6 +1458,20 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     </OpeningExplorerPanel>
   ) : null;
 
+  // Keep one set of match controls so shortcuts and tab order follow the visible layout.
+  const gameDetails = game ? (
+    <div className="gameAnalysisSidebarRail">
+      <aside
+        className={`gameAnalysisSidebar ${moveGameExplorerLeft ? "withExplorer" : ""}`}
+        aria-label="Game details"
+      >
+        <GameAnalysisHeader game={game} />
+        {moveGameExplorerLeft ? openingExplorerPanel : null}
+      </aside>
+      <GameMatchNavigation game={game} />
+    </div>
+  ) : null;
+
   return (
     <AnalysisWorkspaceLayout
       className={game ? "gameAnalysisPage" : undefined}
@@ -1558,6 +1572,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           ) : null}
         </AnalysisWorkspacePanel>
 
+        {singleColumnLayout ? gameDetails : null}
         {game && gameComputerAnalysisEnabled && gameUnderboardTab === "analysis" ? (
           <div className="gameComputerSummaryDock">
             <GameComputerAnalysisPlayers game={game} analysis={gameAnalysis.analysis} />
@@ -1565,18 +1580,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
         ) : null}
       </div>
 
-      {game ? (
-        <div className="gameAnalysisSidebarRail">
-          <aside
-            className={`gameAnalysisSidebar ${moveGameExplorerLeft ? "withExplorer" : ""}`}
-            aria-label="Game details"
-          >
-            <GameAnalysisHeader game={game} />
-            {moveGameExplorerLeft ? openingExplorerPanel : null}
-          </aside>
-          <GameMatchNavigation game={game} />
-        </div>
-      ) : null}
+      {singleColumnLayout ? null : gameDetails}
 
       {usernamePickerOpen ? (
         <UsernamePickerModal
