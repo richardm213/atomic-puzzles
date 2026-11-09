@@ -54,10 +54,11 @@ const GuideReplayDisclosure = ({
 const topics = {
   blast: ["blast", "The blast radius"],
   kings: ["kings", "Kings, check, and checkmate"],
-  specialMoves: ["special-moves", "Castling, promotion, and en passant"],
-  queenAttacks: ["queen-attacks", "Early queen attacks"],
-  knightInvasions: ["knight-invasions", "Knight invasions"],
-  development: ["development", "Development and king safety"],
+  specialMoves: ["special-moves", "Castling and promotion"],
+  enPassant: ["en-passant", "En passant"],
+  queenAttacks: ["queen-attacks", "Watch for open queen lines"],
+  knightInvasions: ["knight-invasions", "Stop the knight before it forks"],
+  development: ["development", "How to study an atomic opening"],
   kingTargets: ["king-targets", "Find targets beside the king"],
   sacrifices: ["sacrifices", "Sacrifices and material"],
   blastDefense: ["blast-defense", "Defending with an explosion"],
@@ -68,7 +69,7 @@ const topics = {
 } as const;
 
 const contents = [
-  ["rules", "The rules", [topics.blast, topics.kings, topics.specialMoves]],
+  ["rules", "The rules", [topics.blast, topics.kings, topics.specialMoves, topics.enPassant]],
   ["opening", "The opening", [topics.queenAttacks, topics.knightInvasions, topics.development]],
   ["middlegame", "The middlegame", [topics.kingTargets, topics.sacrifices, topics.blastDefense]],
   [
@@ -233,8 +234,32 @@ export const AtomicChessGuideContent = ({
         <p>
           Castling and promotion are still part of the game. Check whether castling puts a
           capturable piece next to your king; the usual habit of castling early is no guarantee of
-          safety here. En passant causes an explosion on the square the capturing pawn lands on,
-          which can reach pieces on the next rank.
+          safety here.
+        </p>
+        <GuideBoardFigure
+          panels={[
+            {
+              title: "Safe after 1. O-O",
+              fen: "k7/4b3/8/8/8/8/5PPP/5RK1 b - - 1 1",
+              marked: "g1",
+              description:
+                "After White castles kingside, Black’s bishop on e7 cannot capture anything next to the boxed king on g1.",
+            },
+            {
+              title: "Unsafe after 1. O-O",
+              fen: "k7/8/3b4/8/8/8/5PPP/5RK1 b - - 1 1",
+              blast: "h2",
+              marked: "g1",
+              description:
+                "After White castles kingside, Black’s bishop on d6 can capture the pawn on h2. The dashed blast outline includes the boxed white king on g1.",
+            },
+          ]}
+          caption="Both castles are legal. From e7, the bishop has no capture next to the king. From d6, it wins immediately with 1…Bxh2#, exploding the king on g1."
+        />
+        <Topic name="enPassant" />
+        <p>
+          En passant causes an explosion on the square the capturing pawn lands on, which can reach
+          pieces on the next rank.
         </p>
         <Example id="enPassant" />
         <p>
@@ -247,43 +272,47 @@ export const AtomicChessGuideContent = ({
       <section id="opening" aria-labelledby="opening-title">
         <h2 id="opening-title">The opening</h2>
         <p>
-          Before worrying about development, check for immediate threats to the squares around your
-          king. A pawn move can open a useful line, but it can also give a queen or knight a route
-          into your position. Learn the threats behind an opening rather than copying moves from
-          standard chess.
+          In atomic chess, the opening can decide the game before either side develops a knight or
+          bishop. Take a familiar start from standard chess: after 1. e4 d5, White takes on d5 and
+          loses on Black’s very next move.
+        </p>
+        <p>
+          That’s why the first few moves are worth studying. A capture next to the king can end the
+          game, even if the target is defended. A routine developing move can give your opponent the
+          one turn they need.
         </p>
         <Topic name="queenAttacks" />
         <p>
-          Bringing the queen out early can be dangerous for the defender. The queen may only need
-          one capture on d2, f2, d7, or f7 to end the game. Captures in the center deserve
-          particular care: when both pawns disappear, an entire file can open.
+          Before taking a pawn, picture the board after the blast. When White takes on d5, both
+          pawns disappear, opening a straight line from Black’s queen on d8 to the pawn on d2 beside
+          White’s king.
         </p>
         <Example id="queenFile" />
         <p>
-          Driving the queen away once may not solve the problem. It can switch diagonals and attack
-          two squares near the king at the same time. Look for the next queen move before deciding
-          that a pawn push has defended everything.
+          A pawn push can close one line without stopping the attack. Here Black plays …g6 against
+          Qh5, but the queen switches to d5 and threatens both d7 and f7. Moving just one of those
+          pawns leaves the other exposed.
         </p>
         <Example id="queenAngles" />
         <Topic name="knightInvasions" />
         <p>
-          Knights can jump over a pawn shield and attack several targets beside the king. A knight
-          on e5, for example, attacks both d7 and f7. Once it reaches d7 or f7, it may threaten a
-          bishop or queen next to the king, even if the original pawn has moved.
+          Against a knight, look one jump ahead. After 1. Nf3, the danger isn’t the knight on f3;
+          it’s Ne5 next. From e5 it can take either d7 or f7, and either capture would explode
+          Black’s king.
         </p>
         <Example id="knight" />
         <p>
-          Defend the knight’s route, not just the pawn it wants to take. After 1.Nf3, …f6 controls
-          e5 and g5 before the knight gets there. This is one answer to this opening, not a general
-          rule: moving the f-pawn can open other lines.
+          Compare 1…f6: Black can now take the knight if it jumps to e5, with the blast safely away
+          from the king. The lesson isn’t to play …f6 by default; it’s to stop the knight before you
+          have two targets to defend.
         </p>
         <Example id="knightDefense" />
         <Topic name="development" />
         <p>
-          Bring pieces into play with a purpose. A developed bishop can stop a knight entry or
-          create a threat of its own. Avoid trapping a pawn beside your king behind another piece:
-          when that pawn is attacked, you may need to move it out of the blast zone. Before
-          castling, examine captures near the destination square too.
+          Start with one opening for each color. For each early reply, ask what capture it threatens
+          or prevents, and what happens if you ignore it. Once there’s no immediate threat, develop
+          normally—but prefer moves that also cover an entry square or keep a line to your king
+          closed.
         </p>
       </section>
 
