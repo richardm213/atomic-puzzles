@@ -11,6 +11,10 @@ export type NavItem = {
   }[];
 };
 
+const awc2026Path = "/tournaments/awc2026";
+const isAwc2026Path = (pathname: string) =>
+  pathname === awc2026Path || pathname.startsWith(`${awc2026Path}/`);
+
 export const navItems: NavItem[] = [
   {
     to: "/rankings",
@@ -143,7 +147,14 @@ export const navItems: NavItem[] = [
       {
         to: "/tournaments",
         label: "Tournament archive",
-        isActive: (pathname) => pathname === "/tournaments" || pathname.startsWith("/tournaments/"),
+        isActive: (pathname) =>
+          pathname === "/tournaments" ||
+          (pathname.startsWith("/tournaments/") && !isAwc2026Path(pathname)),
+      },
+      {
+        to: `${awc2026Path}/main`,
+        label: "AWC 2026",
+        isActive: isAwc2026Path,
       },
       {
         to: "/arenas",
