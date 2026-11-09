@@ -67,6 +67,7 @@ export const navItems: NavItem[] = [
         label: "Solve puzzles",
         isActive: (pathname) =>
           pathname === "/solve" ||
+          pathname.startsWith("/solve/guest/") ||
           (/^\/solve\/[^/]+$/.test(pathname) &&
             pathname !== "/solve/sets" &&
             pathname !== "/solve/custom-sets" &&

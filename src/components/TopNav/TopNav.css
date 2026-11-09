@@ -70,6 +70,7 @@
   display: block;
   flex: 0 0 var(--nav-brand-mark-size);
   object-fit: contain;
+  border-radius: 4px;
   filter: var(--brand-mark-filter, none);
   transition: filter 140ms ease;
 }

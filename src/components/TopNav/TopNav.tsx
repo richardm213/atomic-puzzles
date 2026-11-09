@@ -221,6 +221,7 @@ export const TopNav = () => {
     pathname === "/solve" ||
     /^\/solve\/[^/]+$/.test(pathname) ||
     /^\/solve\/(?:set|custom|dashboard)\/[^/]+\/[^/]+$/.test(pathname) ||
+    pathname.startsWith("/solve/guest/") ||
     pathname === "/analysis" ||
     pathname.startsWith("/analysis/") ||
     /^\/game\/[^/]+\/?$/.test(pathname) ||

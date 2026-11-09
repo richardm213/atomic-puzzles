@@ -5,6 +5,7 @@ import {
   createRoute,
   createRouter,
   lazyRouteComponent,
+  Navigate,
   redirect,
   RouterProvider,
   useParams,
@@ -568,6 +569,21 @@ const solveRoute = createRoute({
   },
 });
 
+const solveGuestRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/solve/guest/$guestNumber",
+  component: function SolveGuestRoute() {
+    const { guestNumber } = solveGuestRoute.useParams();
+    return (
+      <RequireAuthentication
+        signedOutFallback={<GuestPuzzleTrial key={guestNumber} guestNumber={guestNumber} />}
+      >
+        <Navigate to="/solve" replace />
+      </RequireAuthentication>
+    );
+  },
+});
+
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dashboard",
@@ -897,6 +913,7 @@ const routeTree = rootRoute.addChildren([
   legacyMatchRoute,
   matchesAliasRoute,
   solveRoute,
+  solveGuestRoute,
   dashboardRoute,
   legacyPuzzleHistoryRoute,
   solveSetsRoute,

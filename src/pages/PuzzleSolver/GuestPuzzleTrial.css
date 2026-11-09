@@ -1,42 +1,115 @@
 .guestPuzzleTrial {
-  width: min(100%, calc(31rem + var(--page-gutter) * 2));
+  --guest-board-size: clamp(
+    200px,
+    calc(var(--page-shell-min-height-dynamic) - 2 * var(--space-4)),
+    500px
+  );
+
+  width: min(100%, 1024px);
   margin-inline: auto;
-  padding: var(--page-shell-padding);
+  padding-inline: max(var(--board-layout-gutter), env(safe-area-inset-left))
+    max(var(--board-layout-gutter), env(safe-area-inset-right));
+  padding-block: var(--space-4);
+  display: grid;
+  grid-template: "details board" auto / minmax(var(--board-layout-controls-min), 1fr)
+    minmax(0, var(--guest-board-size));
+  align-items: start;
+  justify-content: center;
+  gap: var(--board-layout-gap);
+}
+
+.guestPuzzleTrial .guestPuzzleBoard {
+  grid-area: board;
+  order: 0;
+}
+
+.guestPuzzleBoard .boardStage {
+  width: 100%;
+}
+
+.guestPuzzleTrial .guestPuzzlePanel {
+  grid-area: details;
   display: grid;
   gap: var(--space-3);
+  padding: var(--space-4);
 }
 
-.guestPuzzleHeader h1 {
-  margin: 0;
-  color: var(--color-heading);
-  font-size: clamp(22px, 4vw, 26px);
-  line-height: 1.2;
+.guestPuzzleTrial .guestPuzzleHeader h1 {
+  font-size: 18px;
 }
 
-.guestPuzzleHeader p {
-  margin: var(--space-1) 0 0;
+.guestPuzzlePanel .puzzlePlayers {
+  border-block-start: 1px solid var(--color-border);
+  padding-block-start: var(--space-2);
+}
+
+.guestPuzzlePanel .puzzlePlayer.hasCastlingData.hasMaterialData {
+  grid-template-columns: 18px minmax(100px, max-content) minmax(0, 1fr);
+}
+
+.guestPuzzlePanel .materialDifferencePieces {
+  min-width: 0;
   color: var(--color-muted);
 }
 
-.guestPuzzleFeedback {
-  min-height: var(--control-height-touch);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+.guestPuzzlePanel .materialDifferencePieces.isEmpty {
+  border-left-color: var(--color-border);
 }
 
-.guestPuzzleFeedback p {
+.guestPuzzleFeedback {
   margin: 0;
+  color: var(--color-text);
   font-weight: 600;
 }
 
-.guestPuzzleFeedback:has(> p:empty) {
-  min-height: 0;
-  margin-block-start: calc(-1 * var(--space-3));
+.guestPuzzleFeedback:empty {
+  position: absolute;
 }
 
-.guestPuzzleTrial :is(button, input) {
+.guestPuzzleFeedback[data-result="solved"] {
+  color: var(--color-success);
+}
+
+.guestPuzzleFeedback[data-result="missed"] {
+  color: var(--color-danger);
+}
+
+.guestPuzzleNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.guestPuzzleNotice svg {
+  flex: none;
+  margin-block-start: 0.2em;
+}
+
+.guestPuzzleActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.guestPuzzleActions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height-touch);
+  color: var(--color-muted);
+  font-size: 14px;
+  text-underline-offset: 3px;
+}
+
+.guestPuzzleActions a:hover {
+  color: var(--color-heading);
+}
+
+.guestPuzzleTrial button {
   min-height: var(--control-height-touch);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-input-border);
@@ -44,9 +117,6 @@
   background: var(--color-panel-strong);
   color: var(--color-text);
   font: inherit;
-}
-
-.guestPuzzleTrial button {
   cursor: pointer;
   transition:
     background 160ms ease,
@@ -63,7 +133,7 @@
   transform: translateY(1px);
 }
 
-.guestPuzzleTrial :is(button, input, summary, h1):focus-visible {
+.guestPuzzleTrial :is(button, h1):focus-visible {
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 3px;
 }
@@ -80,31 +150,26 @@
   background: var(--color-primary-hover);
 }
 
-.guestPuzzleKeyboard summary {
-  width: fit-content;
-  min-height: var(--control-height-touch);
-  padding-block: var(--space-3);
-  color: var(--color-muted);
-  cursor: pointer;
-}
+@media (max-width: 680px) {
+  .guestPuzzleTrial {
+    --guest-board-size: clamp(
+      180px,
+      calc(var(--page-shell-min-height-dynamic) - 3 * var(--space-16) - var(--space-8)),
+      500px
+    );
 
-.guestPuzzleKeyboard summary:hover {
-  color: var(--color-heading);
-}
+    grid-template:
+      "board" auto
+      "details" auto / minmax(0, var(--guest-board-size));
+    padding-inline: max(var(--space-2), env(safe-area-inset-left))
+      max(var(--space-2), env(safe-area-inset-right));
+    padding-block-start: var(--space-2);
+    gap: var(--space-2);
+  }
 
-.guestPuzzleKeyboard form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-2);
-}
-
-.guestPuzzleKeyboard label {
-  grid-column: 1 / -1;
-}
-
-.guestPuzzleKeyboard input {
-  min-width: 0;
-  font-size: 16px;
+  .guestPuzzleTrial .guestPuzzlePanel {
+    padding: var(--space-3);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

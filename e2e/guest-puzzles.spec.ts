@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("guests can solve only the five presets without fetching puzzle data", async ({ page }) => {
+test("guest puzzle URLs follow progress without fetching puzzle data", async ({ page }) => {
   const requests: string[] = [];
   await page.route(/\/(api|__e2e_supabase|rest\/v1)\//, (route) => {
     requests.push(route.request().url());
@@ -15,39 +15,68 @@ test("guests can solve only the five presets without fetching puzzle data", asyn
 
   await page.goto("/solve");
   await expect(login).toBeVisible();
-  await page.getByRole("button", { name: /try 5 guest puzzles/i }).click();
+  await page.evaluate(() => localStorage.setItem("atomic-puzzles:guest-trial:v1", "5"));
+  await page.reload();
+  await page.getByRole("button", { name: /try 20 guest puzzles/i }).click();
+  await expect(page).toHaveURL(/\/solve\/guest\/1$/);
 
   const playMove = async (move: string) => {
-    const moveField = page.getByRole("textbox", { name: "Move", exact: true });
-    if (!(await moveField.isVisible())) {
-      await page.getByText("Enter a move by keyboard").click();
+    const board = page.locator("cg-board");
+    await expect(board).toBeVisible();
+    const bounds = await board.boundingBox();
+    if (!bounds) throw new Error("Puzzle board is missing");
+
+    // Both positions exercised here have White at the bottom.
+    for (const square of [move.slice(0, 2), move.slice(2)]) {
+      const file = square.charCodeAt(0) - "a".charCodeAt(0);
+      const rank = Number(square[1]);
+      await page.mouse.click(
+        bounds.x + (file + 0.5) * (bounds.width / 8),
+        bounds.y + (8.5 - rank) * (bounds.height / 8),
+      );
     }
-    await moveField.fill(move);
-    await moveField.press("Enter");
   };
 
-  await playMove("e1e8");
-  await expect(page.getByText(/enter a legal move/i)).toBeVisible();
-  await playMove("f3g3");
-  await expect(page.getByText("Not mate. Try again.")).toBeVisible();
+  const white = page.getByRole("group", { name: "White", exact: true });
+  await expect(white.getByLabel("Castling rights: O-O, O-O-O")).toBeVisible();
+  await expect(white.getByLabel("Material difference: no extra material")).toBeVisible();
+  await playMove("h6h5");
+  await expect(page.getByText("Try another move.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Next puzzle" })).toHaveCount(0);
-  await playMove("f3f7");
-  await expect(page.getByRole("button", { name: "Next puzzle" })).toBeFocused();
+  await playMove("h6f8");
+  await page.getByRole("button", { name: "Next puzzle" }).click();
+  await expect(page).toHaveURL(/\/solve\/guest\/2$/);
 
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "Puzzle 1 of 20" })).toBeVisible();
+  await page.goForward();
   await page.reload();
-  await page.getByRole("button", { name: "Resume guest puzzles" }).click();
+  await expect(page.getByRole("heading", { name: "Puzzle 2 of 20" })).toBeFocused();
 
-  // Both knight captures mate in puzzle 2; try the alternative to the game move.
-  for (const [offset, move] of ["e4d2", "b4d2", "d8d2", "h5f7"].entries()) {
-    await expect(page.getByRole("heading", { name: `Puzzle ${offset + 2} of 5` })).toBeFocused();
-    await playMove(move);
-    await page.getByRole("button", { name: offset === 3 ? "Finish" : "Next puzzle" }).click();
-  }
+  // The URL cannot skip unsolved puzzles.
+  await page.goto("/solve/guest/20");
+  await expect(page).toHaveURL(/\/solve\/guest\/2$/);
 
+  // Exercise the final multi-move puzzle without replaying every intermediate position.
+  await page.evaluate(() => localStorage.setItem("atomic-puzzles:guest-trial:v2", "19"));
+  await page.goto("/solve/guest/20");
+  await expect(page.getByRole("heading", { name: "Puzzle 20 of 20" })).toBeFocused();
+  await playMove("d3b5");
+  await expect(page.getByText("Good move. Keep going.")).toBeVisible();
+  await expect(white.getByLabel("Material difference: queen, pawn, pawn")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Finish" })).toHaveCount(0);
+  // This move is only legal after the board has played Black's reply.
+  await playMove("e5c7");
+  await expect(page.getByText(/^White pieces:.*queen on c7/)).toBeAttached();
+  await playMove("c7e7");
+  await page.getByRole("button", { name: "Finish" }).click();
+
+  await expect(page).toHaveURL(/\/solve$/);
   await expect(page.getByRole("heading", { name: "Log in to access puzzles" })).toBeFocused();
   await expect(login).toBeVisible();
   await expect(page.getByRole("button", { name: /guest/i })).toHaveCount(0);
-  await page.reload();
+  await page.goto("/solve/guest/20");
+  await expect(page).toHaveURL(/\/solve$/);
   await expect(login).toBeVisible();
   await expect(page.getByRole("button", { name: /guest/i })).toHaveCount(0);
   expect(requests).toEqual([]);

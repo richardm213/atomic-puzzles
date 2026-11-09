@@ -1,31 +1,42 @@
+import "./PuzzleSolver.css";
 import "./GuestPuzzleTrial.css";
 
-import { parseSan } from "chessops/san";
-import { makeSquare, makeUci } from "chessops/util";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Navigate, useNavigate } from "@tanstack/react-router";
+import { makeSquare } from "chessops/util";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { PuzzleLoginScreen } from "../../components/RequireAuthentication/RequireAuthentication";
-import { createAtomicPosition, moveFromUci } from "../../lib/chess/pgn";
-import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
+import { createAtomicPosition } from "../../lib/chess/pgn";
+import type { ChessboardState } from "../../types/chessboard";
 import { orientationFromFen } from "../../utils/chessNotation";
 import { GUEST_PUZZLES } from "./guestPuzzles";
+import { PuzzlePositionRows } from "./PuzzlePositionRows";
 
-const PROGRESS_KEY = "atomic-puzzles:guest-trial:v1";
+// The original five positions were replaced, so their count cannot index this set.
+const PROGRESS_KEY = "atomic-puzzles:guest-trial:v2";
+const GUEST_PUZZLE_ROUTE = "/solve/guest/$guestNumber";
+let progressInMemory = 0;
 
 const readProgress = (): number => {
   try {
     const count = Number(window.localStorage.getItem(PROGRESS_KEY));
-    if (Number.isInteger(count) && count >= 0 && count <= GUEST_PUZZLES.length) return count;
+    if (Number.isInteger(count) && count >= 0 && count <= GUEST_PUZZLES.length) {
+      return Math.max(count, progressInMemory);
+    }
   } catch {
     // Storage can be unavailable; the trial still works in memory.
   }
-  return 0;
+  return progressInMemory;
 };
 
 const saveProgress = (count: number): void => {
+  // Replaying an earlier URL must not overwrite later progress.
+  progressInMemory = Math.max(readProgress(), count);
   try {
-    window.localStorage.setItem(PROGRESS_KEY, String(count));
+    window.localStorage.setItem(PROGRESS_KEY, String(progressInMemory));
   } catch {
     // Progress is still kept for the current visit.
   }
@@ -45,134 +56,142 @@ const GuestPuzzle = ({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
   const [boardState, setBoardState] = useState<ChessboardState>();
-  const [moveError, setMoveError] = useState("");
-  const [moveCommand, setMoveCommand] = useState<SolutionNavigation | null>(null);
-  const [position] = useState(() => createAtomicPosition(puzzle.fen));
   const solved = boardState?.solved ?? false;
+  const liveFen = boardState?.fen || puzzle.fen;
+  const position = useMemo(
+    () => (solved ? null : createAtomicPosition(liveFen)),
+    [liveFen, solved],
+  );
   const orientation = orientationFromFen(puzzle.fen);
   const last = index + 1 === GUEST_PUZZLES.length;
-  const feedback =
-    moveError ||
-    (solved
-      ? "Solved!"
-      : boardState?.showWrongMove || boardState?.showRetryMove
-        ? "Not mate. Try again."
-        : "");
+  const missed = Boolean(boardState?.showWrongMove || boardState?.showRetryMove);
+  const feedback = solved
+    ? "Solved!"
+    : missed
+      ? "Try another move."
+      : boardState?.lineIndex
+        ? "Good move. Keep going."
+        : "";
 
   useEffect(() => {
-    headingRef.current?.focus();
+    window.scrollTo(0, 0);
+    headingRef.current?.focus({ preventScroll: true });
   }, []);
 
   useEffect(() => {
     if (solved) nextRef.current?.focus();
   }, [solved]);
 
-  const submitMove = (event: FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    const input = String(new FormData(event.currentTarget).get("move") ?? "").trim();
-    const move = /^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(input)
-      ? moveFromUci(position, input.toLowerCase())
-      : parseSan(position, input);
-    if (!move || !position.isLegal(move)) {
-      setMoveError("Enter a legal move, such as e2e4 or e4.");
-      return;
-    }
-    setMoveError("");
-    setMoveCommand({ type: "play", uci: makeUci(move) });
-  };
-
   return (
     <section className="guestPuzzleTrial" aria-labelledby="guest-puzzle-title">
-      <header className="guestPuzzleHeader">
-        <h1 id="guest-puzzle-title" ref={headingRef} tabIndex={-1}>
-          Puzzle {index + 1} of {GUEST_PUZZLES.length}
-        </h1>
-        <p>{orientation === "white" ? "White" : "Black"} to move · Mate in one</p>
-      </header>
-      {!solved ? (
-        <div className="visuallyHidden">
-          {(["white", "black"] as const).map((color) => {
-            const pieces = Array.from(position.board)
-              .filter(([, piece]) => piece.color === color)
-              .map(([square, piece]) => `${piece.role} on ${makeSquare(square)}`)
-              .join(", ");
-            return (
-              <p key={color}>{`${color === "white" ? "White" : "Black"} pieces: ${pieces}`}</p>
-            );
-          })}
+      <div className="boardWrap guestPuzzleBoard">
+        <div
+          className={`boardFrame${solved ? " hasFeedback correct" : missed ? " hasFeedback wrong" : ""}`}
+        >
+          <div className="boardStage">
+            <Chessboard
+              puzzleId={`guest-${index + 1}`}
+              fen={puzzle.fen}
+              solution={puzzle.solution}
+              orientation={orientation}
+              coordinates
+              showSolution={false}
+              enableNavigationShortcuts={false}
+              disabled={solved}
+              onAttemptResolved={({ puzzleCorrect }) => {
+                if (puzzleCorrect) onSolved();
+              }}
+              onStateChange={setBoardState}
+            />
+          </div>
         </div>
-      ) : null}
-      <Chessboard
-        puzzleId={`guest-${index + 1}`}
-        fen={puzzle.fen}
-        solution={puzzle.solution}
-        orientation={orientation}
-        coordinates
-        showSolution={false}
-        enableNavigationShortcuts={false}
-        disabled={solved}
-        solutionNavigation={moveCommand}
-        onNavigateHandled={() => setMoveCommand(null)}
-        onAttemptResolved={({ puzzleCorrect }) => {
-          if (puzzleCorrect) onSolved();
-        }}
-        onStateChange={(state) => {
-          setMoveError("");
-          setBoardState(state);
-        }}
-      />
-      <div className="guestPuzzleFeedback">
-        <p id="guest-puzzle-feedback" role="status">
+      </div>
+      <div className="panel puzzlePanel guestPuzzlePanel">
+        <header className="guestPuzzleHeader">
+          <h1 id="guest-puzzle-title" ref={headingRef} tabIndex={-1}>
+            Puzzle {index + 1} of {GUEST_PUZZLES.length}
+          </h1>
+        </header>
+        <PuzzlePositionRows fen={liveFen} showEmpty />
+        {position ? (
+          <div className="visuallyHidden">
+            {(["white", "black"] as const).map((color) => {
+              const pieces = Array.from(position.board)
+                .filter(([, piece]) => piece.color === color)
+                .map(([square, piece]) => `${piece.role} on ${makeSquare(square)}`)
+                .join(", ");
+              return (
+                <p key={color}>{`${color === "white" ? "White" : "Black"} pieces: ${pieces}`}</p>
+              );
+            })}
+          </div>
+        ) : null}
+        <p
+          className="guestPuzzleFeedback"
+          role="status"
+          data-result={solved ? "solved" : missed ? "missed" : undefined}
+        >
           {feedback}
         </p>
         {solved ? (
-          <button type="button" className="guestPuzzleNext" ref={nextRef} onClick={onNext}>
-            {last ? "Finish" : "Next puzzle"}
-          </button>
+          <div className="guestPuzzleActions">
+            <button type="button" className="guestPuzzleNext" ref={nextRef} onClick={onNext}>
+              {last ? "Finish" : "Next puzzle"}
+            </button>
+            <a href={`https://lichess.org/study/${puzzle.source}`} target="_blank" rel="noreferrer">
+              Source study <span className="visuallyHidden">(opens in a new tab)</span>
+            </a>
+          </div>
         ) : null}
+        <p className="guestPuzzleNotice">
+          <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
+          <span>
+            These guest puzzles aren’t representative of the quality of puzzles available after
+            login.
+          </span>
+        </p>
       </div>
-      {!solved ? (
-        <details className="guestPuzzleKeyboard">
-          <summary>Enter a move by keyboard</summary>
-          <form onSubmit={submitMove}>
-            <label htmlFor="guest-puzzle-move">Move</label>
-            <input
-              id="guest-puzzle-move"
-              name="move"
-              autoComplete="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              aria-invalid={Boolean(moveError)}
-              aria-describedby="guest-puzzle-feedback"
-              onChange={() => setMoveError("")}
-            />
-            <button type="submit">Play move</button>
-          </form>
-        </details>
-      ) : null}
     </section>
   );
 };
 
-export const GuestPuzzleTrial = () => {
-  // Keep the starting index stable until Next/Finish, even after saving a solve.
-  const [index, setIndex] = useState(readProgress);
-  const [playing, setPlaying] = useState(false);
-  const puzzle = GUEST_PUZZLES[index];
+export const GuestPuzzleTrial = ({ guestNumber }: { guestNumber?: string }) => {
+  const navigate = useNavigate();
+  // Read once per URL so the final solved board stays visible until Finish.
+  const [progress] = useState(readProgress);
+  const isComplete = progress >= GUEST_PUZZLES.length;
 
-  if (!playing || !puzzle) {
+  if (guestNumber === undefined) {
     return (
       <PuzzleLoginScreen
-        focusHeading={playing}
+        focusHeading={isComplete}
         guestAction={
-          puzzle
+          !isComplete
             ? {
-                label: index === 0 ? "Try 5 guest puzzles" : "Resume guest puzzles",
-                onClick: () => setPlaying(true),
+                label:
+                  progress === 0
+                    ? `Try ${GUEST_PUZZLES.length} guest puzzles`
+                    : "Resume guest puzzles",
+                onClick: () => {
+                  void navigate({
+                    to: GUEST_PUZZLE_ROUTE,
+                    params: { guestNumber: String(progress + 1) },
+                  });
+                },
               }
             : undefined
         }
       />
+    );
+  }
+
+  const index = Number(guestNumber) - 1;
+  const puzzle = /^[1-9]\d*$/.test(guestNumber) ? GUEST_PUZZLES[index] : undefined;
+  if (!puzzle || isComplete) return <Navigate to="/solve" replace />;
+
+  if (index > progress) {
+    return (
+      <Navigate to={GUEST_PUZZLE_ROUTE} params={{ guestNumber: String(progress + 1) }} replace />
     );
   }
 
@@ -182,7 +201,13 @@ export const GuestPuzzleTrial = () => {
       index={index}
       puzzle={puzzle}
       onSolved={() => saveProgress(index + 1)}
-      onNext={() => setIndex(index + 1)}
+      onNext={() => {
+        if (index + 1 === GUEST_PUZZLES.length) {
+          void navigate({ to: "/solve", replace: true });
+        } else {
+          void navigate({ to: GUEST_PUZZLE_ROUTE, params: { guestNumber: String(index + 2) } });
+        }
+      }}
     />
   );
 };
