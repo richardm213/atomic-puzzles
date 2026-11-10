@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   fetchPuzzleProgressRowsForUsername: vi.fn(),
   fetchPuzzleRatingExclusions: vi.fn(),
   setOwnPuzzlePermanentlyUnrated: vi.fn(),
+  refreshOwnPuzzleCooldown: vi.fn(),
   fetchCustomPuzzleSet: vi.fn(),
   fetchPuzzleAttemptsForPuzzle: vi.fn(),
   loadPuzzleCatalog: vi.fn(),
@@ -134,6 +135,7 @@ vi.mock("../../lib/supabase/puzzleProgress", () => ({
   fetchPuzzleProgressRowsForUsername: mocks.fetchPuzzleProgressRowsForUsername,
   fetchPuzzleRatingExclusions: mocks.fetchPuzzleRatingExclusions,
   setOwnPuzzlePermanentlyUnrated: mocks.setOwnPuzzlePermanentlyUnrated,
+  refreshOwnPuzzleCooldown: mocks.refreshOwnPuzzleCooldown,
   fetchPuzzleAttemptsForPuzzle: mocks.fetchPuzzleAttemptsForPuzzle,
   recordPuzzleProgress: mocks.recordPuzzleProgress,
 }));
@@ -327,6 +329,7 @@ describe("PuzzleSolverPage solution options", () => {
     mocks.username = "solver";
     mocks.excludeOwnPuzzles = false;
     mocks.setOwnPuzzlePermanentlyUnrated.mockReset().mockResolvedValue(undefined);
+    mocks.refreshOwnPuzzleCooldown.mockReset().mockResolvedValue({ unratedUntil: null });
     mocks.loadPuzzleTagVotes
       .mockReset()
       .mockResolvedValue([{ tag: "fork", up: 3, down: 0, vote: 0 }]);
@@ -1109,11 +1112,21 @@ describe("PuzzleSolverPage solution options", () => {
         rated: false,
       },
     ]);
+    const refreshedUntil = "2099-01-01T00:00:00Z";
+    mocks.refreshOwnPuzzleCooldown.mockResolvedValue({ unratedUntil: refreshedUntil });
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
 
     const explanationTab = await screen.findByRole("tab", { name: "Explanation" });
     await waitFor(() => expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true));
+    expect(mocks.refreshOwnPuzzleCooldown).toHaveBeenCalledWith("1369");
+    expect(
+      (
+        await screen.findAllByLabelText(
+          `Your attempts on this puzzle are unrated until ${new Date(refreshedUntil).toLocaleString()}.`,
+        )
+      ).length,
+    ).toBeGreaterThan(0);
     expect(explanationTab).toBeEnabled();
     expect(screen.getByRole("checkbox", { name: "Permanently unrated" })).toBeDisabled();
     await user.click(explanationTab);

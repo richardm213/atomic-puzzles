@@ -86,6 +86,7 @@ import {
   fetchPuzzleRatingExclusions,
   type PuzzleProgressWithUsernameRow,
   recordPuzzleProgress,
+  refreshOwnPuzzleCooldown,
   setOwnPuzzlePermanentlyUnrated,
 } from "../../lib/supabase/puzzleProgress";
 import type { PuzzleRatingEvent } from "../../lib/supabase/puzzleUserRatings";
@@ -754,6 +755,40 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         excludedUntil: ratingExclusions.get(activePuzzleKey),
         permanentlyUnrated: permanentUnratedIds.has(activePuzzleKey),
       });
+  // Track the active puzzle, not the batched detail requests used to prefetch it.
+  useEffect(() => {
+    if (
+      !attemptedPuzzleIdsReady ||
+      !activePuzzleKey ||
+      !attemptedPuzzleIdsUsername ||
+      authorDashboardUsername !== attemptedPuzzleIdsUsername
+    ) {
+      return;
+    }
+
+    let isCurrent = true;
+    void refreshOwnPuzzleCooldown(activePuzzleKey)
+      .then(({ unratedUntil }) => {
+        if (!isCurrent || !unratedUntil) return;
+        setRatingExclusions((current) => {
+          const previous = current.get(activePuzzleKey);
+          if (previous && Date.parse(previous) >= Date.parse(unratedUntil)) return current;
+          return new Map(current).set(activePuzzleKey, unratedUntil);
+        });
+      })
+      .catch((error: unknown) => {
+        console.error("Unable to refresh puzzle cooldown", error);
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [
+    activePuzzleKey,
+    attemptedPuzzleIdsReady,
+    attemptedPuzzleIdsUsername,
+    authorDashboardUsername,
+  ]);
+
   // An expired unrated solve is eligible for a fresh rated attempt, not analysis hydration.
   const hasSolvedPuzzle = Boolean(
     activePuzzleKey &&

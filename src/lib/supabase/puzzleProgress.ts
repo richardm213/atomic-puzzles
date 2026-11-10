@@ -23,6 +23,16 @@ export const fetchPuzzleRatingExclusions = (username: string) =>
       .order("puzzle_id"),
   );
 
+export const refreshOwnPuzzleCooldown = (puzzleId: string) =>
+  postApi(
+    "/api/puzzles/progress",
+    { action: "revisitOwnPuzzle", puzzleId },
+    {
+      schema: z.object({ unratedUntil: z.string().nullable() }),
+      errorMessage: "Unable to refresh puzzle cooldown.",
+    },
+  );
+
 export const setOwnPuzzlePermanentlyUnrated = async (
   puzzleId: string,
   permanentlyUnrated: boolean,

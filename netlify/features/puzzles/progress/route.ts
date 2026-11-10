@@ -32,6 +32,10 @@ const progressBodySchema = z.union([
     puzzleId: attemptBodySchema.shape.puzzleId,
     permanentlyUnrated: z.boolean().optional().default(true),
   }),
+  z.object({
+    action: z.literal("revisitOwnPuzzle"),
+    puzzleId: attemptBodySchema.shape.puzzleId,
+  }),
   attemptBodySchema,
 ]);
 
@@ -41,6 +45,14 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
   const identity = await authenticateRequest(event.headers);
   const username = requireUsername(identity, "Your Lichess login is no longer valid.");
   const supabase = createServerSupabase("Puzzle progress service");
+  if ("action" in input && input.action === "revisitOwnPuzzle") {
+    const { data, error } = await supabase.rpc("refresh_own_puzzle_cooldown", {
+      p_username: username,
+      p_puzzle_id: input.puzzleId,
+    });
+    if (error) throw new Error(`Unable to refresh puzzle cooldown: ${error.message}`);
+    return identityResponse(identity, 200, { unratedUntil: data ?? null });
+  }
   if ("action" in input) {
     const { error } = await supabase.rpc("set_own_puzzle_permanently_unrated", {
       p_username: username,
