@@ -88,11 +88,12 @@ import {
 } from "../../lib/supabase/puzzleProgress";
 import type { PuzzleRatingEvent } from "../../lib/supabase/puzzleUserRatings";
 import type { AsyncActionStatus } from "../../types/async";
-import type {
-  AttemptResolved,
-  ChessboardState,
-  PlaybackCommand,
-  SolutionNavigation,
+import {
+  type AttemptResolved,
+  boardPly,
+  type ChessboardState,
+  type PlaybackCommand,
+  type SolutionNavigation,
 } from "../../types/chessboard";
 import { orientationFromFen } from "../../utils/chessNotation";
 import { getErrorMessage } from "../../utils/errors";
@@ -1145,7 +1146,9 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   }, [mobileFeedback]);
 
   const isRetryFeedbackActive = Boolean(
-    boardState.showRetryMove && !boardState.viewingSolution && !boardState.solved,
+    boardState.feedback === "retry" &&
+    boardState.view.line.source !== "solution" &&
+    !boardState.solved,
   );
   const canRevealSolution =
     Boolean(fen) &&
@@ -1391,17 +1394,21 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     (nextBoardState: ChessboardState): void => {
       const currentSession = puzzleSessionRef.current;
       const previousBoardSnapshot = previousBoardSnapshotRef.current;
+      const nextLine = nextBoardState.view.line;
+      const previousLine = previousBoardSnapshot.view.line;
       const boardPositionChanged =
         previousBoardSnapshot.fen !== nextBoardState.fen ||
-        previousBoardSnapshot.lineIndex !== nextBoardState.lineIndex ||
-        previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex ||
-        previousBoardSnapshot.viewingSolution !== nextBoardState.viewingSolution;
+        previousBoardSnapshot.view.position !== nextBoardState.view.position ||
+        previousLine.source !== nextLine.source ||
+        (previousLine.source !== "history" &&
+          nextLine.source === previousLine.source &&
+          previousLine.index !== nextLine.index);
       const nextCompletionFeedback = buildCompletionFeedback(
         nextBoardState,
         currentSession.attempt === "wrong",
       );
       const shouldShowTransientFeedback =
-        nextCompletionFeedback !== null && !nextBoardState.viewingSolution;
+        nextCompletionFeedback !== null && nextLine.source !== "solution";
 
       setBoardState(nextBoardState);
       if (nextCompletionFeedback) {
@@ -1425,20 +1432,19 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       if (
         currentSession.mode === "analysis" &&
         currentSession.solutionRevealed &&
-        previousBoardSnapshot.viewingSolution &&
-        previousBoardSnapshot.solutionLineIndex !== nextBoardState.solutionLineIndex
+        previousLine.source === "solution" &&
+        nextLine.source === "solution" &&
+        previousLine.index !== nextLine.index
       ) {
-        setPinnedSolutionLineIndex(nextBoardState.solutionLineIndex ?? null);
+        setPinnedSolutionLineIndex(nextLine.index);
       }
 
       previousBoardSnapshotRef.current = {
         fen: nextBoardState.fen,
-        lineIndex: nextBoardState.lineIndex ?? 0,
-        solutionLineIndex: nextBoardState.solutionLineIndex ?? 0,
-        viewingSolution: nextBoardState.viewingSolution ?? false,
+        view: nextBoardState.view,
       };
 
-      if (nextBoardState.solved) {
+      if (nextBoardState.feedback === "correct") {
         setSolutionNavigation(null);
       }
     },
@@ -1451,6 +1457,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
 
   const baseLineState = getBoardLineState(boardState);
   const currentAnalysisMoves = baseLineState.currentMoves;
+  const viewedSolutionIndex =
+    boardState.view.line.source === "solution" ? boardState.view.line.index : undefined;
 
   const matchingSolutionLineIndexes = useMemo(
     () => matchingLineIndexes(boardState.solutionLines, currentAnalysisMoves),
@@ -1472,16 +1480,16 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       activeLineIndex(
         sortedMatchingSolutionLineIndexes,
         pinnedSolutionLineIndex,
-        boardState.solutionLineIndex,
+        viewedSolutionIndex,
       ),
-    [boardState.solutionLineIndex, pinnedSolutionLineIndex, sortedMatchingSolutionLineIndexes],
+    [viewedSolutionIndex, pinnedSolutionLineIndex, sortedMatchingSolutionLineIndexes],
   );
   const activeSolutionLine = boardState.solutionLines?.[activeSolutionLineIndex] ?? [];
   const isOnSolutionPath =
     matchingSolutionLineIndexes.length > 0 &&
     activeSolutionLine.length >= currentAnalysisMoves.length;
   const variationLineState = getBoardLineState(boardState, {
-    ...(boardState.viewingSolution ? { activeSolutionLineIndex } : {}),
+    ...(boardState.view.line.source === "solution" ? { activeSolutionLineIndex } : {}),
   });
   const allVariationLines = variationLineState.lines;
   const activeVariationLineIndex = variationLineState.activeLineIndex;
@@ -1499,7 +1507,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   useEffect(() => {
     if (!boardShowsSolution || !isOnSolutionPath) return;
     if (solutionNavigation) return;
-    if (boardState.solutionLineIndex === activeSolutionLineIndex) return;
+    if (viewedSolutionIndex === activeSolutionLineIndex) return;
 
     setSolutionNavigation({
       type: "solution",
@@ -1508,7 +1516,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     });
   }, [
     activeSolutionLineIndex,
-    boardState.solutionLineIndex,
+    viewedSolutionIndex,
     currentAnalysisMoves.length,
     boardShowsSolution,
     isOnSolutionPath,
@@ -1559,12 +1567,12 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     boardShowsSolution && canRevealSolution
       ? activeSolutionLine.length
       : (boardState.lineMoves?.length ?? 0);
-  const currentPly = boardState.lineIndex ?? 0;
+  const currentPly = boardPly(boardState);
   const canNavigateIntro = Boolean(
     activePuzzle?.intro && !introPending && !blindPosition && !dailyLimitReached,
   );
-  const canPlaybackPrevious = !boardState.viewingIntro && (currentPly > 0 || canNavigateIntro);
-  const canPlaybackNext = Boolean(boardState.viewingIntro) || currentPly < currentLineLength;
+  const canPlaybackPrevious = !baseLineState.beforeIntro && (currentPly > 0 || canNavigateIntro);
+  const canPlaybackNext = baseLineState.beforeIntro || currentPly < currentLineLength;
 
   useBoardWheelNavigation({
     boardPanelRef,
@@ -1579,7 +1587,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       fen={currentFen}
       analysisActive={isAnalysisMode}
       previousMove={introPending ? undefined : activePuzzle?.intro}
-      beforePreviousMove={boardState.viewingIntro}
+      beforePreviousMove={baseLineState.beforeIntro}
       terminalOutcome={
         boardState.winner ?? (boardState.status.toLowerCase() === "draw" ? "draw" : null)
       }

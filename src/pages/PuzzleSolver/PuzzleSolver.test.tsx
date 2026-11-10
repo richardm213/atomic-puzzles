@@ -177,11 +177,13 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
           error: "",
           lineMoves,
           solutionLines,
-          solutionLineIndex: lineIndex,
-          lineIndex: lineIndexPly,
-          viewingSolution: showSolution ?? false,
-          showWrongMove: false,
-          showRetryMove: false,
+          view: {
+            line:
+              (showSolution ?? false)
+                ? { source: "solution", index: lineIndex }
+                : { source: "history" },
+            position: lineIndexPly,
+          },
           solved: false,
         });
       }, [fen, onStateChange, showSolution, solutionNavigation]);
@@ -708,12 +710,7 @@ describe("PuzzleSolverPage solution options", () => {
           ["Rf8", "O-O-O", "Rf2", "Be2", "Ba3"],
         ],
         customLines: [["O-O", "Kd7"]],
-        solutionLineIndex: 0,
-        customLineIndex: 0,
-        lineIndex: 2,
-        viewingSolution: false,
-        showWrongMove: false,
-        showRetryMove: false,
+        view: { line: { source: "custom", index: 0 }, position: 2 },
         solved: false,
       });
     });
@@ -901,11 +898,8 @@ describe("PuzzleSolverPage solution options", () => {
         error: "",
         lineMoves: ["Kd7"],
         solutionLines: [],
-        solutionLineIndex: 0,
-        lineIndex: 1,
-        viewingSolution: false,
-        showWrongMove: true,
-        showRetryMove: false,
+        view: { line: { source: "history" }, position: 1 },
+        feedback: "wrong",
         solved: false,
       });
     });
@@ -1157,11 +1151,8 @@ describe("PuzzleSolverPage solution options", () => {
         error: "",
         lineMoves: ["Kd7"],
         solutionLines: [["O-O"]],
-        solutionLineIndex: 0,
-        lineIndex: 1,
-        viewingSolution: false,
-        showWrongMove: true,
-        showRetryMove: false,
+        view: { line: { source: "history" }, position: 1 },
+        feedback: "wrong",
         solved: false,
       });
     });
@@ -1353,11 +1344,7 @@ describe("PuzzleSolverPage solution options", () => {
         error: "",
         lineMoves: [],
         solutionLines: [],
-        solutionLineIndex: 0,
-        lineIndex: 0,
-        viewingSolution: false,
-        showWrongMove: false,
-        showRetryMove: false,
+        view: { line: { source: "history" }, position: 0 },
         solved: true,
       });
     });
@@ -1384,11 +1371,7 @@ describe("PuzzleSolverPage solution options", () => {
         error: "",
         lineMoves: [],
         solutionLines: [],
-        solutionLineIndex: 0,
-        lineIndex: 0,
-        viewingSolution: false,
-        showWrongMove: false,
-        showRetryMove: false,
+        view: { line: { source: "history" }, position: 0 },
         solved: true,
       });
     });

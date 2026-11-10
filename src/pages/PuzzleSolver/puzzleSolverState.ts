@@ -1,5 +1,5 @@
 import type { Puzzle } from "../../lib/puzzles/puzzleLibrary";
-import type { ChessboardState } from "../../types/chessboard";
+import { type ChessboardState, initialBoardView } from "../../types/chessboard";
 import { getBrowserStorageItem, setBrowserStorageItem } from "../../utils/browserStorage";
 import { parsePuzzleId } from "./usePuzzleCatalog";
 
@@ -168,15 +168,15 @@ export const buildCompletionFeedback = (
   nextBoardState: ChessboardState,
   hadWrongAttempt: boolean,
 ): CompletionFeedback | null => {
-  if (nextBoardState.solved) {
+  if (nextBoardState.feedback === "correct") {
     return hadWrongAttempt
       ? { type: "retrySuccess", icon: "↺", title: "Correct" }
       : { type: "correct", icon: "✓", title: "Correct" };
   }
-  if (nextBoardState.showWrongMove) {
+  if (nextBoardState.feedback === "wrong") {
     return { type: "wrong", icon: "×", title: "Incorrect" };
   }
-  if (nextBoardState.showRetryMove) {
+  if (nextBoardState.feedback === "retry") {
     return { type: "retry", icon: "↺", title: "Try again: better move" };
   }
   return null;
@@ -189,17 +189,11 @@ export const createInitialBoardState = (): ChessboardState => ({
   error: "",
   lineMoves: [],
   solutionLines: [],
-  solutionLineIndex: 0,
-  lineIndex: 0,
-  viewingSolution: false,
-  showWrongMove: false,
-  showRetryMove: false,
+  view: initialBoardView(),
   solved: false,
 });
 
 export const createInitialBoardSnapshot = () => ({
   fen: "",
-  lineIndex: 0,
-  solutionLineIndex: 0,
-  viewingSolution: false,
+  view: initialBoardView(),
 });

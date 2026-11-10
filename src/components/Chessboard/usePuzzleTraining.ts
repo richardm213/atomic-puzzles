@@ -1,13 +1,12 @@
 import { useCallback, useRef } from "react";
 
 import type { UciSolutionLine } from "../../lib/chess/pgn";
+import type { TrainingState } from "./puzzlePlayback";
 
-export type BoardMode = "training" | "evaluating" | "solution" | "analysis";
-
+// Attempt progress survives playback. Interaction locking only guards move input.
 export const usePuzzleTraining = () => {
-  const boardStatusRef = useRef({ mode: "training", locked: false, solved: false });
-  const candidateLinesRef = useRef<UciSolutionLine[]>([]);
-  const progressRef = useRef(0);
+  const interactionLockedRef = useRef(false);
+  const attemptRef = useRef<TrainingState>({ candidates: [], progress: 0, solved: false });
   const evaluationTimerRef = useRef<number | null>(null);
 
   const cancelEvaluation = useCallback(() => {
@@ -17,28 +16,24 @@ export const usePuzzleTraining = () => {
 
   const resetTraining = useCallback(
     ({
-      mode = "training",
       locked = false,
       solved = false,
       candidates = [],
     }: {
-      mode?: BoardMode;
       locked?: boolean;
       solved?: boolean;
       candidates?: UciSolutionLine[];
     } = {}) => {
-      boardStatusRef.current = { mode, locked, solved };
-      candidateLinesRef.current = candidates;
-      progressRef.current = 0;
+      interactionLockedRef.current = locked;
+      attemptRef.current = { candidates, progress: 0, solved };
       cancelEvaluation();
     },
     [cancelEvaluation],
   );
 
   return {
-    boardStatusRef,
-    candidateLinesRef,
-    progressRef,
+    interactionLockedRef,
+    attemptRef,
     evaluationTimerRef,
     cancelEvaluation,
     resetTraining,

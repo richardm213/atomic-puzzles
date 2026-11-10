@@ -36,11 +36,7 @@ const c5NavigationState: ChessboardState = {
   error: "",
   lineMoves: ["e4", "c5", "Nf3"],
   solutionLines: [],
-  lineIndex: 2,
-  solutionLineIndex: 1,
-  viewingSolution: true,
-  showWrongMove: false,
-  showRetryMove: false,
+  view: { line: { source: "solution", index: 1 }, position: 2 },
   solved: false,
 };
 
@@ -76,12 +72,7 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
                 lineMoves: ["e4", "c5", "Nf3", "d6"],
                 solutionLines: [],
                 customLines: [["e4", "c5", "Nf3", "d6"]],
-                lineIndex: 4,
-                solutionLineIndex: 1,
-                customLineIndex: 0,
-                viewingSolution: false,
-                showWrongMove: false,
-                showRetryMove: false,
+                view: { line: { source: "custom", index: 0 }, position: 4 },
                 solved: false,
               })
             }
@@ -95,10 +86,7 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
                 ...c5NavigationState,
                 lineMoves: ["e4", "e5", "Nf3", "d6"],
                 customLines: [["e4", "e5", "Nf3", "d6"]],
-                lineIndex: 4,
-                solutionLineIndex: 0,
-                customLineIndex: 0,
-                viewingSolution: false,
+                view: { line: { source: "custom", index: 0 }, position: 4 },
               })
             }
           >
@@ -114,9 +102,7 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
                 ...c5NavigationState,
                 lineMoves: ["e4", "c6"],
                 customLines: [["e4", "c6"]],
-                lineIndex: 2,
-                customLineIndex: 0,
-                viewingSolution: false,
+                view: { line: { source: "custom", index: 0 }, position: 2 },
               })
             }
           >
@@ -129,9 +115,7 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
                 ...c5NavigationState,
                 lineMoves: ["e4", "c5"],
                 customLines: [["e4", "c5"]],
-                lineIndex: 2,
-                customLineIndex: 0,
-                viewingSolution: false,
+                view: { line: { source: "custom", index: 0 }, position: 2 },
               })
             }
           >
@@ -144,9 +128,7 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
                 ...c5NavigationState,
                 lineMoves: ["e4", "c5", "Nc3"],
                 customLines: [["e4", "c5", "Nc3"]],
-                lineIndex: 3,
-                customLineIndex: 0,
-                viewingSolution: false,
+                view: { line: { source: "custom", index: 0 }, position: 3 },
               })
             }
           >
@@ -158,8 +140,7 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
               onStateChange?.({
                 ...c5NavigationState,
                 lineMoves: ["e4", "e5", "Nf3"],
-                lineIndex: 1,
-                solutionLineIndex: 0,
+                view: { line: { source: "solution", index: 0 }, position: 1 },
               })
             }
           >
@@ -394,9 +375,7 @@ describe("PuzzleEditor move tree", () => {
       ...c5NavigationState,
       lineMoves: ["e4", "e5", "Nf3"],
       customLines: [["e4", "e5", "Nf3"]],
-      lineIndex: 1,
-      customLineIndex: 0,
-      viewingSolution: false,
+      view: { line: { source: "custom", index: 0 }, position: 1 },
     };
     render(<EditorHarness allowSolutionEditing />);
 

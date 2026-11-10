@@ -43,7 +43,10 @@ import {
   OpeningExplorerPanel,
   OpeningExplorerResizeHandle,
 } from "../../features/analysisWorkspace/OpeningExplorerPanel";
-import { PuzzleComposer, type PuzzleCreationResult } from "../../features/analysisWorkspace/PuzzleComposer";
+import {
+  PuzzleComposer,
+  type PuzzleCreationResult,
+} from "../../features/analysisWorkspace/PuzzleComposer";
 import {
   useBoardAlignedPanelHeight,
   useOpeningExplorerSplit,
@@ -81,7 +84,12 @@ import {
 } from "../../lib/chess/pgn";
 import { keyboardShortcutAction } from "../../lib/keyboardShortcuts";
 import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
-import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
+import {
+  boardPly,
+  type ChessboardState,
+  type PlaybackCommand,
+  type SolutionNavigation,
+} from "../../types/chessboard";
 import { atomicDbPositionUrl, requestAtomicDbAnalysis } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
 import { threatFenFromFen } from "../../utils/chessNotation";
@@ -226,9 +234,10 @@ const getMaxAnalysisBoardSize = (isGame = false): number => {
 
 const getResponsiveAnalysisBoardFloor = (viewportWidth: number): number => {
   if (isSingleColumnLayout()) return Math.max(MIN_ANALYSIS_BOARD_SIZE, viewportWidth - 20);
-  const preferred = viewportWidth < 1280
-    ? Math.min(600, viewportWidth / 2)
-    : Math.min(820, 600 + (viewportWidth - 1280) / 8);
+  const preferred =
+    viewportWidth < 1280
+      ? Math.min(600, viewportWidth / 2)
+      : Math.min(820, 600 + (viewportWidth - 1280) / 8);
   return Math.round(Math.max(MIN_ANALYSIS_BOARD_SIZE, preferred));
 };
 
@@ -1667,7 +1676,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           engineMoves: effectiveThreatMode ? null : engineMoves,
           analysisMarker:
             gameComputerAnalysisEnabled &&
-            boardState?.customLineIndex === undefined &&
+            boardState?.view.line.source !== "custom" &&
             currentVisibleAssessment
               ? {
                   uci: currentVisibleAssessment.uci,
@@ -1708,7 +1717,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
             <GameBoardClock
               game={game}
               material={gameMaterial}
-              currentPly={puzzleDraft ? (gameBoardState?.lineIndex ?? 0) : currentPly}
+              currentPly={puzzleDraft ? boardPly(gameBoardState) : currentPly}
               color={orientation === "white" ? "black" : "white"}
             />
           ) : null
@@ -1718,7 +1727,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
             <GameBoardClock
               game={game}
               material={gameMaterial}
-              currentPly={puzzleDraft ? (gameBoardState?.lineIndex ?? 0) : currentPly}
+              currentPly={puzzleDraft ? boardPly(gameBoardState) : currentPly}
               color={orientation === "white" ? "white" : "black"}
               rowRef={lowerClockRef}
             />

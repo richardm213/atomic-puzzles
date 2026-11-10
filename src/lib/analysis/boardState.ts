@@ -1,4 +1,9 @@
-import type { BoardLineRef, ChessboardState, SolutionNavigation } from "../../types/chessboard";
+import {
+  type BoardLineRef,
+  boardPly,
+  type ChessboardState,
+  type SolutionNavigation,
+} from "../../types/chessboard";
 import { sameSolutionMove } from "../chess/pgn";
 
 export type DisplayedBoardLine = {
@@ -16,17 +21,6 @@ const sameLine = (left: string[], right: string[]): boolean =>
 const startsWithLine = (line: string[], prefix: string[]): boolean =>
   prefix.length <= line.length &&
   prefix.every((move, index) => sameSolutionMove(move, line[index]));
-
-const inferredActiveLine = (boardState: ChessboardState | null): BoardLineRef => {
-  if (boardState?.activeLine) return boardState.activeLine;
-  if (boardState?.viewingSolution) {
-    return { source: "solution", index: boardState.solutionLineIndex ?? 0 };
-  }
-  if (boardState?.customLineIndex !== undefined) {
-    return { source: "custom", index: boardState.customLineIndex };
-  }
-  return { source: "history" };
-};
 
 export const boardLineNavigation = (target: BoardLineRef, ply: number): SolutionNavigation => {
   if (target.source === "solution") return { type: "solution", line: target.index, ply };
@@ -54,7 +48,7 @@ export const getBoardLineState = (
   { activeSolutionLineIndex }: BoardLineStateOptions = {},
 ) => {
   const moveList = boardState?.lineMoves ?? [];
-  const currentPly = Math.max(0, Math.min(boardState?.lineIndex ?? 0, moveList.length));
+  const currentPly = Math.max(0, Math.min(boardPly(boardState), moveList.length));
   const solutionLines = boardState?.solutionLines ?? [];
   const customLines = boardState?.customLines ?? [];
   const displayedLines: DisplayedBoardLine[] = [];
@@ -87,7 +81,7 @@ export const getBoardLineState = (
       : -1;
   const activeLine =
     activeSolutionLineIndex === undefined
-      ? inferredActiveLine(boardState)
+      ? (boardState?.view.line ?? { source: "history" })
       : ({ source: "solution", index: activeSolutionLineIndex } satisfies BoardLineRef);
   const activeLineIndex = (() => {
     if (activeLine.source === "solution") {
@@ -104,6 +98,7 @@ export const getBoardLineState = (
     activeLineIndex: Math.max(0, activeLineIndex),
     currentMoves: moveList.slice(0, currentPly),
     currentPly,
+    beforeIntro: boardState?.view.position === "beforeIntro",
     customLines,
     displayedLines,
     lineTargets: displayedLines.map((line) => line.target),
@@ -120,7 +115,7 @@ export const getBoardMoveState = (boardState: ChessboardState | null, fallbackFe
     ...lineState,
     currentFen: boardState?.fen || fallbackFen,
     terminalOutcome: boardState?.winner ?? (boardState?.status === "Draw" ? "draw" : null),
-    canStepBack: lineState.currentPly > 0,
-    canStepForward: lineState.currentPly < lineState.moveList.length,
+    canStepBack: !lineState.beforeIntro && lineState.currentPly > 0,
+    canStepForward: lineState.beforeIntro || lineState.currentPly < lineState.moveList.length,
   } as const;
 };

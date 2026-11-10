@@ -44,7 +44,12 @@ import {
   validatePuzzleSubmission,
 } from "../../lib/puzzles/puzzleSubmission";
 import { createAtomicPosition } from "../../lib/puzzles/solutionPgn";
-import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
+import {
+  boardPly,
+  type ChessboardState,
+  type PlaybackCommand,
+  type SolutionNavigation,
+} from "../../types/chessboard";
 import { orientationFromFen } from "../../utils/chessNotation";
 import { getErrorMessage } from "../../utils/errors";
 
@@ -479,7 +484,7 @@ export const PuzzleEditor = ({
 
   const handleBoardState = (state: ChessboardState): void => {
     setBoardState(state);
-    if (state.viewingSolution) setActiveLineIndex(state.solutionLineIndex ?? 0);
+    if (state.view.line.source === "solution") setActiveLineIndex(state.view.line.index);
     if (state.error) {
       setEditorError(state.error);
     }
@@ -488,8 +493,7 @@ export const PuzzleEditor = ({
       !canEditSolution ||
       engineLinePlayingRef.current ||
       navigation !== null ||
-      state.viewingSolution ||
-      state.customLineIndex === undefined
+      state.view.line.source !== "custom"
     ) {
       return;
     }
@@ -535,7 +539,7 @@ export const PuzzleEditor = ({
     }
   };
 
-  const currentPly = boardState?.lineIndex ?? 0;
+  const currentPly = boardPly(boardState);
   const moveCount = boardState?.lineMoves?.length ?? 0;
   const currentMoves = useMemo(
     () => boardState?.lineMoves?.slice(0, currentPly) ?? [],
@@ -727,7 +731,7 @@ export const PuzzleEditor = ({
           showSolution={readOnly}
           analysisMode={!readOnly}
           captureNavigationShortcuts
-          preserveAnalysisHistoryOnSolutionChange
+          solutionEditor
           restrictMovesToSolution={!canEditSolution}
           solutionNavigation={navigation}
           previewMove={hoveredEngineMove}

@@ -7,8 +7,7 @@ export type PositionState = {
   winner?: Color | undefined;
   error: string;
   lineMoves?: string[];
-  lineIndex?: number;
-  viewingIntro?: boolean;
+  view: BoardView;
 };
 
 export type BoardLineRef =
@@ -16,22 +15,29 @@ export type BoardLineRef =
   | { source: "solution"; index: number }
   | { source: "custom"; index: number };
 
+export type BoardView = {
+  line: BoardLineRef;
+  // Numbered plies start at the puzzle root; the opponent's intro is ungraded.
+  position: number | "beforeIntro";
+};
+
+export const initialBoardView = (): BoardView => ({ line: { source: "history" }, position: 0 });
+
+export const boardPly = (state: Pick<PositionState, "view"> | null | undefined): number =>
+  typeof state?.view?.position === "number" ? state.view.position : 0;
+
 export type VariationState = {
   solutionLines?: string[][];
   customLines?: string[][];
-  solutionLineIndex?: number;
-  customLineIndex?: number;
-  viewingSolution?: boolean;
-  activeLine?: BoardLineRef;
 };
 
-export type TrainingState = {
-  showWrongMove: boolean;
-  showRetryMove?: boolean;
+export type MoveResultState = {
+  // Feedback belongs to a move evaluation; browsing must not emit it again.
+  feedback?: "correct" | "wrong" | "retry";
   solved: boolean;
 };
 
-export type ChessboardState = PositionState & VariationState & TrainingState;
+export type ChessboardState = PositionState & VariationState & MoveResultState;
 
 export type PlaybackCommand =
   "start" | "previous" | "next" | "end" | "previousOption" | "nextOption";

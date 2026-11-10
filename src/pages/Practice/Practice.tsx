@@ -74,7 +74,12 @@ import { apiRequest } from "../../lib/api/postApi";
 import { keyboardShortcutAction, keyboardShortcutHint } from "../../lib/keyboardShortcuts";
 import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
 import { serializeSanLinesToPgn, startingPlyFromFen } from "../../lib/puzzles/solutionPgn";
-import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
+import {
+  boardPly,
+  type ChessboardState,
+  type PlaybackCommand,
+  type SolutionNavigation,
+} from "../../types/chessboard";
 import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
 import { setBrowserStorageJson } from "../../utils/browserStorage";
@@ -814,7 +819,7 @@ export const PracticePage = () => {
         navigationRef.current === null &&
         boardState?.turn === side &&
         nextState.turn === opponentSide &&
-        (nextState.lineIndex ?? 0) > (boardState.lineIndex ?? 0)
+        boardPly(nextState) > boardPly(boardState)
       ) {
         if (!gamePaused) addPracticeIncrement();
       }

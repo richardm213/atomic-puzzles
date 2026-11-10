@@ -1,4 +1,4 @@
-import type { ChessboardState } from "../../types/chessboard";
+import { type ChessboardState, initialBoardView } from "../../types/chessboard";
 import { getBoardLineState } from "./boardState";
 
 const state = (overrides: Partial<ChessboardState>): ChessboardState => ({
@@ -6,7 +6,8 @@ const state = (overrides: Partial<ChessboardState>): ChessboardState => ({
   turn: "white",
   status: "",
   error: "",
-  showWrongMove: false,
+  view: initialBoardView(),
+
   solved: false,
   ...overrides,
 });
@@ -16,9 +17,8 @@ describe("getBoardLineState", () => {
     const result = getBoardLineState(
       state({
         lineMoves: ["e4", "c5"],
-        lineIndex: 9,
+        view: { line: { source: "history" }, position: 9 },
         customLines: [["e4?", "e5"]],
-        activeLine: { source: "history" },
       }),
     );
 
@@ -35,10 +35,9 @@ describe("getBoardLineState", () => {
     const result = getBoardLineState(
       state({
         lineMoves: ["e4", "e5"],
-        lineIndex: 1,
+        view: { line: { source: "custom", index: 0 }, position: 1 },
         solutionLines: [["e4", "e5"]],
         customLines: [["e4?", "e5"]],
-        activeLine: { source: "custom", index: 0 },
       }),
     );
 
@@ -51,9 +50,8 @@ describe("getBoardLineState", () => {
     const result = getBoardLineState(
       state({
         lineMoves: ["e4"],
-        lineIndex: 1,
+        view: { line: { source: "history" }, position: 1 },
         solutionLines: [["e4", "e5", "Nf3"]],
-        activeLine: { source: "history" },
       }),
     );
 
@@ -62,16 +60,15 @@ describe("getBoardLineState", () => {
     expect(result.currentMoves).toEqual(["e4"]);
   });
 
-  it("retains legacy active-line fields while older callers are migrated", () => {
+  it("selects the custom line specified by the canonical view", () => {
     const result = getBoardLineState(
       state({
         lineMoves: ["d4", "d5"],
-        lineIndex: 1,
+        view: { line: { source: "custom", index: 1 }, position: 1 },
         customLines: [
           ["e4", "e5"],
           ["d4", "d5"],
         ],
-        customLineIndex: 1,
       }),
     );
 

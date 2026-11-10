@@ -30,12 +30,13 @@ import {
 } from "../../lib/chess/pgn";
 import { lichessAnalysisGlyphSvg } from "../../lib/gameAnalysis/lichessAnalysisGlyph";
 import { keyboardShortcutAction } from "../../lib/keyboardShortcuts";
-import type {
-  AttemptResolved,
-  BoardLineRef,
-  ChessboardState,
-  PlaybackCommand,
-  SolutionNavigation,
+import {
+  type AttemptResolved,
+  type BoardLineRef,
+  type ChessboardState,
+  initialBoardView,
+  type PlaybackCommand,
+  type SolutionNavigation,
 } from "../../types/chessboard";
 import { BlindMoveSquares } from "./BlindMoveSquares";
 import {
@@ -62,7 +63,6 @@ import {
   buildSolutionHistory,
   evaluateTrainingMove,
   isSolutionCompleteAt,
-  recomputeTrainingState,
   tryCreateAtomicPosition,
 } from "./puzzlePlayback";
 import { useChessground } from "./useChessground";
@@ -75,6 +75,8 @@ import {
   variationMoveKeys,
   variationMoveSans,
 } from "./variationHistory";
+
+type BoardFeedback = Partial<Pick<ChessboardState, "status" | "error" | "feedback">>;
 
 type DisplaySolutionEntry = {
   moveEntries: UciSolutionLine;
@@ -103,7 +105,7 @@ export type ChessboardProps = {
   dimensionsRef?: RefObject<HTMLElement>;
   captureNavigationShortcuts?: boolean;
   enableNavigationShortcuts?: boolean;
-  preserveAnalysisHistoryOnSolutionChange?: boolean;
+  solutionEditor?: boolean;
   restrictMovesToSolution?: boolean;
   disabled?: boolean;
   hidden?: boolean;
@@ -190,7 +192,7 @@ const ChessboardComponent = ({
   dimensionsRef,
   captureNavigationShortcuts = false,
   enableNavigationShortcuts = true,
-  preserveAnalysisHistoryOnSolutionChange = false,
+  solutionEditor = false,
   restrictMovesToSolution = false,
   disabled = false,
   hidden = false,
@@ -226,9 +228,8 @@ const ChessboardComponent = ({
   const [pendingPromotion, setPendingPromotion] = useState<PendingPromotion | null>(null);
   const historyRef = useRef<BoardHistory>(createBoardHistory());
   const {
-    boardStatusRef,
-    candidateLinesRef,
-    progressRef,
+    interactionLockedRef,
+    attemptRef,
     evaluationTimerRef,
     cancelEvaluation: clearMoveEvaluationTimer,
     resetTraining,
@@ -242,7 +243,6 @@ const ChessboardComponent = ({
   const blindFenRef = useLatestRef(blindFen);
   const initialIntroRef = useRef(intro);
   const initialAutoplayIntroRef = useRef(autoplayIntro);
-  const viewingIntroRef = useRef(false);
   const introPlayingRef = useRef(false);
   const introPlayedRef = useRef(false);
   const onIntroEndRef = useLatestRef(onIntroEnd);
@@ -287,7 +287,7 @@ const ChessboardComponent = ({
   const solutionUciLinesRef = useLatestRef(solutionUciLines);
   const solutionEntriesRef = useRef(solutionEntries);
   solutionEntriesRef.current = solutionEntries;
-  const activeLineRef = useRef<BoardLineRef>({ source: "history" });
+  const viewRef = useRef(initialBoardView());
   const alternativeContinuationSelectedRef = useRef(false);
   const customVariationsRef = useRef(createVariationHistory());
   const pieceStyle = useMemo(() => buildPieceStyle(pieceSet), [pieceSet]);
@@ -319,10 +319,18 @@ const ChessboardComponent = ({
   );
 
   const canBrowseSolution = useCallback(
+    (): boolean => showSolutionRef.current || (solutionEditor && analysisModeRef.current),
+    [analysisModeRef, solutionEditor, showSolutionRef],
+  );
+
+  const isMoveInputBlocked = useCallback(
     (): boolean =>
-      showSolutionRef.current ||
-      (preserveAnalysisHistoryOnSolutionChange && analysisModeRef.current),
-    [analysisModeRef, preserveAnalysisHistoryOnSolutionChange, showSolutionRef],
+      disabledRef.current ||
+      introPlayingRef.current ||
+      viewRef.current.position === "beforeIntro" ||
+      interactionLockedRef.current ||
+      isSolutionPlaybackLocked(),
+    [disabledRef, interactionLockedRef, isSolutionPlaybackLocked],
   );
 
   const getCorrectLineMove = useCallback((): string | null => {
@@ -347,9 +355,9 @@ const ChessboardComponent = ({
   }, []);
 
   const getDisplayTurn = useCallback(
-    (position: Atomic, nextState?: Partial<ChessboardState> | undefined): Color => {
+    (position: Atomic, nextState?: BoardFeedback | undefined): Color => {
       if (
-        viewingIntroRef.current ||
+        viewRef.current.position === "beforeIntro" ||
         !solutionEntriesRef.current.length ||
         analysisModeRef.current ||
         showSolutionRef.current
@@ -357,17 +365,17 @@ const ChessboardComponent = ({
         return position.turn;
       }
 
-      if (nextState?.showWrongMove || nextState?.solved || nextState?.status === "Correct") {
+      if (nextState?.feedback === "wrong" || attemptRef.current.solved) {
         return position.turn;
       }
 
       return solverColorRef.current ?? position.turn;
     },
-    [analysisModeRef, showSolutionRef, solverColorRef],
+    [analysisModeRef, attemptRef, showSolutionRef, solverColorRef],
   );
 
   const emitState = useCallback(
-    (position: Atomic, next?: Partial<ChessboardState> | undefined): ChessboardState => {
+    (position: Atomic, next?: BoardFeedback | undefined): ChessboardState => {
       const history = historyRef.current;
       const displayTurn = getDisplayTurn(position, next);
       const state: ChessboardState = {
@@ -379,27 +387,19 @@ const ChessboardComponent = ({
         winner: position.outcome()?.winner,
         error: "",
         lineMoves: historyMoveSans(history),
-        solutionLines: solutionEntriesRef.current.map((entry) => [...entry.sanLine]),
+        solutionLines: canBrowseSolution()
+          ? solutionEntriesRef.current.map((entry) => [...entry.sanLine])
+          : [],
         customLines: variationMoveSans(customVariationsRef.current),
-        activeLine: activeLineRef.current,
-        solutionLineIndex:
-          activeLineRef.current.source === "solution" ? activeLineRef.current.index : 0,
-        ...(activeLineRef.current.source === "custom"
-          ? { customLineIndex: activeLineRef.current.index }
-          : {}),
-        lineIndex: history.index,
-        viewingIntro: viewingIntroRef.current,
-        viewingSolution: activeLineRef.current.source === "solution",
-        showWrongMove: false,
-        showRetryMove: false,
-        solved: boardStatusRef.current.solved,
+        view: { ...viewRef.current },
+        solved: attemptRef.current.solved,
         ...(next ?? {}),
       };
 
       onStateChangeRef.current?.(state);
       return state;
     },
-    [boardStatusRef, getDisplayTurn, onStateChangeRef],
+    [attemptRef, canBrowseSolution, getDisplayTurn, onStateChangeRef],
   );
 
   const resetSession = useCallback(
@@ -415,11 +415,11 @@ const ChessboardComponent = ({
       solved?: boolean;
     }): void => {
       historyRef.current = history;
-      viewingIntroRef.current = false;
-      activeLineRef.current = { source: "history" };
+      viewRef.current.position = historyRef.current.index;
+      viewRef.current.line = { source: "history" };
       alternativeContinuationSelectedRef.current = false;
       customVariationsRef.current = createVariationHistory();
-      resetTraining({ mode: locked ? "solution" : "training", locked, candidates, solved });
+      resetTraining({ locked, candidates, solved });
     },
     [resetTraining],
   );
@@ -448,13 +448,7 @@ const ChessboardComponent = ({
 
   const getMovableConfig = useCallback(
     (position: Atomic): MovableConfig => {
-      if (
-        disabledRef.current ||
-        blindFenRef.current ||
-        introPlayingRef.current ||
-        viewingIntroRef.current ||
-        boardStatusRef.current.locked
-      ) {
+      if (blindFenRef.current || isMoveInputBlocked()) {
         return {
           dests: new Map(),
           free: false,
@@ -487,9 +481,8 @@ const ChessboardComponent = ({
     },
     [
       allowedSolutionContinuations,
+      isMoveInputBlocked,
       blindFenRef,
-      boardStatusRef,
-      disabledRef,
       premoveColorRef,
       premovesEnabledRef,
       restrictMovesToSolutionRef,
@@ -504,7 +497,7 @@ const ChessboardComponent = ({
       moveKey: string,
       moveSan: string,
     ): void => {
-      const previousActiveLine = activeLineRef.current;
+      const previousActiveLine = viewRef.current.line;
       const history = historyRef.current;
       const nextFen = makeFen(position.toSetup());
       const previousCustomHistory =
@@ -529,7 +522,7 @@ const ChessboardComponent = ({
         } else {
           history.index += 1;
         }
-        activeLineRef.current = previousActiveLine;
+        viewRef.current.line = previousActiveLine;
         return;
       }
 
@@ -552,13 +545,13 @@ const ChessboardComponent = ({
       if (analysisModeRef.current) {
         if (previousActiveLine.source !== "custom" || createsCustomBranch) {
           const index = saveVariation(customVariationsRef.current, history);
-          activeLineRef.current = { source: "custom", index };
+          viewRef.current.line = { source: "custom", index };
         } else {
           saveVariation(customVariationsRef.current, history, previousActiveLine.index);
-          activeLineRef.current = previousActiveLine;
+          viewRef.current.line = previousActiveLine;
         }
       } else {
-        activeLineRef.current = { source: "history" };
+        viewRef.current.line = { source: "history" };
       }
     },
     [analysisModeRef],
@@ -568,9 +561,11 @@ const ChessboardComponent = ({
     (
       position: Atomic,
       lastMove: [Key, Key] | undefined,
-      nextState?: Partial<ChessboardState> | undefined,
+      nextState?: BoardFeedback | undefined,
     ): void => {
       positionRef.current = position;
+      if (viewRef.current.position !== "beforeIntro")
+        viewRef.current.position = historyRef.current.index;
 
       const movable = getMovableConfig(position);
       const referenceFen = blindFenRef.current;
@@ -583,7 +578,8 @@ const ChessboardComponent = ({
         orientation: orientationRef.current,
         coordinates: coordinatesRef.current,
         turnColor: referenceFen ? colorFromFen(referenceFen) : displayTurn,
-        lastMove: referenceFen || viewingIntroRef.current ? [] : (lastMove ?? []),
+        lastMove:
+          referenceFen || viewRef.current.position === "beforeIntro" ? [] : (lastMove ?? []),
         check: !referenceFen && displayCheck,
         movable,
       });
@@ -593,46 +589,29 @@ const ChessboardComponent = ({
       if (
         premovesEnabledRef.current &&
         premoveColorRef.current === position.turn &&
-        !disabledRef.current &&
-        !viewingIntroRef.current &&
-        !boardStatusRef.current.locked
+        !blindFenRef.current &&
+        !isMoveInputBlocked()
       ) {
         cgRef.current?.playPremove?.();
       }
     },
     [
       blindFenRef,
-      boardStatusRef,
       coordinatesRef,
-      disabledRef,
       emitState,
       getDisplayTurn,
       getMovableConfig,
+      isMoveInputBlocked,
       orientationRef,
       premoveColorRef,
       premovesEnabledRef,
     ],
   );
 
-  const recomputeTrainingFromHistory = useCallback(
-    (targetIndex: number): void => {
-      const nextState = recomputeTrainingState({
-        isTrainingEnabled: solutionEntriesRef.current.length > 0,
-        isAnalysisMode: analysisModeRef.current,
-        playedMoveKeys: historyMoveKeys(historyRef.current, targetIndex),
-        solutionLines: solutionUciLinesRef.current,
-      });
-
-      candidateLinesRef.current = nextState.candidates;
-      progressRef.current = nextState.progress;
-      boardStatusRef.current.solved = nextState.solved;
-    },
-    [analysisModeRef, boardStatusRef, candidateLinesRef, progressRef, solutionUciLinesRef],
-  );
-
   const navigateTo = useCallback(
     (target: number | "beforeIntro"): boolean => {
       const history = historyRef.current;
+      if (!history.plies.length) return false;
       assertBoardHistory(history);
       const beforeIntro = target === "beforeIntro";
       const targetIndex = beforeIntro ? 0 : target;
@@ -650,19 +629,17 @@ const ChessboardComponent = ({
       history.index = targetIndex;
       // The opponent's move precedes puzzle ply zero; inspecting its starting
       // position must not add a training ply or briefly activate the puzzle root.
-      viewingIntroRef.current = beforeIntro;
-      boardStatusRef.current.locked = isSolutionPlaybackLocked();
-      recomputeTrainingFromHistory(targetIndex);
+      viewRef.current.position = beforeIntro ? "beforeIntro" : targetIndex;
+      interactionLockedRef.current = isSolutionPlaybackLocked();
 
       syncBoard(position, history.plies[targetIndex]?.lastMove);
       return true;
     },
     [
       blindFenRef,
-      boardStatusRef,
+      interactionLockedRef,
       clearMoveEvaluationTimer,
       isSolutionPlaybackLocked,
-      recomputeTrainingFromHistory,
       syncBoard,
     ],
   );
@@ -673,13 +650,11 @@ const ChessboardComponent = ({
       ply,
       activeLine,
       locked,
-      state,
     }: {
       history: BoardHistory;
       ply?: number | undefined;
       activeLine: BoardLineRef;
       locked: boolean;
-      state?: Partial<ChessboardState>;
     }): void => {
       history.index = Math.max(
         0,
@@ -692,39 +667,28 @@ const ChessboardComponent = ({
       if (!position) return;
 
       clearMoveEvaluationTimer();
-      viewingIntroRef.current = false;
+      viewRef.current.position = history.index;
       historyRef.current = history;
-      activeLineRef.current = activeLine;
-      boardStatusRef.current = {
-        ...boardStatusRef.current,
-        mode: activeLine.source === "solution" ? "solution" : "analysis",
-        locked,
-      };
-      syncBoard(position, step.lastMove, state);
+      viewRef.current.line = activeLine;
+      interactionLockedRef.current = locked;
+      syncBoard(position, step.lastMove);
     },
-    [boardStatusRef, clearMoveEvaluationTimer, syncBoard],
+    [interactionLockedRef, clearMoveEvaluationTimer, syncBoard],
   );
 
   const showSolutionLine = useCallback(
     (lineIndex: number, targetPly?: number): void => {
       const solutionEntry = solutionEntriesRef.current[lineIndex];
-      if (!solutionEntry?.moveEntries?.length) return;
+      if (!canBrowseSolution() || !solutionEntry?.moveEntries?.length) return;
 
-      candidateLinesRef.current = [];
-      progressRef.current = 0;
       activateHistory({
         history: cloneBoardHistory(solutionEntry.history),
         ply: targetPly,
         activeLine: { source: "solution", index: lineIndex },
         locked: !analysisModeRef.current,
-        state: {
-          solved: boardStatusRef.current.solved,
-          viewingSolution: true,
-          solutionLineIndex: lineIndex,
-        },
       });
     },
-    [activateHistory, analysisModeRef, boardStatusRef, candidateLinesRef, progressRef],
+    [activateHistory, analysisModeRef, canBrowseSolution],
   );
 
   const showCustomLine = useCallback(
@@ -737,7 +701,6 @@ const ChessboardComponent = ({
         ply: targetPly,
         activeLine: { source: "custom", index: lineIndex },
         locked: false,
-        state: { viewingSolution: false },
       });
     },
     [activateHistory],
@@ -776,7 +739,7 @@ const ChessboardComponent = ({
     (command: PlaybackCommand): void => {
       if (introPlayingRef.current) return;
       const history = historyRef.current;
-      if (viewingIntroRef.current) {
+      if (viewRef.current.position === "beforeIntro") {
         if (command === "previous" || command === "previousOption") return;
         if (command === "next" || command === "nextOption") {
           navigateTo(0);
@@ -815,7 +778,7 @@ const ChessboardComponent = ({
           addOption("custom", lineIndex, moveKeys),
         );
         if (options.length >= 2) {
-          const activeLine = activeLineRef.current;
+          const activeLine = viewRef.current.line;
           const currentIndex =
             activeLine.source === "history"
               ? -1
@@ -855,8 +818,8 @@ const ChessboardComponent = ({
         if (resumeDefaultMainLine(history, history.index, history.index + 1)) return;
       }
 
-      if (showSolutionRef.current && activeLineRef.current.source === "solution") {
-        const activeLineIndex = activeLineRef.current.index;
+      if (showSolutionRef.current && viewRef.current.line.source === "solution") {
+        const activeLineIndex = viewRef.current.line.index;
 
         const mainLineIndex = 0;
         const targetLineIndex = resolvedCommand === "end" ? mainLineIndex : activeLineIndex;
@@ -904,20 +867,20 @@ const ChessboardComponent = ({
 
   const autoplayOpponentMove = useCallback(
     (position: Atomic): boolean => {
-      const candidates = candidateLinesRef.current;
-      const progress = progressRef.current;
+      const candidates = attemptRef.current.candidates;
+      const progress = attemptRef.current.progress;
       const nextEntry: UciSolutionEntry | undefined =
         candidates.map((line) => line[progress]).find((entry) => entry && !entry.retry) ??
         candidates[0]?.[progress];
 
       if (!nextEntry) {
-        boardStatusRef.current.solved = true;
+        attemptRef.current.solved = true;
         return false;
       }
 
       const move = moveFromUci(position, nextEntry.uci);
       if (!move) {
-        boardStatusRef.current.solved = true;
+        attemptRef.current.solved = true;
         return false;
       }
 
@@ -932,18 +895,18 @@ const ChessboardComponent = ({
         opponentMoveSan,
       );
 
-      candidateLinesRef.current = candidates.filter(
+      attemptRef.current.candidates = candidates.filter(
         (line) => line[progress]?.uci === nextEntry.uci,
       );
-      progressRef.current = progress + 1;
-      boardStatusRef.current.solved = isSolutionCompleteAt(
-        candidateLinesRef.current,
-        progressRef.current,
+      attemptRef.current.progress = progress + 1;
+      attemptRef.current.solved = isSolutionCompleteAt(
+        attemptRef.current.candidates,
+        attemptRef.current.progress,
       );
 
       return true;
     },
-    [boardStatusRef, candidateLinesRef, playMoveSound, progressRef, saveMove],
+    [attemptRef, playMoveSound, saveMove],
   );
 
   const clearPendingPromotion = useCallback((): void => {
@@ -954,14 +917,7 @@ const ChessboardComponent = ({
   const playUserMove = useCallback(
     (orig: string, dest: string, promotion?: Role | undefined): void => {
       const position = positionRef.current;
-      if (
-        !position ||
-        disabledRef.current ||
-        introPlayingRef.current ||
-        viewingIntroRef.current ||
-        boardStatusRef.current.locked ||
-        isSolutionPlaybackLocked()
-      ) {
+      if (!position || isMoveInputBlocked()) {
         return;
       }
 
@@ -997,21 +953,16 @@ const ChessboardComponent = ({
       if (analysisModeRef.current) {
         position.play(move);
         saveMove(position, keyPair(orig, dest), userMoveText, userMoveKey, userMoveSan);
-        syncBoard(position, keyPair(orig, dest), {
-          solved: false,
-          status: getStatus(position),
-        });
+        syncBoard(position, keyPair(orig, dest));
         return;
       }
 
       const trainingEnabled = solutionEntriesRef.current.length > 0 && !analysisModeRef.current;
 
-      if (!trainingEnabled || boardStatusRef.current.solved) {
+      if (!trainingEnabled || attemptRef.current.solved) {
         position.play(move);
         saveMove(position, keyPair(orig, dest), userMoveText, userMoveKey, userMoveSan);
-        syncBoard(position, keyPair(orig, dest), {
-          solved: boardStatusRef.current.solved,
-        });
+        syncBoard(position, keyPair(orig, dest));
         return;
       }
 
@@ -1032,10 +983,10 @@ const ChessboardComponent = ({
           );
         }
       }
-      candidateLinesRef.current = candidates;
-      progressRef.current = progress;
+      attemptRef.current.candidates = candidates;
+      attemptRef.current.progress = progress;
 
-      boardStatusRef.current = { ...boardStatusRef.current, mode: "evaluating", locked: true };
+      interactionLockedRef.current = true;
       cgRef.current?.set({
         lastMove: blindFenRef.current ? [] : keyPair(orig, dest),
         movable: {
@@ -1048,7 +999,7 @@ const ChessboardComponent = ({
       const scheduledPuzzleId = puzzleIdRef.current;
       const scheduledFen = fenRef.current;
       const scheduledHistoryIndex = historyRef.current.index;
-      const scheduledProgress = progressRef.current;
+      const scheduledProgress = attemptRef.current.progress;
 
       evaluationTimerRef.current = window.setTimeout(() => {
         evaluationTimerRef.current = null;
@@ -1057,7 +1008,7 @@ const ChessboardComponent = ({
           puzzleIdRef.current !== scheduledPuzzleId ||
           fenRef.current !== scheduledFen ||
           historyRef.current.index !== scheduledHistoryIndex ||
-          progressRef.current !== scheduledProgress
+          attemptRef.current.progress !== scheduledProgress
         ) {
           return;
         }
@@ -1066,17 +1017,16 @@ const ChessboardComponent = ({
         if (!activePos) return;
 
         if (moveEvaluation === "retry" || createsTwofoldRepetition) {
-          boardStatusRef.current = { ...boardStatusRef.current, mode: "training", locked: false };
+          interactionLockedRef.current = false;
           syncBoard(activePos, undefined, {
-            showRetryMove: true,
-            solved: false,
+            feedback: "retry",
             status: "Try again",
           });
           return;
         }
 
         if (moveEvaluation === "wrong") {
-          boardStatusRef.current = { ...boardStatusRef.current, mode: "training", locked: false };
+          interactionLockedRef.current = false;
           onAttemptResolvedRef.current?.({
             puzzleId: puzzleIdRef.current,
             puzzleCorrect: false,
@@ -1084,8 +1034,7 @@ const ChessboardComponent = ({
             correctMove: null,
           });
           syncBoard(activePos, undefined, {
-            showWrongMove: true,
-            solved: false,
+            feedback: "wrong",
             status: "Incorrect",
           });
           return;
@@ -1096,11 +1045,11 @@ const ChessboardComponent = ({
 
         const acceptedState = moveResult.acceptedState;
         if (!acceptedState) return;
-        candidateLinesRef.current = acceptedState.candidates;
-        progressRef.current = acceptedState.progress;
+        attemptRef.current = acceptedState;
 
         if (acceptedState.solved) {
-          boardStatusRef.current = { mode: "training", locked: false, solved: true };
+          interactionLockedRef.current = false;
+          attemptRef.current.solved = true;
           onAttemptResolvedRef.current?.({
             puzzleId: puzzleIdRef.current,
             puzzleCorrect: true,
@@ -1108,16 +1057,16 @@ const ChessboardComponent = ({
             correctMove: getCorrectLineMove(),
           });
           syncBoard(activePos, keyPair(orig, dest), {
-            solved: true,
             status: "Correct",
+            feedback: "correct",
           });
           return;
         }
 
         const playedOpponent = autoplayOpponentMove(activePos);
-        boardStatusRef.current.locked = false;
+        interactionLockedRef.current = false;
 
-        if (boardStatusRef.current.solved) {
+        if (attemptRef.current.solved) {
           onAttemptResolvedRef.current?.({
             puzzleId: puzzleIdRef.current,
             puzzleCorrect: true,
@@ -1133,8 +1082,8 @@ const ChessboardComponent = ({
             ? keyPair(lastUci.slice(0, 2), lastUci.slice(2, 4))
             : undefined,
           {
-            solved: boardStatusRef.current.solved,
-            status: boardStatusRef.current.solved ? "Correct" : getStatus(activePos),
+            status: attemptRef.current.solved ? "Correct" : getStatus(activePos),
+            ...(attemptRef.current.solved ? { feedback: "correct" as const } : {}),
           },
         );
       }, MOVE_EVALUATION_DELAY_MS);
@@ -1142,20 +1091,18 @@ const ChessboardComponent = ({
     [
       autoplayOpponentMove,
       allowedSolutionContinuations,
+      isMoveInputBlocked,
       blindFenRef,
-      boardStatusRef,
-      candidateLinesRef,
+      interactionLockedRef,
+      attemptRef,
       clearMoveEvaluationTimer,
-      disabledRef,
       fenRef,
       analysisModeRef,
-      isSolutionPlaybackLocked,
       evaluationTimerRef,
       getCorrectLineMove,
       onAttemptResolvedRef,
       playMoveSound,
       puzzleIdRef,
-      progressRef,
       restrictMovesToSolutionRef,
       saveMove,
       solutionUciLinesRef,
@@ -1209,11 +1156,10 @@ const ChessboardComponent = ({
         onStateChangeRef.current?.({
           fen: nextFen,
           turn: "",
+          view: initialBoardView(),
           status: "Invalid position",
           winner: undefined,
           error,
-          showWrongMove: false,
-          showRetryMove: false,
           solved: false,
         });
         return;
@@ -1221,10 +1167,7 @@ const ChessboardComponent = ({
 
       resetSession({ history: createBoardHistory(nextFen) });
 
-      syncBoard(position, undefined, {
-        solved: false,
-        viewingSolution: false,
-      });
+      syncBoard(position, undefined);
     },
     [
       clearMoveEvaluationTimer,
@@ -1281,14 +1224,7 @@ const ChessboardComponent = ({
   const handleBoardMove = useCallback(
     (orig: string, dest: string): void => {
       const position = positionRef.current;
-      if (
-        !position ||
-        introPlayingRef.current ||
-        viewingIntroRef.current ||
-        boardStatusRef.current.locked ||
-        isSolutionPlaybackLocked() ||
-        pendingPromotionRef.current
-      ) {
+      if (!position || isMoveInputBlocked() || pendingPromotionRef.current) {
         return;
       }
       const from = parseSquare(orig);
@@ -1311,14 +1247,14 @@ const ChessboardComponent = ({
       }
       playUserMove(orig, dest, choices[0]);
     },
-    [boardStatusRef, isSolutionPlaybackLocked, orientationRef, playUserMove, syncBoard],
+    [isMoveInputBlocked, orientationRef, playUserMove, syncBoard],
   );
 
   const getBlindLegalDestinations = (origin: Key): readonly Key[] => {
     const position = positionRef.current;
     if (
       !position ||
-      boardStatusRef.current.locked ||
+      interactionLockedRef.current ||
       isSolutionPlaybackLocked() ||
       pendingPromotionRef.current
     ) {
@@ -1502,10 +1438,10 @@ const ChessboardComponent = ({
               solutionNavigation.ply,
               formatSolutionMove(splitSolutionMove(targetSan).san, annotation),
             );
-            if (activeLineRef.current.source === "custom") {
+            if (viewRef.current.line.source === "custom") {
               const refreshed = variationHistoryAt(
                 customVariationsRef.current,
-                activeLineRef.current.index,
+                viewRef.current.line.index,
               );
               if (refreshed) {
                 refreshed.index = Math.min(historyRef.current.index, refreshed.plies.length - 1);
@@ -1552,25 +1488,16 @@ const ChessboardComponent = ({
 
     clearMoveEvaluationTimer();
     clearPendingPromotion();
-    boardStatusRef.current = {
-      mode: "analysis",
-      locked: false,
-      solved: boardStatusRef.current.solved,
-    };
-    candidateLinesRef.current = [];
-    progressRef.current = 0;
+    interactionLockedRef.current = false;
 
     syncBoard(position, historyRef.current.plies[historyRef.current.index]?.lastMove, {
-      solved: boardStatusRef.current.solved,
-      status: boardStatusRef.current.solved ? "Correct" : getStatus(position),
+      status: getStatus(position),
     });
   }, [
     analysisMode,
-    boardStatusRef,
-    candidateLinesRef,
+    interactionLockedRef,
     clearMoveEvaluationTimer,
     clearPendingPromotion,
-    progressRef,
     syncBoard,
   ]);
 
@@ -1582,13 +1509,13 @@ const ChessboardComponent = ({
 
   useEffect(() => {
     if (showSolution && solutionEntriesRef.current.length > 0) return;
-    if (solutionNavigationRef.current) {
-      if (preserveAnalysisHistoryOnSolutionChange && analysisModeRef.current) {
+    if (solutionNavigationRef.current && historyRef.current.plies.length) {
+      if (solutionEditor && analysisModeRef.current) {
         lastAutomaticResetFenRef.current = fen;
       }
       return;
     }
-    if (preserveAnalysisHistoryOnSolutionChange && analysisModeRef.current) {
+    if (solutionEditor && analysisModeRef.current) {
       if (lastAutomaticResetFenRef.current === fen) return;
     }
     lastAutomaticResetFenRef.current = fen;
@@ -1609,11 +1536,10 @@ const ChessboardComponent = ({
       onStateChangeRef.current?.({
         fen,
         turn: "",
+        view: initialBoardView(),
         status: "Invalid position",
         winner: undefined,
         error,
-        showWrongMove: false,
-        showRetryMove: false,
         solved: false,
       });
       return;
@@ -1634,7 +1560,7 @@ const ChessboardComponent = ({
       : undefined;
     history.plies[0]!.lastMove = lastMove;
     const showPuzzlePosition = () => {
-      syncBoard(position, lastMove, { solved: false, viewingSolution: showSolution });
+      syncBoard(position, lastMove);
     };
     if (
       !openingMove ||
@@ -1722,7 +1648,7 @@ const ChessboardComponent = ({
     onStateChangeRef,
     orientationRef,
     playMoveSound,
-    preserveAnalysisHistoryOnSolutionChange,
+    solutionEditor,
     resetSession,
     showSolution,
     solutionNavigationRef,
@@ -1749,7 +1675,10 @@ const ChessboardComponent = ({
     const displayCheck =
       displayTurn === position.turn && position.isCheck() ? position.turn : false;
 
-    const lastMove = viewingIntroRef.current ? undefined : history.plies[history.index]?.lastMove;
+    const lastMove =
+      viewRef.current.position === "beforeIntro"
+        ? undefined
+        : history.plies[history.index]?.lastMove;
     const blindViewChanged = previousBlindFenRef.current !== blindFen;
     previousBlindFenRef.current = blindFen;
     cgRef.current?.set({

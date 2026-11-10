@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { PuzzleLoginScreen } from "../../components/RequireAuthentication/RequireAuthentication";
 import { createAtomicPosition } from "../../lib/chess/pgn";
-import type { ChessboardState } from "../../types/chessboard";
+import { boardPly, type ChessboardState } from "../../types/chessboard";
 import { orientationFromFen } from "../../utils/chessNotation";
 import { GUEST_PUZZLES } from "./guestPuzzles";
 import { PuzzlePositionRows } from "./PuzzlePositionRows";
@@ -64,12 +64,12 @@ const GuestPuzzle = ({
   );
   const orientation = orientationFromFen(puzzle.fen);
   const last = index + 1 === GUEST_PUZZLES.length;
-  const missed = Boolean(boardState?.showWrongMove || boardState?.showRetryMove);
+  const missed = Boolean(boardState?.feedback === "wrong" || boardState?.feedback === "retry");
   const feedback = solved
     ? "Solved!"
     : missed
       ? "Try another move."
-      : boardState?.lineIndex
+      : boardPly(boardState)
         ? "Good move. Keep going."
         : "";
 
