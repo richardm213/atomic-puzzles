@@ -142,11 +142,11 @@ describe("Chessboard orchestration", () => {
     expect(movable?.dests.get("e2")).toEqual(expect.arrayContaining(["e3", "e4"]));
   });
 
-  it("renders a solid red preview arrow for a threat move", () => {
-    renderBoard({ previewMove: "e7e5", previewMoveBrush: "red" });
+  it("uses the threat arrow instead of the ordinary move preview", () => {
+    renderBoard({ threatMove: "e7e5", previewMove: "e2e4" });
 
     expect(mocks.setAutoShapes).toHaveBeenLastCalledWith([
-      expect.objectContaining({ orig: "e7", dest: "e5", brush: "red" }),
+      expect.objectContaining({ orig: "e7", dest: "e5", brush: "threat" }),
     ]);
   });
 

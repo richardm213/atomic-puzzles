@@ -91,7 +91,7 @@ export type ChessboardProps = {
   analysisMode?: boolean;
   solutionNavigation?: SolutionNavigation | null | undefined;
   previewMove?: string | null | undefined;
-  previewMoveBrush?: "paleBlue" | "red";
+  threatMove?: string | null | undefined;
   engineMoves?: readonly string[] | null | undefined;
   analysisMarker?: { uci: string; symbol: string; fill: string } | null | undefined;
   dimensionsRef?: RefObject<HTMLElement>;
@@ -129,7 +129,7 @@ const keyPair = (a: string, b: string): [Key, Key] => [a as Key, b as Key];
 
 const previewMoveShape = (
   uci: string | null | undefined,
-  brush: "paleBlue" | "red" | "bestMove" | "otherEngineMove",
+  brush: "paleBlue" | "threat" | "bestMove" | "otherEngineMove",
 ): DrawShape[] => {
   const normalized = uci?.trim().toLowerCase() ?? "";
   if (!/^[a-h][1-8][a-h][1-8]/.test(normalized)) return [];
@@ -168,7 +168,7 @@ const ChessboardComponent = ({
   analysisMode = false,
   solutionNavigation,
   previewMove,
-  previewMoveBrush = "paleBlue",
+  threatMove,
   engineMoves,
   analysisMarker,
   dimensionsRef,
@@ -1308,7 +1308,9 @@ const ChessboardComponent = ({
             } satisfies DrawShape,
           ]
         : [];
-    const preview = previewMoveShape(previewMove, previewMoveBrush);
+    const preview = threatMove
+      ? previewMoveShape(threatMove, "threat")
+      : previewMoveShape(previewMove, "paleBlue");
     const engineArrows =
       !preview.length && showBestMoveArrow && !disabled && engineMoves
         ? [
@@ -1317,7 +1319,7 @@ const ChessboardComponent = ({
           ]
         : [];
     cgRef.current?.setAutoShapes([...engineArrows, ...preview, ...marker]);
-  }, [analysisMarker, disabled, engineMoves, previewMove, previewMoveBrush, showBestMoveArrow]);
+  }, [analysisMarker, disabled, engineMoves, previewMove, showBestMoveArrow, threatMove]);
 
   useEffect(() => {
     if (!showSolution) return;

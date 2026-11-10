@@ -724,7 +724,6 @@ export const PuzzleEditor = ({
           restrictMovesToSolution={!canEditSolution}
           solutionNavigation={navigation}
           previewMove={hoveredEngineMove}
-          previewMoveBrush="paleBlue"
           engineMoves={showAnalysisEngine ? engine.engineMoves : undefined}
           onNavigateHandled={finishNavigation}
           onStateChange={handleBoardState}

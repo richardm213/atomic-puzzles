@@ -1649,8 +1649,8 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           analysisMode: true,
           captureNavigationShortcuts: true,
           solutionNavigation: puzzleDraft ? null : navigation,
-          previewMove: threatMoveUci ?? hoveredExplorerMoveUci,
-          previewMoveBrush: threatMoveUci ? "red" : "paleBlue",
+          previewMove: hoveredExplorerMoveUci,
+          threatMove: threatMoveUci,
           engineMoves: effectiveThreatMode ? null : engineMoves,
           analysisMarker:
             gameComputerAnalysisEnabled &&
@@ -1682,7 +1682,8 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                 analysisMode: true,
                 captureNavigationShortcuts: true,
                 solutionNavigation: navigation,
-                previewMove: threatMoveUci,
+                previewMove: hoveredExplorerMoveUci,
+                threatMove: threatMoveUci,
                 engineMoves: effectiveThreatMode ? null : engineMoves,
                 onNavigateHandled: handleNavigationHandled,
                 onStateChange: setPuzzleBoardState,
