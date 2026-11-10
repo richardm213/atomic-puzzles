@@ -1018,6 +1018,36 @@ describe("PuzzleSolverPage solution options", () => {
     expect(mocks.voteOnPuzzleTag).toHaveBeenLastCalledWith(1369, "epaulette_fork", 0);
   });
 
+  it("keeps the confirmed tag vote when a save fails and lets the player retry", async () => {
+    const fork = { tag: "fork", up: 3, down: 0, vote: 0 };
+    mocks.loadPuzzleTagVotes.mockResolvedValue([fork]);
+    mocks.voteOnPuzzleTag
+      .mockRejectedValueOnce(new Error("Tag vote unavailable"))
+      .mockResolvedValueOnce([{ ...fork, up: 4, vote: 1 }]);
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+
+    const motifs = await screen.findByLabelText("Tags on this puzzle");
+    const upvote = await within(motifs).findByRole("button", { name: /^Upvote Fork\b/ });
+    await user.click(upvote);
+
+    expect(await screen.findByText("Tag vote unavailable")).toBeVisible();
+    expect(upvote).toBeEnabled();
+    expect(
+      within(motifs).queryByRole("button", { name: /^Undo upvote for Fork\b/ }),
+    ).not.toBeInTheDocument();
+
+    await user.click(upvote);
+    expect(
+      await within(motifs).findByRole("button", { name: /^Undo upvote for Fork\b/ }),
+    ).toBeVisible();
+    expect(screen.queryByText("Tag vote unavailable")).not.toBeInTheDocument();
+    expect(mocks.voteOnPuzzleTag.mock.calls).toEqual([
+      [1369, "fork", 1],
+      [1369, "fork", 1],
+    ]);
+  });
+
   it("keeps the solution hidden after a wrong move until the player gives up", async () => {
     mocks.attemptedPuzzleIds = new Set();
     let now = 0;

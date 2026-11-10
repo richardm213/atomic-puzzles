@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatPuzzleSetDate } from "../../../shared/domain/puzzles/puzzleSetMetadata";
+import { formatPuzzleSetDate, puzzleSetMetadataFromRow } from "../../../shared/domain/puzzles/puzzleSetMetadata";
 import type { Puzzle } from "./puzzleLibrary";
 import {
   getOrderedPuzzleIndexesForEvent,
@@ -191,6 +191,21 @@ describe("getOrderedPuzzleIndexesForEvent", () => {
 
     expect(getOrderedPuzzleIndexesForEvent(puzzles, "10")).toEqual([0]);
     expect(getOrderedPuzzleIndexesForEvent(puzzles, "20")).toEqual([0]);
+  });
+
+  it("prefers the primary membership for default metadata without losing other sets", () => {
+    const puzzle = makePuzzle({
+      puzzleId: 8,
+      puzzle_set_id: 10,
+      puzzle_set: makeSet(10, "ACL"),
+      puzzle_set_memberships: [
+        { puzzle_set_id: 10, puzzle_set: makeSet(10, "ACL") },
+        { puzzle_set_id: 20, is_primary: true, puzzle_set: makeSet(20, "AWC") },
+      ],
+    });
+
+    expect(puzzleSetMetadataFromRow(puzzle).eventName).toBe("AWC");
+    expect(puzzleSetMetadataFromRow(puzzle, 10).eventName).toBe("ACL");
   });
 
   it("returns every puzzle in the selected event in puzzle-id order", () => {

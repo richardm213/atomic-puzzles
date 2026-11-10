@@ -20,7 +20,7 @@ const puzzleCatalogColumns = [
   "players",
   "puzzle_set_id",
   `puzzle_set:puzzle_sets!puzzles_puzzle_set_id_fkey(${puzzleSetFields})`,
-  `puzzle_set_memberships(puzzle_set_id,puzzle_set:puzzle_sets(${puzzleSetFields}))`,
+  `puzzle_set_memberships(puzzle_set_id,is_primary,puzzle_set:puzzle_sets(${puzzleSetFields}))`,
   "white_player",
   "black_player",
   "tags",

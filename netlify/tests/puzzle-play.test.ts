@@ -186,6 +186,32 @@ describe("puzzle-play function", () => {
     });
   });
 
+  it("returns an empty successful prefetch when every requested puzzle is locked", async () => {
+    const dailyAttemptQuery = createDailyAttemptQuery();
+    const from = vi.fn(() => dailyAttemptQuery);
+    mocks.createClient.mockReturnValue({
+      rpc: vi.fn(async () => ({
+        data: [{ puzzle_id: "414", expires_at: "2027-01-10T12:00:00Z" }],
+        error: null,
+      })),
+      from,
+    });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ puzzleIds: [414], activePuzzleId: null }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({
+      puzzles: [],
+      blockedPuzzleIds: [],
+      dailyLimitReached: false,
+    });
+    expect(from).not.toHaveBeenCalledWith("puzzles");
+  });
+
   it("only returns previously attempted puzzles after the UTC daily limit", async () => {
     const puzzleQuery = createPuzzleQuery();
     const dailyAttemptQuery = createDailyAttemptQuery(200);

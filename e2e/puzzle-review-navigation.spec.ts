@@ -53,7 +53,7 @@ test("deleting a puzzle variation removes it from backward and forward navigatio
   }
 });
 
-test("an active puzzle replays its intro and played moves without revealing future moves", async ({
+test("solve-mode arrows replay only played moves until the solution is revealed", async ({
   page,
 }) => {
   await page.route("**/api/puzzles/play", (route) =>
@@ -117,7 +117,8 @@ test("an active puzzle replays its intro and played moves without revealing futu
   await intro.click();
   await latest.click();
   await expect(reply).toHaveAttribute("aria-current", "step");
-  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  await reply.click();
+  await expect(reply).toBeFocused();
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowDown");
   await expect(analysis.getByRole("button", { name: /Nc6|Bc4|Nf6|c5/ })).toHaveCount(0);
@@ -126,16 +127,45 @@ test("an active puzzle replays its intro and played moves without revealing futu
   await playBlackMove("a7a6");
   const giveUp = analysis.getByRole("button", { name: "Give up and reveal the solution" });
   await expect(giveUp).toBeVisible();
+  // After a wrong move, arrows from inside the move box can replay the
+  // played line, but cannot cross into the unrevealed solution.
+  const futureMoves = analysis.getByRole("button", { name: /Nc6|Bc4|Nf6|c5/ });
   await intro.click();
-  await expect(analysis.getByRole("button", { name: /Nc6|Bc4|Nf6|c5/ })).toHaveCount(0);
-  await latest.click();
+  await expect(intro).toBeFocused();
+  await expect(futureMoves).toHaveCount(0);
+  await page.keyboard.press("ArrowRight");
+  await expect(analysis.getByRole("button", { name: /e5/ })).toHaveAttribute("aria-current", "step");
+  await expect(futureMoves).toHaveCount(0);
+  await page.keyboard.press("ArrowRight");
+  await expect(reply).toHaveAttribute("aria-current", "step");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowDown");
   await expect(reply).toHaveAttribute("aria-current", "step");
   await expect(next).toBeDisabled();
+  await expect(futureMoves).toHaveCount(0);
   await giveUp.click();
   await expect(analysis.getByRole("button", { name: /Nc6/ })).toBeVisible();
   await latest.click();
-  await expect(analysis.getByRole("button", { name: /Nf6/ })).toHaveAttribute(
-    "aria-current",
-    "step",
-  );
+  const finalMove = analysis.getByRole("button", { name: /Nf6/ });
+  const previousMove = analysis.getByRole("button", { name: /Bc4/ });
+  await expect(finalMove).toHaveAttribute("aria-current", "step");
+
+  // Focus stays in the move box after a click. Each arrow must navigate one ply.
+  await finalMove.click();
+  await expect(finalMove).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(previousMove).toHaveAttribute("aria-current", "step");
+  await page.keyboard.press("ArrowRight");
+  await expect(finalMove).toHaveAttribute("aria-current", "step");
+  await expect(page).toHaveURL(/\/solve\/102$/);
+
+  // The same keys should edit text normally when focus moves to the tag picker.
+  await page.getByRole("button", { name: "Add tag", exact: true }).click();
+  const tagSearch = page.getByRole("searchbox", { name: "Search tags" });
+  await tagSearch.fill("frk");
+  await tagSearch.press("ArrowLeft");
+  await tagSearch.press("ArrowLeft");
+  await tagSearch.press("o");
+  await expect(tagSearch).toHaveValue("fork");
+  await expect(finalMove).toHaveAttribute("aria-current", "step");
 });

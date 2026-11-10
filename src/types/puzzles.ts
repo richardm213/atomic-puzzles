@@ -11,6 +11,7 @@ export type RawPuzzleSetRow = {
 };
 
 export type RawPuzzleSetMembershipRow = {
+  is_primary?: boolean | null;
   puzzle_set_id?: string | number | null;
   puzzle_set?: RawPuzzleSetRow | RawPuzzleSetRow[] | null;
 };

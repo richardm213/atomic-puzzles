@@ -30,7 +30,7 @@ const detailsBodySchema = z.object({
 
 const PUZZLE_SET_FIELDS = "id,event_name,event_date,players,source_id";
 const PUZZLE_SET_RELATION = `puzzle_set:puzzle_sets!puzzles_puzzle_set_id_fkey(${PUZZLE_SET_FIELDS})`;
-const PUZZLE_SET_MEMBERSHIP_RELATION = `puzzle_set_memberships(puzzle_set_id,puzzle_set:puzzle_sets(${PUZZLE_SET_FIELDS}))`;
+const PUZZLE_SET_MEMBERSHIP_RELATION = `puzzle_set_memberships(puzzle_set_id,is_primary,puzzle_set:puzzle_sets(${PUZZLE_SET_FIELDS}))`;
 const PUZZLE_RATING_RELATION =
   "rating_state:puzzle_ratings!puzzle_ratings_puzzle_id_fkey(rating,rating_deviation,attempts,successes,computed_level,human_level,human_rated_by,human_rated_at,updated_at)";
 const DETAIL_COLUMNS =

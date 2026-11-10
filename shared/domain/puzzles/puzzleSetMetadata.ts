@@ -68,26 +68,29 @@ const readPuzzleSetRelation = (value: unknown): Record<string, unknown> | null =
   return candidate && typeof candidate === "object" ? (candidate as Record<string, unknown>) : null;
 };
 
-const readPuzzleSetMembershipRelations = (value: unknown): Record<string, unknown>[] => {
+const readPuzzleSetMembershipRelations = (value: unknown) => {
   if (!Array.isArray(value)) return [];
 
   return value.flatMap((membership) => {
     if (!membership || typeof membership !== "object") return [];
     const row = membership as Record<string, unknown>;
     const puzzleSet = readPuzzleSetRelation(row["puzzle_set"]);
-    return puzzleSet ? [puzzleSet] : [];
+    return puzzleSet ? [{ puzzleSet, isPrimary: row["is_primary"] === true }] : [];
   });
 };
 
 export const puzzleSetRelationsFromRow = (row: PuzzleSetMetadataRow): Record<string, unknown>[] => {
-  const memberships = readPuzzleSetMembershipRelations(row.puzzle_set_memberships);
+  const entries = readPuzzleSetMembershipRelations(row.puzzle_set_memberships);
+  const memberships = entries.map(({ puzzleSet }) => puzzleSet);
+  const primaryMembership = entries.find(({ isPrimary }) => isPrimary)?.puzzleSet;
   const legacyRelation = readPuzzleSetRelation(row.puzzle_set);
   if (memberships.length > 0) {
-    if (!legacyRelation) return memberships;
-    const legacyId = String(legacyRelation["id"] ?? "");
+    const primary = primaryMembership ?? legacyRelation;
+    if (!primary) return memberships;
+    const primaryId = String(primary["id"] ?? "");
     return [
-      legacyRelation,
-      ...memberships.filter((relation) => String(relation["id"] ?? "") !== legacyId),
+      primary,
+      ...memberships.filter((relation) => String(relation["id"] ?? "") !== primaryId),
     ];
   }
   if (legacyRelation) return [legacyRelation];
