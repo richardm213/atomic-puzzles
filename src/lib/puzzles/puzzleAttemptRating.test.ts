@@ -3,6 +3,18 @@ import { describe, expect, it } from "vitest";
 import { getPuzzleUnratedReason } from "./puzzleAttemptRating";
 
 describe("getPuzzleUnratedReason", () => {
+  it("keeps permanent author opt-outs unrated after the stored cooldown expires", () => {
+    expect(
+      getPuzzleUnratedReason({
+        username: "author",
+        author: "author",
+        createdAt: "2020-01-01",
+        hasUnratedAttempt: false,
+        excludedUntil: "2020-02-01",
+        permanentlyUnrated: true,
+      }),
+    ).toBe("permanent");
+  });
   it("expires per-user exclusions even after an unrated practice attempt", () => {
     const input = {
       username: "solver",

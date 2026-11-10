@@ -101,6 +101,46 @@ describe("puzzle-progress function", () => {
     expect(JSON.parse(response.body)).toMatchObject({ coinAward: 0, coinDelta: 0 });
   });
 
+  it.each([true, false])(
+    "sets the unrated preference for the signed-in identity (%s)",
+    async (permanentlyUnrated) => {
+      const rpc = vi.fn(async () => ({ data: true, error: null }));
+      mocks.createClient.mockReturnValue({ rpc });
+      const response = await handler({
+        httpMethod: "POST",
+        headers: { cookie: createSiteSessionCookie("Author", {}).split(";")[0] },
+        body: JSON.stringify({
+          action: "markUnrated",
+          puzzleId: "42",
+          permanentlyUnrated,
+          username: "victim",
+        }),
+      });
+      expect(response.statusCode).toBe(200);
+      expect(rpc).toHaveBeenCalledWith("set_own_puzzle_permanently_unrated", {
+        p_username: "author",
+        p_puzzle_id: "42",
+        p_permanent: permanentlyUnrated,
+      });
+      expect(JSON.parse(response.body)).toMatchObject({ permanentlyUnrated });
+    },
+  );
+
+  it.each([
+    { message: "puzzle_not_authored_by_user", status: 403 },
+    { message: "puzzle_already_rated", status: 409 },
+    { message: "puzzle_already_attempted", status: 409 },
+  ])("rejects permanent unrated changes when $message", async ({ message, status }) => {
+    const rpc = vi.fn(async () => ({ data: null, error: { message } }));
+    mocks.createClient.mockReturnValue({ rpc });
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { cookie: createSiteSessionCookie("Author", {}).split(";")[0] },
+      body: JSON.stringify({ action: "markUnrated", puzzleId: "42" }),
+    });
+    expect(response.statusCode).toBe(status);
+  });
+
   it("returns an incorrect-attempt penalty as a signed coin delta", async () => {
     const rpc = vi.fn(async () => ({ data: -3.21644, error: null }));
     const query = ratingEventQuery();

@@ -176,6 +176,7 @@ create table if not exists public.puzzle_rating_exclusions (
   primary key (username,puzzle_id),
   check (username=lower(btrim(username)))
 );
+alter table public.puzzle_rating_exclusions add column if not exists permanent boolean not null default false;
 alter table public.puzzle_rating_exclusions enable row level security;
 revoke all on public.puzzle_rating_exclusions from public,anon,authenticated;
 grant select,insert,update,delete on public.puzzle_rating_exclusions to service_role;
@@ -193,6 +194,51 @@ end;
 $$;
 revoke all on function public.get_puzzle_rating_exclusions(text) from public;
 grant execute on function public.get_puzzle_rating_exclusions(text) to anon,authenticated,service_role;
+
+create or replace function public.get_puzzle_rating_exclusions_v2(p_username text)
+returns table(puzzle_id text,expires_at timestamptz,permanent boolean)
+language plpgsql stable security definer set search_path=public
+as $$
+declare solver text:=public.canonical_user_username(p_username);
+begin
+ return query select e.puzzle_id,e.expires_at,e.permanent from public.puzzle_rating_exclusions e where e.username=solver order by e.puzzle_id;
+end;
+$$;
+revoke all on function public.get_puzzle_rating_exclusions_v2(text) from public;
+grant execute on function public.get_puzzle_rating_exclusions_v2(text) to anon,authenticated,service_role;
+
+create or replace function public.set_own_puzzle_permanently_unrated(p_username text,p_puzzle_id text,p_permanent boolean)
+returns boolean language plpgsql security definer set search_path=public
+as $$
+declare solver text:=public.canonical_user_username(p_username); pid text:=btrim(p_puzzle_id); previous_rated boolean;
+begin
+ perform pg_advisory_xact_lock(hashtextextended(solver||':'||pid,0));
+ if not exists(select 1 from public.puzzles p where p.id=pid::bigint and p.deleted_at is null and public.canonical_user_username(p.author)=solver) then
+   raise exception 'puzzle_not_authored_by_user';
+ end if;
+ select p.rated into previous_rated from public.puzzle_progress p where p.username=solver and p.puzzle_id=pid;
+ if found then
+   if previous_rated then raise exception 'puzzle_already_rated'; end if;
+   raise exception 'puzzle_already_attempted';
+ end if;
+ if not p_permanent then
+   update public.puzzle_rating_exclusions set permanent=false where username=solver and puzzle_id=pid;
+   return false;
+ end if;
+ insert into public.puzzle_rating_exclusions(username,puzzle_id,category,expires_at,reason,permanent)
+ values(solver,pid,'creator',now(),'Creator remembered this puzzle',true)
+ on conflict(username,puzzle_id) do update set permanent=true;
+ return true;
+end;
+$$;
+revoke all on function public.set_own_puzzle_permanently_unrated(text,text,boolean) from public,anon,authenticated;
+grant execute on function public.set_own_puzzle_permanently_unrated(text,text,boolean) to service_role;
+
+create or replace function public.mark_own_puzzle_permanently_unrated(p_username text,p_puzzle_id text)
+returns boolean language sql security definer set search_path=public
+as $$ select public.set_own_puzzle_permanently_unrated(p_username,p_puzzle_id,true); $$;
+revoke all on function public.mark_own_puzzle_permanently_unrated(text,text) from public,anon,authenticated;
+grant execute on function public.mark_own_puzzle_permanently_unrated(text,text) to service_role;
 
 create or replace function public.set_creator_puzzle_rating_exclusion()
 returns trigger language plpgsql security definer set search_path=public
@@ -223,7 +269,7 @@ begin
   return query select e.puzzle_id,e.expires_at from public.puzzle_rating_exclusions e
   join public.puzzles p on p.id=e.puzzle_id::bigint
   where e.username=solver
-    and e.puzzle_id=any(p_puzzle_ids) and e.expires_at>now()
+    and e.puzzle_id=any(p_puzzle_ids) and (e.permanent or e.expires_at>now())
     and public.canonical_user_username(p.author) is distinct from e.username;
 end;
 $$;
@@ -236,7 +282,7 @@ as $$
 declare exclusion public.puzzle_rating_exclusions%rowtype;
 begin
   select * into exclusion from public.puzzle_rating_exclusions e where e.username=new.username and e.puzzle_id=new.puzzle_id;
-  if exclusion.expires_at>now() then
+  if exclusion.permanent or exclusion.expires_at>now() then
     if not exists (
       select 1 from public.puzzles p where p.id=new.puzzle_id::bigint
         and public.canonical_user_username(p.author)=new.username
@@ -344,7 +390,7 @@ begin
     select 1 from public.puzzle_rating_exclusions exclusion
     where exclusion.username = normalized_username and exclusion.puzzle_id = normalized_puzzle_id
   ) then
-    select attempt_at >= exclusion.expires_at into attempt_is_rated
+    select not exclusion.permanent and attempt_at >= exclusion.expires_at into attempt_is_rated
     from public.puzzle_rating_exclusions exclusion
     where exclusion.username = normalized_username and exclusion.puzzle_id = normalized_puzzle_id;
   end if;

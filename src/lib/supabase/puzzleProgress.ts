@@ -19,9 +19,23 @@ export type { PuzzleProgressWithUsernameRow } from "./types";
 export const fetchPuzzleRatingExclusions = (username: string) =>
   fetchAllSupabaseRows("puzzle_rating_exclusions", () =>
     getSupabaseClient()
-      .rpc("get_puzzle_rating_exclusions", { p_username: normalizeUsername(username) })
+      .rpc("get_puzzle_rating_exclusions_v2", { p_username: normalizeUsername(username) })
       .order("puzzle_id"),
   );
+
+export const setOwnPuzzlePermanentlyUnrated = async (
+  puzzleId: string,
+  permanentlyUnrated: boolean,
+) => {
+  await postApi(
+    "/api/puzzles/progress",
+    { action: "markUnrated", puzzleId, permanentlyUnrated },
+    {
+      schema: z.object({ permanentlyUnrated: z.boolean() }),
+      errorMessage: "Unable to mark puzzle unrated.",
+    },
+  );
+};
 
 type SupabaseClient = ReturnType<typeof getSupabaseClient>;
 

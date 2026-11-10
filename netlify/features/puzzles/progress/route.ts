@@ -15,7 +15,7 @@ import { createServerSupabase } from "../../../platform/environment";
 import { HttpError } from "../../../platform/errors";
 import { parseJsonBody } from "../../../platform/validation";
 
-const progressBodySchema = z.object({
+const attemptBodySchema = z.object({
   puzzleId: z
     .union([z.string(), z.number()])
     .transform(String)
@@ -26,12 +26,38 @@ const progressBodySchema = z.object({
   correctMove: z.string().trim().max(100).nullable().optional(),
 });
 
+const progressBodySchema = z.union([
+  z.object({
+    action: z.literal("markUnrated"),
+    puzzleId: attemptBodySchema.shape.puzzleId,
+    permanentlyUnrated: z.boolean().optional().default(true),
+  }),
+  attemptBodySchema,
+]);
+
 export const puzzleProgressRoute = async (event: FunctionEvent) => {
   requireSameOrigin(event.headers, "Cross-site puzzle-progress requests are not allowed.");
   const input = parseJsonBody(event, progressBodySchema, "Invalid puzzle progress request.");
   const identity = await authenticateRequest(event.headers);
   const username = requireUsername(identity, "Your Lichess login is no longer valid.");
   const supabase = createServerSupabase("Puzzle progress service");
+  if ("action" in input) {
+    const { error } = await supabase.rpc("set_own_puzzle_permanently_unrated", {
+      p_username: username,
+      p_puzzle_id: input.puzzleId,
+      p_permanent: input.permanentlyUnrated,
+    });
+    if (error) {
+      if (error.message.includes("puzzle_not_authored_by_user"))
+        throw new HttpError(403, "You can only mark your own puzzles permanently unrated.");
+      if (error.message.includes("puzzle_already_attempted"))
+        throw new HttpError(409, "This choice is permanent after you attempt the puzzle.");
+      if (error.message.includes("puzzle_already_rated"))
+        throw new HttpError(409, "This puzzle already has a rated attempt.");
+      throw new Error(`Unable to mark puzzle unrated: ${error.message}`);
+    }
+    return identityResponse(identity, 200, { permanentlyUnrated: input.permanentlyUnrated });
+  }
   const { data: coinDelta, error } = await supabase.rpc("record_first_puzzle_attempt_v2", {
     p_username: username,
     p_puzzle_id: input.puzzleId,

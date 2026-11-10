@@ -86,6 +86,7 @@ import {
   fetchPuzzleRatingExclusions,
   type PuzzleProgressWithUsernameRow,
   recordPuzzleProgress,
+  setOwnPuzzlePermanentlyUnrated,
 } from "../../lib/supabase/puzzleProgress";
 import type { PuzzleRatingEvent } from "../../lib/supabase/puzzleUserRatings";
 import type { AsyncActionStatus } from "../../types/async";
@@ -214,6 +215,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [solvedPuzzleIds, setSolvedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [unratedPuzzleIds, setUnratedPuzzleIds] = useState<Set<string>>(() => new Set());
+  const [permanentUnratedIds, setPermanentUnratedIds] = useState<Set<string>>(() => new Set());
+  const [unratedMarkStatus, setUnratedMarkStatus] = useState<AsyncActionStatus>({ state: "idle" });
   const [ratingExclusions, setRatingExclusions] = useState<Map<string, string>>(() => new Map());
   const [dailyAttemptCount, setDailyAttemptCount] = useState(0);
   const [attemptedPuzzleIdsOwner, setAttemptedPuzzleIdsOwner] = useState<string | null>(null);
@@ -389,6 +392,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
                 createdAt: puzzles[index]?.created_at,
                 hasUnratedAttempt: unratedPuzzleIds.has(String(puzzles[index]?.puzzleId ?? "")),
                 excludedUntil: ratingExclusions.get(String(puzzles[index]?.puzzleId ?? "")),
+                permanentlyUnrated: permanentUnratedIds.has(String(puzzles[index]?.puzzleId ?? "")),
               }),
           );
         upcomingPuzzleIndexesRef.current = shuffleIndexes(candidateIndexes);
@@ -402,6 +406,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       normalizedUsername,
       puzzles,
       ratingExclusions,
+      permanentUnratedIds,
       unratedPuzzleIds,
     ],
   );
@@ -482,6 +487,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
 
     if (!username) {
       setRatingExclusions(new Map());
+      setPermanentUnratedIds(new Set());
       setAttemptedPuzzleIds(new Set());
       setSolvedPuzzleIds(new Set());
       setUnratedPuzzleIds(new Set());
@@ -493,6 +499,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
 
     setAttemptedPuzzleIds(new Set());
     setRatingExclusions(new Map());
+    setPermanentUnratedIds(new Set());
     setSolvedPuzzleIds(new Set());
     setUnratedPuzzleIds(new Set());
     setDailyAttemptCount(0);
@@ -506,6 +513,9 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
           fetchPuzzleRatingExclusions(username),
         ]);
         if (isCurrent) {
+          setPermanentUnratedIds(
+            new Set(exclusions.filter((row) => row.permanent).map((row) => String(row.puzzle_id))),
+          );
           setRatingExclusions(
             new Map(exclusions.map((row) => [String(row.puzzle_id), row.expires_at])),
           );
@@ -742,6 +752,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         createdAt: activePuzzle?.created_at,
         hasUnratedAttempt,
         excludedUntil: ratingExclusions.get(activePuzzleKey),
+        permanentlyUnrated: permanentUnratedIds.has(activePuzzleKey),
       });
   // An expired unrated solve is eligible for a fresh rated attempt, not analysis hydration.
   const hasSolvedPuzzle = Boolean(
@@ -818,11 +829,13 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   );
   const shouldShowPuzzleTimer = showPuzzleTimer && attemptedPuzzleIdsReady && !hasSolvedPuzzle;
   const unratedLabel =
-    unratedReason === "rating-exclusion"
-      ? `Your attempts on this puzzle are unrated until ${new Date(ratingExclusions.get(activePuzzleKey)!).toLocaleString()}.`
-      : unratedReason === "existing-unrated"
-        ? "Your latest attempt is unrated. Wait one month after that attempt for a rated try."
-        : "Your attempts are unrated for 45 days after this puzzle was published.";
+    unratedReason === "permanent"
+      ? "This puzzle is permanently unrated for your account."
+      : unratedReason === "rating-exclusion"
+        ? `Your attempts on this puzzle are unrated until ${new Date(ratingExclusions.get(activePuzzleKey)!).toLocaleString()}.`
+        : unratedReason === "existing-unrated"
+          ? "Your latest attempt is unrated. Wait one month after that attempt for a rated try."
+          : "Your attempts are unrated for 45 days after this puzzle was published.";
   const hasResolvedAttempt = activePuzzleKey
     ? resolvedAttemptedPuzzleIds.has(activePuzzleKey)
     : false;
@@ -860,6 +873,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
 
   useEffect(() => {
+    setUnratedMarkStatus({ state: "idle" });
     setRatingEditorOpen(false);
     setRatingSaveStatus({ state: "idle" });
     setExplanationEditorOpen(false);
@@ -1881,6 +1895,58 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       />
     ) : null;
 
+  const markPuzzleUnrated = async (permanentlyUnrated: boolean) => {
+    const puzzleId = activePuzzleKey;
+    setUnratedMarkStatus({ state: "saving" });
+    try {
+      await setOwnPuzzlePermanentlyUnrated(puzzleId, permanentlyUnrated);
+      setPermanentUnratedIds((current) =>
+        permanentlyUnrated
+          ? addValueToSet(current, puzzleId)
+          : removeValueFromSet(current, puzzleId),
+      );
+      upcomingPuzzleIndexesRef.current = [];
+      if (activePuzzleKeyRef.current === puzzleId) setUnratedMarkStatus({ state: "idle" });
+    } catch (error) {
+      if (activePuzzleKeyRef.current === puzzleId)
+        setUnratedMarkStatus({
+          state: "error",
+          message: getErrorMessage(error, "Unable to mark puzzle unrated."),
+        });
+    }
+  };
+
+  const blindPuzzlePanel = blindPosition ? (
+    <BlindPuzzlePanel
+      key={activePuzzleId}
+      leadIn={blindPosition}
+      played={currentAnalysisMoves}
+      error={boardState.error}
+      canGiveUp={!isMobileLayout && puzzleSession.attempt === "wrong" && !isRetryFeedbackActive}
+      onGiveUp={handleGiveUp}
+    />
+  ) : null;
+
+  const permanentUnratedControl =
+    !testMode &&
+    attemptedPuzzleIdsReady &&
+    normalizedUsername === normalizedAuthor &&
+    !hasPersistedAttempt &&
+    (!hasResolvedAttempt || permanentUnratedIds.has(activePuzzleKey)) ? (
+      <label
+        className="puzzleUnratedOption"
+        title="Mark unrated if you remember this puzzle and don’t want it to affect your rating. You can change this before attempting the puzzle. After a correct or incorrect attempt, it is permanent for your account."
+      >
+        <input
+          type="checkbox"
+          checked={permanentUnratedIds.has(activePuzzleKey)}
+          disabled={hasResolvedAttempt || hasUnratedAttempt || unratedMarkStatus.state === "saving"}
+          onChange={(event) => void markPuzzleUnrated(event.target.checked)}
+        />
+        <span>Permanently unrated</span>
+      </label>
+    ) : null;
+
   const puzzleTitle = testMode
     ? activePuzzleId
       ? `Test puzzle ${activePuzzleId}`
@@ -2221,7 +2287,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
                 solution={activePuzzle?.solution ?? ""}
                 showSolution={boardShowsSolution}
                 analysisMode={isAnalysisMode}
-                disabled={dailyLimitReached}
+                disabled={dailyLimitReached || unratedMarkStatus.state === "saving"}
                 captureNavigationShortcuts
                 previewMove={analysisPreviewMove}
                 engineMoves={
@@ -2256,18 +2322,19 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         </div>
       </div>
 
-      {blindPosition ? (
-        <BlindPuzzlePanel
-          key={activePuzzleId}
-          leadIn={blindPosition}
-          played={currentAnalysisMoves}
-          error={boardState.error}
-          canGiveUp={!isMobileLayout && puzzleSession.attempt === "wrong" && !isRetryFeedbackActive}
-          onGiveUp={handleGiveUp}
-        />
-      ) : !isMobileLayout ? (
-        puzzleAnalysisPanel
-      ) : null}
+      {!isMobileLayout ? (
+        <div className="puzzleSolveRail">
+          {blindPuzzlePanel ?? puzzleAnalysisPanel}
+          {permanentUnratedControl}
+          {unratedMarkStatus.state === "error" ? (
+            <p className="errorText" role="alert">
+              {unratedMarkStatus.message}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        blindPuzzlePanel
+      )}
 
       {isMobileLayout ? (
         <>
@@ -2341,6 +2408,12 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
               ) : null}
             </div>
             {renderPlayerRows(true)}
+            {permanentUnratedControl}
+            {unratedMarkStatus.state === "error" ? (
+              <p className="errorText" role="alert">
+                {unratedMarkStatus.message}
+              </p>
+            ) : null}
             {puzzleTagVoting}
           </section>
           {!testMode && hasAttemptedActivePuzzle ? (

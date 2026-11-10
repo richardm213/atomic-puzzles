@@ -1873,7 +1873,7 @@ button.puzzleRatingBadge.editable:focus-visible {
     grid-area: details;
   }
 
-  .puzzlePage > .puzzleAnalysisPanel {
+  .puzzlePage > .puzzleSolveRail {
     grid-area: moves;
   }
 }
@@ -2428,4 +2428,25 @@ button.puzzleRatingBadge.editable:focus-visible {
   .feedbackBadge {
     top: 14px;
   }
+}
+
+.puzzleUnratedOption {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  color: var(--color-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.puzzleUnratedOption:has(input:disabled) {
+  cursor: default;
+}
+
+.puzzleSolveRail {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-width: 0;
 }

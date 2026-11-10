@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => ({
   blindPuzzles: { enabled: false, plies: 5 },
   fetchPuzzleProgressRowsForUsername: vi.fn(),
   fetchPuzzleRatingExclusions: vi.fn(),
+  setOwnPuzzlePermanentlyUnrated: vi.fn(),
   fetchCustomPuzzleSet: vi.fn(),
   fetchPuzzleAttemptsForPuzzle: vi.fn(),
   loadPuzzleCatalog: vi.fn(),
@@ -132,6 +133,7 @@ vi.mock("../../lib/puzzles/puzzleIssues", () => ({
 vi.mock("../../lib/supabase/puzzleProgress", () => ({
   fetchPuzzleProgressRowsForUsername: mocks.fetchPuzzleProgressRowsForUsername,
   fetchPuzzleRatingExclusions: mocks.fetchPuzzleRatingExclusions,
+  setOwnPuzzlePermanentlyUnrated: mocks.setOwnPuzzlePermanentlyUnrated,
   fetchPuzzleAttemptsForPuzzle: mocks.fetchPuzzleAttemptsForPuzzle,
   recordPuzzleProgress: mocks.recordPuzzleProgress,
 }));
@@ -324,6 +326,7 @@ describe("PuzzleSolverPage solution options", () => {
     mocks.navigate.mockReset();
     mocks.username = "solver";
     mocks.excludeOwnPuzzles = false;
+    mocks.setOwnPuzzlePermanentlyUnrated.mockReset().mockResolvedValue(undefined);
     mocks.loadPuzzleTagVotes
       .mockReset()
       .mockResolvedValue([{ tag: "fork", up: 3, down: 0, vote: 0 }]);
@@ -589,6 +592,35 @@ describe("PuzzleSolverPage solution options", () => {
         replace: true,
       }),
     );
+  });
+
+  it("lets an author permanently opt out before attempting and restores the checked state", async () => {
+    mocks.puzzleAuthor = mocks.username;
+    mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValue([]);
+    const view = render(<PuzzleSolverPage />);
+    const checkbox = await screen.findByRole("checkbox", { name: "Permanently unrated" });
+    expect(checkbox).not.toBeChecked();
+    expect(checkbox.closest("label")).toHaveAttribute(
+      "title",
+      expect.stringContaining("remember this puzzle"),
+    );
+    await userEvent.click(checkbox);
+    await waitFor(() => expect(checkbox).toBeChecked());
+    await waitFor(() => expect(checkbox).toBeEnabled());
+    await userEvent.click(checkbox);
+    await waitFor(() => expect(checkbox).not.toBeChecked());
+    expect(mocks.setOwnPuzzlePermanentlyUnrated).toHaveBeenLastCalledWith("1369", false);
+    await userEvent.click(checkbox);
+    await waitFor(() => expect(checkbox).toBeChecked());
+    expect(mocks.setOwnPuzzlePermanentlyUnrated).toHaveBeenCalledWith("1369", true);
+    view.unmount();
+    mocks.fetchPuzzleRatingExclusions.mockResolvedValue([
+      { puzzle_id: "1369", expires_at: "2020-01-01T00:00:00Z", permanent: true },
+    ]);
+    render(<PuzzleSolverPage />);
+    const restored = await screen.findByRole("checkbox", { name: "Permanently unrated" });
+    expect(restored).toBeChecked();
+    expect(restored).toBeEnabled();
   });
 
   it("includes own puzzles by default and rebuilds the prepared queue when the setting changes", async () => {
@@ -1082,6 +1114,7 @@ describe("PuzzleSolverPage solution options", () => {
     const explanationTab = await screen.findByRole("tab", { name: "Explanation" });
     await waitFor(() => expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true));
     expect(explanationTab).toBeEnabled();
+    expect(screen.getByRole("checkbox", { name: "Permanently unrated" })).toBeDisabled();
     await user.click(explanationTab);
     await user.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByRole("textbox", { name: "Puzzle explanation" })).toHaveValue(
