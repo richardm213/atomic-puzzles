@@ -119,7 +119,7 @@ describe("puzzleLibrary", () => {
 
     const puzzles = await loadPuzzlesById([414]);
 
-    expect(fetchPrivateDetailsMock).toHaveBeenCalledWith([414]);
+    expect(fetchPrivateDetailsMock).toHaveBeenCalledWith([414], false);
     expect(puzzles[0]?.solution).toContain("O-O-O");
   });
 });

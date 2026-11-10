@@ -192,15 +192,17 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
 });
 
 import { castlingRightsFromFen } from "./castlingRights";
-import { PuzzleSolverPage } from "./PuzzleSolver";
+import { PuzzleSolverPage, PuzzleTestPage } from "./PuzzleSolver";
 
 const render = (element: ReactElement) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return testingLibraryRender(
-    <QueryClientProvider client={queryClient}>{element}</QueryClientProvider>,
-  );
+  return testingLibraryRender(element, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  });
 };
 
 describe("castlingRightsFromFen", () => {
@@ -371,6 +373,51 @@ describe("PuzzleSolverPage solution options", () => {
       this.removeAttribute("open");
     };
   });
+
+  it.each([true, false])(
+    "unlocks test puzzle details without saving an attempt (correct: %s)",
+    async (puzzleCorrect) => {
+      mocks.username = "seaside_tiramisu";
+      const user = userEvent.setup();
+      render(<PuzzleTestPage />);
+
+      await screen.findByTestId("mock-board");
+      expect(mocks.loadPuzzlesById).toHaveBeenCalledWith([1369], true);
+      const explanationTab = screen.getByRole("tab", { name: "Explanation" });
+      const attemptsTab = screen.getByRole("tab", { name: "Other attempts" });
+      expect(explanationTab).toBeDisabled();
+      expect(attemptsTab).toBeDisabled();
+
+      act(() => {
+        mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+          puzzleId: 1369,
+          puzzleCorrect,
+          incorrectMove: puzzleCorrect ? null : "12... Kd7",
+          correctMove: puzzleCorrect ? "12... O-O" : null,
+        });
+      });
+
+      if (!puzzleCorrect) {
+        expect(explanationTab).toBeDisabled();
+        expect(attemptsTab).toBeDisabled();
+        expect(mocks.fetchPuzzleAttemptsForPuzzle).not.toHaveBeenCalled();
+        await user.click(screen.getByRole("button", { name: "Give up and reveal the solution" }));
+      }
+
+      await user.click(explanationTab);
+      expect(screen.getByText(mocks.puzzleExplanation)).toBeVisible();
+      await user.click(attemptsTab);
+      expect(await screen.findByRole("list", { name: "Other puzzle attempts" })).toHaveTextContent(
+        "alpha",
+      );
+
+      expect(mocks.fetchPuzzleProgressRowsForUsername).not.toHaveBeenCalled();
+      expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
+      expect(
+        window.localStorage.getItem("atomic-puzzles.puzzle-attempt-started-at.v1:1369"),
+      ).toBeNull();
+    },
+  );
 
   it("loads only the active puzzle and a three-puzzle lookahead from the catalog", async () => {
     mocks.routeParams = { puzzleId: "", setKey: "" };
@@ -563,24 +610,27 @@ describe("PuzzleSolverPage solution options", () => {
         resolvePrefetch = resolve;
       });
     });
-    mocks.navigate.mockImplementation((options: { params?: { puzzleId?: string } }) => {
-      if (options.params?.puzzleId) {
-        mocks.routeParams = { ...mocks.routeParams, puzzleId: options.params.puzzleId };
-      }
-    });
+    const commitNavigation = () => {
+      const puzzleId = mocks.navigate.mock.calls.at(-1)?.[0].params?.puzzleId;
+      expect(puzzleId).toBeTruthy();
+      mocks.routeParams = { ...mocks.routeParams, puzzleId };
+      rerender(<PuzzleSolverPage />);
+    };
     vi.spyOn(window.crypto, "getRandomValues").mockImplementation((array) => {
       (array as Uint32Array)[0] = 0;
       return array;
     });
 
     const user = userEvent.setup();
-    render(<PuzzleSolverPage />);
+    const { rerender } = render(<PuzzleSolverPage />);
 
-    await screen.findByTestId("mock-board");
+    const initialBoard = await screen.findByTestId("mock-board");
     await waitFor(() => expect(prefetchedIds).toHaveLength(3));
 
     const nextButton = screen.getAllByRole("button", { name: "Next" })[0]!;
     await user.keyboard("{Shift>}{ArrowRight}{/Shift}");
+    expect(screen.getByTestId("mock-board")).toBe(initialBoard);
+    commitNavigation();
     expect(screen.getByText("Waiting for puzzle data...")).toBeInTheDocument();
 
     resolvePrefetch(prefetchedIds.map(puzzleDetails));
@@ -589,6 +639,7 @@ describe("PuzzleSolverPage solution options", () => {
     expect(screen.queryByText("Waiting for puzzle data...")).not.toBeInTheDocument();
 
     await user.click(nextButton);
+    commitNavigation();
     const navigatedPuzzleIds = mocks.navigate.mock.calls.map(
       ([options]) => options.params?.puzzleId,
     );
@@ -597,6 +648,9 @@ describe("PuzzleSolverPage solution options", () => {
     expect(navigatedPuzzleIds.slice(-2)).not.toContain("1");
     await user.keyboard("{Shift>}{ArrowLeft}{/Shift}");
     expect(mocks.navigate.mock.calls.at(-1)?.[0].params?.puzzleId).toBe(navigatedPuzzleIds.at(-2));
+    commitNavigation();
+    expect(screen.getByTestId("mock-board")).toBeInTheDocument();
+    expect(mocks.loadPuzzlesById).toHaveBeenCalledTimes(2);
   });
 
   it.each([
@@ -1178,13 +1232,17 @@ describe("PuzzleSolverPage solution options", () => {
     expect(screen.queryByLabelText(/^Elapsed time/)).not.toBeInTheDocument();
   });
 
-  it("excludes the opening replay from the recorded attempt duration", async () => {
+  it("shows the opening move only after replay and excludes it from the attempt duration", async () => {
     mocks.attemptedPuzzleIds = new Set();
     const loadDetails = mocks.loadPuzzlesById.getMockImplementation()!;
     mocks.loadPuzzlesById.mockImplementation(async (puzzleIds: number[]) =>
       (await loadDetails(puzzleIds)).map((puzzle: object) => ({
         ...puzzle,
-        intro: { beforeFen: "previous position", san: "e4", uci: "e2e4" },
+        intro: {
+          beforeFen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+          san: "e4",
+          uci: "e2e4",
+        },
       })),
     );
     let now = 1_000_000;
@@ -1193,8 +1251,13 @@ describe("PuzzleSolverPage solution options", () => {
     try {
       render(<PuzzleSolverPage />);
       await screen.findByTestId("mock-board");
+      const analysis = within(screen.getByRole("region", { name: "Puzzle analysis" }));
+      expect(analysis.queryByText("Opponent’s previous move:")).not.toBeInTheDocument();
       now += 1_250;
       act(() => mocks.chessboardProps.at(-1)?.onIntroEnd?.(1_250, true));
+      const previousMove = analysis.getByText("Opponent’s previous move:").parentElement;
+      expect(previousMove).toHaveTextContent("1. e4");
+      expect(analysis.queryByRole("button", { name: /e4/ })).not.toBeInTheDocument();
       now += 2_000;
       act(() => mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
         puzzleId: 1369,

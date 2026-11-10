@@ -31,7 +31,7 @@ comment on column public.coin_transactions.amount is
 
 -- Fractional callers resolve to this overload. Whole-coin callers keep using
 -- the integer overload below, which delegates here so both paths share the same
--- locking, ban enforcement, idempotency, and nonnegative-balance checks.
+-- locking, idempotency, and nonnegative-balance checks.
 create or replace function public.apply_coin_transaction(
   p_username text,
   p_amount numeric,
@@ -56,8 +56,6 @@ begin
     or nullif(btrim(p_source_key), '') is null then
     raise exception 'Invalid coin transaction';
   end if;
-
-  perform public.assert_coin_economy_access(normalized_username);
 
   insert into public.coin_accounts (username) values (normalized_username)
   on conflict (username) do nothing;
@@ -150,7 +148,6 @@ declare
   normalized_username text := lower(btrim(coalesce(p_username, '')));
   current_balance numeric(18, 6);
   claimed_today boolean;
-  active_ban public.coin_economy_bans%rowtype;
 begin
   insert into public.coin_accounts (username) values (normalized_username)
   on conflict (username) do nothing;
@@ -161,22 +158,10 @@ begin
     select 1 from public.coin_transactions
     where source_key = 'daily:' || normalized_username || ':' || current_date::text
   ) into claimed_today;
-  select * into active_ban
-  from public.coin_economy_bans ban
-  where ban.username = normalized_username
-    and ban.starts_at <= now()
-    and ban.ends_at > now()
-    and ban.revoked_at is null
-  order by ban.ends_at desc, ban.id desc
-  limit 1;
 
   return jsonb_build_object(
     'balance', current_balance,
-    'dailyClaimAvailable', not claimed_today and active_ban.id is null,
-    'economyBan', case when active_ban.id is null then null else jsonb_build_object(
-      'endsAt', active_ban.ends_at,
-      'reason', active_ban.reason
-    ) end
+    'dailyClaimAvailable', not claimed_today
   );
 end;
 $$;

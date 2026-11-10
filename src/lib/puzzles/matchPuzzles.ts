@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { PuzzlePositionHistory } from "../../../shared/domain/puzzles/puzzleSubmission";
 import { createPostApi } from "../api/postApi";
 
 const matchPuzzleRequest = createPostApi("/api/puzzles/submit", {
@@ -32,9 +33,8 @@ export const fetchMatchPuzzleContext = (gameId: string) =>
     { errorMessage: "Unable to load the match set.", schema: matchContextSchema },
   );
 
-export const addMatchPuzzle = (input: {
+export const addMatchPuzzle = (input: PuzzlePositionHistory & {
   gameId: string;
-  positionMoves: string[];
   fen: string;
   solution: string;
   opaStyle: boolean;

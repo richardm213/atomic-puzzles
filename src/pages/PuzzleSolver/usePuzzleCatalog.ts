@@ -14,7 +14,11 @@ export const parsePuzzleId = (value: string | null | undefined): number | null =
   return Number.isNaN(puzzleId) ? null : puzzleId;
 };
 
-export const usePuzzleCatalog = (routePuzzleId: string, routeSetKey: string) => {
+export const usePuzzleCatalog = (
+  routePuzzleId: string,
+  routeSetKey: string,
+  loadDetails = loadPuzzlesById,
+) => {
   const initialRoutePuzzleIdRef = useRef(parsePuzzleId(routePuzzleId));
   const initialRouteSetKeyRef = useRef(routeSetKey);
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
@@ -39,7 +43,7 @@ export const usePuzzleCatalog = (routePuzzleId: string, routeSetKey: string) => 
         const initialPuzzleId = initialRoutePuzzleIdRef.current;
         const [catalog, initialPuzzles] = await Promise.all([
           initialRouteSetKeyRef.current ? loadPuzzleCatalog() : loadPuzzleSolverIndex(),
-          initialPuzzleId === null ? Promise.resolve([]) : loadPuzzlesById([initialPuzzleId]),
+          initialPuzzleId === null ? Promise.resolve([]) : loadDetails([initialPuzzleId]),
         ]);
         if (!active) return;
 
@@ -57,7 +61,7 @@ export const usePuzzleCatalog = (routePuzzleId: string, routeSetKey: string) => 
     return () => {
       active = false;
     };
-  }, []);
+  }, [loadDetails]);
 
   return { puzzles, setPuzzles, loadingError, setLoadingError, mergeLoadedPuzzles };
 };

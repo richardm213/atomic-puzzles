@@ -32,6 +32,7 @@ vi.mock("@lichess-org/chessground", () => ({
       setAutoShapes: mocks.setAutoShapes,
       playPremove: mocks.playPremove,
       cancelPremove: mocks.cancelPremove,
+      destroy: vi.fn(),
     };
   }),
 }));
@@ -118,15 +119,17 @@ describe("Chessboard orchestration", () => {
       });
       expect(mocks.set).toHaveBeenCalledWith(expect.objectContaining({ fen: STARTING_FEN }));
       play("e7", "e5");
-      act(() => vi.advanceTimersByTime(300));
-      expect(mocks.set).toHaveBeenCalledWith(
-        expect.objectContaining({ fen, lastMove: ["e2", "e4"] }),
-      );
+      act(() => vi.advanceTimersByTime(549));
+      const replayPosition = expect.objectContaining({ fen, lastMove: ["e2", "e4"] });
+      expect(mocks.set).not.toHaveBeenCalledWith(replayPosition);
+      act(() => vi.advanceTimersByTime(1));
+      expect(mocks.set).toHaveBeenCalledWith(replayPosition);
+      expect(states).toHaveLength(0);
       play("e7", "e5");
       expect(onIntroEnd).not.toHaveBeenCalled();
       expect(onAttemptResolved).not.toHaveBeenCalled();
       act(() => vi.advanceTimersByTime(120));
-      expect(onIntroEnd).toHaveBeenCalledWith(420, true);
+      expect(onIntroEnd).toHaveBeenCalledWith(670, true);
       expect(states.at(-1)?.lineMoves).toEqual([]);
       play("e7", "e5");
       act(() => vi.advanceTimersByTime(250));

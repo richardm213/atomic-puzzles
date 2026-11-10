@@ -1,6 +1,6 @@
 import type { GameMoveAssessment } from "../../lib/gameAnalysis/gameAnalysis";
 import type { PlaybackCommand } from "../../types/chessboard";
-import { AnalysisMoveTree } from "../AnalysisMoveTree/AnalysisMoveTree";
+import { AnalysisMoveTree, type PreviousMove } from "../AnalysisMoveTree/AnalysisMoveTree";
 import { PlayedMoves } from "../PlayedMoves/PlayedMoves";
 
 export const MoveNotation = ({
@@ -8,7 +8,8 @@ export const MoveNotation = ({
   moves,
   currentPly,
   pinnedLineIndex,
-  initialPly = 0,
+  previousMove,
+  initialPly = previousMove ? previousMove.ply + 1 : 0,
   inline,
   onNavigate,
   onSelectVariation,
@@ -22,6 +23,7 @@ export const MoveNotation = ({
   currentPly: number;
   pinnedLineIndex?: number | undefined;
   initialPly?: number | undefined;
+  previousMove?: PreviousMove | undefined;
   inline: boolean;
   onNavigate: (ply: number) => void;
   onSelectVariation: (lineIndex: number, moveIndex: number) => void;
@@ -32,7 +34,7 @@ export const MoveNotation = ({
   onDelete?: ((lineIndex: number, moveIndex: number) => void) | undefined;
   assessments?: GameMoveAssessment[] | undefined;
 }) => {
-  if (!inline && lines.length <= 1 && initialPly === 0) {
+  if (!inline && !previousMove && lines.length <= 1 && initialPly === 0) {
     const mainline = lines[0] ?? moves;
     return (
       <PlayedMoves
@@ -60,6 +62,7 @@ export const MoveNotation = ({
       currentPly={currentPly}
       pinnedLineIndex={pinnedLineIndex}
       initialPly={initialPly}
+      previousMove={previousMove}
       inline={inline}
       onSelect={(lineIndex, moveIndex) => {
         if (lines.length) onSelectVariation(lineIndex, moveIndex);

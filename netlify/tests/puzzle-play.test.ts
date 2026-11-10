@@ -84,6 +84,37 @@ describe("puzzle-play function", () => {
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
+  it("denies test-mode detail requests from regular players before querying data", async () => {
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ puzzleIds: [414], testMode: true }),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+
+  it("serves admin test-mode details without accessing the attempt ledger", async () => {
+    const query = createPuzzleQuery();
+    const from = vi.fn(() => query);
+    mocks.createClient.mockReturnValue({ from });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { cookie: createSiteSessionCookie("seaside_tiramisu", {}).split(";")[0] },
+      body: JSON.stringify({ puzzleIds: [414], testMode: true }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toMatchObject({
+      puzzles: [{ id: 414 }],
+      dailyLimitReached: false,
+    });
+    expect(from.mock.calls).toEqual([["puzzles"]]);
+    expect(query.is).toHaveBeenCalledWith("deleted_at", null);
+  });
+
   it("returns the opponent intro but not the source game continuation", async () => {
     const query = createPuzzleQuery();
     const dailyAttemptQuery = createDailyAttemptQuery();

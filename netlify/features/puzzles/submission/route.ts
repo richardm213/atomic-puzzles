@@ -19,6 +19,8 @@ import { PuzzleSubmissionService } from "./service";
 const singleSubmissionSchema = z.object({
   fen: z.string().trim().min(1).max(200),
   solution: z.string().trim().min(1).max(10_000),
+  positionInitialFen: z.string().trim().min(1).max(200).optional(),
+  positionMoves: z.array(z.string().trim().min(1).max(16)).max(1000).optional(),
   event: z.string().trim().max(200).default(""),
   whitePlayer: z.string().trim().max(200).default(""),
   blackPlayer: z.string().trim().max(200).default(""),
@@ -41,7 +43,6 @@ const submissionBodySchema = z.union([
     action: z.literal("add-match-puzzle"),
     gameId: z.string().trim().min(1).max(128),
     matchName: z.string().trim().max(100).default(""),
-    positionMoves: z.array(z.string().trim().min(1).max(16)).max(1000).optional(),
     renameFrom: z.string().min(1).max(1000).optional(),
     allowDifferentStartMove: z.boolean().optional(),
   }),

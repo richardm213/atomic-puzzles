@@ -101,10 +101,6 @@ const CoinRankingsPage = lazyRouteComponent(
   () => import("./pages/CoinRankings/CoinRankings"),
   "CoinRankingsPage",
 );
-const CoinEconomyBansPage = lazyRouteComponent(
-  () => import("./pages/CoinEconomyBans/CoinEconomyBans"),
-  "CoinEconomyBansPage",
-);
 const ShopRedemptionsPage = lazyRouteComponent(
   () => import("./pages/ShopRedemptions/ShopRedemptions"),
   "ShopRedemptionsPage",
@@ -128,6 +124,10 @@ const PuzzleSetsPage = lazyRouteComponent(
 const PuzzleSolverPage = lazyRouteComponent(
   () => import("./pages/PuzzleSolver/PuzzleSolver"),
   "PuzzleSolverPage",
+);
+const PuzzleTestPage = lazyRouteComponent(
+  () => import("./pages/PuzzleSolver/PuzzleSolver"),
+  "PuzzleTestPage",
 );
 const GuestPuzzleTrial = lazyRouteComponent(
   () => import("./pages/PuzzleSolver/GuestPuzzleTrial"),
@@ -663,10 +663,10 @@ const coinRankingsRoute = createRoute({
   component: CoinRankingsPage,
 });
 
-const coinEconomyBansRoute = createRoute({
+const puzzleTestRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/admin/coin-bans",
-  component: CoinEconomyBansPage,
+  path: "/admin/puzzle-test/{-$puzzleId}",
+  component: PuzzleTestPage,
 });
 
 const shopRedemptionsRoute = createRoute({
@@ -943,7 +943,7 @@ const routeTree = rootRoute.addChildren([
   customPuzzleSetEditRoute,
   puzzleLeaderboardRoute,
   coinRankingsRoute,
-  coinEconomyBansRoute,
+  puzzleTestRoute,
   shopRedemptionsRoute,
   gameAnalysesRoute,
   gameAnalysesFinishedRoute,

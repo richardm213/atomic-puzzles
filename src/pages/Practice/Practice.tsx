@@ -72,6 +72,7 @@ import {
 } from "../../lib/analysis/boardState";
 import { apiRequest } from "../../lib/api/postApi";
 import { keyboardShortcutAction, keyboardShortcutHint } from "../../lib/keyboardShortcuts";
+import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
 import { serializeSanLinesToPgn, startingPlyFromFen } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
@@ -274,6 +275,7 @@ export const PracticePage = () => {
     fen: string;
     orientation: "white" | "black";
     sourcePly: number;
+    positionHistory: PuzzlePositionHistory;
   } | null>(null);
   const [draftBoardState, setDraftBoardState] = useState<ChessboardState | null>(null);
   const [draftNavigation, setDraftNavigation] = useState<SolutionNavigation | null>(null);
@@ -324,6 +326,7 @@ export const PracticePage = () => {
     canStepForward,
     currentFen,
     currentPly,
+    currentMoves,
     activeLineIndex,
     lineTargets,
     lines: analysisLines,
@@ -954,7 +957,12 @@ export const PracticePage = () => {
     setHoveredMoveUci(null);
     setCreatedPuzzle(null);
     setDraftBoardState(null);
-    setPuzzleDraft({ fen: currentFen, orientation: currentTurn, sourcePly: currentPly });
+    setPuzzleDraft({
+      fen: currentFen,
+      orientation: currentTurn,
+      sourcePly: currentPly,
+      positionHistory: { positionInitialFen: practiceRootFen, positionMoves: currentMoves },
+    });
   };
 
   const closePuzzle = (result?: PuzzleCreationResult): void => {
@@ -1580,6 +1588,7 @@ export const PracticePage = () => {
             puzzleDraft ? (
               <PuzzleComposer
                 publishesDirectly={publishesDirectly}
+                positionHistory={puzzleDraft.positionHistory}
                 fen={puzzleDraft.fen}
                 solution={draftNavigation || draftDocument.pgn.error ? "" : draftMoveText}
                 onCancel={() => closePuzzle()}

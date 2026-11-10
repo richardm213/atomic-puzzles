@@ -12,6 +12,7 @@ import {
   fetchMatchPuzzleContext,
   matchPuzzleContextKey,
 } from "../../lib/puzzles/matchPuzzles";
+import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
 import { puzzleQueryKeys } from "../../lib/puzzles/puzzleQueries";
 import { DIFFERENT_START_MOVE_CONFIRMATION, submitPuzzle } from "../../lib/supabase/puzzleQueue";
 import { getErrorMessage } from "../../utils/errors";
@@ -24,6 +25,7 @@ export type PuzzleCreationResult =
 
 export const PuzzleComposer = ({
   match,
+  positionHistory,
   fen,
   solution,
   publishesDirectly,
@@ -32,11 +34,8 @@ export const PuzzleComposer = ({
   onCancel,
   onAdded,
 }: {
-  match?: {
-    gameId: string;
-    matchId: string;
-    positionMoves: string[];
-  };
+  match?: { gameId: string; matchId: string };
+  positionHistory: PuzzlePositionHistory;
   fen: string;
   solution: string;
   publishesDirectly: boolean;
@@ -107,7 +106,7 @@ export const PuzzleComposer = ({
       if (match && context.data) {
         const matchResult = await addMatchPuzzle({
           gameId: match.gameId,
-          positionMoves: match.positionMoves,
+          ...positionHistory,
           fen,
           solution,
           opaStyle,
@@ -125,7 +124,7 @@ export const PuzzleComposer = ({
       } else {
         result = await submitPuzzle(
           { fen, solution, event: "", explanation: "" },
-          { allowDifferentStartMove: confirmDifferentStart },
+          { allowDifferentStartMove: confirmDifferentStart, positionHistory },
         );
       }
       if (result.destination === "published" || renaming) {

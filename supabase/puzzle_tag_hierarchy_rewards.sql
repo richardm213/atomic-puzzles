@@ -251,7 +251,7 @@ begin
     where h.puzzle_id = p_puzzle_id and h.voter = p_voter
       and (h.tag = any(public.puzzle_tag_ancestors(p_tag))
         or p_tag = any(public.puzzle_tag_ancestors(h.tag)))
-  ) and not public.is_coin_economy_banned(p_voter) then
+  ) then
     select coalesce(sum(direction * public.puzzle_tag_vote_weight(voter)),0) into previous_net
     from public.effective_puzzle_tag_votes(p_puzzle_id) where tag = p_tag;
     if previous_net > 0 then

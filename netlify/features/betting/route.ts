@@ -873,9 +873,6 @@ export const bettingRoute = async (event: FunctionEvent) => {
     if (/between 1 and 1000/i.test(error.message)) {
       throw new HttpError(400, "Enter a bet from 1 to 1,000 coins.");
     }
-    if (/coin economy ban active/i.test(error.message)) {
-      throw new HttpError(403, "Your Atomic Coin access is currently suspended.");
-    }
     throw new Error(`Unable to place tournament bet: ${error.message}`);
   }
   return identityResponse(identity, 200, { result: data });

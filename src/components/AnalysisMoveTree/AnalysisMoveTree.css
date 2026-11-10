@@ -59,7 +59,7 @@
 }
 
 .analysisContinuationMoves button:hover,
-.analysisTreeMove:hover {
+button.analysisTreeMove:hover {
   background: color-mix(in srgb, var(--color-panel-strong) 62%, transparent);
   color: var(--color-heading);
 }
@@ -116,6 +116,10 @@
   font-weight: 550;
   line-height: 1.25;
   vertical-align: middle;
+}
+
+.analysisTreePreviousMove {
+  color: var(--color-muted);
 }
 
 .analysisTreeMoveNumber {

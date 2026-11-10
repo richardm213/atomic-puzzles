@@ -131,7 +131,7 @@ const prefersReducedMotion = (): boolean =>
   typeof window !== "undefined" &&
   Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
 
-const PUZZLE_INTRO_HOLD_MS = 300;
+const PUZZLE_INTRO_HOLD_MS = 550;
 const PUZZLE_INTRO_ANIMATION_MS = 120;
 const MOVE_EVALUATION_DELAY_MS = 250;
 const ANALYSIS_LINE_PLAYBACK_DELAY_MS = 250;
@@ -1642,8 +1642,14 @@ const ChessboardComponent = ({
         finish();
         return;
       }
-      cgRef.current?.set({ animation: { enabled: true, duration: PUZZLE_INTRO_ANIMATION_MS } });
-      showPuzzlePosition();
+      // Animate the board without publishing the new position until input unlocks.
+      cgRef.current?.set({
+        animation: { enabled: true, duration: PUZZLE_INTRO_ANIMATION_MS },
+        fen: makeFen(position.toSetup()),
+        turnColor: position.turn,
+        lastMove: lastMove ?? [],
+        check: position.isCheck() ? position.turn : false,
+      });
       playMoveSound(position, openingMove.san, openingMove.uci);
       finishTimer = window.setTimeout(finish, PUZZLE_INTRO_ANIMATION_MS);
     }, reducedMotion ? 0 : PUZZLE_INTRO_HOLD_MS);

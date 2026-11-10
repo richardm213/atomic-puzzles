@@ -308,9 +308,6 @@ export const gameAnalysisRoute = async (event: FunctionEvent) => {
         "insufficient_coins",
       );
     }
-    if (/coin economy ban/i.test(error.message)) {
-      throw new HttpError(403, "Your Atomic Coin access is currently suspended.");
-    }
     throw new Error(`Unable to create game analysis: ${error.message}`);
   }
   const record = await selectRecord(input.gameId);

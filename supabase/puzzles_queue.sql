@@ -247,6 +247,43 @@ begin
 end;
 $$;
 
+-- Board-created puzzles keep their lead-in even when publication requires review.
+create or replace function public.enqueue_puzzle_with_position_history(
+  p_puzzle jsonb,
+  p_submitted_by text,
+  p_allow_different_start_move boolean
+)
+returns public.puzzles_queue
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  queued public.puzzles_queue%rowtype;
+begin
+  queued := public.enqueue_puzzle_submission(
+    p_puzzle->>'fen', p_puzzle->>'solution', p_puzzle->>'event',
+    p_puzzle->>'eventName', p_puzzle->>'eventDate',
+    array(select jsonb_array_elements_text(p_puzzle->'players')),
+    p_puzzle->>'whitePlayer', p_puzzle->>'blackPlayer', p_puzzle->>'explanation',
+    coalesce((p_puzzle->>'opaStyle')::boolean, false), p_puzzle->>'author',
+    array(select jsonb_array_elements_text(p_puzzle->'tags')),
+    p_submitted_by, p_allow_different_start_move
+  );
+
+  update public.puzzles_queue
+  set position_moves = p_puzzle->'positionMoves',
+      game_initial_fen = p_puzzle->>'gameInitialFen'
+  where id = queued.id
+  returning * into queued;
+
+  return queued;
+end;
+$$;
+
+revoke all on function public.enqueue_puzzle_with_position_history(jsonb, text, boolean) from public, anon, authenticated;
+grant execute on function public.enqueue_puzzle_with_position_history(jsonb, text, boolean) to service_role;
+
 -- Approved creators bypass review. ID allocation, duplicate checks, and the
 -- insert happen in one transaction so a direct submission cannot claim a
 -- stale or conflicting puzzle ID.
@@ -490,7 +527,7 @@ begin
 
     insert into public.puzzles (
       id, fen, solution, event, event_name, event_date, players,
-      white_player, black_player, explanation, opa_style, author, tags
+      white_player, black_player, explanation, opa_style, author, tags, position_moves, game_initial_fen
     )
     values (
       next_puzzle_id,
@@ -511,7 +548,9 @@ begin
       coalesce(
         array(select jsonb_array_elements_text(coalesce(item->'tags', '[]'::jsonb))),
         '{}'::text[]
-      )
+      ),
+      item->'positionMoves',
+      item->>'gameInitialFen'
     );
 
     puzzle_ids := array_append(puzzle_ids, next_puzzle_id);

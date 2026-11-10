@@ -1,6 +1,11 @@
 import { normalizePuzzleMotifTags } from "./puzzleMotifs";
 import { createAtomicPosition, parseSolutionUciLines, serializeUciLinesToPgn } from "./solutionPgn";
 
+export type PuzzlePositionHistory = {
+  positionInitialFen: string;
+  positionMoves: string[];
+};
+
 export type PuzzleSubmissionValue = {
   fen: string;
   solution: string;

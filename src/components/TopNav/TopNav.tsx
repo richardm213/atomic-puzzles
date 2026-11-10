@@ -1,7 +1,6 @@
 import "./TopNav.css";
 
 import {
-  faBan,
   faBars,
   faBell,
   faChartLine,
@@ -9,6 +8,7 @@ import {
   faChevronLeft,
   faChevronRight,
   faClipboardCheck,
+  faFlask,
   faGear,
   faListCheck,
   faRightFromBracket,
@@ -24,6 +24,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { MAX_BLIND_PUZZLE_PLIES } from "../../../shared/domain/puzzles/gameHistory";
+import { PUZZLE_ADMIN_USERNAME } from "../../../shared/domain/puzzles/puzzleAdmin";
 import { atomic960Enabled, modeLabels, publicModeOptions } from "../../constants/matches";
 import {
   type ColorMode,
@@ -218,7 +219,11 @@ export const TopNav = () => {
   const [profileUsername, setProfileUsername] = useState(() =>
     getStoredProfileUsername(user?.username),
   );
+  const isPuzzleTestPage =
+    normalizedAuthUsername === PUZZLE_ADMIN_USERNAME &&
+    /^\/admin\/puzzle-test(?:\/[^/]+)?\/?$/.test(pathname);
   const showBoardSettings =
+    isPuzzleTestPage ||
     pathname === "/solve" ||
     /^\/solve\/[^/]+$/.test(pathname) ||
     /^\/solve\/(?:set|custom|dashboard)\/[^/]+\/[^/]+$/.test(pathname) ||
@@ -238,6 +243,7 @@ export const TopNav = () => {
       pathname !== "/solve/leaderboard" &&
       pathname !== "/solve/history");
   const showBlindPuzzleSetting =
+    isPuzzleTestPage ||
     showPuzzleTimerSetting ||
     /^\/solve\/(?:set|custom|dashboard)\/[^/]+\/[^/]+$/.test(pathname);
   const activeBoardColors = getBoardThemeColors(
@@ -667,7 +673,7 @@ export const TopNav = () => {
                     </span>
                     Puzzle dashboard
                   </Link>
-                  {normalizedAuthUsername === "seaside_tiramisu" ? (
+                  {normalizedAuthUsername === PUZZLE_ADMIN_USERNAME ? (
                     <>
                       <div className="navProfileDropdownDivider" role="separator" />
                       <Link
@@ -716,14 +722,15 @@ export const TopNav = () => {
                       </Link>
                       <Link
                         className="navProfileDropdownItem"
-                        to="/admin/coin-bans"
+                        to="/admin/puzzle-test/{-$puzzleId}"
+                        params={{ puzzleId: undefined }}
                         role="menuitem"
                         onClick={() => setOpenPanel(null)}
                       >
                         <span className="navProfileDropdownIcon" aria-hidden="true">
-                          <FontAwesomeIcon icon={faBan} />
+                          <FontAwesomeIcon icon={faFlask} />
                         </span>
-                        Coin economy bans
+                        Puzzle test
                       </Link>
                     </>
                   ) : null}
