@@ -19,9 +19,7 @@ const createPuzzleQuery = () => {
     select: vi.fn(),
     in: vi.fn(),
     is: vi.fn(async () => ({
-      data: [
-        { id: 414, fen: puzzleFen, solution: "2. Nf3", game_moves: ["e4", "e5", "Nf3"] },
-      ],
+      data: [{ id: 414, fen: puzzleFen, solution: "2. Nf3", game_moves: ["e4", "e5", "Nf3"] }],
       error: null,
     })),
   };
@@ -98,7 +96,10 @@ describe("puzzle-play function", () => {
   it("serves admin test-mode details without accessing the attempt ledger", async () => {
     const query = createPuzzleQuery();
     const from = vi.fn(() => query);
-    mocks.createClient.mockReturnValue({ from });
+    mocks.createClient.mockReturnValue({
+      rpc: vi.fn(async () => ({ data: [], error: null })),
+      from,
+    });
 
     const response = await handler({
       httpMethod: "POST",
@@ -119,6 +120,7 @@ describe("puzzle-play function", () => {
     const query = createPuzzleQuery();
     const dailyAttemptQuery = createDailyAttemptQuery();
     mocks.createClient.mockReturnValue({
+      rpc: vi.fn(async () => ({ data: [], error: null })),
       from: vi.fn((table: string) => (table === "puzzles" ? query : dailyAttemptQuery)),
     });
 
@@ -136,7 +138,10 @@ describe("puzzle-play function", () => {
           fen: puzzleFen,
           solution: "2. Nf3",
           intro: { beforeFen, san: "e5", uci: "e7e5" },
-          leadIn: { beforeFen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", moves: ["e4", "e5"] },
+          leadIn: {
+            beforeFen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            moves: ["e4", "e5"],
+          },
         },
       ],
       blockedPuzzleIds: [],
@@ -146,12 +151,45 @@ describe("puzzle-play function", () => {
     expect(query.is).toHaveBeenCalledWith("deleted_at", null);
   });
 
+  it.each([false, true])("withholds excluded puzzle data (prefetch: %s)", async (prefetch) => {
+    const query = createPuzzleQuery();
+    const dailyAttemptQuery = createDailyAttemptQuery();
+    const lockedId = prefetch ? "415" : "414";
+    const rpc = vi.fn(async () => ({
+      data: [{ puzzle_id: lockedId, expires_at: "2027-01-10T12:00:00Z" }],
+      error: null,
+    }));
+    const from = vi.fn((table: string) => (table === "puzzles" ? query : dailyAttemptQuery));
+    mocks.createClient.mockReturnValue({ rpc, from });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ puzzleIds: prefetch ? [414, 415] : [414] }),
+    });
+    if (prefetch) {
+      expect(response.statusCode).toBe(200);
+      expect(query.in).toHaveBeenCalledWith("id", [414]);
+      expect(JSON.parse(response.body).puzzles.map((p: { id: number }) => p.id)).toEqual([414]);
+    } else {
+      expect(response.statusCode).toBe(403);
+      expect(JSON.parse(response.body)).toMatchObject({ code: "puzzle_rating_excluded" });
+      expect(from).not.toHaveBeenCalledWith("puzzles");
+      expect(JSON.parse(response.body)).not.toHaveProperty("puzzles");
+    }
+    expect(rpc).toHaveBeenCalledWith("get_locked_puzzle_ids", {
+      p_username: "solver",
+      p_puzzle_ids: prefetch ? ["414", "415"] : ["414"],
+    });
+  });
+
   it("only returns previously attempted puzzles after the UTC daily limit", async () => {
     const puzzleQuery = createPuzzleQuery();
     const dailyAttemptQuery = createDailyAttemptQuery(200);
     const attemptedPuzzleQuery = createAttemptedPuzzleQuery(["414"]);
     let progressQueryCount = 0;
     mocks.createClient.mockReturnValue({
+      rpc: vi.fn(async () => ({ data: [], error: null })),
       from: vi.fn((table: string) => {
         if (table === "puzzles") return puzzleQuery;
         progressQueryCount += 1;

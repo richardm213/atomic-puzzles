@@ -41,6 +41,14 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
     p_correct_move: input.puzzleCorrect ? input.correctMove || null : null,
   });
   if (error) {
+    if (error.message.includes("puzzle_rating_exclusion_active")) {
+      throw new HttpError(
+        403,
+        "This puzzle is locked for your account until its unrated period ends.",
+        {},
+        "puzzle_rating_excluded",
+      );
+    }
     if (error.message.includes("daily_puzzle_attempt_limit_reached")) {
       throw new HttpError(
         429,

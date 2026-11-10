@@ -182,11 +182,14 @@ grant select,insert,update,delete on public.puzzle_rating_exclusions to service_
 
 create or replace function public.get_puzzle_rating_exclusions(p_username text)
 returns table(puzzle_id text,expires_at timestamptz)
-language sql stable security definer set search_path=public
+language plpgsql stable security definer set search_path=public
 as $$
-  select e.puzzle_id,e.expires_at from public.puzzle_rating_exclusions e
-  where e.username=public.canonical_user_username(p_username)
+declare solver text := public.canonical_user_username(p_username);
+begin
+  return query select e.puzzle_id,e.expires_at from public.puzzle_rating_exclusions e
+  where e.username=solver
   order by e.puzzle_id;
+end;
 $$;
 revoke all on function public.get_puzzle_rating_exclusions(text) from public;
 grant execute on function public.get_puzzle_rating_exclusions(text) to anon,authenticated,service_role;
@@ -210,13 +213,38 @@ drop trigger if exists set_creator_puzzle_rating_exclusion on public.puzzles;
 create trigger set_creator_puzzle_rating_exclusion after insert or update of author,created_at on public.puzzles
 for each row execute function public.set_creator_puzzle_rating_exclusion();
 
+-- Check only the requested batch; normal puzzle loads do not scan the user's history.
+create or replace function public.get_locked_puzzle_ids(p_username text,p_puzzle_ids text[])
+returns table(puzzle_id text,expires_at timestamptz)
+language plpgsql stable security definer set search_path=public
+as $$
+declare solver text := public.canonical_user_username(p_username);
+begin
+  return query select e.puzzle_id,e.expires_at from public.puzzle_rating_exclusions e
+  join public.puzzles p on p.id=e.puzzle_id::bigint
+  where e.username=solver
+    and e.puzzle_id=any(p_puzzle_ids) and e.expires_at>now()
+    and public.canonical_user_username(p.author) is distinct from e.username;
+end;
+$$;
+revoke all on function public.get_locked_puzzle_ids(text,text[]) from public,anon,authenticated;
+grant execute on function public.get_locked_puzzle_ids(text,text[]) to service_role;
+
 create or replace function public.enforce_puzzle_rating_exclusion()
 returns trigger language plpgsql security definer set search_path=public
 as $$
 declare exclusion public.puzzle_rating_exclusions%rowtype;
 begin
   select * into exclusion from public.puzzle_rating_exclusions e where e.username=new.username and e.puzzle_id=new.puzzle_id;
-  if exclusion.expires_at>now() then new.rated:=false; end if;
+  if exclusion.expires_at>now() then
+    if not exists (
+      select 1 from public.puzzles p where p.id=new.puzzle_id::bigint
+        and public.canonical_user_username(p.author)=new.username
+    ) then
+      raise exception 'puzzle_rating_exclusion_active';
+    end if;
+    new.rated:=false;
+  end if;
   if not new.rated and exclusion.category is distinct from 'abuse' then
     insert into public.puzzle_rating_exclusions(username,puzzle_id,category,expires_at,reason)
     values(new.username,new.puzzle_id,'retry',now()+interval '1 month','Unrated attempt cooldown')

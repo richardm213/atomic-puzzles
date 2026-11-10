@@ -473,7 +473,12 @@ describe("PuzzleSolverPage solution options", () => {
 
   it.each([
     { visit: "an unrated first attempt", ownPuzzle: true, hasAttempt: false, blind: true },
-    { visit: "a retry after an unrated attempt", ownPuzzle: false, hasAttempt: true, blind: true },
+    {
+      visit: "an author's retry after an unrated attempt",
+      ownPuzzle: true,
+      hasAttempt: true,
+      blind: true,
+    },
     { visit: "a rated first attempt", ownPuzzle: false, hasAttempt: false, blind: false },
   ])("applies the Blind mode setting on $visit", async ({ ownPuzzle, hasAttempt, blind }) => {
     const earliestFen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -581,6 +586,16 @@ describe("PuzzleSolverPage solution options", () => {
         replace: true,
       }),
     );
+  });
+
+  it("does not render a cached board for a locked puzzle by another author", async () => {
+    mocks.blindPuzzles = { enabled: true, plies: 1 };
+    mocks.fetchPuzzleRatingExclusions.mockResolvedValueOnce([
+      { puzzle_id: "1369", expires_at: "2099-01-01T00:00:00Z" },
+    ]);
+    render(<PuzzleSolverPage />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("This puzzle is locked");
+    expect(screen.queryByTestId("mock-board")).not.toBeInTheDocument();
   });
 
   it("starts a fresh solve after an earlier unrated solve expires", async () => {

@@ -38,8 +38,7 @@ const DETAIL_COLUMNS =
   `${PUZZLE_SET_MEMBERSHIP_RELATION},white_player,black_player,explanation,tags,opa_style,` +
   PUZZLE_RATING_RELATION;
 
-type PuzzleDetailRow = Parameters<typeof puzzleContextFromGameHistory>[0] &
-  Record<string, unknown>;
+type PuzzleDetailRow = Parameters<typeof puzzleContextFromGameHistory>[0] & Record<string, unknown>;
 
 const isSequentialBatch = (ids: number[]): boolean => {
   const sorted = [...ids].sort((left, right) => left - right);
@@ -71,15 +70,42 @@ export const puzzlePlayRoute = async (event: FunctionEvent) => {
   let blockedPuzzleIds: number[] = [];
   if (!input.testMode) {
     const { start, end } = utcDayBounds();
-    const { count: dailyAttemptCount, error: dailyAttemptError } = await supabase
-      .from("puzzle_progress")
-      .select("puzzle_id", { count: "exact", head: true })
-      .eq("username", username)
-      .gte("first_attempt_at", start)
-      .lt("first_attempt_at", end);
+    const [dailyAttempts, exclusions] = await Promise.all([
+      supabase
+        .from("puzzle_progress")
+        .select("puzzle_id", { count: "exact", head: true })
+        .eq("username", username)
+        .gte("first_attempt_at", start)
+        .lt("first_attempt_at", end),
+      supabase.rpc("get_locked_puzzle_ids", {
+        p_username: username,
+        p_puzzle_ids: puzzleIds.map(String),
+      }),
+    ]);
+    const { count: dailyAttemptCount, error: dailyAttemptError } = dailyAttempts;
     if (dailyAttemptError) {
       throw new Error(`Unable to check daily puzzle attempts: ${dailyAttemptError.message}`);
     }
+    if (exclusions.error) {
+      throw new Error(`Unable to check puzzle access: ${exclusions.error.message}`);
+    }
+    const lockedPuzzles = (exclusions.data ?? []) as { puzzle_id: string; expires_at: string }[];
+    const requestedLock = lockedPuzzles.find((row) => row.puzzle_id === String(puzzleIds[0]));
+    if (requestedLock) {
+      const until = new Date(requestedLock.expires_at).toLocaleString("en-US", {
+        dateStyle: "long",
+        timeStyle: "short",
+        timeZone: "UTC",
+      });
+      throw new HttpError(
+        403,
+        `This puzzle is locked for your account until ${until} UTC.`,
+        {},
+        "puzzle_rating_excluded",
+      );
+    }
+    const lockedIds = new Set(lockedPuzzles.map((row) => row.puzzle_id));
+    allowedPuzzleIds = puzzleIds.filter((id) => !lockedIds.has(String(id)));
 
     if ((dailyAttemptCount ?? 0) >= DAILY_PUZZLE_ATTEMPT_LIMIT) {
       const { data: attemptedRows, error: attemptedError } = await supabase
@@ -94,7 +120,7 @@ export const puzzlePlayRoute = async (event: FunctionEvent) => {
       const attemptedIds = new Set(
         (Array.isArray(attemptedRows) ? attemptedRows : []).map((row) => String(row.puzzle_id)),
       );
-      allowedPuzzleIds = puzzleIds.filter((puzzleId) => attemptedIds.has(String(puzzleId)));
+      allowedPuzzleIds = allowedPuzzleIds.filter((puzzleId) => attemptedIds.has(String(puzzleId)));
       blockedPuzzleIds = puzzleIds.filter((puzzleId) => !attemptedIds.has(String(puzzleId)));
     }
   }

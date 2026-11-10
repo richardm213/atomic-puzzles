@@ -730,6 +730,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     solvedPuzzleIds.has(activePuzzleKey) &&
     (hasPersistedAttempt || unratedReason !== null),
   );
+  const isPuzzleLocked =
+    !testMode && unratedReason !== null && normalizeUsername(author) !== normalizedUsername;
   const blindEntryKey = JSON.stringify([
     attemptedPuzzleIdsUsername,
     routeSetKey,
@@ -1875,6 +1877,24 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         ? boardState.error
         : "");
 
+  if (isPuzzleLocked) {
+    const expiresAt = ratingExclusions.get(activePuzzleKey);
+    return (
+      <div className="page puzzlePage">
+        <div className="panel puzzlePanel">
+          <h1>Puzzle locked</h1>
+          <p className="errorText" role="alert">
+            This puzzle is locked for your account
+            {expiresAt
+              ? ` until ${new Date(expiresAt).toLocaleString()}.`
+              : " until its unrated period ends."}
+          </p>
+          <Link to="/solve">Find another puzzle</Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page puzzlePage">
       <Seo
@@ -2166,6 +2186,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
               </div>
             ) : null}
             {fen &&
+            attemptedPuzzleIdsReady &&
             (!autoplayIntro || attemptedPuzzleIdsReady) &&
             (!blindPlies || blindEntryReady) ? (
               <Chessboard
@@ -2194,7 +2215,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
               />
             ) : dailyLimitReached ? null : (
               <div className="emptyBoard">
-                {testMode && displayError ? "No puzzle loaded." : "Waiting for puzzle data..."}
+                {displayError ? "Puzzle unavailable." : "Waiting for puzzle data..."}
               </div>
             )}
           </div>

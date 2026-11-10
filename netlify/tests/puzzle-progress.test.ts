@@ -122,10 +122,17 @@ describe("puzzle-progress function", () => {
     expect(JSON.parse(response.body)).toMatchObject({ coinAward: 0, coinDelta: -3.21644 });
   });
 
-  it("returns a friendly daily-limit response when the database rejects attempt 201", async () => {
+  it.each([
+    {
+      message: "daily_puzzle_attempt_limit_reached",
+      status: 429,
+      code: "daily_puzzle_attempt_limit",
+    },
+    { message: "puzzle_rating_exclusion_active", status: 403, code: "puzzle_rating_excluded" },
+  ])("returns $code when the database rejects an attempt", async ({ message, status, code }) => {
     const rpc = vi.fn(async () => ({
       data: null,
-      error: { message: "daily_puzzle_attempt_limit_reached" },
+      error: { message },
     }));
     mocks.createClient.mockReturnValue({ rpc });
     const cookie = createSiteSessionCookie("Solver", {});
@@ -140,9 +147,9 @@ describe("puzzle-progress function", () => {
       }),
     });
 
-    expect(response.statusCode).toBe(429);
+    expect(response.statusCode).toBe(status);
     expect(JSON.parse(response.body)).toMatchObject({
-      code: "daily_puzzle_attempt_limit",
+      code,
     });
   });
 
