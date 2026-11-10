@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getMostSpecificPuzzleMotifTags,
+  getPuzzleMotifAncestors,
   getPuzzleMotifTreeRows,
   isPuzzleEndgameMotifTag,
   normalizePuzzleMotifTags,
@@ -8,6 +10,13 @@ import {
 } from "./puzzleMotifs";
 
 describe("puzzle motifs", () => {
+  it("accepts opening tags and treats them as more specific than Theory", () => {
+    const tags = normalizePuzzleMotifTags(["theory", "theory_nh3_d4", "fork"]);
+
+    expect(getPuzzleMotifAncestors("theory_nh3_d4")).toEqual(["theory_nh3_d4", "theory"]);
+    expect(getMostSpecificPuzzleMotifTags(tags)).toEqual(["theory_nh3_d4", "fork"]);
+  });
+
   it("normalizes stored tags to unique known motifs", () => {
     expect(
       normalizePuzzleMotifTags([
