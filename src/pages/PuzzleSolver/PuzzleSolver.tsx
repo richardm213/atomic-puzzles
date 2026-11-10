@@ -1820,7 +1820,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   };
 
   const puzzleTagVoting =
-    !testMode && hasAttemptedActivePuzzle && activePuzzleId ? (
+    activePuzzleId &&
+    (testMode ? normalizedUsername === PUZZLE_ADMIN_USERNAME : hasAttemptedActivePuzzle) ? (
       <PuzzleTagVotingPanel
         key={`${activePuzzleId}:${normalizedUsername}`}
         puzzleId={activePuzzleId}

@@ -36,7 +36,8 @@ describe("puzzle tag voting API", () => {
   it("rejects unknown tags and caller-supplied identity or weight", async () => {
     for (const input of [
       { tag: "unknown", vote: 1 },
-      { tag: "fork", vote: 1, voter: "seaside_tiramisu", weight: 3 },
+      { tag: "fork", vote: 1, voter: "admin" },
+      { tag: "fork", vote: 1, weight: 3 },
       { tag: "fork", vote: 3 },
     ]) {
       const response = await handler({
@@ -67,6 +68,38 @@ describe("puzzle tag voting API", () => {
       p_voter: "solver",
       p_tag: "fork",
       p_vote: -1,
+    });
+  });
+
+  it("attributes admin writes and reads to admin without awarding coins or requiring an attempt", async () => {
+    const votes = [{ tag: "fork", up: 3, down: 0, vote: 1 }];
+    const rpc = vi.fn().mockResolvedValue({ data: votes, error: null });
+    mocks.createClient.mockReturnValue({ rpc });
+    const headers = authHeaders("seaside_tiramisu");
+
+    const saved = await handler({
+      httpMethod: "POST",
+      headers,
+      body: JSON.stringify({ puzzleId: 42, tag: "fork", vote: 1 }),
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(JSON.parse(saved.body)).toEqual({ votes, coinAward: 0 });
+    expect(rpc).toHaveBeenLastCalledWith("cast_puzzle_tag_vote", {
+      p_puzzle_id: 42,
+      p_voter: "admin",
+      p_tag: "fork",
+      p_vote: 1,
+    });
+
+    const loaded = await handler({
+      httpMethod: "GET",
+      headers,
+      queryStringParameters: { puzzleId: "42" },
+    });
+    expect(loaded.statusCode).toBe(200);
+    expect(rpc).toHaveBeenLastCalledWith("get_puzzle_tag_votes", {
+      p_puzzle_id: 42,
+      p_voter: "admin",
     });
   });
 

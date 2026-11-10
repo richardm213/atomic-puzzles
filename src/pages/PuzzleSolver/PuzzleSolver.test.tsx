@@ -376,6 +376,18 @@ describe("PuzzleSolverPage solution options", () => {
     };
   });
 
+  it.each(["solver", ""])(
+    "blocks puzzle tests for non-admin identity %j before loading puzzles",
+    (username) => {
+      mocks.username = username;
+      render(<PuzzleTestPage />);
+      expect(screen.getByText("This page is restricted.")).toBeVisible();
+      expect(screen.queryByTestId("mock-board")).not.toBeInTheDocument();
+      expect(mocks.loadPuzzlesById).not.toHaveBeenCalled();
+      expect(mocks.loadPuzzleCatalog).not.toHaveBeenCalled();
+    },
+  );
+
   it.each([true, false])(
     "unlocks test puzzle details without saving an attempt (correct: %s)",
     async (puzzleCorrect) => {
@@ -385,6 +397,15 @@ describe("PuzzleSolverPage solution options", () => {
 
       await screen.findByTestId("mock-board");
       expect(mocks.loadPuzzlesById).toHaveBeenCalledWith([1369], true);
+      expect(await screen.findByRole("region", { name: "Puzzle tags" })).toBeVisible();
+      if (puzzleCorrect) {
+        mocks.voteOnPuzzleTag.mockResolvedValue([{ tag: "endgame", up: 3, down: 0, vote: 1 }]);
+        await user.click(screen.getByRole("button", { name: "Add tag" }));
+        await user.type(screen.getByRole("searchbox", { name: "Search tags" }), "endgame");
+        await user.click(screen.getByRole("button", { name: /^Upvote Endgame \(/ }));
+        expect(mocks.voteOnPuzzleTag).toHaveBeenCalledWith(1369, "endgame", 1);
+        await user.click(screen.getByRole("button", { name: "Close tag picker" }));
+      }
       const explanationTab = screen.getByRole("tab", { name: "Explanation" });
       const attemptsTab = screen.getByRole("tab", { name: "Other attempts" });
       expect(explanationTab).toBeDisabled();

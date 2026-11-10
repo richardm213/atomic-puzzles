@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { PUZZLE_ADMIN_USERNAME } from "../../../../shared/domain/puzzles/puzzleAdmin";
 import {
   puzzleTagSchema,
   puzzleTagVoteSchema,
@@ -35,12 +36,14 @@ export const puzzleTagRoute = async (event: FunctionEvent) => {
   );
   if (!puzzleId.success) throw new HttpError(400, "Invalid puzzle ID.");
   const identity = await authenticateRequest(event.headers, !isWrite);
-  const voter = input
+  const username = input
     ? requireUsername(identity, "Log in with Lichess to vote on puzzle tags.")
     : identity.username;
+  const isAdmin = username === PUZZLE_ADMIN_USERNAME;
+  const voter = isAdmin ? "admin" : username;
   const supabase = createServerSupabase("Puzzle tag voting service");
   const { data, error } = input
-    ? await supabase.rpc("cast_rewarded_puzzle_tag_vote", {
+    ? await supabase.rpc(isAdmin ? "cast_puzzle_tag_vote" : "cast_rewarded_puzzle_tag_vote", {
         p_puzzle_id: puzzleId.data,
         p_voter: voter,
         p_tag: input.tag,
@@ -62,7 +65,7 @@ export const puzzleTagRoute = async (event: FunctionEvent) => {
     identity,
     200,
     input
-      ? rewardedPuzzleTagVoteResponseSchema.parse(data)
+      ? rewardedPuzzleTagVoteResponseSchema.parse(isAdmin ? { votes: data, coinAward: 0 } : data)
       : { votes: puzzleTagVotesSchema.parse(data) },
   );
 };
