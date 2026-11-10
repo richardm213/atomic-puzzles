@@ -46,13 +46,13 @@ import {
   historyMoveKeys,
   historyMoveSans,
 } from "./boardHistory";
+import { BoardPromotionPicker } from "./BoardPromotionPicker";
 import { isTextEntryTarget, useBoardShortcuts } from "./boardShortcuts";
 import { buildBoardStyle, buildPieceStyle } from "./boardStyle";
 import { buildPgnHistory } from "./pgnHistory";
 import {
   createPendingPromotion,
   getPromotionChoices,
-  getPromotionSquareStyle,
   type PendingPromotion,
   type PromotionRole,
 } from "./promotionHelpers";
@@ -1603,32 +1603,13 @@ const ChessboardComponent = ({
       style={{ ...pieceStyle, ...boardStyle }}
     >
       <div ref={elementRef} className="cg-board" />
-      {pendingPromotion ? (
-        <div
-          id="promotion-choice"
-          className={pendingPromotion.vertical}
-          aria-label="Select promotion piece"
-          onContextMenu={(event) => event.preventDefault()}
-        >
-          {pendingPromotion.choices.map((role, index) => (
-            <square
-              key={role}
-              role="button"
-              tabIndex={0}
-              style={getPromotionSquareStyle(pendingPromotion, index, orientationRef.current)}
-              aria-label={`Promote to ${role}`}
-              onClick={() => choosePromotion(role)}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                choosePromotion(role);
-              }}
-            >
-              <piece className={`${role} ${pendingPromotion.color}`} aria-hidden="true" />
-            </square>
-          ))}
-        </div>
-      ) : null}
+      {pendingPromotion && (
+        <BoardPromotionPicker
+          pending={pendingPromotion}
+          orientation={orientation}
+          onChoose={choosePromotion}
+        />
+      )}
     </div>
   );
 };
