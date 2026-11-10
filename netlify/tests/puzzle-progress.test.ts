@@ -12,26 +12,11 @@ import { handler } from "../functions/puzzle-progress";
 import { createSiteSessionCookie } from "../lib/siteSession";
 
 describe("puzzle-progress function", () => {
-  const ratingEventQuery = (data: Record<string, unknown> | null = null) => {
-    const query = {
-      select: vi.fn(),
-      eq: vi.fn(),
-      maybeSingle: vi.fn(async () => ({ data, error: null })),
-    };
-    query.select.mockReturnValue(query);
-    query.eq.mockReturnValue(query);
-    return query;
-  };
-
-  const progressQuery = (rated: boolean) => {
-    const query = {
-      select: vi.fn(),
-      eq: vi.fn(),
-      maybeSingle: vi.fn(async () => ({ data: { rated }, error: null })),
-    };
-    query.select.mockReturnValue(query);
-    query.eq.mockReturnValue(query);
-    return query;
+  const savedAttempt = {
+    coinDelta: 0,
+    rated: true,
+    unratedUntil: null,
+    ratingEvent: null,
   };
 
   beforeEach(() => {
@@ -69,9 +54,8 @@ describe("puzzle-progress function", () => {
   });
 
   it("takes the progress owner from the signed session, never the request body", async () => {
-    const rpc = vi.fn(async () => ({ data: 0, error: null }));
-    const query = ratingEventQuery();
-    mocks.createClient.mockReturnValue({ rpc, from: vi.fn(() => query) });
+    const rpc = vi.fn(async () => ({ data: savedAttempt, error: null }));
+    mocks.createClient.mockReturnValue({ rpc });
     const cookie = createSiteSessionCookie("Actual_Solver", {});
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
@@ -89,7 +73,7 @@ describe("puzzle-progress function", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(rpc).toHaveBeenCalledWith("record_first_puzzle_attempt_v2", {
+    expect(rpc).toHaveBeenCalledWith("record_puzzle_attempt_result", {
       p_username: "actual_solver",
       p_puzzle_id: "42",
       p_puzzle_correct: false,
@@ -142,9 +126,11 @@ describe("puzzle-progress function", () => {
   });
 
   it("returns an incorrect-attempt penalty as a signed coin delta", async () => {
-    const rpc = vi.fn(async () => ({ data: -3.21644, error: null }));
-    const query = ratingEventQuery();
-    mocks.createClient.mockReturnValue({ rpc, from: vi.fn(() => query) });
+    const rpc = vi.fn(async () => ({
+      data: { ...savedAttempt, coinDelta: -3.21644 },
+      error: null,
+    }));
+    mocks.createClient.mockReturnValue({ rpc });
     const cookie = createSiteSessionCookie("Solver", {});
 
     const response = await handler({
@@ -194,20 +180,11 @@ describe("puzzle-progress function", () => {
   });
 
   it("reports an unrated attempt without manufacturing a rating event", async () => {
-    const rpc = vi.fn(async () => ({ data: 0, error: null }));
-    const unratedProgressQuery = progressQuery(false);
-    const query = ratingEventQuery();
-    const exclusionQuery = ratingEventQuery({ expires_at: "2027-01-10T12:00:00Z" });
-    mocks.createClient.mockReturnValue({
-      rpc,
-      from: vi.fn((table: string) =>
-        table === "puzzle_progress"
-          ? unratedProgressQuery
-          : table === "puzzle_rating_exclusions"
-            ? exclusionQuery
-            : query,
-      ),
-    });
+    const rpc = vi.fn(async () => ({
+      data: { ...savedAttempt, rated: false, unratedUntil: "2027-01-10T12:00:00Z" },
+      error: null,
+    }));
+    mocks.createClient.mockReturnValue({ rpc });
     const cookie = createSiteSessionCookie("Puzzle_Author", {});
 
     const response = await handler({
@@ -231,20 +208,26 @@ describe("puzzle-progress function", () => {
   });
 
   it("records a correct alternate solution move", async () => {
-    const rpc = vi.fn(async () => ({ data: 2, error: null }));
-    const query = ratingEventQuery({
-      username: "solver",
-      puzzle_id: 43,
-      attempted_at: "2026-09-29T00:00:00.000Z",
-      puzzle_correct: true,
-      user_rating_before: 2000,
-      user_rating_after: 2018,
-      user_rd_before: 350,
-      user_rd_after: 290,
-      puzzle_rating_before: 2100,
-      puzzle_rating_after: 2086,
-    });
-    mocks.createClient.mockReturnValue({ rpc, from: vi.fn(() => query) });
+    const rpc = vi.fn(async () => ({
+      data: {
+        ...savedAttempt,
+        coinDelta: 2,
+        ratingEvent: {
+          username: "solver",
+          puzzleId: "43",
+          attemptedAt: "2026-09-29T00:00:00.000Z",
+          puzzleCorrect: true,
+          userRatingBefore: 2000,
+          userRatingAfter: 2018,
+          userRatingDeviationBefore: 350,
+          userRatingDeviationAfter: 290,
+          puzzleRatingBefore: 2100,
+          puzzleRatingAfter: 2086,
+        },
+      },
+      error: null,
+    }));
+    mocks.createClient.mockReturnValue({ rpc });
     const cookie = createSiteSessionCookie("Solver", {});
 
     const response = await handler({
@@ -259,7 +242,7 @@ describe("puzzle-progress function", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(rpc).toHaveBeenCalledWith("record_first_puzzle_attempt_v2", {
+    expect(rpc).toHaveBeenCalledWith("record_puzzle_attempt_result", {
       p_username: "solver",
       p_puzzle_id: "43",
       p_puzzle_correct: true,
@@ -278,9 +261,8 @@ describe("puzzle-progress function", () => {
   });
 
   it("records no duration after the one-hour timer expires", async () => {
-    const rpc = vi.fn(async () => ({ data: 0, error: null }));
-    const query = ratingEventQuery();
-    mocks.createClient.mockReturnValue({ rpc, from: vi.fn(() => query) });
+    const rpc = vi.fn(async () => ({ data: savedAttempt, error: null }));
+    mocks.createClient.mockReturnValue({ rpc });
     const cookie = createSiteSessionCookie("Solver", {});
 
     const response = await handler({
@@ -295,7 +277,7 @@ describe("puzzle-progress function", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(rpc).toHaveBeenCalledWith("record_first_puzzle_attempt_v2", {
+    expect(rpc).toHaveBeenCalledWith("record_puzzle_attempt_result", {
       p_username: "solver",
       p_puzzle_id: "44",
       p_puzzle_correct: false,

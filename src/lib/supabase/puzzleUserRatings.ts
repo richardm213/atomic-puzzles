@@ -1,11 +1,14 @@
 import { z } from "zod";
 
 import type { PuzzleLeaderboardMetric } from "../../../shared/domain/puzzles/puzzleLeaderboard";
+import { puzzleRatingEventResponseSchema } from "../../../shared/domain/puzzles/puzzleRating";
 import { normalizeUsername } from "../../utils/playerNames";
 import { apiRequest, postApi } from "../api/postApi";
 import { getSupabaseClient } from "./client";
 import { loadSupabaseRows } from "./rows";
 import type { PuzzleUserRatingRow as StoredPuzzleUserRatingRow } from "./types";
+
+export { puzzleRatingEventResponseSchema };
 
 export type PuzzleUserRating = {
   username: string;
@@ -58,19 +61,6 @@ export type PuzzleCreatorLeaderboardRow = {
 type PuzzleUserRatingResponseRow = {
   [Key in keyof Omit<StoredPuzzleUserRatingRow, "user_id">]?: StoredPuzzleUserRatingRow[Key] | null;
 };
-
-export const puzzleRatingEventResponseSchema = z.object({
-  username: z.string(),
-  puzzleId: z.string(),
-  attemptedAt: z.string(),
-  puzzleCorrect: z.boolean(),
-  userRatingBefore: z.number(),
-  userRatingAfter: z.number(),
-  userRatingDeviationBefore: z.number(),
-  userRatingDeviationAfter: z.number(),
-  puzzleRatingBefore: z.number(),
-  puzzleRatingAfter: z.number(),
-});
 
 const puzzleRatingHistoryResponseSchema = z.object({
   events: z.array(puzzleRatingEventResponseSchema),

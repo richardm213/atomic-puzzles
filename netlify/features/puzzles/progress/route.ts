@@ -4,6 +4,7 @@ import {
   DAILY_PUZZLE_ATTEMPT_LIMIT_CODE,
   DAILY_PUZZLE_ATTEMPT_LIMIT_MESSAGE,
 } from "../../../../shared/domain/puzzles/dailyAttemptLimit";
+import { puzzleRatingEventResponseSchema } from "../../../../shared/domain/puzzles/puzzleRating";
 import {
   authenticateRequest,
   identityResponse,
@@ -39,6 +40,13 @@ const progressBodySchema = z.union([
   attemptBodySchema,
 ]);
 
+const attemptResultSchema = z.object({
+  coinDelta: z.number(),
+  rated: z.boolean(),
+  unratedUntil: z.string().nullable(),
+  ratingEvent: puzzleRatingEventResponseSchema.nullable(),
+});
+
 export const puzzleProgressRoute = async (event: FunctionEvent) => {
   requireSameOrigin(event.headers, "Cross-site puzzle-progress requests are not allowed.");
   const input = parseJsonBody(event, progressBodySchema, "Invalid puzzle progress request.");
@@ -70,7 +78,7 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
     }
     return identityResponse(identity, 200, { permanentlyUnrated: input.permanentlyUnrated });
   }
-  const { data: coinDelta, error } = await supabase.rpc("record_first_puzzle_attempt_v2", {
+  const { data, error } = await supabase.rpc("record_puzzle_attempt_result", {
     p_username: username,
     p_puzzle_id: input.puzzleId,
     p_puzzle_correct: input.puzzleCorrect,
@@ -97,54 +105,12 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
     }
     throw new Error(`Unable to record puzzle progress: ${error.message}`);
   }
-  const { data: progress, error: progressError } = await supabase
-    .from("puzzle_progress")
-    .select("rated")
-    .eq("username", username)
-    .eq("puzzle_id", input.puzzleId)
-    .maybeSingle();
-  if (progressError) throw new Error(`Unable to read puzzle progress: ${progressError.message}`);
-  let unratedUntil: string | null = null;
-  if (progress?.rated === false) {
-    const { data: exclusion, error: exclusionError } = await supabase
-      .from("puzzle_rating_exclusions")
-      .select("expires_at")
-      .eq("username", username)
-      .eq("puzzle_id", input.puzzleId)
-      .maybeSingle();
-    if (exclusionError)
-      throw new Error(`Unable to read puzzle eligibility: ${exclusionError.message}`);
-    unratedUntil = exclusion?.expires_at ?? null;
-  }
-  const { data: ratingEvent } = await supabase
-    .from("puzzle_rating_events")
-    .select(
-      "username,puzzle_id,attempted_at,puzzle_correct,user_rating_before,user_rating_after,user_rd_before,user_rd_after,puzzle_rating_before,puzzle_rating_after",
-    )
-    .eq("username", username)
-    .eq("puzzle_id", Number(input.puzzleId))
-    .maybeSingle();
-
+  const result = attemptResultSchema.parse(data);
   return identityResponse(identity, 200, {
     recorded: true,
-    coinAward: Math.max(0, Number(coinDelta) || 0),
-    coinDelta: Number(coinDelta) || 0,
-    rated: progress?.rated !== false,
-    unratedUntil,
+    ...result,
+    // Keep older clients working while coinDelta is the authoritative value.
+    coinAward: Math.max(0, result.coinDelta),
     username,
-    ratingEvent: ratingEvent
-      ? {
-          username: String(ratingEvent.username),
-          puzzleId: String(ratingEvent.puzzle_id),
-          attemptedAt: String(ratingEvent.attempted_at),
-          puzzleCorrect: Boolean(ratingEvent.puzzle_correct),
-          userRatingBefore: Number(ratingEvent.user_rating_before),
-          userRatingAfter: Number(ratingEvent.user_rating_after),
-          userRatingDeviationBefore: Number(ratingEvent.user_rd_before),
-          userRatingDeviationAfter: Number(ratingEvent.user_rd_after),
-          puzzleRatingBefore: Number(ratingEvent.puzzle_rating_before),
-          puzzleRatingAfter: Number(ratingEvent.puzzle_rating_after),
-        }
-      : null,
   });
 };

@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const PUZZLE_LEVEL_RATINGS = [1500, 1800, 2100, 2400, 2700] as const;
 
 export type PuzzleLevel = 1 | 2 | 3 | 4 | 5;
@@ -23,3 +25,16 @@ export const puzzleLevelLabel = (level: PuzzleLevel): `V${PuzzleLevel}` => `V${l
 
 export const puzzleRatingForLevel = (level: PuzzleLevel): number =>
   PUZZLE_LEVEL_RATINGS[level - 1] ?? PUZZLE_LEVEL_RATINGS[2];
+
+export const puzzleRatingEventResponseSchema = z.object({
+  username: z.string(),
+  puzzleId: z.string(),
+  attemptedAt: z.string(),
+  puzzleCorrect: z.boolean(),
+  userRatingBefore: z.number(),
+  userRatingAfter: z.number(),
+  userRatingDeviationBefore: z.number(),
+  userRatingDeviationAfter: z.number(),
+  puzzleRatingBefore: z.number(),
+  puzzleRatingAfter: z.number(),
+});
