@@ -109,9 +109,14 @@ const AttemptsPanel = ({
                 >
                   <FontAwesomeIcon
                     icon={attempt.puzzle_correct ? faCheck : faXmark}
-                    aria-hidden="true"
+                    aria-hidden={hideAnswers}
+                    aria-label={
+                      hideAnswers ? undefined : attempt.puzzle_correct ? "Correct" : "Incorrect"
+                    }
                   />
-                  <span>{attempt.puzzle_correct ? "Correct" : "Incorrect"}</span>
+                  {hideAnswers ? (
+                    <span>{attempt.puzzle_correct ? "Correct" : "Incorrect"}</span>
+                  ) : null}
                   {attempt.rated === false ? (
                     <span className="puzzleOtherAttemptRated">Unrated</span>
                   ) : null}

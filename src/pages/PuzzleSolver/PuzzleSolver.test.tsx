@@ -980,11 +980,18 @@ describe("PuzzleSolverPage solution options", () => {
     await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
     expect(await screen.findByLabelText("Played 1. Rf8")).toBeInTheDocument();
     expect(screen.getByLabelText("Played 2. Nf3+")).toBeInTheDocument();
+    const attempts = within(screen.getByRole("list", { name: "Other puzzle attempts" }));
+    expect(attempts.queryByText("Correct")).not.toBeInTheDocument();
+    expect(attempts.queryByText("Incorrect")).not.toBeInTheDocument();
+    expect(attempts.getAllByRole("img", { name: "Correct" })[0]).toBeInTheDocument();
+    expect(attempts.getByRole("img", { name: "Incorrect" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("checkbox", { name: "Hide answers" }));
 
     expect(screen.queryByLabelText("Played 1. Rf8")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Played 2. Nf3+")).not.toBeInTheDocument();
+    expect(attempts.getAllByText("Correct")[0]).toBeVisible();
+    expect(attempts.getByText("Incorrect")).toBeVisible();
   });
 
   it("retries loading other attempts after a request fails", async () => {

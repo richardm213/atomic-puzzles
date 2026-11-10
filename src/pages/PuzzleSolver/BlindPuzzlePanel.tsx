@@ -18,6 +18,10 @@ export const BlindPuzzlePanel = ({
 }) => {
   const listRef = useRef<HTMLOListElement>(null);
   const firstPly = startingPlyFromFen(leadIn.beforeFen);
+  const replyIndex = Math.floor(played.length / 2) * 2 - 1;
+  const reply = played[replyIndex];
+  const replyColor = (firstPly + leadIn.moves.length + replyIndex) % 2 === 0 ? "White" : "Black";
+
   useEffect(() => {
     const list = listRef.current;
     if (played.length && list) list.scrollTop = list.scrollHeight;
@@ -25,17 +29,14 @@ export const BlindPuzzlePanel = ({
 
   return (
     <section className="puzzleAnalysisPanel puzzleBlindPanel" aria-label="Blind mode">
-      <div className="puzzleBlindInstructions">
+      <div className="puzzleBlindInstructions" aria-live="polite">
         <strong>
-          Blind mode · {leadIn.moves.length} {leadIn.moves.length === 1 ? "ply" : "plies"}
+          {reply
+            ? `${replyColor} plays ${reply}`
+            : `Blind mode · ${leadIn.moves.length} ${leadIn.moves.length === 1 ? "ply" : "plies"}`}
         </strong>
       </div>
-      <ol
-        ref={listRef}
-        className="puzzleBlindMoves"
-        aria-label="Moves from the displayed position"
-        aria-live="polite"
-      >
+      <ol ref={listRef} className="puzzleBlindMoves" aria-label="Moves from the displayed position">
         {[...leadIn.moves, ...played].map((san, index) => {
           const ply = firstPly + index;
           return (
