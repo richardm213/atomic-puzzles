@@ -1482,13 +1482,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
       <aside className="gameAnalysisSidebar" aria-label="Game details">
         <GameAnalysisHeader game={game} />
       </aside>
-      <GameMatchNavigation
-        game={game}
-        puzzleActionLabel={puzzleActionLabel}
-        onCreatePuzzle={auth.isAuthenticated && game.external_match_id ? startPuzzle : undefined}
-        createPuzzleDisabled={createPuzzleDisabled}
-        puzzleDraftOpen={Boolean(puzzleDraft)}
-      />
+      <GameMatchNavigation game={game} puzzleDraftOpen={Boolean(puzzleDraft)} />
       {puzzleConfirmation}
     </div>
   ) : null;
@@ -1527,12 +1521,14 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
               !game || gameComputerAnalysisEnabled ? (
                 <AtomicDbAnalysisBlock
                   beforeSettings={
-                    !game && auth.isAuthenticated ? (
+                    auth.isAuthenticated && (!game || game.external_match_id) ? (
                       <button
                         className="atomicDbSettingsButton"
                         type="button"
                         aria-label={puzzleActionLabel}
-                        title={puzzleActionLabel}
+                        title={
+                          createPuzzleDisabled ? "Choose a playable position" : puzzleActionLabel
+                        }
                         disabled={createPuzzleDisabled || Boolean(puzzleDraft)}
                         onClick={startPuzzle}
                       >

@@ -1,8 +1,8 @@
-import { faArrowLeft, faArrowRight, faPuzzlePiece } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import type { MouseEvent, Ref } from "react";
+import type { Ref } from "react";
 
 import { BoardClock } from "../../components/BoardClock/BoardClock";
 import { lichessIcons } from "../../components/PlayerHoverCard/lichessIcons";
@@ -180,16 +180,10 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
 
 export const GameMatchNavigation = ({
   game,
-  onCreatePuzzle,
-  puzzleActionLabel = "Submit puzzle",
   puzzleDraftOpen = false,
-  createPuzzleDisabled = false,
 }: {
   game: ArchiveGame;
-  onCreatePuzzle?: ((event: MouseEvent<HTMLButtonElement>) => void) | undefined;
-  puzzleActionLabel?: string;
   puzzleDraftOpen?: boolean;
-  createPuzzleDisabled?: boolean;
 }) => {
   const navigate = useNavigate();
   const matchQuery = useQuery({
@@ -218,18 +212,15 @@ export const GameMatchNavigation = ({
       : undefined,
   });
 
-  const showGameNavigation = games.length > 1 && currentIndex >= 0;
-  if (!showGameNavigation && !onCreatePuzzle) return null;
+  if (games.length <= 1 || currentIndex < 0) return null;
 
   return (
     <nav className="gameAnalysisGameNavigation" aria-label="Games in this match">
-      {showGameNavigation ? (
-        <span className="gameAnalysisGameNumber">
-          Game {currentIndex + 1}/{games.length}
-        </span>
-      ) : null}
+      <span className="gameAnalysisGameNumber">
+        Game {currentIndex + 1}/{games.length}
+      </span>
       <div className="gameAnalysisGameNavigationButtons">
-        {!showGameNavigation ? null : previousGame ? (
+        {previousGame ? (
           <Link
             className="gameAnalysisGameNavigationButton"
             to="/game/$gameId"
@@ -259,7 +250,7 @@ export const GameMatchNavigation = ({
             <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
           </button>
         )}
-        {!showGameNavigation ? null : nextGame ? (
+        {nextGame ? (
           <Link
             className="gameAnalysisGameNavigationButton"
             to="/game/$gameId"
@@ -287,18 +278,6 @@ export const GameMatchNavigation = ({
             <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
           </button>
         )}
-        {onCreatePuzzle ? (
-          <button
-            type="button"
-            className="gameAnalysisGameNavigationButton"
-            aria-label={puzzleActionLabel}
-            title={createPuzzleDisabled ? "Choose a playable position" : puzzleActionLabel}
-            disabled={createPuzzleDisabled || puzzleDraftOpen}
-            onClick={onCreatePuzzle}
-          >
-            <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
-          </button>
-        ) : null}
       </div>
     </nav>
   );
