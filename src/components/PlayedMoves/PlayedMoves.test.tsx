@@ -6,7 +6,7 @@ describe("PlayedMoves", () => {
   it("navigates on click and opens move editing only from the context menu", () => {
     const onNavigate = vi.fn();
     const onAnnotate = vi.fn();
-    render(
+    const { rerender } = render(
       <PlayedMoves
         moves={["e4", "e5"]}
         currentPly={0}
@@ -21,8 +21,23 @@ describe("PlayedMoves", () => {
     expect(screen.queryByRole("menu", { name: "Move annotation" })).not.toBeInTheDocument();
 
     fireEvent.contextMenu(move);
-    expect(screen.getAllByRole("menuitemradio")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Annotate with ?" }));
+    fireEvent.click(
+      screen.getByRole("menuitemcheckbox", { name: "Annotate with ?", checked: false }),
+    );
     expect(onAnnotate).toHaveBeenCalledWith(0, "?");
+
+    rerender(
+      <PlayedMoves
+        moves={["e4?", "e5"]}
+        currentPly={0}
+        onNavigate={onNavigate}
+        onAnnotate={onAnnotate}
+      />,
+    );
+    fireEvent.contextMenu(screen.getByRole("button", { name: "e4?" }));
+    fireEvent.click(
+      screen.getByRole("menuitemcheckbox", { name: "Annotate with ?", checked: true }),
+    );
+    expect(onAnnotate).toHaveBeenLastCalledWith(0, "");
   });
 });

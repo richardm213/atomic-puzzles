@@ -257,16 +257,15 @@ export const AnalysisMoveTree = ({
           position={annotationTarget.position}
           current={annotationTarget.current}
           onClose={closeAnnotationMenu}
-          onSelect={(annotation) => {
-            onAnnotate?.(annotationTarget.lineIndex, annotationTarget.moveIndex, annotation);
-            closeAnnotationMenu();
-          }}
+          onSelect={
+            onAnnotate
+              ? (annotation) =>
+                  onAnnotate(annotationTarget.lineIndex, annotationTarget.moveIndex, annotation)
+              : undefined
+          }
           onDelete={
             onDelete
-              ? () => {
-                  onDelete(annotationTarget.lineIndex, annotationTarget.moveIndex);
-                  closeAnnotationMenu();
-                }
+              ? () => onDelete(annotationTarget.lineIndex, annotationTarget.moveIndex)
               : undefined
           }
         />

@@ -29,7 +29,7 @@ export const MoveAnnotationMenu = ({
 }: {
   position: AnnotationMenuPosition;
   current: string;
-  onSelect: (annotation: string) => void;
+  onSelect?: ((annotation: string) => void) | undefined;
   onDelete?: (() => void) | undefined;
   onClose: () => void;
 }) => {
@@ -78,20 +78,28 @@ export const MoveAnnotationMenu = ({
       aria-label="Move annotation"
       style={coordinates}
     >
-      {MOVE_ANNOTATIONS.map((annotation) => (
-        <button
-          key={annotation || "none"}
-          type="button"
-          role="menuitemradio"
-          aria-checked={current === annotation}
-          aria-label={`Annotate with ${annotation}`}
-          className={current === annotation ? "active" : ""}
-          onClick={() => onSelect(annotation)}
-          title={`Annotate with ${annotation}`}
-        >
-          <span aria-hidden="true">{annotation}</span>
-        </button>
-      ))}
+      {onSelect
+        ? MOVE_ANNOTATIONS.map((annotation) => {
+            const checked = current === annotation;
+            return (
+              <button
+                key={annotation}
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={checked}
+                aria-label={`Annotate with ${annotation}`}
+                className={checked ? "active" : ""}
+                onClick={() => {
+                  onSelect(checked ? "" : annotation);
+                  onClose();
+                }}
+                title={checked ? `Remove ${annotation} annotation` : `Annotate with ${annotation}`}
+              >
+                <span aria-hidden="true">{annotation}</span>
+              </button>
+            );
+          })
+        : null}
       {onDelete ? (
         <button
           type="button"
@@ -99,7 +107,10 @@ export const MoveAnnotationMenu = ({
           className="danger"
           aria-label="Delete"
           title="Delete"
-          onClick={onDelete}
+          onClick={() => {
+            onDelete();
+            onClose();
+          }}
         >
           <FontAwesomeIcon icon={faTrashCan} aria-hidden="true" />
         </button>
