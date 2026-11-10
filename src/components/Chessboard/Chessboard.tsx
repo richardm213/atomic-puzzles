@@ -14,6 +14,7 @@ import { makeUci, parseSquare } from "chessops/util";
 import type { Atomic } from "chessops/variant";
 import { memo, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import type { PuzzleIntro } from "../../../shared/domain/puzzles/gameHistory";
 import { useAppSettings } from "../../context/AppSettings";
 import { playBoardMoveSound } from "../../lib/boardSounds/boardSounds";
 import {
@@ -88,6 +89,8 @@ export type ChessboardProps = {
   solution: string;
   solutionUciLines?: UciSolutionLine[];
   showSolution: boolean;
+  intro?: PuzzleIntro | null | undefined;
+  onIntroEnd?: (durationMs: number, completed: boolean) => void;
   analysisMode?: boolean;
   solutionNavigation?: SolutionNavigation | null | undefined;
   previewMove?: string | null | undefined;
@@ -122,6 +125,12 @@ const getStatus = (position: Atomic): string => {
 
 const colorFromFen = (fen: string): Color => (fen?.split(" ")?.[1] === "b" ? "black" : "white");
 
+const prefersReducedMotion = (): boolean =>
+  typeof window !== "undefined" &&
+  Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+
+const PUZZLE_INTRO_HOLD_MS = 300;
+const PUZZLE_INTRO_ANIMATION_MS = 120;
 const MOVE_EVALUATION_DELAY_MS = 250;
 const ANALYSIS_LINE_PLAYBACK_DELAY_MS = 250;
 
@@ -165,6 +174,8 @@ const ChessboardComponent = ({
   solution,
   solutionUciLines: suppliedSolutionUciLines,
   showSolution,
+  intro,
+  onIntroEnd,
   analysisMode = false,
   solutionNavigation,
   previewMove,
@@ -223,6 +234,10 @@ const ChessboardComponent = ({
   const analysisModeRef = useLatestRef(analysisMode);
   const restrictMovesToSolutionRef = useLatestRef(restrictMovesToSolution);
   const disabledRef = useLatestRef(disabled);
+  const initialIntroRef = useRef(intro);
+  const introPlayingRef = useRef(false);
+  const introPlayedRef = useRef(false);
+  const onIntroEndRef = useLatestRef(onIntroEnd);
   const premoveColorRef = useLatestRef(premoveColor);
   const premovesEnabledRef = useLatestRef(effectivePremovesEnabled);
   const fenRef = useLatestRef(fen);
@@ -415,7 +430,11 @@ const ChessboardComponent = ({
 
   const getMovableConfig = useCallback(
     (position: Atomic): MovableConfig => {
-      if (disabledRef.current || boardStatusRef.current.locked) {
+      if (
+        disabledRef.current ||
+        introPlayingRef.current ||
+        boardStatusRef.current.locked
+      ) {
         return {
           dests: new Map(),
           free: false,
@@ -723,6 +742,7 @@ const ChessboardComponent = ({
 
   const navigatePlayback = useCallback(
     (command: PlaybackCommand): void => {
+      if (introPlayingRef.current) return;
       const history = historyRef.current;
       let resolvedCommand = command;
 
@@ -896,6 +916,7 @@ const ChessboardComponent = ({
       if (
         !position ||
         disabledRef.current ||
+        introPlayingRef.current ||
         boardStatusRef.current.locked ||
         isSolutionPlaybackLocked()
       ) {
@@ -1219,6 +1240,7 @@ const ChessboardComponent = ({
       const position = positionRef.current;
       if (
         !position ||
+        introPlayingRef.current ||
         boardStatusRef.current.locked ||
         isSolutionPlaybackLocked() ||
         pendingPromotionRef.current
@@ -1258,7 +1280,7 @@ const ChessboardComponent = ({
     elementRef,
     dimensionsRef,
     apiRef: cgRef,
-    fen,
+    fen: intro && !prefersReducedMotion() ? intro.beforeFen : fen,
     orientation,
     coordinates,
     movableColor: premoveColor,
@@ -1334,7 +1356,7 @@ const ChessboardComponent = ({
   }, [fen, showSolution, showSolutionLine]);
 
   useEffect(() => {
-    if (!solutionNavigation) return;
+    if (!solutionNavigation || introPlayingRef.current) return;
 
     if (solutionNavigation.type !== "play") cgRef.current?.cancelPremove?.();
     if (solutionNavigation.type !== "command") {
@@ -1540,17 +1562,79 @@ const ChessboardComponent = ({
     }
 
     clearPendingPromotion();
+    const history = createBoardHistory(fen);
     resetSession({
-      history: createBoardHistory(fen),
+      history,
       locked: showSolution && !analysisModeRef.current,
       candidates: solutionUciLines,
       solved: isSolutionCompleteAt(solutionUciLines, 0),
     });
 
-    syncBoard(position, undefined, {
-      solved: false,
-      viewingSolution: showSolution,
-    });
+    const openingMove = initialIntroRef.current;
+    const lastMove = openingMove
+      ? keyPair(openingMove.uci.slice(0, 2), openingMove.uci.slice(2, 4))
+      : undefined;
+    history.plies[0]!.lastMove = lastMove;
+    const showPuzzlePosition = () => {
+      syncBoard(position, lastMove, { solved: false, viewingSolution: showSolution });
+    };
+    if (!openingMove || introPlayedRef.current || showSolution) {
+      showPuzzlePosition();
+      return;
+    }
+
+    // Keep the solution rooted at ply zero. Only the displayed board is rewound.
+    const startedAt = Date.now();
+    const reducedMotion = prefersReducedMotion();
+    const setIntroInteraction = (enabled: boolean) => {
+      cgRef.current?.set({ draggable: { enabled }, selectable: { enabled } });
+    };
+    introPlayingRef.current = true;
+    setIntroInteraction(false);
+    let finishTimer: number | undefined;
+    let animationFrame: number | undefined;
+    const finish = () => {
+      if (cgRef.current?.state.animation?.current) {
+        animationFrame = window.requestAnimationFrame(finish);
+        return;
+      }
+      introPlayingRef.current = false;
+      introPlayedRef.current = true;
+      setIntroInteraction(true);
+      showPuzzlePosition();
+      onIntroEndRef.current?.(Date.now() - startedAt, true);
+    };
+    if (!reducedMotion) {
+      cgRef.current?.set({
+        fen: openingMove.beforeFen,
+        animation: { enabled: false },
+        turnColor: colorFromFen(openingMove.beforeFen),
+        lastMove: [],
+        check: false,
+        movable: { dests: new Map(), free: false },
+      });
+    }
+    const playTimer = window.setTimeout(() => {
+      if (reducedMotion) {
+        finish();
+        return;
+      }
+      cgRef.current?.set({ animation: { enabled: true, duration: PUZZLE_INTRO_ANIMATION_MS } });
+      showPuzzlePosition();
+      playMoveSound(position, openingMove.san, openingMove.uci);
+      finishTimer = window.setTimeout(finish, PUZZLE_INTRO_ANIMATION_MS);
+    }, reducedMotion ? 0 : PUZZLE_INTRO_HOLD_MS);
+    return () => {
+      window.clearTimeout(playTimer);
+      window.clearTimeout(finishTimer);
+      if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame);
+      if (introPlayingRef.current) {
+        onIntroEndRef.current?.(Date.now() - startedAt, false);
+        introPlayingRef.current = false;
+        setIntroInteraction(true);
+        cgRef.current?.set({ animation: { enabled: true } });
+      }
+    };
   }, [
     fen,
     solutionUciLines,
@@ -1558,8 +1642,10 @@ const ChessboardComponent = ({
     clearPendingPromotion,
     coordinatesRef,
     analysisModeRef,
+    onIntroEndRef,
     onStateChangeRef,
     orientationRef,
+    playMoveSound,
     preserveAnalysisHistoryOnSolutionChange,
     resetSession,
     showSolution,
@@ -1568,6 +1654,10 @@ const ChessboardComponent = ({
   ]);
 
   useEffect(() => {
+    if (introPlayingRef.current) {
+      cgRef.current?.set({ orientation, coordinates });
+      return;
+    }
     let position = positionRef.current;
     if (!position) {
       const fallbackFen = historyRef.current.plies[historyRef.current.index]?.fen ?? fenRef.current;

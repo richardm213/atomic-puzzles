@@ -129,6 +129,7 @@ describe("puzzle-submit function", () => {
 
   it.each([
     { username: "submitter", setName: "Scam match", publish: false, source: "linked", setId: 42 },
+    { username: "submitter", setName: "Match match-1", publish: false, source: "new", setId: null },
     {
       username: "submitter",
       setName: "Match match-1",
@@ -245,7 +246,10 @@ describe("puzzle-submit function", () => {
         body: JSON.stringify({ action: "match-context", gameId: "game-1" }),
       });
       expect(preview.statusCode).toBe(200);
-      expect(JSON.parse(preview.body)).toMatchObject({ setName, canRenameSet: Boolean(renameTo) });
+      expect(JSON.parse(preview.body)).toMatchObject({
+        setName,
+        canRenameSet: Boolean(renameTo) || source === "new",
+      });
       expect(rpc).not.toHaveBeenCalled();
 
       const submitMatch = (
@@ -253,6 +257,7 @@ describe("puzzle-submit function", () => {
         renameFrom?: string,
         creator = username,
         gameId = "game-1",
+        positionMoves = ["e4"],
       ) =>
         handler({
           httpMethod: "POST",
@@ -260,8 +265,9 @@ describe("puzzle-submit function", () => {
           body: JSON.stringify({
             action: "add-match-puzzle",
             gameId,
-            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            solution: "1. e4",
+            fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+            positionMoves,
+            solution: "1... e5",
             explanation: "  The opening move changes the center.  ",
             opaStyle: true,
             matchName,
@@ -269,9 +275,14 @@ describe("puzzle-submit function", () => {
             whitePlayer: "spoofed",
           }),
         });
-      if (!renameTo) {
+      if (!renameTo && source !== "new") {
         const forbidden = await submitMatch("Not allowed", setName);
         expect(forbidden.statusCode).toBe(409);
+        expect(rpc).not.toHaveBeenCalled();
+      }
+      if (source === "linked" && !renameTo) {
+        const mismatch = await submitMatch(setName, undefined, username, "game-1", ["d4"]);
+        expect(mismatch.statusCode).toBe(400);
         expect(rpc).not.toHaveBeenCalled();
       }
       const response = await submitMatch(
@@ -290,6 +301,8 @@ describe("puzzle-submit function", () => {
           ...(renameTo ? { p_rename_from: setName } : {}),
           p_puzzle: expect.objectContaining({
             eventName: savedName,
+            positionMoves: ["e4"],
+            gameInitialFen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             explanation: "The opening move changes the center.",
             opaStyle: true,
             eventDate: "2026-11-09",

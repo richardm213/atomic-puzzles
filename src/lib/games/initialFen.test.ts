@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { inferAtomic960InitialFen } from "./initialFen";
+import { inferAtomic960InitialFen } from "../../../shared/domain/chess/initialFen";
 
 describe("inferAtomic960InitialFen", () => {
   it("recovers the archived PyChess Atomic960 starting position", () => {

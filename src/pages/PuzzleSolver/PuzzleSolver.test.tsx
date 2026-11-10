@@ -16,6 +16,7 @@ import type { AttemptResolved, SolutionNavigation } from "../../types/chessboard
 const mocks = vi.hoisted(() => ({
   chessboardProps: [] as Array<{
     disabled?: boolean;
+    onIntroEnd?: (durationMs: number, completed: boolean) => void;
     analysisMode?: boolean;
     showSolution?: boolean;
     solutionNavigation?: SolutionNavigation | null;
@@ -1131,6 +1132,39 @@ describe("PuzzleSolverPage solution options", () => {
 
     await screen.findByRole("button", { name: "Toggle position analysis" });
     expect(screen.queryByLabelText(/^Elapsed time/)).not.toBeInTheDocument();
+  });
+
+  it("excludes the opening replay from the recorded attempt duration", async () => {
+    mocks.attemptedPuzzleIds = new Set();
+    const loadDetails = mocks.loadPuzzlesById.getMockImplementation()!;
+    mocks.loadPuzzlesById.mockImplementation(async (puzzleIds: number[]) =>
+      (await loadDetails(puzzleIds)).map((puzzle: object) => ({
+        ...puzzle,
+        intro: { beforeFen: "previous position", san: "e4", uci: "e2e4" },
+      })),
+    );
+    let now = 1_000_000;
+    const dateNow = vi.spyOn(Date, "now").mockImplementation(() => now);
+    const performanceNow = vi.spyOn(window.performance, "now").mockImplementation(() => now);
+    try {
+      render(<PuzzleSolverPage />);
+      await screen.findByTestId("mock-board");
+      now += 1_250;
+      act(() => mocks.chessboardProps.at(-1)?.onIntroEnd?.(1_250, true));
+      now += 2_000;
+      act(() => mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+        puzzleId: 1369,
+        puzzleCorrect: false,
+        incorrectMove: "12... Kd7",
+        correctMove: null,
+      }));
+      await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledWith(
+        expect.objectContaining({ attemptDurationMs: 2_000 }),
+      ));
+    } finally {
+      dateNow.mockRestore();
+      performanceNow.mockRestore();
+    }
   });
 
   it("keeps the original puzzle start time after the solver remounts", async () => {

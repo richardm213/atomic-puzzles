@@ -11,12 +11,17 @@ const authHeaders = () => ({
   cookie: createSiteSessionCookie("solver", {}).split(";")[0],
 });
 
+const puzzleFen = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1";
+const beforeFen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+
 const createPuzzleQuery = () => {
   const query = {
     select: vi.fn(),
     in: vi.fn(),
     is: vi.fn(async () => ({
-      data: [{ id: 414, fen: "puzzle fen", solution: "18. O-O-O" }],
+      data: [
+        { id: 414, fen: puzzleFen, solution: "2. Nf3", game_moves: ["e4", "e5", "Nf3"] },
+      ],
       error: null,
     })),
   };
@@ -79,7 +84,7 @@ describe("puzzle-play function", () => {
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
-  it("returns playable puzzle data to a signed-in user", async () => {
+  it("returns the opponent intro but not the source game continuation", async () => {
     const query = createPuzzleQuery();
     const dailyAttemptQuery = createDailyAttemptQuery();
     mocks.createClient.mockReturnValue({
@@ -94,7 +99,14 @@ describe("puzzle-play function", () => {
 
     expect(response.statusCode).toBe(200);
     expect(JSON.parse(response.body)).toEqual({
-      puzzles: [{ id: 414, fen: "puzzle fen", solution: "18. O-O-O" }],
+      puzzles: [
+        {
+          id: 414,
+          fen: puzzleFen,
+          solution: "2. Nf3",
+          intro: { beforeFen, san: "e5", uci: "e7e5" },
+        },
+      ],
       blockedPuzzleIds: [],
       dailyLimitReached: false,
     });

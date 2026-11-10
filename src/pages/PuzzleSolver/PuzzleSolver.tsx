@@ -12,6 +12,7 @@ import {
   type FormEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
   useRef,
@@ -105,6 +106,7 @@ import {
   createInitialBoardSnapshot,
   createInitialBoardState,
   createInitialPuzzleSession,
+  excludePuzzleIntroTime,
   getPuzzleAttemptStartedAt,
   puzzleIndexFromParam,
   puzzleSessionReducer,
@@ -257,6 +259,7 @@ export const PuzzleSolverPage = () => {
   const elapsedTimeMsRef = useRef(0);
   const elapsedTimerStartedAtRef = useRef<number | null>(null);
   const elapsedTimerExpiredRef = useRef(false);
+  const [finishedIntroKey, setFinishedIntroKey] = useState("");
   const [elapsedTimeMs, setElapsedTimeMs] = useState(0);
   const [elapsedTimerRunning, setElapsedTimerRunning] = useState(false);
   const [customSetRefreshState, setCustomSetRefreshState] = useState<
@@ -641,8 +644,21 @@ export const PuzzleSolverPage = () => {
   const isAnalysisMode = puzzleSession.mode === "analysis";
   const hasPersistedAttempt = activePuzzleKey ? attemptedPuzzleIds.has(activePuzzleKey) : false;
   const hasSolvedPuzzle = activePuzzleKey ? solvedPuzzleIds.has(activePuzzleKey) : false;
-  const shouldShowPuzzleTimer = showPuzzleTimer && attemptedPuzzleIdsReady && !hasSolvedPuzzle;
   const hasUnratedAttempt = activePuzzleKey ? unratedPuzzleIds.has(activePuzzleKey) : false;
+  const puzzleIntro =
+    !dailyLimitReached &&
+    (!hasSolvedPuzzle || isCustomSetRoute || isDashboardSetSolveMode)
+      ? activePuzzle?.intro
+      : null;
+  const introPending = Boolean(puzzleIntro && finishedIntroKey !== activePuzzleKey);
+  const handleIntroEnd = useCallback(
+    (durationMs: number, completed: boolean) => {
+      if (!hasSolvedPuzzle) excludePuzzleIntroTime(activePuzzleKey, durationMs);
+      if (completed) setFinishedIntroKey(activePuzzleKey);
+    },
+    [activePuzzleKey, hasSolvedPuzzle],
+  );
+  const shouldShowPuzzleTimer = showPuzzleTimer && attemptedPuzzleIdsReady && !hasSolvedPuzzle;
   const unratedReason = getPuzzleUnratedReason({
     username: normalizedUsername,
     author,
@@ -918,8 +934,9 @@ export const PuzzleSolverPage = () => {
     );
   }, [activePuzzleIndex]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     resetPuzzleUiState();
+    setFinishedIntroKey("");
     setMobileFeedback(null);
     setOtherPuzzleAttemptsStatus("idle");
     setOtherPuzzleAttempts([]);
@@ -944,9 +961,9 @@ export const PuzzleSolverPage = () => {
     isDashboardSetSolveMode,
   ]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const shouldStartTimer = Boolean(
-      activePuzzleKey && fen && attemptedPuzzleIdsReady && !hasSolvedPuzzle,
+      activePuzzleKey && fen && attemptedPuzzleIdsReady && !hasSolvedPuzzle && !introPending,
     );
     const elapsedBeforePageLoad = shouldStartTimer
       ? Math.max(0, Date.now() - getPuzzleAttemptStartedAt(activePuzzleKey))
@@ -960,7 +977,7 @@ export const PuzzleSolverPage = () => {
       shouldStartTimer && !timerExpired ? window.performance.now() - initialElapsedTime : null;
     setElapsedTimeMs(initialElapsedTime);
     setElapsedTimerRunning(shouldStartTimer && !timerExpired);
-  }, [activePuzzleKey, attemptedPuzzleIdsReady, fen, hasSolvedPuzzle]);
+  }, [activePuzzleKey, attemptedPuzzleIdsReady, fen, hasSolvedPuzzle, introPending]);
 
   useEffect(() => {
     if (!elapsedTimerRunning || elapsedTimerStartedAtRef.current === null) return undefined;
@@ -1017,7 +1034,7 @@ export const PuzzleSolverPage = () => {
   const canRevealSolution =
     Boolean(fen) &&
     (hasAttemptedActivePuzzle || puzzleSession.attempt === "wrong") &&
-    !isRetryFeedbackActive;
+    !isRetryFeedbackActive && !introPending;
   const solutionButtonTitle = isRetryFeedbackActive
     ? "Find the better move before viewing the solution."
     : hasAttemptedActivePuzzle
@@ -1134,7 +1151,7 @@ export const PuzzleSolverPage = () => {
   };
 
   const handleGiveUp = () => {
-    if (puzzleSession.attempt !== "wrong" || isAnalysisMode) return;
+    if (puzzleSession.attempt !== "wrong" || isAnalysisMode || introPending) return;
 
     const elapsedAtGiveUp =
       elapsedTimerStartedAtRef.current === null
@@ -1493,7 +1510,7 @@ export const PuzzleSolverPage = () => {
       onPlayLine={(ucis) => setSolutionNavigation({ type: "line", ucis })}
       onHoverMove={setAnalysisPreviewMove}
       onEngineMovesChange={setAnalysisEngineMoves}
-      canGiveUp={puzzleSession.attempt === "wrong" && !isAnalysisMode}
+      canGiveUp={puzzleSession.attempt === "wrong" && !isAnalysisMode && !introPending}
       onGiveUp={handleGiveUp}
       canStepBack={canPlaybackPrevious}
       canStepForward={canPlaybackNext}
@@ -1993,8 +2010,11 @@ export const PuzzleSolverPage = () => {
                 </span>
               </div>
             ) : null}
-            {fen ? (
+            {fen && (!puzzleIntro || attemptedPuzzleIdsReady) ? (
               <Chessboard
+                key={activePuzzleId}
+                intro={puzzleIntro}
+                onIntroEnd={handleIntroEnd}
                 puzzleId={activePuzzleId}
                 fen={fen}
                 orientation={orientation}

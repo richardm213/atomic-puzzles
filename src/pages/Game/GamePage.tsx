@@ -2,11 +2,10 @@ import "./GamePage.css";
 
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { INITIAL_FEN } from "chessops/fen";
 import { useMemo } from "react";
 
+import { archivedGameInitialFen } from "../../../shared/domain/chess/initialFen";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
-import { inferAtomic960InitialFen } from "../../lib/games/initialFen";
 import { gameDetailQueryOptions } from "../../lib/games/queries";
 import {
   buildExternalGameUrl,
@@ -25,12 +24,7 @@ export const GamePage = () => {
   const hasValidGameId = Boolean(gameId);
   const gameQuery = useQuery({ ...gameDetailQueryOptions(gameId), enabled: hasValidGameId });
   const game = gameQuery.data;
-  const initialFen = useMemo(() => {
-    const storedFen = game?.initial_fen?.trim();
-    if (storedFen) return storedFen;
-    if (game?.mode === "atomic960") return inferAtomic960InitialFen(game.moves);
-    return INITIAL_FEN;
-  }, [game?.initial_fen, game?.mode, game?.moves]);
+  const initialFen = useMemo(() => (game ? archivedGameInitialFen(game) : null), [game]);
   if (hasValidGameId && gameQuery.isPending) return <RouteLoadingFallback />;
 
   if (!game || !initialFen || !game.moves?.length) {

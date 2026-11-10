@@ -1,4 +1,6 @@
+import { archivedGameInitialFen } from "../../../../shared/domain/chess/initialFen";
 import { isApprovedPuzzleCreator } from "../../../../shared/domain/puzzles/approvedPuzzleCreators";
+import { matchPuzzleGameHistory } from "../../../../shared/domain/puzzles/gameHistory";
 import { normalizePuzzleMotifTags } from "../../../../shared/domain/puzzles/puzzleMotifs";
 import { normalizePuzzlePlayers } from "../../../../shared/domain/puzzles/puzzleSetMetadata";
 import {
@@ -104,6 +106,7 @@ export class PuzzleSubmissionService {
     input: PuzzleSubmissionInput & {
       gameId: string;
       matchName: string;
+      positionMoves?: string[] | undefined;
       renameFrom?: string | undefined;
       allowDifferentStartMove?: boolean | undefined;
     },
@@ -112,7 +115,7 @@ export class PuzzleSubmissionService {
     if (input.renameFrom && (!context.canRenameSet || input.renameFrom !== context.setName)) {
       throw new HttpError(409, "This set can no longer be renamed. Reopen the puzzle editor.");
     }
-    const setName = input.renameFrom ? input.matchName : context.setName || input.matchName;
+    const setName = input.renameFrom ? input.matchName : context.setName;
     if (!setName) throw new HttpError(400, "Enter a name for this match.");
     try {
       const puzzle = this.normalize(username, {
@@ -123,10 +126,30 @@ export class PuzzleSubmissionService {
       if (puzzle.fen !== input.fen) {
         throw new HttpError(400, "The solution must start from the selected position.");
       }
+      const initialFen = archivedGameInitialFen(context.sourceGame);
+      const sourceMoves = input.positionMoves ?? context.sourceGame.moves;
+      const history =
+        initialFen && sourceMoves
+          ? matchPuzzleGameHistory(
+              puzzle.fen,
+              sourceMoves,
+              initialFen,
+              input.positionMoves !== undefined,
+            )
+          : null;
+      if (input.positionMoves && !history) {
+        throw new HttpError(400, "The game moves do not reach the selected position.");
+      }
       const publish = isApprovedPuzzleCreator(username);
       return await this.repository.saveMatchPuzzle({
         username,
-        puzzle: { ...puzzle, event: setName, eventName: setName, eventDate: context.eventDate },
+        puzzle: {
+          ...puzzle,
+          event: setName,
+          eventName: setName,
+          eventDate: context.eventDate,
+          ...(history && initialFen ? { positionMoves: history.moves, gameInitialFen: initialFen } : {}),
+        },
         gameId: input.gameId,
         matchId: context.matchId,
         existingSetId: context.existingSetId,

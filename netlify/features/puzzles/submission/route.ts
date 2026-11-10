@@ -41,6 +41,7 @@ const submissionBodySchema = z.union([
     action: z.literal("add-match-puzzle"),
     gameId: z.string().trim().min(1).max(128),
     matchName: z.string().trim().max(100).default(""),
+    positionMoves: z.array(z.string().trim().min(1).max(16)).max(1000).optional(),
     renameFrom: z.string().min(1).max(1000).optional(),
     allowDifferentStartMove: z.boolean().optional(),
   }),

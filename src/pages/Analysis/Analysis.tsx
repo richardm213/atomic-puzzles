@@ -424,6 +424,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     fen: string;
     orientation: "white" | "black";
     sourcePly: number;
+    sourceMoves: string[];
   } | null>(null);
   const [addedPuzzle, setAddedPuzzle] = useState<PuzzleCreationResult | null>(null);
   const puzzleLauncher = useRef<HTMLButtonElement | null>(null);
@@ -536,6 +537,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     canStepForward,
     currentFen,
     currentPly,
+    currentMoves,
     activeLineIndex,
     lineTargets,
     lines: analysisLines,
@@ -757,6 +759,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
       fen: currentFen,
       orientation: boardState?.turn || gameOrientation,
       sourcePly: currentPly,
+      sourceMoves: currentMoves,
     });
   };
 
@@ -1571,7 +1574,13 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                 <PuzzleComposer
                   publishesDirectly={publishesDirectly}
                   {...(game
-                    ? { match: { gameId: game.game_id, matchId: game.external_match_id } }
+                    ? {
+                        match: {
+                          gameId: game.game_id,
+                          matchId: game.external_match_id,
+                          positionMoves: puzzleDraft.sourceMoves,
+                        },
+                      }
                     : {})}
                   fen={puzzleDraft.fen}
                   solution={navigation || boardDocument.pgn.error ? "" : pgnText}

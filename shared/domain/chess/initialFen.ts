@@ -1,6 +1,6 @@
-import { makeFen } from "chessops/fen";
+import { INITIAL_FEN, makeFen } from "chessops/fen";
 
-import { createAtomicPosition, moveFromUci } from "../puzzles/solutionPgn";
+import { createAtomicPosition, moveFromUci } from "./pgn";
 
 const FILE_NAMES = "abcdefgh";
 const PAWN_RANKS = "/pppppppp/8/8/8/8/PPPPPPPP/";
@@ -95,3 +95,12 @@ export const inferAtomic960InitialFen = (
   }
   return match;
 };
+
+// Use the same game root for the board, analysis and saved puzzle positions.
+export const archivedGameInitialFen = (game: {
+  initial_fen?: string | null | undefined;
+  mode?: string | undefined;
+  moves?: readonly string[] | null | undefined;
+}): string | null =>
+  game.initial_fen?.trim() ||
+  (game.mode === "atomic960" ? inferAtomic960InitialFen(game.moves) : INITIAL_FEN);

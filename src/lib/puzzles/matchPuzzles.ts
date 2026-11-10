@@ -7,7 +7,7 @@ const matchPuzzleRequest = createPostApi("/api/puzzles/submit", {
 });
 
 const matchContextSchema = z.object({
-  setName: z.string().nullable(),
+  setName: z.string(),
   players: z.tuple([z.string(), z.string()]),
   canRenameSet: z.boolean().default(false),
 });
@@ -34,6 +34,7 @@ export const fetchMatchPuzzleContext = (gameId: string) =>
 
 export const addMatchPuzzle = (input: {
   gameId: string;
+  positionMoves: string[];
   fen: string;
   solution: string;
   opaStyle: boolean;

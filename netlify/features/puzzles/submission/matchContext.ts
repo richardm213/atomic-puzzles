@@ -11,6 +11,9 @@ type MatchGame = {
   result: number;
   start_ts: number;
   tournament: string | null;
+  initial_fen?: string | null;
+  mode?: string;
+  moves?: string[] | null;
 };
 
 type TournamentRound = {
@@ -129,21 +132,22 @@ export const loadMatchPuzzleContext = async (
   }
   const round = rounds.data ? tournamentRoundLabel(rounds.data) : "";
   const tournamentName = [tournamentTitle, round].filter(Boolean).join(" ");
-  const historicalName = historicalPuzzle
-    ? historicalPuzzle.event_name?.trim() || historicalPuzzle.event?.trim() || `Match ${matchId}`
-    : "";
-  const automaticName = tournamentName || historicalName;
+  const historicalName = historicalPuzzle?.event_name?.trim() || historicalPuzzle?.event?.trim();
+  const defaultName = tournamentName || historicalName || `Match ${matchId}`;
   const setName =
     existingSet?.event_name ??
-    (historicalSetIsShared ? `${automaticName} · ${matchId}` : automaticName || null);
+    (historicalSetIsShared && !defaultName.includes(matchId)
+      ? `${defaultName} · ${matchId}`
+      : defaultName);
   const player1IsWhite = (game.result & 1) === 0;
   const archiveDate = new Date(game.start_ts);
 
   return {
     matchId,
+    sourceGame: game,
     existingSetId: existingSet?.id ?? null,
     setName,
-    canRenameSet: !rounds.data && !game.tournament?.trim() && Boolean(setName?.includes(matchId)),
+    canRenameSet: !rounds.data && !game.tournament?.trim() && setName.includes(matchId),
     eventDate:
       rounds.data?.played_on ??
       (Number.isFinite(archiveDate.getTime()) ? archiveDate.toISOString().slice(0, 10) : ""),

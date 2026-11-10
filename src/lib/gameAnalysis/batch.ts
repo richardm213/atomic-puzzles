@@ -1,8 +1,6 @@
-import { INITIAL_FEN } from "chessops/fen";
+import { archivedGameInitialFen } from "../../../shared/domain/chess/initialFen";
 
-import type { ArchiveGame } from "../archive/games";
 import { fetchArchiveGame } from "../archive/games";
-import { inferAtomic960InitialFen } from "../games/initialFen";
 import {
   fetchGameAnalysisStatuses,
   type GameAnalysisStatus,
@@ -33,13 +31,6 @@ export const parseGameNumberSelection = (value: string, gameCount: number): numb
   return [...selected].sort((left, right) => left - right);
 };
 
-const initialFenForGame = (game: ArchiveGame): string | null => {
-  const stored = game.initial_fen?.trim();
-  if (stored) return stored;
-  if (game.mode === "atomic960") return inferAtomic960InitialFen(game.moves);
-  return INITIAL_FEN;
-};
-
 export type BatchAnalysisResult = {
   requestedGameIds: string[];
   balance: number | null;
@@ -63,7 +54,7 @@ export const requestGameAnalysisBatch = async (
         if (!gameId) continue;
         try {
           const game = await fetchArchiveGame(gameId);
-          const initialFen = game ? initialFenForGame(game) : null;
+          const initialFen = game ? archivedGameInitialFen(game) : null;
           if (!game?.moves?.length || !initialFen) {
             throw new Error("Complete archived moves are unavailable.");
           }

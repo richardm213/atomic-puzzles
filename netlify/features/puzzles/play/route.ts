@@ -4,6 +4,7 @@ import {
   DAILY_PUZZLE_ATTEMPT_LIMIT,
   utcDayBounds,
 } from "../../../../shared/domain/puzzles/dailyAttemptLimit";
+import { puzzleContextFromGameHistory } from "../../../../shared/domain/puzzles/gameHistory";
 import {
   authenticateRequest,
   identityResponse,
@@ -30,8 +31,12 @@ const PUZZLE_RATING_RELATION =
   "rating_state:puzzle_ratings!puzzle_ratings_puzzle_id_fkey(rating,rating_deviation,attempts,successes,computed_level,human_level,human_rated_by,human_rated_at,updated_at)";
 const DETAIL_COLUMNS =
   `id,fen,solution,author,created_at,players,puzzle_set_id,${PUZZLE_SET_RELATION},` +
+  "game_moves,position_moves,game_initial_fen," +
   `${PUZZLE_SET_MEMBERSHIP_RELATION},white_player,black_player,explanation,tags,opa_style,` +
   PUZZLE_RATING_RELATION;
+
+type PuzzleDetailRow = Parameters<typeof puzzleContextFromGameHistory>[0] &
+  Record<string, unknown>;
 
 const isSequentialBatch = (ids: number[]): boolean => {
   const sorted = [...ids].sort((left, right) => left - right);
@@ -94,9 +99,19 @@ export const puzzlePlayRoute = async (event: FunctionEvent) => {
         .is("deleted_at", null)
     : { data: [], error: null };
   if (error) throw new Error(`Unable to load puzzles: ${error.message}`);
+  const rows = (Array.isArray(data) ? data : []) as unknown as PuzzleDetailRow[];
 
   return identityResponse(identity, 200, {
-    puzzles: Array.isArray(data) ? data : [],
+    // Do not expose the source continuation: it can give away the solution.
+    puzzles: rows.map(({ game_moves, position_moves, game_initial_fen, ...puzzle }) => ({
+      ...puzzle,
+      ...puzzleContextFromGameHistory({
+        fen: puzzle.fen,
+        game_moves,
+        position_moves,
+        game_initial_fen,
+      }),
+    })),
     blockedPuzzleIds,
     dailyLimitReached: blockedPuzzleIds.length > 0,
   });

@@ -101,6 +101,41 @@ describe("Chessboard orchestration", () => {
     mocks.playBoardMoveSound.mockClear();
   });
 
+  it("plays the opponent move before enabling puzzle input without adding a solution ply", () => {
+    vi.useFakeTimers();
+    try {
+      const fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+      const onIntroEnd = vi.fn();
+      const onAttemptResolved = vi.fn();
+      const states = renderBoard({
+        fen,
+        orientation: "black",
+        analysisMode: false,
+        intro: { beforeFen: STARTING_FEN, san: "e4", uci: "e2e4" },
+        solution: "1... e5",
+        onIntroEnd,
+        onAttemptResolved,
+      });
+      expect(mocks.set).toHaveBeenCalledWith(expect.objectContaining({ fen: STARTING_FEN }));
+      play("e7", "e5");
+      act(() => vi.advanceTimersByTime(300));
+      expect(mocks.set).toHaveBeenCalledWith(
+        expect.objectContaining({ fen, lastMove: ["e2", "e4"] }),
+      );
+      play("e7", "e5");
+      expect(onIntroEnd).not.toHaveBeenCalled();
+      expect(onAttemptResolved).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(120));
+      expect(onIntroEnd).toHaveBeenCalledWith(420, true);
+      expect(states.at(-1)?.lineMoves).toEqual([]);
+      play("e7", "e5");
+      act(() => vi.advanceTimersByTime(250));
+      expect(onAttemptResolved).toHaveBeenCalledWith(expect.objectContaining({ puzzleCorrect: true }));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("does not mutate previously emitted move arrays", () => {
     const states = renderBoard();
     const initialState = states.at(-1)!;

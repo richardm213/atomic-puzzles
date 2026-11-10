@@ -1,3 +1,5 @@
+import type { PuzzleIntro } from "../../shared/domain/puzzles/gameHistory";
+
 export type PuzzleSolutionField = "solution" | "moves" | "line" | "pgn" | "variation";
 
 export type RawPuzzleSetRow = {
@@ -43,6 +45,7 @@ export type RawPuzzleRow = {
   white_player?: string | null;
   black_player?: string | null;
   game_id?: string | number | null;
+  intro?: PuzzleIntro | null;
   opa_style?: boolean | null;
   rating_state?: RawPuzzleRatingRow | RawPuzzleRatingRow[] | null;
   [key: string]: unknown;

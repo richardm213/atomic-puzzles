@@ -28,7 +28,10 @@ alter table public.puzzles
   add column if not exists black_player text not null default '';
 
 alter table public.puzzles
-  add column if not exists opa_style boolean not null default false;
+  add column if not exists opa_style boolean not null default false,
+  add column if not exists game_moves jsonb,
+  add column if not exists position_moves jsonb,
+  add column if not exists game_initial_fen text;
 
 alter table public.puzzles
   drop constraint if exists puzzles_event_date_format_check;
@@ -41,7 +44,9 @@ alter table public.puzzles_queue
   add column if not exists author text not null default '',
   add column if not exists tags text[] not null default '{}'::text[],
   add column if not exists game_id text,
-  add column if not exists match_id text;
+  add column if not exists match_id text,
+  add column if not exists position_moves jsonb,
+  add column if not exists game_initial_fen text;
 
 -- Source metadata is assigned by the archived-game submission, not by review edits.
 create or replace function public.preserve_queued_match_puzzle_source()
@@ -552,6 +557,8 @@ declare
   requested_name text := nullif(btrim(p_puzzle->>'eventName'), '');
   rename_existing boolean := false;
   saved_puzzle_id bigint;
+  source_moves jsonb := p_puzzle->'positionMoves';
+  source_fen text := p_puzzle->>'gameInitialFen';
   queued public.puzzles_queue%rowtype;
 begin
   perform pg_advisory_xact_lock(hashtextextended(p_match_id, 1));
@@ -603,7 +610,10 @@ begin
       p_submitted_by,
       p_allow_different_start_move
     ))[1];
-    update public.puzzles set game_id = p_game_id, match_id = p_match_id where id = saved_puzzle_id;
+    update public.puzzles
+    set game_id = p_game_id, match_id = p_match_id,
+        position_moves = source_moves, game_initial_fen = source_fen
+    where id = saved_puzzle_id;
   else
     queued := public.enqueue_puzzle_submission(
       p_puzzle->>'fen', p_puzzle->>'solution', set_name, set_name, set_date, set_players,
@@ -612,7 +622,10 @@ begin
       array(select jsonb_array_elements_text(p_puzzle->'tags')),
       p_submitted_by, p_allow_different_start_move
     );
-    update public.puzzles_queue set game_id = p_game_id, match_id = p_match_id where id = queued.id;
+    update public.puzzles_queue
+    set game_id = p_game_id, match_id = p_match_id,
+        position_moves = source_moves, game_initial_fen = source_fen
+    where id = queued.id;
   end if;
 
   if match_set.id is null then
@@ -734,7 +747,8 @@ begin
   begin
     insert into public.puzzles (
       id, fen, solution, event, event_name, event_date, players,
-      white_player, black_player, explanation, opa_style, author, tags, game_id, match_id
+      white_player, black_player, explanation, opa_style, author, tags, game_id, match_id,
+      position_moves, game_initial_fen
     )
     values (
       p_puzzle_id,
@@ -751,7 +765,9 @@ begin
       coalesce(nullif(btrim(queued.author), ''), queued.submitted_by),
       queued.tags,
       queued.game_id,
-      queued.match_id
+      queued.match_id,
+      queued.position_moves,
+      queued.game_initial_fen
     );
   exception
     when unique_violation then
