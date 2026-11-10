@@ -26,6 +26,8 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
         score: candidate.score,
         point: candidate.point,
         mate: candidate.mate,
+        origin: candidate.origin,
+        variationSource: candidate.variationSource,
         nodeBackedPlies: candidate.nodeBackedPlies ?? null,
         searchDepth: candidate.depth ?? null,
         pv: candidate.pv,
@@ -39,6 +41,8 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
         mate: line.mate,
         // A stored line's depth is the search depth used to produce the game report. It is not
         // AtomicDB's `node_backed_plies`.
+        origin: undefined,
+        variationSource: undefined,
         nodeBackedPlies: null,
         searchDepth: line.depth,
         pv: line.pv,
@@ -50,6 +54,8 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
     principalVariations[move] = pv.length > 0 ? pv : [move];
     moves.push({
       uci: move,
+      ...(candidate.origin ? { origin: "engine" as const } : {}),
+      ...(candidate.variationSource ? { variationSource: "engine" as const } : {}),
       outcome: outcome(candidate.status),
       closure: candidate.closure,
       score: candidate.score,
@@ -63,6 +69,7 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
   if (
     stored.bestMove &&
     UCI_MOVE.test(stored.bestMove) &&
+    ((stored.variationPlies ?? 0) < GAME_ANALYSIS_VARIATION_SIZE || moves.length === 0) &&
     !moves.some((move) => move.uci === stored.bestMove)
   ) {
     moves.unshift({

@@ -10,13 +10,20 @@ import {
   parseStoredAtomicDbVariationBundle,
   unavailableGameAnalysisOpening,
   type PersistedGameAnalysisSummary,
+  type StoredAtomicDbCandidate,
   type StoredAtomicDbPosition,
 } from "../../../shared/domain/gameAnalysis";
+import { mergeOpeningVariationSupplement } from "../../../shared/domain/gameAnalysisVariations";
 import { queryAtomicDbPrincipalVariations } from "../../lib/atomicDb";
 
 const OPENING_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
 
-type OpeningRow = { fen_key: string; data: StoredAtomicDbPosition; fetched_at: string };
+type OpeningRow = {
+  fen_key: string;
+  data: StoredAtomicDbPosition;
+  fetched_at: string;
+  supplement?: StoredAtomicDbCandidate[] | null;
+};
 
 export const loadGameAnalysisOpenings = async (
   supabase: SupabaseClient,
@@ -27,7 +34,7 @@ export const loadGameAnalysisOpenings = async (
   for (let start = 0; start < keys.length; start += 50) {
     const { data, error } = await supabase
       .from("game_analysis_openings")
-      .select("fen_key,data,fetched_at")
+      .select("fen_key,data,fetched_at,supplement")
       .in("fen_key", keys.slice(start, start + 50));
     if (error) throw new Error(`Unable to load opening evaluations: ${error.message}`);
     for (const row of (data ?? []) as OpeningRow[]) openings.set(row.fen_key, row);
@@ -48,7 +55,15 @@ export const queryGameAnalysisVariations = async (
 export const openingEvaluationData = (
   openings: ReadonlyMap<string, OpeningRow>,
 ): Map<string, StoredAtomicDbPosition> =>
-  new Map([...openings].map(([key, row]) => [key, fillStoredAtomicDbVariations(row.data)]));
+  new Map(
+    [...openings].map(([key, row]) => [
+      key,
+      mergeOpeningVariationSupplement(
+        fillStoredAtomicDbVariations(row.data),
+        row.supplement ?? null,
+      ),
+    ]),
+  );
 
 export const hydrateGameAnalysisPositions = async (
   supabase: SupabaseClient,

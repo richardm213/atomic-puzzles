@@ -36,6 +36,8 @@ const candidateSchema = z.object({
   score: z.number().nullable(),
   point: z.number().nullable(),
   mate: z.number().nullable(),
+  origin: z.literal("atomic-stockfish").optional(),
+  variationSource: z.literal("atomic-stockfish").optional(),
   nodeBackedPlies: z.number().int().nonnegative().nullable().optional(),
   depth: z.number().int().nonnegative().nullable().optional(),
   pv: z.array(z.string()),

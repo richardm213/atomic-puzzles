@@ -34,3 +34,15 @@ restores the exact game FENs, scores, and ply order before returning the review.
 Leave existing shared-cache rows alone during the rollout: the old worker can
 still use them. The updated worker and backfill use the dedicated cache for
 those FENs, regardless of what the legacy shared cache contains.
+
+### Fill unavailable continuations
+
+Apply `supabase/game_analysis_opening_supplement.sql` in Firefox before deploying
+the supplement reader. Point `GAME_ANALYSIS_FILL_ENGINE` at the native
+Atomic-Stockfish build corresponding to the browser engine, and
+`GAME_ANALYSIS_FILL_NETWORK` at its NNUE file. Run the backfill with both
+variables set to supplement gaps after the normal AtomicDB lookup. Add
+`--fill-existing` to repair the current saved reviews without requesting new
+game positions. The engine preserves the known AtomicDB line prefix and
+evaluation; it supplies only missing continuations and move slots. The
+separate opening supplement never changes the AtomicDB fetch timestamp.

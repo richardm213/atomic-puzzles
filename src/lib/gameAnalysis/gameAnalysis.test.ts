@@ -13,6 +13,10 @@ import {
   referenceGameAnalysisOpenings,
   type StoredAtomicDbPosition,
 } from "../../../shared/domain/gameAnalysis";
+import {
+  completeGameAnalysisVariations,
+  gameAnalysisVariationGaps,
+} from "../../../shared/domain/gameAnalysisVariations";
 import { fetchGameAnalysis } from "./gameAnalysis";
 
 const WHITE_FEN = "8/8/8/8/8/8/4P3/4K2k w - - 0 1";
@@ -109,6 +113,39 @@ describe("AtomicDB game analysis classification", () => {
       first,
     ]);
     expect(alignGameAnalysisPositionFens(saved, [start!, second!])).toEqual(saved);
+  });
+
+  it("fills a short backed line without replacing its prefix or evaluation", async () => {
+    const root = position(INITIAL_FEN, 80, "g1f3");
+    const candidates = [
+      ["g1f3"],
+      ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5"],
+      ["d2d4", "d7d5", "g1f3", "g8f6", "e2e3"],
+      ["g1h3", "h7h6", "d2d4", "d7d5", "c1f4"],
+      ["e2e3", "e7e6", "g1f3", "g8f6", "d2d4"],
+    ].map((pv) => ({
+      move: pv[0]!,
+      status: "UNKNOWN",
+      closure: null,
+      score: 80,
+      point: 32,
+      mate: null,
+      pv,
+    }));
+    const afterNf3 = buildGamePositionFens(INITIAL_FEN, ["g1f3"])[1];
+    const search = vi.fn(async () => [
+      { pv: ["f7f6", "b1c3", "g8h6", "g2g4"], cp: 0, mate: null, depth: 14 },
+    ]);
+    const filled = await completeGameAnalysisVariations({ ...root, candidates }, search);
+    expect(search.mock.calls).toEqual([[afterNf3, 1]]);
+    expect(filled.candidates?.[0]).toMatchObject({
+      pv: ["g1f3", "f7f6", "b1c3", "g8h6", "g2g4"],
+      score: 80,
+      point: 32,
+      variationSource: "atomic-stockfish",
+    });
+    expect(filled.candidates?.slice(1)).toEqual(candidates.slice(1));
+    expect(gameAnalysisVariationGaps(filled)).toBe(false);
   });
 
   it("charts AtomicDB's backed position value instead of the current engine pass", () => {

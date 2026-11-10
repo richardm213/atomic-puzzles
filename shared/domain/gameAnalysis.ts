@@ -39,6 +39,8 @@ export type StoredAtomicDbCandidate = {
   score: number | null;
   point: number | null;
   mate: number | null;
+  origin?: "atomic-stockfish" | undefined;
+  variationSource?: "atomic-stockfish" | undefined;
   nodeBackedPlies?: number | null | undefined;
   depth?: number | null | undefined;
   pv: string[];
