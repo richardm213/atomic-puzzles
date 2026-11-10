@@ -27,6 +27,10 @@ const AtomicChessPage = lazyRouteComponent(
   () => import("./pages/AtomicChess/AtomicChess"),
   "AtomicChessPage",
 );
+const AtomicLessonPage = lazyRouteComponent(
+  () => import("./pages/AtomicLesson/AtomicLesson"),
+  "AtomicLessonPage",
+);
 const AtomicOpeningsPage = lazyRouteComponent(
   () => import("./pages/AtomicOpenings/AtomicOpenings"),
   "AtomicOpeningsPage",
@@ -236,6 +240,12 @@ const atomicChessRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/atomic-chess",
   component: AtomicChessPage,
+});
+
+const atomicLessonRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/atomic-chess/lesson",
+  component: AtomicLessonPage,
 });
 
 const atomicOpeningsRoute = createRoute({
@@ -886,6 +896,7 @@ const lichessAuthCallbackRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   atomicChessRoute,
+  atomicLessonRoute,
   atomicOpeningsRoute,
   rankingsRoute,
   yearlyRankingsRoute,

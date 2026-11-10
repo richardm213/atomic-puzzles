@@ -166,6 +166,7 @@ export const AtomicChessGuideContent = ({
           exploding the opposing king or by checkmate.
         </p>
         <div className="atomicChessIntroLinks">
+          <LinkComponent href="/atomic-chess/lesson">Start the interactive lesson</LinkComponent>
           <LinkComponent href={ATOMIC_OPENINGS_PATH}>Browse openings and variations</LinkComponent>
         </div>
       </section>
