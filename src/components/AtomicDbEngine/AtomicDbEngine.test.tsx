@@ -96,16 +96,24 @@ describe("AtomicDbEngine", () => {
     expect(onDisable).not.toHaveBeenCalled();
   });
 
-  it("links the AtomicDB source label to the current database position", () => {
+  it("links to AtomicDB and lists Stockfish only when it scores a substantial share of visible moves", () => {
     const position = parseAtomicDbResponse({
       key: "atomic-position-key",
       status: "UNKNOWN",
       score: 1100,
       best_move: "g1f3",
-      moves: [{ uci: "g1f3", status: "UNKNOWN", score: 1100 }],
-    });
-
-    render(
+      moves: ["g1f3", "e2e4", "d2d4", "g1h3", "c2c4"].map((uci) => ({
+        uci,
+        status: "UNKNOWN",
+        score: 1100,
+      })),
+    })!;
+    position.moves = position.moves.map((move, index) => ({
+      ...move,
+      ...(index === 0 ? { variationSource: "engine" as const } : {}),
+      ...(index >= 3 ? { origin: "engine" as const } : {}),
+    }));
+    const controls = (lineCount: number) => (
       <AtomicDbEngineControls
         fen={STARTING_FEN}
         analysis={{
@@ -115,19 +123,21 @@ describe("AtomicDbEngine", () => {
           result: { fen: STARTING_FEN, position },
           principalVariations: {},
         }}
-        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: true }}
+        settings={{ enabled: true, lineCount, showFollowUpMoves: true }}
         setSettings={vi.fn()}
         onDisable={vi.fn()}
-      />,
+      />
     );
-
-    expect(screen.getByRole("link", { name: "Open this position on AtomicDB" })).toHaveAttribute(
+    const { rerender } = render(controls(4));
+    const source = screen.getByRole("link", { name: "Open this position on AtomicDB" });
+    expect(source).toHaveAttribute(
       "href",
       "https://belzedar.duckdns.org/atomicdb/explore/atomic-position-key/",
     );
-    expect(screen.getByRole("link", { name: "Open this position on AtomicDB" })).toHaveTextContent(
-      "AtomicDB + Atomic-Stockfish",
-    );
+    expect(source).toHaveTextContent(/^AtomicDB$/);
+
+    rerender(controls(5));
+    expect(source).toHaveTextContent("AtomicDB + Atomic-Stockfish");
   });
 
   it("shows an evaluation instead of a game result for a non-terminal solved position", () => {

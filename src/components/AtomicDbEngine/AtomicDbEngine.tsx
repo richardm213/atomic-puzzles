@@ -50,16 +50,30 @@ type AtomicDbEngineControlsProps = {
   onToggleNotation?: () => void;
 };
 
-const analysisSourceLabel = (analysis: AtomicDbAnalysisState, threatMode = false): string => {
+const analysisSourceLabel = (
+  analysis: AtomicDbAnalysisState,
+  view: AtomicDbView,
+  threatMode: boolean,
+  lineCount?: number,
+): string => {
   const engine = localAnalysisEngineLabel(analysis.engine ?? "atomic-stockfish");
-  const source =
-    analysis.source === "terminal"
-      ? "Game over"
-      : analysis.source === "engine"
-        ? engine
-        : analysis.source === "mixed"
-          ? `AtomicDB + ${engine}`
-          : "AtomicDB";
+  let source = "AtomicDB";
+  if (analysis.source === "terminal") {
+    source = "Game over";
+  } else if (analysis.source === "engine") {
+    source = engine;
+  } else if (analysis.source === "mixed" && lineCount !== undefined) {
+    const evaluations = (view.position?.moves ?? [])
+      .slice(0, lineCount)
+      .filter((move) => getAtomicDbMoveEvaluation(move, view.fen).type !== "unknown");
+    const engineCount = evaluations.filter((move) => move.origin === "engine").length;
+    // Extending an AtomicDB variation doesn't change where its evaluation came from.
+    if (!evaluations.length || engineCount * 3 > evaluations.length) {
+      source = `AtomicDB + ${engine}`;
+    }
+  } else if (analysis.source === "mixed") {
+    source = `AtomicDB + ${engine}`;
+  }
   return threatMode ? `Threat · ${source}` : source;
 };
 
@@ -98,7 +112,7 @@ export const AtomicDbEngineControls = ({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const view = useRetainedAtomicDbView(analysis, fen);
-  const sourceLabel = analysisSourceLabel(analysis, threatMode);
+  const sourceLabel = analysisSourceLabel(analysis, view, threatMode, settings.lineCount);
   const finalResult = analysis.source === "terminal" ? resultLabel(view) : null;
   const atomicDbHref =
     !threatMode &&
@@ -297,7 +311,7 @@ export const AtomicDbEngine = ({
   const { enabled, lineCount, showFollowUpMoves } = settings;
   const { status, error } = analysis;
   const view = useRetainedAtomicDbView(analysis, fen);
-  const sourceLabel = analysisSourceLabel(analysis, threatMode);
+  const sourceLabel = analysisSourceLabel(analysis, view, threatMode, settings.lineCount);
   const isTerminal = analysis.source === "terminal";
   const { position } = view;
   const visibleMoves = useMemo(
@@ -479,7 +493,9 @@ export const AtomicDbEvalBar = ({
   const { status } = analysis;
   const view = useRetainedAtomicDbView(analysis, fen);
   const displayedStatus = neutral ? "ready" : status;
-  const sourceLabel = neutral ? "Wolfrandom opening" : analysisSourceLabel(analysis, threatMode);
+  const sourceLabel = neutral
+    ? "Wolfrandom opening"
+    : analysisSourceLabel(analysis, view, threatMode);
   const displayedEvaluation = neutral
     ? "0.0"
     : ((analysis.source === "terminal" ? resultLabel(view) : null) ?? view.evaluationLabel);
