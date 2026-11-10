@@ -757,13 +757,13 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   );
   const blindMode = Boolean(blindLeadIn);
   const blindPosition = !isAnalysisMode ? blindLeadIn : null;
-  const puzzleIntro =
+  const autoplayIntro = Boolean(
+    activePuzzle?.intro &&
     !blindMode &&
     !dailyLimitReached &&
-    (!hasSolvedPuzzle || isCustomSetRoute || isDashboardSetSolveMode)
-      ? activePuzzle?.intro
-      : null;
-  const introPending = Boolean(puzzleIntro && finishedIntroKey !== activePuzzleKey);
+    (!hasSolvedPuzzle || isCustomSetRoute || isDashboardSetSolveMode),
+  );
+  const introPending = autoplayIntro && finishedIntroKey !== activePuzzleKey;
   const handleIntroEnd = useCallback(
     (durationMs: number, completed: boolean) => {
       if (!testMode && !hasSolvedPuzzle) excludePuzzleIntroTime(activePuzzleKey, durationMs);
@@ -2132,12 +2132,12 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
               </div>
             ) : null}
             {fen &&
-            (!puzzleIntro || attemptedPuzzleIdsReady) &&
+            (!autoplayIntro || attemptedPuzzleIdsReady) &&
             (!blindPlies || blindEntryReady) ? (
               <Chessboard
                 key={`${activePuzzleId}:${blindMode}`}
                 intro={activePuzzle?.intro}
-                autoplayIntro={Boolean(puzzleIntro)}
+                autoplayIntro={autoplayIntro}
                 blindFen={blindPosition?.beforeFen}
                 onIntroEnd={handleIntroEnd}
                 puzzleId={activePuzzleId}

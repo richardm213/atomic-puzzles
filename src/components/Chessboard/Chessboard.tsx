@@ -543,10 +543,7 @@ const ChessboardComponent = ({
       });
 
       if (analysisModeRef.current) {
-        if (previousActiveLine.source !== "custom") {
-          const index = saveVariation(customVariationsRef.current, history);
-          activeLineRef.current = { source: "custom", index };
-        } else if (createsCustomBranch) {
+        if (previousActiveLine.source !== "custom" || createsCustomBranch) {
           const index = saveVariation(customVariationsRef.current, history);
           activeLineRef.current = { source: "custom", index };
         } else {
@@ -579,7 +576,7 @@ const ChessboardComponent = ({
         orientation: orientationRef.current,
         coordinates: coordinatesRef.current,
         turnColor: referenceFen ? colorFromFen(referenceFen) : displayTurn,
-        lastMove: referenceFen ? [] : (lastMove ?? []),
+        lastMove: referenceFen || viewingIntroRef.current ? [] : (lastMove ?? []),
         check: !referenceFen && displayCheck,
         movable,
       });
@@ -627,26 +624,34 @@ const ChessboardComponent = ({
   );
 
   const navigateTo = useCallback(
-    (targetIndex: number): void => {
+    (target: number | "beforeIntro"): boolean => {
       const history = historyRef.current;
       assertBoardHistory(history);
-      if (targetIndex < 0 || targetIndex >= history.plies.length) return;
+      const beforeIntro = target === "beforeIntro";
+      const targetIndex = beforeIntro ? 0 : target;
+      if (targetIndex < 0 || targetIndex >= history.plies.length) return false;
+      if (beforeIntro && (blindFenRef.current || introPlayingRef.current)) return false;
+
+      const targetFen = beforeIntro
+        ? initialIntroRef.current?.beforeFen
+        : history.plies[targetIndex]?.fen;
+      if (targetFen === undefined) return false;
+      const { position } = tryCreateAtomicPosition(targetFen);
+      if (!position) return false;
 
       clearMoveEvaluationTimer();
-
-      const targetFen = history.plies[targetIndex]?.fen;
-      if (targetFen === undefined) return;
-      const { position } = tryCreateAtomicPosition(targetFen);
-      if (!position) return;
-
       history.index = targetIndex;
-      viewingIntroRef.current = false;
+      // The opponent's move precedes puzzle ply zero; inspecting its starting
+      // position must not add a training ply or briefly activate the puzzle root.
+      viewingIntroRef.current = beforeIntro;
       boardStatusRef.current.locked = isSolutionPlaybackLocked();
       recomputeTrainingFromHistory(targetIndex);
 
       syncBoard(position, history.plies[targetIndex]?.lastMove);
+      return true;
     },
     [
+      blindFenRef,
       boardStatusRef,
       clearMoveEvaluationTimer,
       isSolutionPlaybackLocked,
@@ -759,24 +764,10 @@ const ChessboardComponent = ({
     [showCustomLine, showSolutionLine],
   );
 
-  // The opponent's move precedes puzzle ply zero. Inspect it without inserting
-  // a ply into training history or changing solution/variation indexes.
-  const showBeforeIntro = useCallback((): boolean => {
-    const openingMove = initialIntroRef.current;
-    if (!openingMove || blindFenRef.current || introPlayingRef.current) return false;
-    const { position } = tryCreateAtomicPosition(openingMove.beforeFen);
-    if (!position) return false;
-    navigateTo(0);
-    viewingIntroRef.current = true;
-    syncBoard(position, undefined);
-    return true;
-  }, [blindFenRef, navigateTo, syncBoard]);
-
   const navigatePlayback = useCallback(
     (command: PlaybackCommand): void => {
       if (introPlayingRef.current) return;
       const history = historyRef.current;
-      if (command === "start" && showBeforeIntro()) return;
       if (viewingIntroRef.current) {
         if (command === "previous" || command === "previousOption") return;
         if (command === "next" || command === "nextOption") {
@@ -784,7 +775,6 @@ const ChessboardComponent = ({
           return;
         }
       }
-      if (command === "previous" && history.index === 0 && showBeforeIntro()) return;
       let resolvedCommand = command;
 
       if (command === "previousOption" || command === "nextOption") {
@@ -844,6 +834,12 @@ const ChessboardComponent = ({
         resolvedCommand = command === "previousOption" ? "start" : "end";
       }
 
+      if (
+        (resolvedCommand === "start" || (resolvedCommand === "previous" && history.index === 0)) &&
+        navigateTo("beforeIntro")
+      )
+        return;
+
       if (resolvedCommand === "previous") {
         alternativeContinuationSelectedRef.current = false;
         const targetPly = history.index - 1;
@@ -895,7 +891,6 @@ const ChessboardComponent = ({
       analysisModeRef,
       navigateTo,
       preserveAnalysisHistoryOnSolutionChange,
-      showBeforeIntro,
       resumeDefaultMainLine,
       showCustomLine,
       showSolutionLine,
@@ -1649,17 +1644,19 @@ const ChessboardComponent = ({
     }
 
     // Keep the solution rooted at ply zero. Only the displayed board is rewound.
+    const board = cgRef.current;
+    const notifyIntroEnd = onIntroEndRef.current;
     const startedAt = Date.now();
     const reducedMotion = prefersReducedMotion();
     const setIntroInteraction = (enabled: boolean) => {
-      cgRef.current?.set({ draggable: { enabled }, selectable: { enabled } });
+      board?.set({ draggable: { enabled }, selectable: { enabled } });
     };
     introPlayingRef.current = true;
     setIntroInteraction(false);
     let finishTimer: number | undefined;
     let animationFrame: number | undefined;
     const finish = () => {
-      if (cgRef.current?.state.animation?.current) {
+      if (board?.state.animation?.current) {
         animationFrame = window.requestAnimationFrame(finish);
         return;
       }
@@ -1667,10 +1664,10 @@ const ChessboardComponent = ({
       introPlayedRef.current = true;
       setIntroInteraction(true);
       showPuzzlePosition();
-      onIntroEndRef.current?.(Date.now() - startedAt, true);
+      notifyIntroEnd?.(Date.now() - startedAt, true);
     };
     if (!reducedMotion) {
-      cgRef.current?.set({
+      board?.set({
         fen: openingMove.beforeFen,
         animation: { enabled: false },
         turnColor: colorFromFen(openingMove.beforeFen),
@@ -1686,7 +1683,7 @@ const ChessboardComponent = ({
           return;
         }
         // Animate the board without publishing the new position until input unlocks.
-        cgRef.current?.set({
+        board?.set({
           animation: { enabled: true, duration: PUZZLE_INTRO_ANIMATION_MS },
           fen: makeFen(position.toSetup()),
           turnColor: position.turn,
@@ -1703,10 +1700,10 @@ const ChessboardComponent = ({
       window.clearTimeout(finishTimer);
       if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame);
       if (introPlayingRef.current) {
-        onIntroEndRef.current?.(Date.now() - startedAt, false);
+        notifyIntroEnd?.(Date.now() - startedAt, false);
         introPlayingRef.current = false;
         setIntroInteraction(true);
-        cgRef.current?.set({ animation: { enabled: true } });
+        board?.set({ animation: { enabled: true } });
       }
     };
   }, [
@@ -1730,7 +1727,7 @@ const ChessboardComponent = ({
 
   const previousBlindFenRef = useRef(blindFen);
   useEffect(() => {
-    if (introPlayingRef.current || viewingIntroRef.current) {
+    if (introPlayingRef.current) {
       cgRef.current?.set({ orientation, coordinates });
       return;
     }
@@ -1748,7 +1745,7 @@ const ChessboardComponent = ({
     const displayCheck =
       displayTurn === position.turn && position.isCheck() ? position.turn : false;
 
-    const lastMove = history.plies[history.index]?.lastMove;
+    const lastMove = viewingIntroRef.current ? undefined : history.plies[history.index]?.lastMove;
     const blindViewChanged = previousBlindFenRef.current !== blindFen;
     previousBlindFenRef.current = blindFen;
     cgRef.current?.set({

@@ -75,11 +75,7 @@ export const MoveNotation = ({
       onCycleOptions={onCycleOptions}
       assessments={assessments}
       onDelete={onDelete}
-      onAnnotate={
-        onAnnotate
-          ? (lineIndex, moveIndex, annotation) => onAnnotate(lineIndex, moveIndex, annotation)
-          : undefined
-      }
+      onAnnotate={onAnnotate}
     />
   );
 };

@@ -173,8 +173,16 @@ describe("Chessboard orchestration", () => {
         rerender(<Chessboard {...props} solutionNavigation={{ type: "command", command }} />);
       };
       expect(states.at(-1)).toMatchObject({ fen, lineIndex: 0, viewingIntro: false });
+      const initialStateCount = states.length;
+      mocks.playPremove.mockClear();
       command("previous");
       expect(states.at(-1)).toMatchObject({ fen: STARTING_FEN, lineIndex: 0, viewingIntro: true });
+      expect(states).toHaveLength(initialStateCount + 1);
+      expect(mocks.playPremove).not.toHaveBeenCalled();
+      rerender(<Chessboard {...props} orientation="white" />);
+      expect(mocks.set).toHaveBeenLastCalledWith(
+        expect.objectContaining({ orientation: "white", lastMove: [], turnColor: "white" }),
+      );
       const count = states.length;
       play("e2", "e4");
       expect(states).toHaveLength(count);
@@ -194,7 +202,7 @@ describe("Chessboard orchestration", () => {
         vi.advanceTimersByTime(250);
       });
       expect(onAttemptResolved).toHaveBeenCalledTimes(1);
-      command("start");
+      fireEvent.keyDown(window, { key: "ArrowUp" });
       expect(states.at(-1)).toMatchObject({ fen: STARTING_FEN, lineIndex: 0, viewingIntro: true });
       command("end");
       expect(states.at(-1)).toMatchObject({ lineIndex: 1, viewingIntro: false, lineMoves: ["e5"] });
