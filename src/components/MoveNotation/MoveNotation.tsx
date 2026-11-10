@@ -10,6 +10,7 @@ export const MoveNotation = ({
   pinnedLineIndex,
   previousMove,
   beforePreviousMove,
+  reserveFirstRow = false,
   initialPly = previousMove ? previousMove.ply + 1 : 0,
   inline,
   onNavigate,
@@ -26,6 +27,7 @@ export const MoveNotation = ({
   initialPly?: number | undefined;
   previousMove?: PreviousMove | undefined;
   beforePreviousMove?: boolean | undefined;
+  reserveFirstRow?: boolean;
   inline: boolean;
   onNavigate: (ply: number) => void;
   onSelectVariation: (lineIndex: number, moveIndex: number) => void;
@@ -36,6 +38,10 @@ export const MoveNotation = ({
   onDelete?: ((lineIndex: number, moveIndex: number) => void) | undefined;
   assessments?: GameMoveAssessment[] | undefined;
 }) => {
+  if (reserveFirstRow && !lines.length && !moves.length && !previousMove) {
+    return <div className="analysisTree" aria-hidden="true" />;
+  }
+
   if (!inline && !previousMove && lines.length <= 1 && initialPly === 0) {
     const mainline = lines[0] ?? moves;
     return (

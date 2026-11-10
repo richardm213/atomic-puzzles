@@ -111,6 +111,7 @@ export const PuzzleAnalysisPanel = ({
 
       <div className="puzzleAnalysisMoves" aria-label="Played moves">
         <MoveNotation
+          reserveFirstRow
           lines={analysisActive ? lines : []}
           moves={moves}
           previousMove={

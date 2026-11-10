@@ -4,6 +4,22 @@ import { describe, expect, it, vi } from "vitest";
 import { MoveNotation } from "./MoveNotation";
 
 describe("MoveNotation", () => {
+  it("reserves a noninteractive row before puzzle or move data is available", () => {
+    const { container } = render(
+      <MoveNotation
+        reserveFirstRow
+        lines={[]}
+        moves={[]}
+        currentPly={0}
+        inline
+        onNavigate={vi.fn()}
+        onSelectVariation={vi.fn()}
+      />,
+    );
+    expect(container.firstElementChild).toHaveAttribute("aria-hidden", "true");
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
   it("navigates the opponent's previous move to the root without shifting variation indexes", () => {
     const onNavigate = vi.fn();
     const onSelectVariation = vi.fn();
