@@ -35,7 +35,12 @@ export const buildBoardLoadNavigation = ({
 
 export const gamePlyFromHash = (hash: string, moveCount: number): number | null => {
   if (!hash) return 0;
+  const exactPly = /^#ply-(\d+)$/.exec(hash);
+  if (exactPly) return Math.min(moveCount, Number(exactPly[1]));
   const match = /^#(\d+)$/.exec(hash);
   if (!match) return null;
   return Math.min(moveCount, Number(match[1]) * 2);
 };
+
+export const gameHashForPly = (ply: number): string =>
+  ply === 0 ? "" : ply % 2 === 0 ? `#${ply / 2}` : `#ply-${ply}`;
