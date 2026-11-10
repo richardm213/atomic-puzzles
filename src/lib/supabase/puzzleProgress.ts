@@ -16,6 +16,13 @@ import type {
 export type { PuzzleProgressRow } from "./types";
 export type { PuzzleProgressWithUsernameRow } from "./types";
 
+export const fetchPuzzleRatingExclusions = (username: string) =>
+  fetchAllSupabaseRows("puzzle_rating_exclusions", () =>
+    getSupabaseClient()
+      .rpc("get_puzzle_rating_exclusions", { p_username: normalizeUsername(username) })
+      .order("puzzle_id"),
+  );
+
 type SupabaseClient = ReturnType<typeof getSupabaseClient>;
 
 const PUZZLE_PROGRESS_TABLE =
@@ -29,6 +36,7 @@ const puzzleProgressResponseSchema = z.object({
   coinAward: z.number().nonnegative().optional().default(0),
   coinDelta: z.number().optional(),
   rated: z.boolean().optional().default(true),
+  unratedUntil: z.string().nullable().optional(),
   ratingEvent: puzzleRatingEventResponseSchema.nullable().optional(),
 });
 
@@ -222,6 +230,7 @@ export type FetchPuzzleAttemptsForPuzzleOptions = {
 
 export type RecordPuzzleProgressResult = {
   rated: boolean;
+  unratedUntil?: string | null;
   ratingEvent: PuzzleRatingEvent | null;
 };
 
@@ -277,6 +286,7 @@ export const recordPuzzleProgress = async ({
     }
     return {
       rated: result.rated,
+      unratedUntil: result.unratedUntil ?? null,
       ratingEvent: result.ratingEvent
         ? {
             ...result.ratingEvent,

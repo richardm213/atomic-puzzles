@@ -83,6 +83,7 @@ import {
 import {
   fetchPuzzleAttemptsForPuzzle,
   fetchPuzzleProgressRowsForUsername,
+  fetchPuzzleRatingExclusions,
   type PuzzleProgressWithUsernameRow,
   recordPuzzleProgress,
 } from "../../lib/supabase/puzzleProgress";
@@ -213,6 +214,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [solvedPuzzleIds, setSolvedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [unratedPuzzleIds, setUnratedPuzzleIds] = useState<Set<string>>(() => new Set());
+  const [ratingExclusions, setRatingExclusions] = useState<Map<string, string>>(() => new Map());
   const [dailyAttemptCount, setDailyAttemptCount] = useState(0);
   const [attemptedPuzzleIdsOwner, setAttemptedPuzzleIdsOwner] = useState<string | null>(null);
   const [resolvedAttemptedPuzzleIds, setResolvedAttemptedPuzzleIds] = useState<Set<string>>(
@@ -371,14 +373,20 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
               index !== currentIndex &&
               !visitedPuzzleIdsRef.current.has(String(puzzles[index]?.puzzleId ?? "")) &&
               !attemptedPuzzleIds.has(String(puzzles[index]?.puzzleId ?? "")) &&
-              !unratedPuzzleIds.has(String(puzzles[index]?.puzzleId ?? "")),
+              !getPuzzleUnratedReason({
+                username: normalizedUsername,
+                author: puzzles[index]?.author,
+                createdAt: puzzles[index]?.created_at,
+                hasUnratedAttempt: unratedPuzzleIds.has(String(puzzles[index]?.puzzleId ?? "")),
+                excludedUntil: ratingExclusions.get(String(puzzles[index]?.puzzleId ?? "")),
+              }),
           );
         upcomingPuzzleIndexesRef.current = shuffleIndexes(candidateIndexes);
       }
 
       return upcomingPuzzleIndexesRef.current.length;
     },
-    [attemptedPuzzleIds, puzzles, unratedPuzzleIds],
+    [attemptedPuzzleIds, normalizedUsername, puzzles, ratingExclusions, unratedPuzzleIds],
   );
 
   const getNextShuffledPuzzleIndex = useCallback(
@@ -456,6 +464,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     const username = attemptedPuzzleIdsUsername;
 
     if (!username) {
+      setRatingExclusions(new Map());
       setAttemptedPuzzleIds(new Set());
       setSolvedPuzzleIds(new Set());
       setUnratedPuzzleIds(new Set());
@@ -466,6 +475,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     }
 
     setAttemptedPuzzleIds(new Set());
+    setRatingExclusions(new Map());
     setSolvedPuzzleIds(new Set());
     setUnratedPuzzleIds(new Set());
     setDailyAttemptCount(0);
@@ -474,8 +484,15 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
 
     const loadAttemptedPuzzleIds = async () => {
       try {
-        const progressRows = await fetchPuzzleProgressRowsForUsername(username);
+        const [progressRows, exclusions] = await Promise.all([
+          fetchPuzzleProgressRowsForUsername(username),
+          fetchPuzzleRatingExclusions(username),
+        ]);
         if (isCurrent) {
+          setRatingExclusions(
+            new Map(exclusions.map((row) => [String(row.puzzle_id), row.expires_at])),
+          );
+          upcomingPuzzleIndexesRef.current = [];
           const todayRows = progressRows.filter((row) => isTimestampInUtcDay(row.first_attempt_at));
           setAttemptedPuzzleIds(
             new Set(
@@ -503,7 +520,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         setUnratedPuzzleIds(new Set());
         countedTodayPuzzleIdsRef.current = new Set();
         setDailyAttemptCount(0);
-        setAttemptedPuzzleIdsOwner(username);
+        setLoadingError("Unable to check puzzle rating eligibility. Please reload to try again.");
         globalThis.console?.error(error);
       }
     };
@@ -513,7 +530,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     return () => {
       isCurrent = false;
     };
-  }, [attemptedPuzzleIdsUsername, isAuthLoading, testMode]);
+  }, [attemptedPuzzleIdsUsername, isAuthLoading, setLoadingError, testMode]);
 
   useEffect(() => {
     attemptedPuzzleIdsRef.current = attemptedPuzzleIds;
@@ -697,7 +714,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       : puzzleSetParticipants.join(" · ");
   const isAnalysisMode = puzzleSession.mode === "analysis";
   const hasPersistedAttempt = activePuzzleKey ? attemptedPuzzleIds.has(activePuzzleKey) : false;
-  const hasSolvedPuzzle = activePuzzleKey ? solvedPuzzleIds.has(activePuzzleKey) : false;
   const hasUnratedAttempt = activePuzzleKey ? unratedPuzzleIds.has(activePuzzleKey) : false;
   const unratedReason = testMode
     ? null
@@ -706,7 +722,14 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         author,
         createdAt: activePuzzle?.created_at,
         hasUnratedAttempt,
+        excludedUntil: ratingExclusions.get(activePuzzleKey),
       });
+  // An expired unrated solve is eligible for a fresh rated attempt, not analysis hydration.
+  const hasSolvedPuzzle = Boolean(
+    activePuzzleKey &&
+    solvedPuzzleIds.has(activePuzzleKey) &&
+    (hasPersistedAttempt || unratedReason !== null),
+  );
   const blindEntryKey = JSON.stringify([
     attemptedPuzzleIdsUsername,
     routeSetKey,
@@ -774,9 +797,11 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   );
   const shouldShowPuzzleTimer = showPuzzleTimer && attemptedPuzzleIdsReady && !hasSolvedPuzzle;
   const unratedLabel =
-    unratedReason === "existing-unrated"
-      ? "Your latest attempt is unrated. Wait one month after that attempt for a rated try."
-      : "Your attempts are unrated for one month after this puzzle was published.";
+    unratedReason === "rating-exclusion"
+      ? `Your attempts on this puzzle are unrated until ${new Date(ratingExclusions.get(activePuzzleKey)!).toLocaleString()}.`
+      : unratedReason === "existing-unrated"
+        ? "Your latest attempt is unrated. Wait one month after that attempt for a rated try."
+        : "Your attempts are unrated for 45 days after this puzzle was published.";
   const hasResolvedAttempt = activePuzzleKey
     ? resolvedAttemptedPuzzleIds.has(activePuzzleKey)
     : false;
@@ -953,6 +978,11 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
             incorrectMove,
             correctMove,
           }).then((result) => {
+            if (result?.unratedUntil) {
+              setRatingExclusions((current) =>
+                new Map(current).set(normalizedPuzzleId, result.unratedUntil!),
+              );
+            }
             if (result?.rated) {
               setAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
               setUnratedPuzzleIds((current) => removeValueFromSet(current, normalizedPuzzleId));

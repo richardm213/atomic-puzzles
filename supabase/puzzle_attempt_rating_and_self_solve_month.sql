@@ -1,4 +1,4 @@
--- Mark first attempts as rated or unrated and use a rolling one-month creator cooldown.
+-- Mark first attempts as rated or unrated and use a 45-day creator cooldown.
 -- A creator's own attempts during that window remain in progress/history, but they
 -- do not change puzzle ratings, solver ratings, or coin balances.
 begin;
@@ -165,6 +165,87 @@ begin
 end;
 $$;
 
+-- Per-user eligibility is separate from attempt history, with automatic expiry.
+create table if not exists public.puzzle_rating_exclusions (
+  username text not null,
+  puzzle_id text not null,
+  category text not null check (category in ('creator','retry','abuse')),
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  reason text not null,
+  primary key (username,puzzle_id),
+  check (username=lower(btrim(username)))
+);
+alter table public.puzzle_rating_exclusions enable row level security;
+revoke all on public.puzzle_rating_exclusions from public,anon,authenticated;
+grant select,insert,update,delete on public.puzzle_rating_exclusions to service_role;
+
+create or replace function public.get_puzzle_rating_exclusions(p_username text)
+returns table(puzzle_id text,expires_at timestamptz)
+language sql stable security definer set search_path=public
+as $$
+  select e.puzzle_id,e.expires_at from public.puzzle_rating_exclusions e
+  where e.username=public.canonical_user_username(p_username)
+  order by e.puzzle_id;
+$$;
+revoke all on function public.get_puzzle_rating_exclusions(text) from public;
+grant execute on function public.get_puzzle_rating_exclusions(text) to anon,authenticated,service_role;
+
+create or replace function public.set_creator_puzzle_rating_exclusion()
+returns trigger language plpgsql security definer set search_path=public
+as $$
+begin
+  if nullif(btrim(new.author),'') is not null then
+    insert into public.puzzle_rating_exclusions(username,puzzle_id,category,expires_at,reason)
+    values(public.canonical_user_username(new.author),new.id::text,'creator',new.created_at+interval '45 days','Creator cooldown')
+    on conflict(username,puzzle_id) do update
+      set expires_at=greatest(puzzle_rating_exclusions.expires_at,excluded.expires_at)
+      where puzzle_rating_exclusions.category<>'abuse';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.set_creator_puzzle_rating_exclusion() from public,anon,authenticated;
+drop trigger if exists set_creator_puzzle_rating_exclusion on public.puzzles;
+create trigger set_creator_puzzle_rating_exclusion after insert or update of author,created_at on public.puzzles
+for each row execute function public.set_creator_puzzle_rating_exclusion();
+
+create or replace function public.enforce_puzzle_rating_exclusion()
+returns trigger language plpgsql security definer set search_path=public
+as $$
+declare exclusion public.puzzle_rating_exclusions%rowtype;
+begin
+  select * into exclusion from public.puzzle_rating_exclusions e where e.username=new.username and e.puzzle_id=new.puzzle_id;
+  if exclusion.expires_at>now() then new.rated:=false; end if;
+  if not new.rated and exclusion.category is distinct from 'abuse' then
+    insert into public.puzzle_rating_exclusions(username,puzzle_id,category,expires_at,reason)
+    values(new.username,new.puzzle_id,'retry',now()+interval '1 month','Unrated attempt cooldown')
+    on conflict(username,puzzle_id) do update
+      set expires_at=greatest(puzzle_rating_exclusions.expires_at,excluded.expires_at)
+      where puzzle_rating_exclusions.category<>'abuse';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.enforce_puzzle_rating_exclusion() from public,anon,authenticated;
+drop trigger if exists enforce_puzzle_rating_exclusion on public.puzzle_progress;
+create trigger enforce_puzzle_rating_exclusion before insert or update on public.puzzle_progress
+for each row execute function public.enforce_puzzle_rating_exclusion();
+
+-- Backfill existing creator and unrated retry windows, including expired records.
+insert into public.puzzle_rating_exclusions(username,puzzle_id,category,expires_at,reason)
+select public.canonical_user_username(p.author),p.id::text,'creator',p.created_at+interval '45 days','Creator cooldown'
+from public.puzzles p where nullif(btrim(p.author),'') is not null
+on conflict(username,puzzle_id) do update
+set expires_at=greatest(puzzle_rating_exclusions.expires_at,excluded.expires_at)
+where puzzle_rating_exclusions.category<>'abuse';
+insert into public.puzzle_rating_exclusions(username,puzzle_id,category,expires_at,reason)
+select username,puzzle_id,'retry',first_attempt_at+interval '1 month','Unrated attempt cooldown'
+from public.puzzle_progress where not rated
+on conflict(username,puzzle_id) do update
+set expires_at=greatest(puzzle_rating_exclusions.expires_at,excluded.expires_at)
+where puzzle_rating_exclusions.category<>'abuse';
+
 create or replace function public.record_first_puzzle_attempt_v2(
   p_username text,
   p_puzzle_id text,
@@ -217,17 +298,27 @@ begin
     -- Every early retry replaces the prior unrated row and restarts the month.
     attempt_is_rated := attempt_at >= previous_attempt_at + interval '1 month';
   else
-    -- The creator's first attempt is unrated during the month after publication.
+    -- The creator's first attempt is unrated for 45 days after publication.
     select not (
       lower(btrim(puzzle.author)) = normalized_username
       and attempt_at >= puzzle.created_at
-      and attempt_at < puzzle.created_at + interval '1 month'
+      and attempt_at < puzzle.created_at + interval '45 days'
     )
     into attempt_is_rated
     from public.puzzles puzzle
     where puzzle.id::text = normalized_puzzle_id;
 
     attempt_is_rated := coalesce(attempt_is_rated, true);
+  end if;
+
+  -- An administrative exclusion has a fixed expiry; practice must not extend it.
+  if exists (
+    select 1 from public.puzzle_rating_exclusions exclusion
+    where exclusion.username = normalized_username and exclusion.puzzle_id = normalized_puzzle_id
+  ) then
+    select attempt_at >= exclusion.expires_at into attempt_is_rated
+    from public.puzzle_rating_exclusions exclusion
+    where exclusion.username = normalized_username and exclusion.puzzle_id = normalized_puzzle_id;
   end if;
 
   if has_previous_attempt then

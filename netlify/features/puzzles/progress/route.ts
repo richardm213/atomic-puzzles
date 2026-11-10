@@ -58,6 +58,18 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
     .eq("puzzle_id", input.puzzleId)
     .maybeSingle();
   if (progressError) throw new Error(`Unable to read puzzle progress: ${progressError.message}`);
+  let unratedUntil: string | null = null;
+  if (progress?.rated === false) {
+    const { data: exclusion, error: exclusionError } = await supabase
+      .from("puzzle_rating_exclusions")
+      .select("expires_at")
+      .eq("username", username)
+      .eq("puzzle_id", input.puzzleId)
+      .maybeSingle();
+    if (exclusionError)
+      throw new Error(`Unable to read puzzle eligibility: ${exclusionError.message}`);
+    unratedUntil = exclusion?.expires_at ?? null;
+  }
   const { data: ratingEvent } = await supabase
     .from("puzzle_rating_events")
     .select(
@@ -72,6 +84,7 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
     coinAward: Math.max(0, Number(coinDelta) || 0),
     coinDelta: Number(coinDelta) || 0,
     rated: progress?.rated !== false,
+    unratedUntil,
     username,
     ratingEvent: ratingEvent
       ? {

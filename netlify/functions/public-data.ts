@@ -87,7 +87,11 @@ const publicDataRoute = async (event: FunctionEvent) => {
           .is("deleted_at", null)
           .order("id");
       }
-      return supabase.from("puzzles").select("id").is("deleted_at", null).order("id");
+      return supabase
+        .from("puzzles")
+        .select("id,author,created_at")
+        .is("deleted_at", null)
+        .order("id");
     })();
     const { data, error } = await query.range(from, from + pageSize - 1);
     if (error) throw new Error(`Unable to load public data: ${error.message}`);

@@ -150,9 +150,16 @@ describe("puzzle-progress function", () => {
     const rpc = vi.fn(async () => ({ data: 0, error: null }));
     const unratedProgressQuery = progressQuery(false);
     const query = ratingEventQuery();
+    const exclusionQuery = ratingEventQuery({ expires_at: "2027-01-10T12:00:00Z" });
     mocks.createClient.mockReturnValue({
       rpc,
-      from: vi.fn((table: string) => (table === "puzzle_progress" ? unratedProgressQuery : query)),
+      from: vi.fn((table: string) =>
+        table === "puzzle_progress"
+          ? unratedProgressQuery
+          : table === "puzzle_rating_exclusions"
+            ? exclusionQuery
+            : query,
+      ),
     });
     const cookie = createSiteSessionCookie("Puzzle_Author", {});
 
@@ -171,6 +178,7 @@ describe("puzzle-progress function", () => {
       coinAward: 0,
       coinDelta: 0,
       rated: false,
+      unratedUntil: "2027-01-10T12:00:00Z",
       ratingEvent: null,
     });
   });

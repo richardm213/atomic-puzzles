@@ -26,9 +26,9 @@ export const fetchPuzzleCatalogFromSupabase = async (): Promise<PuzzleRow[]> =>
   cachedRequest(puzzleCatalogCache, ["puzzle-catalog"], fetchUncachedPuzzleCatalogFromSupabase);
 
 /**
- * The solver only needs puzzle ids to choose an unattempted puzzle and build
+ * The solver needs ids and creator cooldown metadata to choose a rated puzzle and build
  * its random queue. Keeping this separate from the richer set catalog avoids
- * downloading authors, tags, players, and two puzzle-set relations before the
+ * downloading tags, players, and two puzzle-set relations before the
  * first board can be shown.
  */
 export const fetchPuzzleSolverIndexFromSupabase = async (): Promise<PuzzleRow[]> =>

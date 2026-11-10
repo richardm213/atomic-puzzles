@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   attemptedPuzzleIds: new Set(["1369"]),
   blindPuzzles: { enabled: false, plies: 5 },
   fetchPuzzleProgressRowsForUsername: vi.fn(),
+  fetchPuzzleRatingExclusions: vi.fn(),
   fetchCustomPuzzleSet: vi.fn(),
   fetchPuzzleAttemptsForPuzzle: vi.fn(),
   loadPuzzleCatalog: vi.fn(),
@@ -128,6 +129,7 @@ vi.mock("../../lib/puzzles/puzzleIssues", () => ({
 
 vi.mock("../../lib/supabase/puzzleProgress", () => ({
   fetchPuzzleProgressRowsForUsername: mocks.fetchPuzzleProgressRowsForUsername,
+  fetchPuzzleRatingExclusions: mocks.fetchPuzzleRatingExclusions,
   fetchPuzzleAttemptsForPuzzle: mocks.fetchPuzzleAttemptsForPuzzle,
   recordPuzzleProgress: mocks.recordPuzzleProgress,
 }));
@@ -234,6 +236,7 @@ describe("PuzzleSolverPage solution options", () => {
     mocks.chessboardProps.length = 0;
     mocks.attemptedPuzzleIds = new Set(["1369"]);
     mocks.blindPuzzles = { enabled: false, plies: 5 };
+    mocks.fetchPuzzleRatingExclusions.mockReset().mockResolvedValue([]);
     mocks.fetchPuzzleProgressRowsForUsername.mockReset().mockImplementation(async () =>
       [...mocks.attemptedPuzzleIds].map((puzzleId) => ({
         puzzle_id: puzzleId,
@@ -533,19 +536,25 @@ describe("PuzzleSolverPage solution options", () => {
     expect(screen.getByText(/come back after 00:00 UTC/i)).toBeInTheDocument();
   });
 
-  it("waits for progress and skips rated and unrated attempted puzzles", async () => {
+  it("waits for eligibility and skips attempted puzzles, active exclusions, and creator cooldowns", async () => {
     mocks.routeParams = { puzzleId: "", setKey: "" };
     mocks.loadPuzzleCatalog.mockResolvedValueOnce(
-      [1, 2, 3].map((puzzleId) => ({
+      [1, 2, 3, 4, 5].map((puzzleId) => ({
         id: puzzleId,
         fen: "",
         solution: "",
         puzzleId,
-        author: mocks.puzzleAuthor,
+        author: puzzleId === 4 ? mocks.username : mocks.puzzleAuthor,
+        created_at: new Date().toISOString(),
         event: "ACL 2024",
         explanation: "",
       })),
     );
+
+    mocks.fetchPuzzleRatingExclusions.mockResolvedValueOnce([
+      { puzzle_id: "3", expires_at: "2099-01-01T00:00:00Z" },
+      { puzzle_id: "5", expires_at: "2020-01-01T00:00:00Z" },
+    ]);
 
     let resolveProgress: (rows: Array<{ puzzle_id: string; rated: boolean }>) => void = () =>
       undefined;
@@ -568,10 +577,23 @@ describe("PuzzleSolverPage solution options", () => {
     await waitFor(() =>
       expect(mocks.navigate).toHaveBeenCalledWith({
         to: "/solve/$puzzleId",
-        params: { puzzleId: "3" },
+        params: { puzzleId: "5" },
         replace: true,
       }),
     );
+  });
+
+  it("starts a fresh solve after an earlier unrated solve expires", async () => {
+    mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValueOnce([
+      { puzzle_id: "1369", rated: false, puzzle_correct: true },
+    ]);
+    mocks.fetchPuzzleRatingExclusions.mockResolvedValueOnce([
+      { puzzle_id: "1369", expires_at: "2020-01-01T00:00:00Z" },
+    ]);
+    render(<PuzzleSolverPage />);
+    await waitFor(() => expect(mocks.fetchPuzzleRatingExclusions).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(false));
+    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
   });
 
   it("does not fall back to a previously attempted puzzle when none remain", async () => {

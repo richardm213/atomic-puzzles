@@ -3,7 +3,20 @@ import { describe, expect, it } from "vitest";
 import { getPuzzleUnratedReason } from "./puzzleAttemptRating";
 
 describe("getPuzzleUnratedReason", () => {
-  it("uses a calendar month and clamps end-of-month dates", () => {
+  it("expires per-user exclusions even after an unrated practice attempt", () => {
+    const input = {
+      username: "solver",
+      author: "creator",
+      createdAt: "2026-01-01",
+      hasUnratedAttempt: true,
+      excludedUntil: "2027-01-10T12:00:00Z",
+    };
+    expect(getPuzzleUnratedReason({ ...input, now: new Date("2027-01-10T11:59:59Z") })).toBe(
+      "rating-exclusion",
+    );
+    expect(getPuzzleUnratedReason({ ...input, now: new Date(input.excludedUntil) })).toBeNull();
+  });
+  it("uses a 45-day creator cooldown, including across month boundaries", () => {
     const input = {
       username: "Creator",
       author: "creator",
@@ -11,11 +24,11 @@ describe("getPuzzleUnratedReason", () => {
       hasUnratedAttempt: false,
     };
 
-    expect(getPuzzleUnratedReason({ ...input, now: new Date("2028-02-29T11:59:59.999Z") })).toBe(
+    expect(getPuzzleUnratedReason({ ...input, now: new Date("2028-03-16T11:59:59.999Z") })).toBe(
       "creator-window",
     );
     expect(
-      getPuzzleUnratedReason({ ...input, now: new Date("2028-02-29T12:00:00.000Z") }),
+      getPuzzleUnratedReason({ ...input, now: new Date("2028-03-16T12:00:00.000Z") }),
     ).toBeNull();
   });
 

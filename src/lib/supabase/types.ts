@@ -274,6 +274,10 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      get_puzzle_rating_exclusions: {
+        Args: { p_username: string };
+        Returns: { puzzle_id: string; expires_at: string }[];
+      };
       get_attempted_puzzle_ids: {
         Args: { p_username: string };
         Returns: AttemptedPuzzleIdRow[];
