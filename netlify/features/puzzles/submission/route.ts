@@ -10,6 +10,7 @@ import type { FunctionEvent } from "../../../platform/defineFunction";
 import { createServerSupabase } from "../../../platform/environment";
 import { jsonResponse } from "../../../platform/response";
 import { parseJsonBody } from "../../../platform/validation";
+import { loadMatchPuzzleContext } from "./matchContext";
 import { PuzzleSubmissionRepository } from "./repository";
 import { PuzzleSubmissionService } from "./service";
 
@@ -32,8 +33,19 @@ const singleSubmissionSchema = z.object({
 });
 
 const submissionBodySchema = z.union([
-  singleSubmissionSchema.extend({ allowDifferentStartMove: z.boolean().optional() }),
+  z.object({ action: z.literal("match-context"), gameId: z.string().trim().min(1).max(128) }),
+  singleSubmissionSchema.extend({
+    action: z.literal("add-match-puzzle"),
+    gameId: z.string().trim().min(1).max(128),
+    matchName: z.string().trim().max(100).default(""),
+    allowDifferentStartMove: z.boolean().optional(),
+  }),
+  singleSubmissionSchema.extend({
+    action: z.never().optional(),
+    allowDifferentStartMove: z.boolean().optional(),
+  }),
   z.object({
+    action: z.never().optional(),
     submissions: z.array(singleSubmissionSchema).min(1).max(100),
     allowDifferentStartMove: z.boolean().optional(),
   }),
@@ -44,9 +56,15 @@ export const puzzleSubmissionRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, submissionBodySchema, "Invalid puzzle submission.");
   const identity = await authenticateRequest(event.headers);
   const username = requireUsername(identity, "Log in with Lichess to submit a puzzle.");
-  const service = new PuzzleSubmissionService(
-    new PuzzleSubmissionRepository(createServerSupabase("Puzzle submission service")),
-  );
+  const db = createServerSupabase("Puzzle submission service");
+  const service = new PuzzleSubmissionService(new PuzzleSubmissionRepository(db));
+  if (input.action) {
+    const context = await loadMatchPuzzleContext(db, input.gameId);
+    if (input.action === "match-context") {
+      return jsonResponse(200, { setName: context.setName, players: context.players });
+    }
+    return jsonResponse(201, await service.submitMatchPuzzle(username, input, context));
+  }
   return jsonResponse(
     201,
     "submissions" in input

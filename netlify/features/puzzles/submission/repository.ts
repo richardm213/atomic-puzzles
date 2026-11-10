@@ -21,12 +21,15 @@ export type QueuedPuzzleSubmission = {
 export class PuzzleSubmissionRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
-  async enqueue(username: string, puzzle: QueuedPuzzleSubmission, allowDifferentStartMove = false) {
+  private async ensureUser(username: string) {
     const { error: userError } = await this.supabase
       .from("users")
       .upsert({ username }, { onConflict: "username", ignoreDuplicates: true });
     if (userError) throw new Error(`Unable to verify account: ${userError.message}`);
+  }
 
+  async enqueue(username: string, puzzle: QueuedPuzzleSubmission, allowDifferentStartMove = false) {
+    await this.ensureUser(username);
     const { data, error } = await this.supabase
       .rpc("enqueue_puzzle_submission", {
         p_fen: puzzle.fen,
@@ -72,10 +75,7 @@ export class PuzzleSubmissionRepository {
     puzzles: QueuedPuzzleSubmission[],
     allowDifferentStartMove = false,
   ): Promise<number[]> {
-    const { error: userError } = await this.supabase
-      .from("users")
-      .upsert({ username }, { onConflict: "username", ignoreDuplicates: true });
-    if (userError) throw new Error(`Unable to verify account: ${userError.message}`);
+    await this.ensureUser(username);
 
     const { data, error } = await this.supabase.rpc("publish_approved_puzzle_batch", {
       p_puzzles: puzzles,
@@ -119,5 +119,47 @@ export class PuzzleSubmissionRepository {
       throw new Error("Unable to create puzzles: invalid puzzle ids were returned.");
     }
     return puzzleIds;
+  }
+
+  async saveMatchPuzzle(input: {
+    username: string;
+    puzzle: QueuedPuzzleSubmission;
+    gameId: string;
+    matchId: string;
+    existingSetId: number | null;
+    publish: boolean;
+    allowDifferentStartMove: boolean;
+  }) {
+    await this.ensureUser(input.username);
+    const { data, error } = await this.supabase.rpc("save_match_puzzle", {
+      p_puzzle: input.puzzle,
+      p_submitted_by: input.username,
+      p_game_id: input.gameId,
+      p_match_id: input.matchId,
+      p_legacy_set_id: input.existingSetId,
+      p_publish: input.publish,
+      p_allow_different_start_move: input.allowDifferentStartMove,
+    });
+    const message = error?.message ?? "";
+    if (message.includes("Puzzle start move already exists for FEN in queue")) {
+      throw new HttpError(
+        409,
+        "A puzzle with this FEN and starting move is already pending review.",
+      );
+    }
+    if (message.includes("Puzzle start move already exists for FEN")) {
+      throw new HttpError(409, "A puzzle with this FEN and starting move already exists.");
+    }
+    if (message.includes("Puzzle FEN exists with different start move")) {
+      throw new HttpError(409, DIFFERENT_START_MOVE_CONFIRMATION);
+    }
+    if (message.includes("Puzzle set belongs to another match")) {
+      throw new HttpError(
+        409,
+        "That set name is already used for another match. Choose another name.",
+      );
+    }
+    if (error) throw new Error(`Unable to save match puzzle: ${message}`);
+    return data;
   }
 }

@@ -39,7 +39,36 @@ alter table public.puzzles
 
 alter table public.puzzles_queue
   add column if not exists author text not null default '',
-  add column if not exists tags text[] not null default '{}'::text[];
+  add column if not exists tags text[] not null default '{}'::text[],
+  add column if not exists game_id text,
+  add column if not exists match_id text;
+
+-- Source metadata is assigned by the archived-game submission, not by review edits.
+create or replace function public.preserve_queued_match_puzzle_source()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if old.match_id is not null then
+    new.match_id := old.match_id;
+    new.game_id := old.game_id;
+    new.event_name := old.event_name;
+    new.event_date := old.event_date;
+    new.players := old.players;
+    new.white_player := old.white_player;
+    new.black_player := old.black_player;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists preserve_queued_match_puzzle_source on public.puzzles_queue;
+create trigger preserve_queued_match_puzzle_source
+before update on public.puzzles_queue
+for each row execute function public.preserve_queued_match_puzzle_source();
+revoke all on function public.preserve_queued_match_puzzle_source() from public;
+grant execute on function public.preserve_queued_match_puzzle_source() to service_role;
 
 update public.puzzles_queue
 set author = lower(btrim(submitted_by))
@@ -493,6 +522,97 @@ begin
 end;
 $$;
 
+-- Match names and puzzle writes share a transaction. A queued submission also
+-- reserves the canonical set, so later submissions reuse the name before review.
+-- Requires puzzle_sets.sql and puzzle_game_id.sql.
+create or replace function public.save_match_puzzle(
+  p_puzzle jsonb,
+  p_submitted_by text,
+  p_game_id text,
+  p_match_id text,
+  p_legacy_set_id bigint,
+  p_publish boolean,
+  p_allow_different_start_move boolean
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  match_set public.puzzle_sets%rowtype;
+  set_name text;
+  set_date text;
+  set_players text[];
+  saved_puzzle_id bigint;
+  queued public.puzzles_queue%rowtype;
+begin
+  perform pg_advisory_xact_lock(hashtextextended(p_match_id, 1));
+
+  select * into match_set
+  from public.puzzle_sets
+  where source_id = p_match_id
+     or (id = p_legacy_set_id and source_id is null)
+  order by (source_id = p_match_id) desc nulls last, id
+  limit 1;
+
+  set_name := coalesce(match_set.event_name, nullif(btrim(p_puzzle->>'eventName'), ''));
+  set_date := coalesce(match_set.event_date, p_puzzle->>'eventDate', '');
+  set_players := coalesce(match_set.players, public.normalize_puzzle_set_players(
+    array(select jsonb_array_elements_text(p_puzzle->'players'))
+  ));
+  if set_name is null then
+    raise exception 'Enter a name for this match';
+  end if;
+
+  if p_publish then
+    saved_puzzle_id := (public.publish_approved_puzzle_batch(
+      jsonb_build_array(p_puzzle || jsonb_build_object(
+        'event', set_name, 'eventName', set_name, 'eventDate', set_date, 'players', set_players
+      )),
+      p_submitted_by,
+      p_allow_different_start_move
+    ))[1];
+    update public.puzzles set game_id = p_game_id, match_id = p_match_id where id = saved_puzzle_id;
+  else
+    queued := public.enqueue_puzzle_submission(
+      p_puzzle->>'fen', p_puzzle->>'solution', set_name, set_name, set_date, set_players,
+      p_puzzle->>'whitePlayer', p_puzzle->>'blackPlayer', p_puzzle->>'explanation',
+      coalesce((p_puzzle->>'opaStyle')::boolean, false), p_puzzle->>'author',
+      array(select jsonb_array_elements_text(p_puzzle->'tags')),
+      p_submitted_by, p_allow_different_start_move
+    );
+    update public.puzzles_queue set game_id = p_game_id, match_id = p_match_id where id = queued.id;
+  end if;
+
+  if match_set.id is null then
+    insert into public.puzzle_sets (event_name, event_date, players)
+    values (set_name, set_date, set_players) on conflict do nothing;
+
+    select * into match_set
+    from public.puzzle_sets
+    where lower(btrim(event_name)) = lower(btrim(set_name))
+      and event_date = set_date
+      and public.normalize_puzzle_set_players(players) = public.normalize_puzzle_set_players(set_players)
+    limit 1;
+  end if;
+
+  update public.puzzle_sets set source_id = p_match_id
+  where id = match_set.id and (source_id is null or source_id = p_match_id);
+  if not found then
+    raise exception 'Puzzle set belongs to another match';
+  end if;
+
+  if p_publish then
+    return jsonb_build_object('destination', 'published', 'puzzleId', saved_puzzle_id, 'setName', set_name);
+  end if;
+  return jsonb_build_object('destination', 'review', 'setName', set_name);
+end;
+$$;
+
+revoke all on function public.save_match_puzzle(jsonb, text, text, text, bigint, boolean, boolean) from public;
+grant execute on function public.save_match_puzzle(jsonb, text, text, text, bigint, boolean, boolean) to service_role;
+
 -- Inserts the reviewed row with the reviewer-selected puzzle ID, then removes
 -- it from the queue. The review service suggests MAX(puzzles.id) + 1.
 drop function if exists public.approve_queued_puzzle(bigint, text);
@@ -558,7 +678,7 @@ begin
   begin
     insert into public.puzzles (
       id, fen, solution, event, event_name, event_date, players,
-      white_player, black_player, explanation, opa_style, author, tags
+      white_player, black_player, explanation, opa_style, author, tags, game_id, match_id
     )
     values (
       p_puzzle_id,
@@ -573,7 +693,9 @@ begin
       btrim(queued.explanation),
       queued.opa_style,
       coalesce(nullif(btrim(queued.author), ''), queued.submitted_by),
-      queued.tags
+      queued.tags,
+      queued.game_id,
+      queued.match_id
     );
   exception
     when unique_violation then

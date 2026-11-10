@@ -2,10 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
+  queryArchiveResource: vi.fn(),
 }));
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: mocks.createClient,
+}));
+vi.mock("../archive/queries", () => ({
+  queryArchiveResource: mocks.queryArchiveResource,
 }));
 
 import { handler } from "../functions/puzzle-submit";
@@ -18,6 +22,7 @@ const authHeaders = (username = "submitter") => ({
 describe("puzzle-submit function", () => {
   beforeEach(() => {
     mocks.createClient.mockReset();
+    mocks.queryArchiveResource.mockReset();
     vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-role-key");
     vi.stubEnv(
@@ -51,6 +56,112 @@ describe("puzzle-submit function", () => {
     });
     expect(response.statusCode).toBe(400);
   });
+
+  it("does not accept an invalid match request as a standalone puzzle", async () => {
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        action: "add-match-puzzle",
+        fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        solution: "1. e4",
+        explanation: "",
+      }),
+    });
+    expect(response.statusCode).toBe(400);
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { username: "submitter", setName: "Scam match", publish: false, existing: true },
+    { username: "wolfram_ep", setName: "AWC 2026 Semifinals", publish: true, existing: false },
+  ])(
+    "uses the canonical match metadata for $username",
+    async ({ username, setName, publish, existing }) => {
+      mocks.queryArchiveResource.mockResolvedValue({
+        external_match_id: "match-1",
+        player_1: "alice",
+        player_2: "bob",
+        result: 1,
+        start_ts: Date.UTC(2026, 10, 9),
+        tournament: null,
+      });
+      const roundQuery = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn(async () => ({
+          data: existing
+            ? null
+            : {
+                tournament: "awc2026",
+                bracket: "main",
+                round: "Semifinals",
+                played_on: "2026-11-09",
+              },
+          error: null,
+        })),
+      };
+      const setQuery = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn(async () => ({
+          data: existing ? [{ id: 42, event_name: setName, source_id: "match-1" }] : [],
+          error: null,
+        })),
+      };
+      const from = vi.fn((table: string) => {
+        if (table === "puzzle_sets") return setQuery;
+        if (table === "tournament_matches") return roundQuery;
+        if (table === "tournament_catalog") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn(async () => ({ data: { title: "AWC 2026" }, error: null })),
+          };
+        }
+        return { upsert: vi.fn(async () => ({ error: null })) };
+      });
+      const result = publish
+        ? { destination: "published", setName, puzzleId: 1801 }
+        : { destination: "review", setName };
+      const rpc = vi.fn(async () => ({ data: result, error: null }));
+      mocks.createClient.mockReturnValue({ from, rpc });
+
+      const response = await handler({
+        httpMethod: "POST",
+        headers: authHeaders(username),
+        body: JSON.stringify({
+          action: "add-match-puzzle",
+          gameId: "game-1",
+          fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+          solution: "1. e4",
+          explanation: "",
+          matchName: "Ignored name",
+          whitePlayer: "spoofed",
+        }),
+      });
+      expect(response.statusCode).toBe(201);
+      expect(JSON.parse(response.body)).toEqual(result);
+      expect(rpc).toHaveBeenCalledWith(
+        "save_match_puzzle",
+        expect.objectContaining({
+          p_game_id: "game-1",
+          p_match_id: "match-1",
+          p_legacy_set_id: existing ? 42 : null,
+          p_publish: publish,
+          p_puzzle: expect.objectContaining({
+            eventName: setName,
+            eventDate: "2026-11-09",
+            whitePlayer: "bob",
+            blackPlayer: "alice",
+            players: ["alice", "bob"],
+          }),
+        }),
+      );
+    },
+  );
 
   it("rejects unnumbered move text before verifying the access token", async () => {
     const response = await handler({

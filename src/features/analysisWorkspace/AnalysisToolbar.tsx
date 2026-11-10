@@ -14,6 +14,7 @@ type AnalysisToolbarProps = {
   onToggle: () => void;
   toggleAriaLabel: string;
   toggleClassName?: string;
+  toggleDisabled?: boolean;
   toggleTitle: string;
 };
 
@@ -27,6 +28,7 @@ export const AnalysisToolbar = ({
   onToggle,
   toggleAriaLabel,
   toggleClassName,
+  toggleDisabled,
   toggleTitle,
 }: AnalysisToolbarProps) => {
   const toolbarClasses = ["analysisBottomToolbar", className].filter(Boolean).join(" ");
@@ -41,6 +43,7 @@ export const AnalysisToolbar = ({
         className={toggleClasses}
         aria-label={toggleAriaLabel}
         aria-pressed={active}
+        disabled={toggleDisabled}
         title={toggleTitle}
         onClick={onToggle}
       >

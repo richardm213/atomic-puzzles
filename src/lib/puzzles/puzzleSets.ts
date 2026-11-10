@@ -1,3 +1,4 @@
+import { legacyMatchPuzzleSetSources } from "../../../shared/domain/puzzles/legacyMatchPuzzleSets";
 import {
   formatPuzzleSetDate,
   formatPuzzleSetPlayers,
@@ -92,26 +93,6 @@ const sortGroups = (left: PuzzleEventGroup, right: PuzzleEventGroup): number => 
 
 type PuzzleGroupBuilder = Omit<PuzzleEventGroup, "authors"> & { authors: Set<string> };
 
-const knownPuzzleSetSourceIds: Readonly<Record<number, string>> = {
-  1: "tiPlLQEE",
-  2: "fIJoCI7j",
-  3: "cna1BteU",
-  10: "Yr9V8s5R",
-  11: "5xtZlERw",
-  12: "OqWE65nu",
-  13: "tUvUftLZ",
-  14: "IJL3lXpE",
-  15: "75L7QLTy",
-  16: "Lx9Aw3eb",
-  18: "irgn69Ce",
-  19: "3OG5r1jh",
-  31: "UhIDR1jR",
-  32: "sHD4NH5z",
-  33: "K2GJJJnb",
-  37: "s1XjJvZ8",
-  1496: "lOVW9Mod",
-};
-
 const knownPuzzleSetPlayerOrders: Readonly<Record<number, string[]>> = {
   39: ["seaside_tiramisu", "rafaelsouzasouza"],
 };
@@ -127,7 +108,7 @@ export const getPuzzleSetSourceId = (puzzle: Puzzle, requestedSetId?: number): s
     String(requestedSetId ?? relation?.id ?? puzzle.puzzle_set_id ?? ""),
     10,
   );
-  return knownPuzzleSetSourceIds[setId] ?? "";
+  return legacyMatchPuzzleSetSources[setId] ?? "";
 };
 
 export const groupPuzzlesByEvent = (puzzles: Puzzle[] = []): PuzzleEventGroup[] => {

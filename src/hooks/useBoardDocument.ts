@@ -19,7 +19,7 @@ type BoardDocumentOptions = {
 
 type BoardDocumentField = Pick<
   TextareaHTMLAttributes<HTMLTextAreaElement>,
-  "value" | "onFocus" | "onBlur" | "onKeyDown" | "onChange"
+  "value" | "onFocus" | "onBlur" | "onKeyDown" | "onChange" | "readOnly"
 > & {
   error: string;
 };

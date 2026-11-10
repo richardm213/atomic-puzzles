@@ -1,8 +1,8 @@
-import { faArrowLeft, faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faArrowRight, faPuzzlePiece } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import type { Ref } from "react";
+import type { MouseEvent, Ref } from "react";
 
 import { BoardClock } from "../../components/BoardClock/BoardClock";
 import { lichessIcons } from "../../components/PlayerHoverCard/lichessIcons";
@@ -178,7 +178,17 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
   );
 };
 
-export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
+export const GameMatchNavigation = ({
+  game,
+  onCreatePuzzle,
+  puzzleDraftOpen = false,
+  createPuzzleDisabled = false,
+}: {
+  game: ArchiveGame;
+  onCreatePuzzle?: ((event: MouseEvent<HTMLButtonElement>) => void) | undefined;
+  puzzleDraftOpen?: boolean;
+  createPuzzleDisabled?: boolean;
+}) => {
   const navigate = useNavigate();
   const matchQuery = useQuery({
     queryKey: ["games", "match-crosstable", game.external_match_id],
@@ -188,8 +198,8 @@ export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
   });
   const games = matchQuery.data?.games ?? [];
   const currentIndex = games.findIndex((matchGame) => matchGame.id === game.game_id);
-  const previousGame = games[currentIndex - 1] ?? null;
-  const nextGame = currentIndex >= 0 ? (games[currentIndex + 1] ?? null) : null;
+  const previousGame = puzzleDraftOpen ? null : (games[currentIndex - 1] ?? null);
+  const nextGame = !puzzleDraftOpen && currentIndex >= 0 ? (games[currentIndex + 1] ?? null) : null;
   const previousGameId = previousGame?.id;
   const nextGameId = nextGame?.id;
 
@@ -206,15 +216,18 @@ export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
       : undefined,
   });
 
-  if (games.length <= 1 || currentIndex < 0) return null;
+  const showGameNavigation = games.length > 1 && currentIndex >= 0;
+  if (!showGameNavigation && !onCreatePuzzle) return null;
 
   return (
     <nav className="gameAnalysisGameNavigation" aria-label="Games in this match">
-      <span className="gameAnalysisGameNumber">
-        Game {currentIndex + 1}/{games.length}
-      </span>
+      {showGameNavigation ? (
+        <span className="gameAnalysisGameNumber">
+          Game {currentIndex + 1}/{games.length}
+        </span>
+      ) : null}
       <div className="gameAnalysisGameNavigationButtons">
-        {previousGame ? (
+        {!showGameNavigation ? null : previousGame ? (
           <Link
             className="gameAnalysisGameNavigationButton"
             to="/game/$gameId"
@@ -229,14 +242,22 @@ export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
           <button
             type="button"
             className="gameAnalysisGameNavigationButton"
-            aria-label="No previous game"
-            title={`No previous game${previousHint ? ` (${previousHint})` : ""}`}
+            aria-label={
+              puzzleDraftOpen
+                ? "Previous game unavailable while creating a puzzle"
+                : "No previous game"
+            }
+            title={
+              puzzleDraftOpen
+                ? "Finish creating the puzzle to switch games"
+                : `No previous game${previousHint ? ` (${previousHint})` : ""}`
+            }
             disabled
           >
             <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
           </button>
         )}
-        {nextGame ? (
+        {!showGameNavigation ? null : nextGame ? (
           <Link
             className="gameAnalysisGameNavigationButton"
             to="/game/$gameId"
@@ -251,13 +272,35 @@ export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
           <button
             type="button"
             className="gameAnalysisGameNavigationButton"
-            aria-label="No next game"
-            title={`No next game${nextHint ? ` (${nextHint})` : ""}`}
+            aria-label={
+              puzzleDraftOpen ? "Next game unavailable while creating a puzzle" : "No next game"
+            }
+            title={
+              puzzleDraftOpen
+                ? "Finish creating the puzzle to switch games"
+                : `No next game${nextHint ? ` (${nextHint})` : ""}`
+            }
             disabled
           >
             <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
           </button>
         )}
+        {onCreatePuzzle ? (
+          <button
+            type="button"
+            className="gameAnalysisGameNavigationButton"
+            aria-label="Create puzzle"
+            title={
+              createPuzzleDisabled
+                ? "Choose a playable position to create a puzzle"
+                : "Create puzzle"
+            }
+            disabled={createPuzzleDisabled || puzzleDraftOpen}
+            onClick={onCreatePuzzle}
+          >
+            <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
+          </button>
+        ) : null}
       </div>
     </nav>
   );

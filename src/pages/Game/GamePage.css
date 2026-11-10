@@ -103,6 +103,105 @@
   opacity: 0.48;
 }
 
+.gamePuzzleComposer,
+.gamePuzzleConfirmation {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+  overflow-wrap: anywhere;
+}
+
+.gamePuzzleComposer {
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--text-body);
+}
+
+.gamePuzzleConfirmation {
+  margin-block-start: var(--space-2);
+  font-size: var(--text-body);
+}
+
+.gamePuzzleComposer h2 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: var(--text-control);
+}
+
+.gamePuzzleComposer p {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.gamePuzzleComposerField,
+.gamePuzzleComposerRetry {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+}
+
+.gamePuzzleComposerField label {
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+.gamePuzzleComposerField input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--control-height-touch);
+  padding-inline: var(--space-2);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-deep);
+  font-size: var(--text-control);
+}
+
+.gamePuzzleComposerActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.gamePuzzleComposer button {
+  min-height: var(--control-height-touch);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+.gamePuzzleComposer button:hover:not(:disabled),
+.gamePuzzleComposer button:active:not(:disabled) {
+  background: var(--color-surface-inset-strong);
+}
+
+.gamePuzzleComposer button[type="submit"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.gamePuzzleComposer button[type="submit"]:hover:not(:disabled),
+.gamePuzzleComposer button[type="submit"]:active:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.gamePuzzleComposer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.gamePuzzleComposer .gamePuzzleComposerError {
+  color: var(--color-danger);
+}
+
 .gameAnalysisMetaRow {
   min-width: 0;
   display: grid;
@@ -968,6 +1067,12 @@
     height: var(--game-analysis-panel-height, calc(var(--analysis-board-size, 516px) + 48px));
     max-height: none;
   }
+
+  .gameAnalysisPage.puzzleDraftOpen .analysisRightPanel {
+    contain: none;
+    height: auto;
+    max-height: var(--game-analysis-panel-height, calc(var(--analysis-board-size, 516px) + 48px));
+  }
 }
 
 .gameAnalysisPanelResizeHandle {
@@ -1098,6 +1203,10 @@
 
   .analysisRightPanel.gameAnalysisPanel {
     padding-block-start: var(--space-1);
+  }
+
+  .gameAnalysisPage.puzzleDraftOpen .analysisBoardTextPanel {
+    order: -1;
   }
 
   .gameAnalysisPlayer {

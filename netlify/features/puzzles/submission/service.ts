@@ -12,6 +12,7 @@ import {
   parseSolutionUciLines,
 } from "../../../../shared/domain/puzzles/solutionPgn";
 import { HttpError } from "../../../platform/errors";
+import type { loadMatchPuzzleContext } from "./matchContext";
 import type { PuzzleSubmissionRepository } from "./repository";
 
 export type PuzzleSubmissionInput = PuzzleSubmissionValue & { opaStyle: boolean; author: string };
@@ -96,5 +97,43 @@ export class PuzzleSubmissionService {
     return result.destination === "published"
       ? { destination: result.destination, puzzleId: result.puzzleIds[0] }
       : { destination: result.destination, puzzle: result.puzzles[0] };
+  }
+
+  async submitMatchPuzzle(
+    username: string,
+    input: PuzzleSubmissionInput & {
+      gameId: string;
+      matchName: string;
+      allowDifferentStartMove?: boolean | undefined;
+    },
+    context: Awaited<ReturnType<typeof loadMatchPuzzleContext>>,
+  ) {
+    const setName = context.setName || input.matchName;
+    if (!setName) throw new HttpError(400, "Enter a name for this match.");
+    try {
+      const puzzle = this.normalize(username, {
+        ...input,
+        whitePlayer: context.whitePlayer,
+        blackPlayer: context.blackPlayer,
+      });
+      if (puzzle.fen !== input.fen) {
+        throw new HttpError(400, "The solution must start from the selected position.");
+      }
+      const publish = isApprovedPuzzleCreator(username);
+      return await this.repository.saveMatchPuzzle({
+        username,
+        puzzle: { ...puzzle, event: setName, eventName: setName, eventDate: context.eventDate },
+        gameId: input.gameId,
+        matchId: context.matchId,
+        existingSetId: context.existingSetId,
+        publish,
+        allowDifferentStartMove: input.allowDifferentStartMove ?? false,
+      });
+    } catch (error) {
+      if (error instanceof Error && PUBLIC_DOMAIN_ERROR.test(error.message)) {
+        throw new HttpError(400, error.message);
+      }
+      throw error;
+    }
   }
 }

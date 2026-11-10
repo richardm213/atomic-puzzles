@@ -100,6 +100,7 @@ export type ChessboardProps = {
   preserveAnalysisHistoryOnSolutionChange?: boolean;
   restrictMovesToSolution?: boolean;
   disabled?: boolean;
+  hidden?: boolean;
   premoveColor?: Color;
   premovesEnabled?: boolean;
   onNavigateHandled?: () => void;
@@ -176,6 +177,7 @@ const ChessboardComponent = ({
   preserveAnalysisHistoryOnSolutionChange = false,
   restrictMovesToSolution = false,
   disabled = false,
+  hidden = false,
   premoveColor,
   premovesEnabled = false,
   onNavigateHandled,
@@ -1599,6 +1601,7 @@ const ChessboardComponent = ({
 
   return (
     <div
+      hidden={hidden}
       className={`cg-boardShell cg-pieceTheme${showBoardCoordinates === false ? " coordinatesHidden" : ""}`}
       style={{ ...pieceStyle, ...boardStyle }}
     >
