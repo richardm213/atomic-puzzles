@@ -1257,17 +1257,24 @@ describe("PuzzleSolverPage solution options", () => {
       act(() => mocks.chessboardProps.at(-1)?.onIntroEnd?.(1_250, true));
       const previousMove = analysis.getByText("Opponent’s previous move:").parentElement;
       expect(previousMove).toHaveTextContent("1. e4");
-      expect(analysis.queryByRole("button", { name: /e4/ })).not.toBeInTheDocument();
+      const previousMoveButton = analysis.getByRole("button", { name: "1. e4" });
+      expect(previousMoveButton).toHaveAttribute("aria-current", "step");
+      fireEvent.click(previousMoveButton);
+      expect(mocks.chessboardProps.at(-1)?.solutionNavigation).toEqual({ type: "history", ply: 0 });
       now += 2_000;
-      act(() => mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
-        puzzleId: 1369,
-        puzzleCorrect: false,
-        incorrectMove: "12... Kd7",
-        correctMove: null,
-      }));
-      await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledWith(
-        expect.objectContaining({ attemptDurationMs: 2_000 }),
-      ));
+      act(() =>
+        mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+          puzzleId: 1369,
+          puzzleCorrect: false,
+          incorrectMove: "12... Kd7",
+          correctMove: null,
+        }),
+      );
+      await waitFor(() =>
+        expect(mocks.recordPuzzleProgress).toHaveBeenCalledWith(
+          expect.objectContaining({ attemptDurationMs: 2_000 }),
+        ),
+      );
     } finally {
       dateNow.mockRestore();
       performanceNow.mockRestore();

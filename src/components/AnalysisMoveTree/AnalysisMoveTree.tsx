@@ -255,11 +255,17 @@ export const AnalysisMoveTree = ({
         aria-label="Analysis variations"
       >
         {previousMove ? (
-          <span className="analysisTreeMove analysisTreePreviousMove" role="listitem">
+          <button
+            type="button"
+            className={`analysisTreeMove ${currentPly === 0 ? "active" : ""}`}
+            aria-label={`${movePrefix(previousMove.ply, true).trim()} ${previousMove.san}`}
+            aria-current={currentPly === 0 ? "step" : undefined}
+            onClick={() => onSelect(activeLine, -1)}
+          >
             <span className="visuallyHidden">Opponent’s previous move: </span>
             <span className="analysisTreeMoveNumber">{movePrefix(previousMove.ply, true)}</span>
             {previousMove.san}
-          </span>
+          </button>
         ) : null}
         {renderContinuations(tree, 0, "root", 0, !previousMove && initialPly % 2 === 1)}
       </div>

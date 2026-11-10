@@ -118,10 +118,6 @@ button.analysisTreeMove:hover {
   vertical-align: middle;
 }
 
-.analysisTreePreviousMove {
-  color: var(--color-muted);
-}
-
 .analysisTreeMoveNumber {
   margin-inline-end: 2px;
   color: var(--color-muted);

@@ -65,7 +65,9 @@ export const MoveNotation = ({
       previousMove={previousMove}
       inline={inline}
       onSelect={(lineIndex, moveIndex) => {
-        if (lines.length) onSelectVariation(lineIndex, moveIndex);
+        // The previous move leads to the puzzle root, before solution move zero.
+        if (moveIndex === -1) onNavigate(0);
+        else if (lines.length) onSelectVariation(lineIndex, moveIndex);
         else onNavigate(moveIndex + 1);
       }}
       onCycleOptions={onCycleOptions}
