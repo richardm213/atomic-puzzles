@@ -71,6 +71,7 @@ import {
 import { readAnalysisHandoff } from "../../lib/analysis/handoff";
 import { type ArchiveGame, decodeGameResult } from "../../lib/archive/games";
 import { isAtomicTablebasePosition } from "../../lib/atomicTablebase/material";
+import { materialCountFromFen } from "../../lib/chess/materialCount";
 import {
   createAtomicPosition,
   prunePgnLinesFromMove,
@@ -541,6 +542,10 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     moveList,
     terminalOutcome,
   } = getBoardMoveState(boardState, rootFen);
+  const gameMaterial = useMemo(
+    () => materialCountFromFen(game ? currentFen : null),
+    [game, currentFen],
+  );
   const gameAnalysis = useGameAnalysis(game, gameRootFen, auth.user?.username ?? "");
   const positionAnalysisEnabled =
     atomicDbEngineSettings.enabled && (!game || gameComputerAnalysisEnabled);
@@ -1697,6 +1702,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           game ? (
             <GameBoardClock
               game={game}
+              material={gameMaterial}
               currentPly={puzzleDraft ? (gameBoardState?.lineIndex ?? 0) : currentPly}
               color={orientation === "white" ? "black" : "white"}
             />
@@ -1706,6 +1712,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           game ? (
             <GameBoardClock
               game={game}
+              material={gameMaterial}
               currentPly={puzzleDraft ? (gameBoardState?.lineIndex ?? 0) : currentPly}
               color={orientation === "white" ? "white" : "black"}
               rowRef={lowerClockRef}

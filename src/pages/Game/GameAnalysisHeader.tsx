@@ -11,6 +11,7 @@ import { modeLabels } from "../../constants/matches";
 import { useBoardItemShortcuts } from "../../hooks/useBoardItemShortcuts";
 import type { ArchiveGame } from "../../lib/archive/games";
 import { decodeGameResult } from "../../lib/archive/games";
+import type { MaterialCount } from "../../lib/chess/materialCount";
 import { gameTerminationLabel } from "../../lib/games/termination";
 import { loadRawMatchById } from "../../lib/matches/data";
 import { buildExternalGameUrl } from "../../lib/matches/routes";
@@ -91,11 +92,13 @@ export const GameBoardClock = ({
   game,
   currentPly,
   color,
+  material,
   rowRef,
 }: {
   game: ArchiveGame;
   currentPly: number;
   color: "white" | "black";
+  material: MaterialCount;
   rowRef?: Ref<HTMLDivElement> | undefined;
 }) => {
   const { white, black } = decodeGameResult(game);
@@ -112,6 +115,10 @@ export const GameBoardClock = ({
       value={formatClock(clock)}
       ariaLabel={`${username} clock, ${active ? "to move" : "waiting"}`}
       active={active}
+      material={{
+        side: color,
+        pieces: color === "white" ? material.whitePieces : material.blackPieces,
+      }}
     />
   );
 };

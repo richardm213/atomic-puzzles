@@ -1594,38 +1594,6 @@ button.puzzleRatingBadge.editable:focus-visible {
   width: 100%;
 }
 
-.materialDifferencePieces {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  min-width: 18px;
-  min-height: 18px;
-  padding-left: 7px;
-  border-left: 1px solid color-mix(in srgb, var(--color-border) 74%, transparent);
-}
-
-.materialDifferencePieces.isEmpty {
-  border-left-color: transparent;
-}
-
-.materialDifferencePiece {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  margin-left: -2px;
-  background-color: color-mix(in srgb, var(--color-heading) 88%, var(--color-muted));
-  mask-position: center;
-  mask-repeat: no-repeat;
-  mask-size: contain;
-  -webkit-mask-position: center;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-size: contain;
-}
-
-.materialDifferencePiece:first-child {
-  margin-left: 0;
-}
-
 .mobileWorkflowPanel {
   display: none;
 }
