@@ -669,6 +669,7 @@ describe("PuzzleSolverPage solution options", () => {
     await waitFor(() => expect(mocks.fetchPuzzleRatingExclusions).toHaveBeenCalledOnce());
     await waitFor(() => expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(false));
     expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
+    expect(screen.getByRole("tab", { name: "Other attempts" })).toBeDisabled();
   });
 
   it("does not fall back to a previously attempted puzzle when none remain", async () => {
@@ -1121,6 +1122,51 @@ describe("PuzzleSolverPage solution options", () => {
       mocks.puzzleExplanation,
     );
   });
+
+  it.each([true, false])(
+    "unlocks other attempts after an unrated attempt and on revisit (correct: %s)",
+    async (puzzleCorrect) => {
+      mocks.puzzleAuthor = mocks.username;
+      mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValue([]);
+      mocks.fetchPuzzleRatingExclusions.mockResolvedValue([
+        { puzzle_id: "1369", expires_at: "2020-01-01T00:00:00Z", permanent: true },
+      ]);
+      mocks.recordPuzzleProgress.mockResolvedValue({ rated: false, ratingEvent: null });
+      const user = userEvent.setup();
+      const view = render(<PuzzleSolverPage />);
+      const tab = await screen.findByRole("tab", { name: "Other attempts" });
+      await waitFor(() => expect(mocks.chessboardProps.at(-1)?.onAttemptResolved).toBeDefined());
+      expect(tab).toBeDisabled();
+      act(() =>
+        mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+          puzzleId: "1369",
+          puzzleCorrect,
+          incorrectMove: puzzleCorrect ? null : "12... Rf8",
+          correctMove: puzzleCorrect ? "12... O-O" : null,
+        }),
+      );
+      await waitFor(() => expect(tab).toBeEnabled());
+      expect(screen.getByRole("checkbox", { name: "Permanently unrated" })).toBeDisabled();
+      await user.click(tab);
+      expect(await screen.findByRole("list", { name: "Other puzzle attempts" })).toBeVisible();
+      await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledOnce());
+      view.unmount();
+
+      mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValue([
+        {
+          puzzle_id: "1369",
+          rated: false,
+          puzzle_correct: puzzleCorrect,
+          first_attempt_at: "2026-01-01T00:00:00Z",
+        },
+      ]);
+      render(<PuzzleSolverPage />);
+      const restored = await screen.findByRole("tab", { name: "Other attempts" });
+      await waitFor(() => expect(restored).toBeEnabled());
+      await user.click(restored);
+      expect(await screen.findByRole("list", { name: "Other puzzle attempts" })).toBeVisible();
+    },
+  );
 
   it("locks other attempts until the current user has attempted the puzzle", async () => {
     mocks.attemptedPuzzleIds = new Set();

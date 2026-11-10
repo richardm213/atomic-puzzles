@@ -849,6 +849,14 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const canViewPostAttemptDetails = testMode
     ? puzzleSession.attempt === "solved" || boardShowsSolution
     : hasAttemptedActivePuzzle;
+  const canViewOtherAttempts =
+    canViewPostAttemptDetails ||
+    (!testMode &&
+      !blindMode &&
+      !isCustomSetRoute &&
+      !isDashboardSetSolveMode &&
+      hasUnratedAttempt &&
+      unratedReason !== null);
   const sourceMatchId = activePuzzle
     ? getPuzzleSetSourceId(activePuzzle, Number.parseInt(routeSetKey, 10))
     : "";
@@ -1349,7 +1357,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   };
 
   const handleSelectOtherPuzzleAttemptsTab = () => {
-    if (!canViewPostAttemptDetails) return;
+    if (!canViewOtherAttempts) return;
 
     if (otherPuzzleAttemptsOpen) {
       if (otherPuzzleAttemptsStatus === "error") {
@@ -1706,7 +1714,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         onSave: (event) => void handleSaveExplanation(event),
       }}
       attempts={{
-        canView: canViewPostAttemptDetails,
+        canView: canViewOtherAttempts,
         puzzleKey: activePuzzleKey,
         status: otherPuzzleAttemptsStatus,
         rows: otherPuzzleAttempts,
