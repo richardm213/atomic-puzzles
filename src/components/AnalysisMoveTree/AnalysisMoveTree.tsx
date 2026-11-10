@@ -119,6 +119,8 @@ export const AnalysisMoveTree = ({
   initialPly = 0,
   inline = true,
   previousMove,
+  beforePreviousMove = false,
+  onSelectPreviousMove,
   onSelect,
   onCycleOptions,
   onAnnotate,
@@ -132,6 +134,8 @@ export const AnalysisMoveTree = ({
   initialPly?: number | undefined;
   inline?: boolean;
   previousMove?: PreviousMove | undefined;
+  beforePreviousMove?: boolean | undefined;
+  onSelectPreviousMove?: (() => void) | undefined;
   onSelect: (lineIndex: number, moveIndex: number) => void;
   onCycleOptions?: CycleOptions | undefined;
   onAnnotate?: ((lineIndex: number, moveIndex: number, annotation: string) => void) | undefined;
@@ -257,10 +261,10 @@ export const AnalysisMoveTree = ({
         {previousMove ? (
           <button
             type="button"
-            className={`analysisTreeMove ${currentPly === 0 ? "active" : ""}`}
+            className={`analysisTreeMove ${currentPly === 0 && !beforePreviousMove ? "active" : ""}`}
             aria-label={`${movePrefix(previousMove.ply, true).trim()} ${previousMove.san}`}
-            aria-current={currentPly === 0 ? "step" : undefined}
-            onClick={() => onSelect(activeLine, -1)}
+            aria-current={currentPly === 0 && !beforePreviousMove ? "step" : undefined}
+            onClick={onSelectPreviousMove}
           >
             <span className="visuallyHidden">Opponent’s previous move: </span>
             <span className="analysisTreeMoveNumber">{movePrefix(previousMove.ply, true)}</span>

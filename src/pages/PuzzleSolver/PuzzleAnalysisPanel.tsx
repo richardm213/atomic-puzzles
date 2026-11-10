@@ -25,6 +25,7 @@ export const PuzzleAnalysisPanel = ({
   fen,
   analysisActive,
   previousMove,
+  beforePreviousMove,
   terminalOutcome,
   lines,
   moves,
@@ -45,6 +46,7 @@ export const PuzzleAnalysisPanel = ({
   fen: string;
   analysisActive: boolean;
   previousMove?: PuzzleIntro | null | undefined;
+  beforePreviousMove?: boolean | undefined;
   terminalOutcome: "white" | "black" | "draw" | null;
   lines: string[][];
   moves: string[];
@@ -116,6 +118,7 @@ export const PuzzleAnalysisPanel = ({
               ? { san: previousMove.san, ply: startingPlyFromFen(previousMove.beforeFen) }
               : undefined
           }
+          beforePreviousMove={beforePreviousMove}
           currentPly={currentPly}
           pinnedLineIndex={activeLineIndex}
           inline

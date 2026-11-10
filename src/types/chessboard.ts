@@ -8,6 +8,7 @@ export type PositionState = {
   error: string;
   lineMoves?: string[];
   lineIndex?: number;
+  viewingIntro?: boolean;
 };
 
 export type BoardLineRef =

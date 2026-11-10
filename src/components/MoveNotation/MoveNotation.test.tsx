@@ -21,6 +21,8 @@ describe("MoveNotation", () => {
     fireEvent.click(previous);
     expect(onNavigate).toHaveBeenCalledWith(0);
     expect(onSelectVariation).not.toHaveBeenCalled();
+    rerender(<MoveNotation {...props} currentPly={0} beforePreviousMove />);
+    expect(screen.getByRole("button", { name: "1. e4" })).not.toHaveAttribute("aria-current");
     rerender(<MoveNotation {...props} currentPly={0} />);
     expect(screen.getByRole("button", { name: "1. e4" })).toHaveAttribute("aria-current", "step");
     fireEvent.click(screen.getByRole("button", { name: "e5" }));

@@ -1150,7 +1150,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const canRevealSolution =
     Boolean(fen) &&
     (hasAttemptedActivePuzzle || puzzleSession.attempt === "wrong") &&
-    !isRetryFeedbackActive && !introPending;
+    !isRetryFeedbackActive &&
+    !introPending;
   const solutionButtonTitle = isRetryFeedbackActive
     ? "Find the better move before viewing the solution."
     : hasAttemptedActivePuzzle
@@ -1559,8 +1560,11 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       ? activeSolutionLine.length
       : (boardState.lineMoves?.length ?? 0);
   const currentPly = boardState.lineIndex ?? 0;
-  const canPlaybackPrevious = currentPly > 0;
-  const canPlaybackNext = currentPly < currentLineLength;
+  const canNavigateIntro = Boolean(
+    activePuzzle?.intro && !introPending && !blindPosition && !dailyLimitReached,
+  );
+  const canPlaybackPrevious = !boardState.viewingIntro && (currentPly > 0 || canNavigateIntro);
+  const canPlaybackNext = Boolean(boardState.viewingIntro) || currentPly < currentLineLength;
 
   useBoardWheelNavigation({
     boardPanelRef,
@@ -1575,6 +1579,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       fen={currentFen}
       analysisActive={isAnalysisMode}
       previousMove={introPending ? undefined : activePuzzle?.intro}
+      beforePreviousMove={boardState.viewingIntro}
       terminalOutcome={
         boardState.winner ?? (boardState.status.toLowerCase() === "draw" ? "draw" : null)
       }
@@ -2131,7 +2136,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
             (!blindPlies || blindEntryReady) ? (
               <Chessboard
                 key={`${activePuzzleId}:${blindMode}`}
-                intro={puzzleIntro}
+                intro={activePuzzle?.intro}
+                autoplayIntro={Boolean(puzzleIntro)}
                 blindFen={blindPosition?.beforeFen}
                 onIntroEnd={handleIntroEnd}
                 puzzleId={activePuzzleId}

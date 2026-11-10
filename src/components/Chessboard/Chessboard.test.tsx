@@ -119,21 +119,86 @@ describe("Chessboard orchestration", () => {
       });
       expect(mocks.set).toHaveBeenCalledWith(expect.objectContaining({ fen: STARTING_FEN }));
       play("e7", "e5");
-      act(() => vi.advanceTimersByTime(549));
+      act(() => {
+        vi.advanceTimersByTime(549);
+      });
       const replayPosition = expect.objectContaining({ fen, lastMove: ["e2", "e4"] });
       expect(mocks.set).not.toHaveBeenCalledWith(replayPosition);
-      act(() => vi.advanceTimersByTime(1));
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
       expect(mocks.set).toHaveBeenCalledWith(replayPosition);
       expect(states).toHaveLength(0);
       play("e7", "e5");
       expect(onIntroEnd).not.toHaveBeenCalled();
       expect(onAttemptResolved).not.toHaveBeenCalled();
-      act(() => vi.advanceTimersByTime(120));
+      act(() => {
+        vi.advanceTimersByTime(120);
+      });
       expect(onIntroEnd).toHaveBeenCalledWith(670, true);
       expect(states.at(-1)?.lineMoves).toEqual([]);
       play("e7", "e5");
-      act(() => vi.advanceTimersByTime(250));
-      expect(onAttemptResolved).toHaveBeenCalledWith(expect.objectContaining({ puzzleCorrect: true }));
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(onAttemptResolved).toHaveBeenCalledWith(
+        expect.objectContaining({ puzzleCorrect: true }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("navigates before the opponent move and back without shifting or grading the puzzle history", () => {
+    vi.useFakeTimers();
+    try {
+      const fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+      const states: ChessboardState[] = [];
+      const onAttemptResolved = vi.fn();
+      const props = {
+        puzzleId: "intro-navigation",
+        fen,
+        orientation: "black" as const,
+        coordinates: true,
+        solution: "1... e5",
+        showSolution: false,
+        analysisMode: false,
+        intro: { beforeFen: STARTING_FEN, san: "e4", uci: "e2e4" },
+        autoplayIntro: false,
+        onStateChange: (state: ChessboardState) => states.push(state),
+        onAttemptResolved,
+      };
+      const { rerender } = render(<Chessboard {...props} />);
+      const command = (command: "previous" | "next" | "start" | "end") => {
+        rerender(<Chessboard {...props} solutionNavigation={{ type: "command", command }} />);
+      };
+      expect(states.at(-1)).toMatchObject({ fen, lineIndex: 0, viewingIntro: false });
+      command("previous");
+      expect(states.at(-1)).toMatchObject({ fen: STARTING_FEN, lineIndex: 0, viewingIntro: true });
+      const count = states.length;
+      play("e2", "e4");
+      expect(states).toHaveLength(count);
+      expect(onAttemptResolved).not.toHaveBeenCalled();
+      command("next");
+      expect(states.at(-1)).toMatchObject({
+        fen,
+        lineIndex: 0,
+        viewingIntro: false,
+        lineMoves: [],
+      });
+      command("previous");
+      rerender(<Chessboard {...props} solutionNavigation={{ type: "history", ply: 0 }} />);
+      expect(states.at(-1)).toMatchObject({ fen, viewingIntro: false });
+      play("e7", "e5");
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(onAttemptResolved).toHaveBeenCalledTimes(1);
+      command("start");
+      expect(states.at(-1)).toMatchObject({ fen: STARTING_FEN, lineIndex: 0, viewingIntro: true });
+      command("end");
+      expect(states.at(-1)).toMatchObject({ lineIndex: 1, viewingIntro: false, lineMoves: ["e5"] });
+      expect(onAttemptResolved).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
     }

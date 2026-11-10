@@ -9,6 +9,7 @@ export const MoveNotation = ({
   currentPly,
   pinnedLineIndex,
   previousMove,
+  beforePreviousMove,
   initialPly = previousMove ? previousMove.ply + 1 : 0,
   inline,
   onNavigate,
@@ -24,6 +25,7 @@ export const MoveNotation = ({
   pinnedLineIndex?: number | undefined;
   initialPly?: number | undefined;
   previousMove?: PreviousMove | undefined;
+  beforePreviousMove?: boolean | undefined;
   inline: boolean;
   onNavigate: (ply: number) => void;
   onSelectVariation: (lineIndex: number, moveIndex: number) => void;
@@ -63,11 +65,11 @@ export const MoveNotation = ({
       pinnedLineIndex={pinnedLineIndex}
       initialPly={initialPly}
       previousMove={previousMove}
+      beforePreviousMove={beforePreviousMove}
+      onSelectPreviousMove={() => onNavigate(0)}
       inline={inline}
       onSelect={(lineIndex, moveIndex) => {
-        // The previous move leads to the puzzle root, before solution move zero.
-        if (moveIndex === -1) onNavigate(0);
-        else if (lines.length) onSelectVariation(lineIndex, moveIndex);
+        if (lines.length) onSelectVariation(lineIndex, moveIndex);
         else onNavigate(moveIndex + 1);
       }}
       onCycleOptions={onCycleOptions}
