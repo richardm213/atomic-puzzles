@@ -73,11 +73,24 @@ describe("puzzle-submit function", () => {
   });
 
   it.each([
-    { username: "submitter", setName: "Scam match", publish: false, existing: true },
-    { username: "wolfram_ep", setName: "AWC 2026 Semifinals", publish: true, existing: false },
+    { username: "submitter", setName: "Scam match", publish: false, source: "linked", setId: 42 },
+    {
+      username: "submitter",
+      setName: "Older match",
+      publish: false,
+      source: "historical",
+      setId: 43,
+    },
+    {
+      username: "wolfram_ep",
+      setName: "AWC 2026 Semifinals",
+      publish: true,
+      source: "tournament",
+      setId: null,
+    },
   ])(
-    "uses the canonical match metadata for $username",
-    async ({ username, setName, publish, existing }) => {
+    "uses $source match metadata without asking for a name",
+    async ({ username, setName, publish, source, setId }) => {
       mocks.queryArchiveResource.mockResolvedValue({
         external_match_id: "match-1",
         player_1: "alice",
@@ -92,14 +105,15 @@ describe("puzzle-submit function", () => {
         order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
         maybeSingle: vi.fn(async () => ({
-          data: existing
-            ? null
-            : {
-                tournament: "awc2026",
-                bracket: "main",
-                round: "Semifinals",
-                played_on: "2026-11-09",
-              },
+          data:
+            source !== "tournament"
+              ? null
+              : {
+                  tournament: "awc2026",
+                  bracket: "main",
+                  round: "Semifinals",
+                  played_on: "2026-11-09",
+                },
           error: null,
         })),
       };
@@ -107,12 +121,35 @@ describe("puzzle-submit function", () => {
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
         order: vi.fn(async () => ({
-          data: existing ? [{ id: 42, event_name: setName, source_id: "match-1" }] : [],
+          data:
+            source === "linked" ? [{ id: setId, event_name: setName, source_id: "match-1" }] : [],
           error: null,
         })),
       };
+      const historicalQuery = {
+        select: vi.fn().mockReturnThis(),
+        or: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn(async () => ({
+          data:
+            source === "historical"
+              ? {
+                  event: null,
+                  event_name: setName,
+                  puzzle_set: { id: setId, event_name: setName, source_id: null },
+                }
+              : null,
+          error: null,
+        })),
+        then: (resolve: (value: { data: unknown[]; error: null }) => unknown) =>
+          resolve({ data: [], error: null }),
+      };
       const from = vi.fn((table: string) => {
         if (table === "puzzle_sets") return setQuery;
+        if (table === "puzzles") return historicalQuery;
         if (table === "tournament_matches") return roundQuery;
         if (table === "tournament_catalog") {
           return {
@@ -128,6 +165,14 @@ describe("puzzle-submit function", () => {
         : { destination: "review", setName };
       const rpc = vi.fn(async () => ({ data: result, error: null }));
       mocks.createClient.mockReturnValue({ from, rpc });
+
+      const preview = await handler({
+        httpMethod: "POST",
+        headers: authHeaders(username),
+        body: JSON.stringify({ action: "match-context", gameId: "game-1" }),
+      });
+      expect(preview.statusCode).toBe(200);
+      expect(JSON.parse(preview.body)).toMatchObject({ setName });
 
       const response = await handler({
         httpMethod: "POST",
@@ -149,7 +194,7 @@ describe("puzzle-submit function", () => {
         expect.objectContaining({
           p_game_id: "game-1",
           p_match_id: "match-1",
-          p_legacy_set_id: existing ? 42 : null,
+          p_legacy_set_id: setId,
           p_publish: publish,
           p_puzzle: expect.objectContaining({
             eventName: setName,

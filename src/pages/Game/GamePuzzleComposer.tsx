@@ -41,8 +41,9 @@ export const GamePuzzleComposer = ({
   const titleId = useId();
   const helpId = useId();
   const matchNameId = useId();
-  const needsName = context.data?.setName === null;
-  const canSave = Boolean(context.data && solution && (!needsName || matchName.trim()));
+  const checkingName = context.isFetching && !context.data?.setName;
+  const needsName = !checkingName && !context.isError && context.data?.setName === null;
+  const canSave = Boolean(solution && (context.data?.setName || (needsName && matchName.trim())));
   const confirmDifferentStart = error === DIFFERENT_START_MOVE_CONFIRMATION;
 
   useEffect(() => {
@@ -92,7 +93,7 @@ export const GamePuzzleComposer = ({
     >
       <h2 id={titleId}>Create puzzle</h2>
       <p>Play the solution on the board.</p>
-      {context.isPending ? <p role="status">Loading match set…</p> : null}
+      {checkingName ? <p role="status">Loading match set…</p> : null}
       {context.isError ? (
         <div className="gamePuzzleComposerRetry">
           <p role="alert">{getErrorMessage(context.error, "Unable to load the match set.")}</p>

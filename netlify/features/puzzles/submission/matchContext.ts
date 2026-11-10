@@ -20,6 +20,30 @@ type TournamentRound = {
   played_on: string | null;
 };
 
+type MatchPuzzleSet = { id: number; event_name: string; source_id: string | null };
+type HistoricalMatchPuzzle = {
+  event: string | null;
+  event_name: string | null;
+  puzzle_set: MatchPuzzleSet | null;
+};
+
+const findHistoricalMatchPuzzle = async (db: SupabaseClient, matchId: string, gameId: string) => {
+  const { data, error } = await db
+    .from("puzzles")
+    .select(
+      "event,event_name,puzzle_set:puzzle_sets!puzzles_puzzle_set_id_fkey(id,event_name,source_id)",
+    )
+    .or(
+      `match_id.eq.${JSON.stringify(matchId)},and(match_id.is.null,game_id.eq.${JSON.stringify(gameId)})`,
+    )
+    .order("puzzle_set_id", { nullsFirst: false })
+    .order("id")
+    .limit(1)
+    .maybeSingle<HistoricalMatchPuzzle>();
+  if (error) throw new Error(`Unable to look up existing match puzzles: ${error.message}`);
+  return data;
+};
+
 const tournamentRoundLabel = ({ bracket, round }: TournamentRound): string => {
   if (bracket === "grand_final") return round === "Reset" ? "Grand Final Reset" : "Grand Final";
   if (bracket === "losers") return `Losers Bracket, ${round}`;
@@ -61,8 +85,30 @@ export const loadMatchPuzzleContext = async (db: SupabaseClient, gameId: string)
   if (lookupError) throw new Error(`Unable to look up the match set: ${lookupError.message}`);
 
   const linkedSet = sets.data?.find((set) => set.source_id === matchId);
-  const existingSet =
+  let existingSet: MatchPuzzleSet | null | undefined =
     linkedSet ?? sets.data?.find((set) => set.id === legacySetId && !set.source_id);
+  const historicalPuzzle = existingSet
+    ? null
+    : await findHistoricalMatchPuzzle(db, matchId, gameId);
+  const historicalSet = historicalPuzzle?.puzzle_set;
+  let historicalSetIsShared = false;
+  if (historicalSet) {
+    if (historicalSet.source_id === matchId) {
+      existingSet = historicalSet;
+    } else if (historicalSet.source_id) {
+      historicalSetIsShared = true;
+    } else {
+      const { data, error } = await db
+        .from("puzzles")
+        .select("id")
+        .eq("puzzle_set_id", historicalSet.id)
+        .neq("match_id", matchId)
+        .limit(1);
+      if (error) throw new Error(`Unable to verify the existing puzzle set: ${error.message}`);
+      historicalSetIsShared = Boolean(data?.length);
+      if (!historicalSetIsShared) existingSet = historicalSet;
+    }
+  }
   const tournamentId = rounds.data?.tournament ?? game.tournament?.trim();
   let tournamentTitle = game.tournament?.trim() ?? "";
   if (!existingSet && tournamentId) {
@@ -72,19 +118,23 @@ export const loadMatchPuzzleContext = async (db: SupabaseClient, gameId: string)
       .eq("id", tournamentId)
       .maybeSingle();
     if (error) throw new Error(`Unable to look up the tournament: ${error.message}`);
-    tournamentTitle = data?.title ?? tournamentTitle;
-    if (rounds.data && !tournamentTitle)
-      throw new Error("Archived tournament has no catalog title.");
+    tournamentTitle = data?.title?.trim() || tournamentTitle || tournamentId;
   }
   const round = rounds.data ? tournamentRoundLabel(rounds.data) : "";
   const tournamentName = [tournamentTitle, round].filter(Boolean).join(" ");
+  const historicalName = historicalPuzzle
+    ? historicalPuzzle.event_name?.trim() || historicalPuzzle.event?.trim() || `Match ${matchId}`
+    : "";
+  const automaticName = tournamentName || historicalName;
   const player1IsWhite = (game.result & 1) === 0;
   const archiveDate = new Date(game.start_ts);
 
   return {
     matchId,
     existingSetId: existingSet?.id ?? null,
-    setName: existingSet?.event_name ?? (tournamentName || null),
+    setName:
+      existingSet?.event_name ??
+      (historicalSetIsShared ? `${automaticName} · ${matchId}` : automaticName || null),
     eventDate:
       rounds.data?.played_on ??
       (Number.isFinite(archiveDate.getTime()) ? archiveDate.toISOString().slice(0, 10) : ""),
