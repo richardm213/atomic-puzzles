@@ -39,6 +39,7 @@ const submissionBodySchema = z.union([
     action: z.literal("add-match-puzzle"),
     gameId: z.string().trim().min(1).max(128),
     matchName: z.string().trim().max(100).default(""),
+    renameFrom: z.string().min(1).max(1000).optional(),
     allowDifferentStartMove: z.boolean().optional(),
   }),
   singleSubmissionSchema.extend({
@@ -63,8 +64,12 @@ export const puzzleSubmissionRoute = async (
       const identity = await authenticateRequest(event.headers);
       requireUsername(identity, "Log in with Lichess to create a match puzzle.");
       const db = createServerSupabase("Match set lookup");
-      const { setName, players } = await loadMatchPuzzleContext(db, input.gameId, fetchGame);
-      return jsonResponse(200, { setName, players });
+      const { setName, players, canRenameSet } = await loadMatchPuzzleContext(
+        db,
+        input.gameId,
+        fetchGame,
+      );
+      return jsonResponse(200, { setName, players, canRenameSet });
     } catch (error) {
       return errorResponse(error, "Unable to load the match set. Try again.");
     }

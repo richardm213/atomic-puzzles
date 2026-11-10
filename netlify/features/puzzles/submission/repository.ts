@@ -127,6 +127,7 @@ export class PuzzleSubmissionRepository {
     gameId: string;
     matchId: string;
     existingSetId: number | null;
+    renameFrom?: string | undefined;
     publish: boolean;
     allowDifferentStartMove: boolean;
   }) {
@@ -139,6 +140,7 @@ export class PuzzleSubmissionRepository {
       p_legacy_set_id: input.existingSetId,
       p_publish: input.publish,
       p_allow_different_start_move: input.allowDifferentStartMove,
+      ...(input.renameFrom ? { p_rename_from: input.renameFrom } : {}),
     });
     const message = error?.message ?? "";
     if (message.includes("Puzzle start move already exists for FEN in queue")) {
@@ -158,6 +160,12 @@ export class PuzzleSubmissionRepository {
         409,
         "That set name is already used for another match. Choose another name.",
       );
+    }
+    if (message.includes("Match set name changed")) {
+      throw new HttpError(409, "This set can no longer be renamed. Reopen the puzzle editor.");
+    }
+    if (message.includes("Match set name already in use")) {
+      throw new HttpError(409, "That set name is already in use. Choose another name.");
     }
     if (error) throw new Error(`Unable to save match puzzle: ${message}`);
     return data;

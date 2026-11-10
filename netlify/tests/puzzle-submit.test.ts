@@ -100,6 +100,14 @@ describe("puzzle-submit function", () => {
     { username: "submitter", setName: "Scam match", publish: false, source: "linked", setId: 42 },
     {
       username: "submitter",
+      setName: "Match match-1",
+      renameTo: "Alice and Bob",
+      publish: false,
+      source: "linked",
+      setId: 42,
+    },
+    {
+      username: "submitter",
       setName: "Older match",
       publish: false,
       source: "historical",
@@ -112,9 +120,17 @@ describe("puzzle-submit function", () => {
       source: "tournament",
       setId: null,
     },
+    {
+      username: "wolfram_ep",
+      setName: "AWC 2026 Semifinals · match-1",
+      publish: true,
+      source: "tournament-linked",
+      setId: 44,
+    },
   ])(
-    "uses $source match metadata without asking for a name",
-    async ({ username, setName, publish, source, setId }) => {
+    "uses $source match metadata for '$setName'",
+    async ({ username, setName, publish, source, setId, renameTo }) => {
+      let storedSetName = setName;
       mocks.queryArchiveResource.mockResolvedValue({
         external_match_id: "match-1",
         player_1: "alice",
@@ -129,15 +145,14 @@ describe("puzzle-submit function", () => {
         order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
         maybeSingle: vi.fn(async () => ({
-          data:
-            source !== "tournament"
-              ? null
-              : {
-                  tournament: "awc2026",
-                  bracket: "main",
-                  round: "Semifinals",
-                  played_on: "2026-11-09",
-                },
+          data: !source.startsWith("tournament")
+            ? null
+            : {
+                tournament: "awc2026",
+                bracket: "main",
+                round: "Semifinals",
+                played_on: "2026-11-09",
+              },
           error: null,
         })),
       };
@@ -146,7 +161,9 @@ describe("puzzle-submit function", () => {
         eq: vi.fn().mockReturnThis(),
         order: vi.fn(async () => ({
           data:
-            source === "linked" ? [{ id: setId, event_name: setName, source_id: "match-1" }] : [],
+            source === "linked" || source === "tournament-linked"
+              ? [{ id: setId, event_name: storedSetName, source_id: "match-1" }]
+              : [],
           error: null,
         })),
       };
@@ -184,9 +201,10 @@ describe("puzzle-submit function", () => {
         }
         return { upsert: vi.fn(async () => ({ error: null })) };
       });
+      const savedName = renameTo ?? setName;
       const result = publish
-        ? { destination: "published", setName, puzzleId: 1801 }
-        : { destination: "review", setName };
+        ? { destination: "published", setName: savedName, puzzleId: 1801 }
+        : { destination: "review", setName: savedName };
       const rpc = vi.fn(async () => ({ data: result, error: null }));
       mocks.createClient.mockReturnValue({ from, rpc });
 
@@ -196,22 +214,38 @@ describe("puzzle-submit function", () => {
         body: JSON.stringify({ action: "match-context", gameId: "game-1" }),
       });
       expect(preview.statusCode).toBe(200);
-      expect(JSON.parse(preview.body)).toMatchObject({ setName });
+      expect(JSON.parse(preview.body)).toMatchObject({ setName, canRenameSet: Boolean(renameTo) });
       expect(rpc).not.toHaveBeenCalled();
 
-      const response = await handler({
-        httpMethod: "POST",
-        headers: authHeaders(username),
-        body: JSON.stringify({
-          action: "add-match-puzzle",
-          gameId: "game-1",
-          fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-          solution: "1. e4",
-          explanation: "",
-          matchName: "Ignored name",
-          whitePlayer: "spoofed",
-        }),
-      });
+      const submitMatch = (
+        matchName: string,
+        renameFrom?: string,
+        creator = username,
+        gameId = "game-1",
+      ) =>
+        handler({
+          httpMethod: "POST",
+          headers: authHeaders(creator),
+          body: JSON.stringify({
+            action: "add-match-puzzle",
+            gameId,
+            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            solution: "1. e4",
+            explanation: "",
+            matchName,
+            renameFrom,
+            whitePlayer: "spoofed",
+          }),
+        });
+      if (!renameTo) {
+        const forbidden = await submitMatch("Not allowed", setName);
+        expect(forbidden.statusCode).toBe(409);
+        expect(rpc).not.toHaveBeenCalled();
+      }
+      const response = await submitMatch(
+        renameTo ?? "Ignored name",
+        renameTo ? setName : undefined,
+      );
       expect(response.statusCode).toBe(201);
       expect(JSON.parse(response.body)).toEqual(result);
       expect(rpc).toHaveBeenCalledWith(
@@ -221,8 +255,9 @@ describe("puzzle-submit function", () => {
           p_match_id: "match-1",
           p_legacy_set_id: setId,
           p_publish: publish,
+          ...(renameTo ? { p_rename_from: setName } : {}),
           p_puzzle: expect.objectContaining({
-            eventName: setName,
+            eventName: savedName,
             eventDate: "2026-11-09",
             whitePlayer: "bob",
             blackPlayer: "alice",
@@ -230,6 +265,40 @@ describe("puzzle-submit function", () => {
           }),
         }),
       );
+
+      if (renameTo) {
+        // Simulate the canonical set after the first creator's queued puzzle saves its name.
+        storedSetName = renameTo;
+        const otherCreator = "wolfram_ep";
+        const otherGameId = "game-2";
+        const otherPreview = await handler({
+          httpMethod: "POST",
+          headers: authHeaders(otherCreator),
+          body: JSON.stringify({ action: "match-context", gameId: otherGameId }),
+        });
+        expect(otherPreview.statusCode).toBe(200);
+        expect(JSON.parse(otherPreview.body)).toMatchObject({
+          setName: renameTo,
+          canRenameSet: false,
+        });
+        rpc.mockResolvedValueOnce({
+          data: { destination: "published", puzzleId: 1802, setName: renameTo },
+          error: null,
+        });
+        const otherSubmission = await submitMatch(setName, undefined, otherCreator, otherGameId);
+        expect(otherSubmission.statusCode).toBe(201);
+        expect(rpc).toHaveBeenLastCalledWith(
+          "save_match_puzzle",
+          expect.objectContaining({
+            p_submitted_by: otherCreator,
+            p_game_id: otherGameId,
+            p_match_id: "match-1",
+            p_legacy_set_id: setId,
+            p_publish: true,
+            p_puzzle: expect.objectContaining({ eventName: renameTo }),
+          }),
+        );
+      }
     },
   );
 

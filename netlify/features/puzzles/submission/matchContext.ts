@@ -133,15 +133,17 @@ export const loadMatchPuzzleContext = async (
     ? historicalPuzzle.event_name?.trim() || historicalPuzzle.event?.trim() || `Match ${matchId}`
     : "";
   const automaticName = tournamentName || historicalName;
+  const setName =
+    existingSet?.event_name ??
+    (historicalSetIsShared ? `${automaticName} · ${matchId}` : automaticName || null);
   const player1IsWhite = (game.result & 1) === 0;
   const archiveDate = new Date(game.start_ts);
 
   return {
     matchId,
     existingSetId: existingSet?.id ?? null,
-    setName:
-      existingSet?.event_name ??
-      (historicalSetIsShared ? `${automaticName} · ${matchId}` : automaticName || null),
+    setName,
+    canRenameSet: !rounds.data && !game.tournament?.trim() && Boolean(setName?.includes(matchId)),
     eventDate:
       rounds.data?.played_on ??
       (Number.isFinite(archiveDate.getTime()) ? archiveDate.toISOString().slice(0, 10) : ""),

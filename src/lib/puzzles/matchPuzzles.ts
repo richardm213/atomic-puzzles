@@ -9,6 +9,7 @@ const matchPuzzleRequest = createPostApi("/api/puzzles/submit", {
 const matchContextSchema = z.object({
   setName: z.string().nullable(),
   players: z.tuple([z.string(), z.string()]),
+  canRenameSet: z.boolean().default(false),
 });
 
 const matchPuzzleResultSchema = z.discriminatedUnion("destination", [
@@ -36,6 +37,7 @@ export const addMatchPuzzle = (input: {
   fen: string;
   solution: string;
   matchName: string;
+  renameFrom?: string | undefined;
   allowDifferentStartMove: boolean;
 }) =>
   matchPuzzleRequest(

@@ -104,11 +104,15 @@ export class PuzzleSubmissionService {
     input: PuzzleSubmissionInput & {
       gameId: string;
       matchName: string;
+      renameFrom?: string | undefined;
       allowDifferentStartMove?: boolean | undefined;
     },
     context: Awaited<ReturnType<typeof loadMatchPuzzleContext>>,
   ) {
-    const setName = context.setName || input.matchName;
+    if (input.renameFrom && (!context.canRenameSet || input.renameFrom !== context.setName)) {
+      throw new HttpError(409, "This set can no longer be renamed. Reopen the puzzle editor.");
+    }
+    const setName = input.renameFrom ? input.matchName : context.setName || input.matchName;
     if (!setName) throw new HttpError(400, "Enter a name for this match.");
     try {
       const puzzle = this.normalize(username, {
@@ -126,6 +130,7 @@ export class PuzzleSubmissionService {
         gameId: input.gameId,
         matchId: context.matchId,
         existingSetId: context.existingSetId,
+        renameFrom: input.renameFrom,
         publish,
         allowDifferentStartMove: input.allowDifferentStartMove ?? false,
       });
