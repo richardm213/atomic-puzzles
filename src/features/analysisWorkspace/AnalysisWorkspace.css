@@ -93,8 +93,7 @@
 }
 
 :root[data-theme="light"] .analysisPage .atomicDbTopSource,
-:root[data-theme="light"] .analysisPage .atomicDbEngineDepth,
-:root[data-theme="light"] .analysisPage .atomicDbEngineLineUnavailable {
+:root[data-theme="light"] .analysisPage .atomicDbEngineDepth {
   color: var(--color-muted);
 }
 

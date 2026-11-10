@@ -1008,7 +1008,7 @@ button.puzzleRatingBadge.editable:focus-visible {
     padding: 4px 8px 6px;
   }
 
-  .puzzleAnalysisPanel :is(.atomicDbEngineLine, .atomicDbEngineLineUnavailable) {
+  .puzzleAnalysisPanel .atomicDbEngineLine {
     min-height: 30px;
     padding-inline: 4px;
   }

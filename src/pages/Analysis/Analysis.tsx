@@ -1555,7 +1555,6 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                   onPlayLine={playAtomicDbLine}
                   onHoverMove={setHoveredExplorerMoveUci}
                   disabled={atomicDbLinePlaying || effectiveThreatMode}
-                  reserveLines={wolfrandomOpening}
                 />
               ) : null
             }

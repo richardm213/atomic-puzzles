@@ -276,7 +276,7 @@ describe("AtomicDbEngine", () => {
     );
   });
 
-  it("does not show empty line placeholders beyond the legal move count", () => {
+  it("reserves the configured row count while loading and when fewer moves are legal", () => {
     const fen = "rn1r4/pp2kR1p/2p5/5P1P/1P6/4P3/P1P5/2K5 b - - 8 27";
     const position = parseAtomicDbResponse({
       status: "UNKNOWN",
@@ -288,25 +288,43 @@ describe("AtomicDbEngine", () => {
       ],
     });
 
-    render(
+    const settings = { enabled: true, lineCount: 5, showFollowUpMoves: false };
+    const analysis: AtomicDbAnalysisState = {
+      status: "ready",
+      error: "",
+      source: "mixed",
+      engine: "atomic-stockfish",
+      result: { fen, position },
+      principalVariations: {},
+    };
+    const onHoverMove = vi.fn();
+    const onPlayLine = vi.fn();
+    const { container, rerender } = render(
       <AtomicDbEngine
         fen={fen}
-        settings={{ enabled: true, lineCount: 5, showFollowUpMoves: false }}
-        analysis={{
-          status: "ready",
-          error: "",
-          source: "mixed",
-          engine: "atomic-stockfish",
-          result: { fen, position },
-          principalVariations: {},
-        }}
-        onPlayLine={vi.fn()}
-        onHoverMove={vi.fn()}
+        settings={settings}
+        analysis={{ ...analysis, status: "loading", result: null }}
+        onPlayLine={onPlayLine}
+        onHoverMove={onHoverMove}
+      />,
+    );
+    const rows = () => container.querySelectorAll(".atomicDbEngineLines > li");
+    expect(screen.getByText("Loading analysis…")).toBeVisible();
+    expect(rows()).toHaveLength(5);
+
+    rerender(
+      <AtomicDbEngine
+        fen={fen}
+        settings={settings}
+        analysis={analysis}
+        onPlayLine={onPlayLine}
+        onHoverMove={onHoverMove}
       />,
     );
 
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
-    expect(screen.queryByText("No analyzed line")).not.toBeInTheDocument();
+    expect(rows()).toHaveLength(5);
+    for (const row of Array.from(rows()).slice(2)) expect(row).toBeEmptyDOMElement();
   });
 
   it("keeps an analyzed game's stored search depth visible before a refresh", () => {
