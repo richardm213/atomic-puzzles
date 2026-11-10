@@ -526,25 +526,36 @@ describe("PuzzleEditor move tree", () => {
     );
   });
 
-  it("removes a deleted alternate branch from both the PGN and board history", async () => {
+  it("returns to the move before deletion even when rewriting PGN reorders branches", async () => {
     const user = userEvent.setup();
-    render(<EditorHarness allowSolutionEditing showAnalysisEngine />);
+    render(
+      <EditorHarness
+        allowSolutionEditing
+        showAnalysisEngine
+        initialSolution="1. e4 (1. d4 d5 2. c4) e5 (1... c5 2. Nf3) 2. Nf3 (2. Bc4)"
+      />,
+    );
 
-    const alternateMove = screen.getByRole("button", { name: "1... c5" });
+    const alternateMove = screen.getByRole("button", { name: "2. c4" });
     fireEvent.contextMenu(alternateMove);
     await user.click(screen.getByRole("menuitem", { name: "Delete" }));
 
     const textarea = screen.getByRole("textbox", { name: "Solution PGN" }) as HTMLTextAreaElement;
     await waitFor(() =>
-      expect(lineSet(solutionLinesFromTextarea(textarea))).toEqual([startingLines[0]!.join(" ")]),
+      expect(solutionLinesFromTextarea(textarea)).toEqual([
+        ["e4", "e5", "Nf3"],
+        ["d4", "d5"],
+        ["e4", "c5", "Nf3"],
+        ["e4", "e5", "Bc4"],
+      ]),
     );
     expect(chessboardMocks.navigations.at(-1)).toMatchObject({
       type: "loadPgn",
-      line: 0,
-      ply: 1,
+      line: 1,
+      ply: 2,
     });
     expect(chessboardMocks.navigations.at(-1)).toHaveProperty("pgn");
-    expect((chessboardMocks.navigations.at(-1) as { pgn: string }).pgn).not.toContain("c5");
+    expect((chessboardMocks.navigations.at(-1) as { pgn: string }).pgn).not.toMatch(/\bc4\b/);
   });
 
   it("can add the same line again after deleting it", async () => {

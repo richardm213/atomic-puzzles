@@ -1,5 +1,10 @@
 import type { SolutionNavigation } from "../../types/chessboard";
-import { serializeUciLinesToPgn } from "../chess/pgn";
+import {
+  convertUciLineToSan,
+  parseSolutionUciLines,
+  sameSolutionMove,
+  serializeUciLinesToPgn,
+} from "../chess/pgn";
 
 type BoardLoadSource = {
   fen: string;
@@ -31,6 +36,18 @@ export const buildBoardLoadNavigation = ({
     ...(line === undefined ? {} : { line }),
     ...(ply === undefined ? {} : { ply }),
   };
+};
+
+// Rewriting the PGN can reorder its variations. Match the retained moves, not
+// the line's index before serialization, to return to the same board position.
+export const pgnLineIndexForPrefix = (fen: string, pgn: string, prefix: string[]): number => {
+  if (prefix.length === 0) return 0;
+  const index = parseSolutionUciLines(fen, pgn).findIndex((line) => {
+    if (line.length < prefix.length) return false;
+    const moves = convertUciLineToSan(fen, line.slice(0, prefix.length));
+    return prefix.every((move, ply) => sameSolutionMove(move, moves[ply]));
+  });
+  return Math.max(0, index);
 };
 
 export const gamePlyFromHash = (hash: string, moveCount: number): number | null => {

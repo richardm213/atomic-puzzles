@@ -61,6 +61,7 @@ import {
   buildBoardLoadNavigation,
   gameHashForPly,
   gamePlyFromHash,
+  pgnLineIndexForPrefix,
 } from "../../lib/analysis/boardLoading";
 import {
   boardLineAnnotationNavigation,
@@ -869,12 +870,14 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const deleteMove = useCallback(
     (lineIndex: number, moveIndex: number): void => {
       const pruned = prunePgnLinesFromMove(analysisLines, lineIndex, moveIndex, sameSolutionMove);
+      if (!pruned.changed) return;
       const pgn = serializeSanLinesToPgn(rootFen, pruned.lines);
+      const retainedMoves = pruned.lines[pruned.lineIndex]?.slice(0, pruned.ply) ?? [];
       setNavigation(
         buildBoardLoadNavigation({
           fen: rootFen,
           pgn,
-          line: pruned.lineIndex,
+          line: pgnLineIndexForPrefix(rootFen, pgn, retainedMoves),
           ply: pruned.ply,
         }),
       );
