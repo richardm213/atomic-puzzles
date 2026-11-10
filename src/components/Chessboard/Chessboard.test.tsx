@@ -571,6 +571,43 @@ describe("Chessboard orchestration", () => {
     vi.useRealTimers();
   });
 
+  it.each([true, false])(
+    "counts the position before the last opponent move only when available (%s)",
+    (withIntro) => {
+      vi.useFakeTimers();
+      const onAttemptResolved = vi.fn();
+      const states = renderBoard({
+        fen: "rnbqkb1r/pppppppp/5n2/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 2 2",
+        analysisMode: false,
+        solution: "2. Ng1 Ng8 3. e4",
+        intro: withIntro
+          ? {
+              beforeFen: "rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq - 1 1",
+              uci: "g8f6",
+              san: "Nf6",
+            }
+          : null,
+        autoplayIntro: false,
+        onAttemptResolved,
+      });
+      play("f3", "g1");
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      play("g1", "f3");
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(states.at(-1)?.feedback).toBe(withIntro ? "retry" : "wrong");
+      if (withIntro) expect(onAttemptResolved).not.toHaveBeenCalled();
+      else
+        expect(onAttemptResolved).toHaveBeenCalledWith(
+          expect.objectContaining({ puzzleCorrect: false }),
+        );
+      vi.useRealTimers();
+    },
+  );
+
   it("reports the first move when the main solution is played", () => {
     vi.useFakeTimers();
     const onAttemptResolved = vi.fn();

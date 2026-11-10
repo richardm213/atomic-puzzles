@@ -56,7 +56,14 @@ export const historyMoveSans = (history: BoardHistory): string[] => {
 
 const repetitionKey = (fen: string): string => fen.trim().split(/\s+/).slice(0, 4).join(" ");
 
-export const historyContainsPosition = (history: BoardHistory, fen: string): boolean => {
+export const historyContainsPosition = (
+  history: BoardHistory,
+  fen: string,
+  beforeIntroFen?: string,
+): boolean => {
   const target = repetitionKey(fen);
-  return history.plies.slice(0, history.index + 1).some((ply) => repetitionKey(ply.fen) === target);
+  return (
+    (beforeIntroFen !== undefined && repetitionKey(beforeIntroFen) === target) ||
+    history.plies.slice(0, history.index + 1).some((ply) => repetitionKey(ply.fen) === target)
+  );
 };

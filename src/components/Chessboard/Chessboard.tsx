@@ -980,6 +980,7 @@ const ChessboardComponent = ({
           createsTwofoldRepetition = historyContainsPosition(
             historyRef.current,
             makeFen(nextPosition.toSetup()),
+            initialIntroRef.current?.beforeFen,
           );
         }
       }
