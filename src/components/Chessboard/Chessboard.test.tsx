@@ -173,6 +173,14 @@ describe("Chessboard orchestration", () => {
         rerender(<Chessboard {...props} solutionNavigation={{ type: "command", command }} />);
       };
       expect(states.at(-1)).toMatchObject({ fen, lineIndex: 0, viewingIntro: false });
+      command("next");
+      command("end");
+      expect(states.at(-1)).toMatchObject({
+        fen,
+        lineIndex: 0,
+        lineMoves: [],
+        viewingSolution: false,
+      });
       const initialStateCount = states.length;
       mocks.playPremove.mockClear();
       command("previous");
@@ -727,16 +735,41 @@ describe("Chessboard orchestration", () => {
     expect(states.at(-1)?.viewingSolution).toBe(true);
   });
 
-  it("does not expose hidden solution variations when navigating to the current line end", () => {
-    const states = renderBoard({ solution: "1. e4 (1. d4)", showSolution: false });
+  it("replays only played moves while the solution is hidden", () => {
+    vi.useFakeTimers();
+    try {
+      const states = renderBoard({
+        solution: "1. e4 (1. d4) e5 2. Nf3",
+        analysisMode: false,
+        showSolution: false,
+      });
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+      fireEvent.keyDown(window, { key: "ArrowDown" });
+      expect(states.at(-1)).toMatchObject({
+        lineIndex: 0,
+        lineMoves: [],
+        viewingSolution: false,
+      });
 
-    fireEvent.keyDown(window, { key: "ArrowDown" });
-
-    expect(states.at(-1)).toMatchObject({
-      lineIndex: 0,
-      lineMoves: [],
-      viewingSolution: false,
-    });
+      play("e2", "e4");
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(states.at(-1)?.lineIndex).toBe(2);
+      fireEvent.keyDown(window, { key: "ArrowLeft" });
+      expect(states.at(-1)?.lineIndex).toBe(1);
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+      fireEvent.keyDown(window, { key: "ArrowDown" });
+      expect(states.at(-1)).toMatchObject({
+        lineIndex: 2,
+        lineMoves: ["e4", "e5"],
+        viewingSolution: false,
+      });
+      expect(states.every((state) => !state.viewingSolution)).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("uses Down and Up to cycle editor options when continuations are available", () => {

@@ -318,6 +318,13 @@ const ChessboardComponent = ({
     [analysisModeRef, showSolutionRef],
   );
 
+  const canBrowseSolution = useCallback(
+    (): boolean =>
+      showSolutionRef.current ||
+      (preserveAnalysisHistoryOnSolutionChange && analysisModeRef.current),
+    [analysisModeRef, preserveAnalysisHistoryOnSolutionChange, showSolutionRef],
+  );
+
   const getCorrectLineMove = useCallback((): string | null => {
     const mainLine = solutionEntriesRef.current[0]?.moveEntries;
     if (!mainLine || solutionEntriesRef.current.length < 2) return null;
@@ -743,6 +750,7 @@ const ChessboardComponent = ({
 
       const mainSolution = solutionEntriesRef.current[0]?.history;
       if (
+        canBrowseSolution() &&
         mainSolution?.plies[matchingPly]?.fen === currentStep.fen &&
         mainSolution.plies[targetPly]
       ) {
@@ -761,7 +769,7 @@ const ChessboardComponent = ({
 
       return false;
     },
-    [showCustomLine, showSolutionLine],
+    [canBrowseSolution, showCustomLine, showSolutionLine],
   );
 
   const navigatePlayback = useCallback(
@@ -782,9 +790,6 @@ const ChessboardComponent = ({
         const options: Array<{ source: "solution" | "custom"; lineIndex: number; key: string }> =
           [];
         const seenMoves = new Set<string>();
-        const canBrowseSolutionOptions =
-          showSolutionRef.current ||
-          (preserveAnalysisHistoryOnSolutionChange && analysisModeRef.current);
         const addOption = (
           source: "solution" | "custom",
           lineIndex: number,
@@ -797,7 +802,7 @@ const ChessboardComponent = ({
           options.push({ source, lineIndex, key: nextKey });
         };
 
-        if (canBrowseSolutionOptions) {
+        if (canBrowseSolution()) {
           solutionEntriesRef.current.forEach((entry, lineIndex) =>
             addOption(
               "solution",
@@ -888,9 +893,8 @@ const ChessboardComponent = ({
       navigateTo(history.index + (resolvedCommand === "next" ? 1 : -1));
     },
     [
-      analysisModeRef,
+      canBrowseSolution,
       navigateTo,
-      preserveAnalysisHistoryOnSolutionChange,
       resumeDefaultMainLine,
       showCustomLine,
       showSolutionLine,
