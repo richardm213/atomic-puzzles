@@ -25,6 +25,7 @@ export const PuzzleComposer = ({
   match,
   fen,
   solution,
+  publishesDirectly,
   children,
   moveContentRef,
   onCancel,
@@ -33,6 +34,7 @@ export const PuzzleComposer = ({
   match?: { gameId: string; matchId: string };
   fen: string;
   solution: string;
+  publishesDirectly: boolean;
   children: ReactNode;
   moveContentRef?: Ref<HTMLDivElement>;
   onCancel: () => void;
@@ -61,6 +63,9 @@ export const PuzzleComposer = ({
     solution && (!match || (renameFrom || needsName ? matchName.trim() : setName)),
   );
   const confirmDifferentStart = error === DIFFERENT_START_MOVE_CONFIRMATION;
+  const submitLabel = publishesDirectly
+    ? { idle: "Create puzzle", pending: "Creating…", confirm: "Create anyway" }
+    : { idle: "Submit puzzle", pending: "Submitting…", confirm: "Submit anyway" };
 
   useEffect(() => {
     cancelRef.current?.focus();
@@ -228,7 +233,11 @@ export const PuzzleComposer = ({
             Cancel
           </button>
           <button type="submit" disabled={!canSave || saving}>
-            {saving ? "Creating…" : confirmDifferentStart ? "Create anyway" : "Create puzzle"}
+            {saving
+              ? submitLabel.pending
+              : confirmDifferentStart
+                ? submitLabel.confirm
+                : submitLabel.idle}
           </button>
         </div>
       </div>

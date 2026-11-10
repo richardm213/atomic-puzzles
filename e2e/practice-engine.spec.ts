@@ -94,7 +94,7 @@ test("practice keeps its PGN and position when creating puzzles or changing oppo
 
   const launcher = page
     .getByRole("group", { name: "Practice controls", exact: true })
-    .getByRole("button", { name: "Create puzzle", exact: true });
+    .getByRole("button", { name: "Submit puzzle", exact: true });
   const composer = moves.getByRole("form", { name: "Puzzle draft" });
   await launcher.click();
   await expect(page).toHaveURL(/\?puzzle=1#ply-0$/);
@@ -108,7 +108,7 @@ test("practice keeps its PGN and position when creating puzzles or changing oppo
   await launcher.click();
   await importPgn("1... c5");
   await expect(page).toHaveURL(/\?puzzle=1#ply-1$/);
-  await composer.getByRole("button", { name: "Create puzzle" }).click();
+  await composer.getByRole("button", { name: "Submit puzzle" }).click();
   await expect(page.getByText("Puzzle submitted for review.")).toBeVisible();
   expect(submissions).toEqual([expect.objectContaining({ fen: savedFen, solution: "1... c5" })]);
   await expect(pgn).toHaveValue(savedPgn);

@@ -19,6 +19,7 @@ import type { CSSProperties, MouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
+import { isApprovedPuzzleCreator } from "../../../shared/domain/puzzles/approvedPuzzleCreators";
 import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardClock } from "../../components/BoardClock/BoardClock";
@@ -211,6 +212,8 @@ const chooseOpponentMove = (moves: PracticeMove[], mode: OpponentMode): Practice
 
 export const PracticePage = () => {
   const auth = useAuth();
+  const publishesDirectly = isApprovedPuzzleCreator(auth.user?.username ?? "");
+  const puzzleActionLabel = publishesDirectly ? "Create puzzle" : "Submit puzzle";
   const keyboardShortcuts = useKeyboardShortcutSettings();
   const pauseShortcutHint = keyboardShortcutHint(keyboardShortcuts, "pausePractice");
   const explorerShortcutHint = keyboardShortcutHint(keyboardShortcuts, "toggleExplorer");
@@ -1504,12 +1507,12 @@ export const PracticePage = () => {
               </button>
             </span>
             {auth.isAuthenticated ? (
-              <span className="practiceActionTooltip" data-tooltip="Create puzzle">
+              <span className="practiceActionTooltip" data-tooltip={puzzleActionLabel}>
                 <button
                   type="button"
                   onClick={startPuzzle}
                   disabled={Boolean(puzzleDraft || navigation) || !boardState || gameFinished}
-                  aria-label="Create puzzle"
+                  aria-label={puzzleActionLabel}
                 >
                   <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
                 </button>
@@ -1576,6 +1579,7 @@ export const PracticePage = () => {
           moveContent={
             puzzleDraft ? (
               <PuzzleComposer
+                publishesDirectly={publishesDirectly}
                 fen={puzzleDraft.fen}
                 solution={draftNavigation || draftDocument.pgn.error ? "" : draftMoveText}
                 onCancel={() => closePuzzle()}

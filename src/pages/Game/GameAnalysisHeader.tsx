@@ -181,11 +181,13 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
 export const GameMatchNavigation = ({
   game,
   onCreatePuzzle,
+  puzzleActionLabel = "Submit puzzle",
   puzzleDraftOpen = false,
   createPuzzleDisabled = false,
 }: {
   game: ArchiveGame;
   onCreatePuzzle?: ((event: MouseEvent<HTMLButtonElement>) => void) | undefined;
+  puzzleActionLabel?: string;
   puzzleDraftOpen?: boolean;
   createPuzzleDisabled?: boolean;
 }) => {
@@ -289,12 +291,8 @@ export const GameMatchNavigation = ({
           <button
             type="button"
             className="gameAnalysisGameNavigationButton"
-            aria-label="Create puzzle"
-            title={
-              createPuzzleDisabled
-                ? "Choose a playable position to create a puzzle"
-                : "Create puzzle"
-            }
+            aria-label={puzzleActionLabel}
+            title={createPuzzleDisabled ? "Choose a playable position" : puzzleActionLabel}
             disabled={createPuzzleDisabled || puzzleDraftOpen}
             onClick={onCreatePuzzle}
           >

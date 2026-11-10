@@ -18,6 +18,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { z } from "zod";
 
 import { WOLFRANDOM_RANDOMIZED_PLIES } from "../../../shared/domain/gameAnalysis";
+import { isApprovedPuzzleCreator } from "../../../shared/domain/puzzles/approvedPuzzleCreators";
 import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
@@ -366,6 +367,8 @@ type AnalysisPageProps = {
 export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPageProps = {}) => {
   const navigate = useNavigate();
   const auth = useAuth();
+  const publishesDirectly = isApprovedPuzzleCreator(auth.user?.username ?? "");
+  const puzzleActionLabel = publishesDirectly ? "Create puzzle" : "Submit puzzle";
   const keyboardShortcuts = useKeyboardShortcutSettings();
   const { _splat: fenPath } = useParams({ strict: false });
   const handoffId = new URLSearchParams(
@@ -1481,6 +1484,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
       </aside>
       <GameMatchNavigation
         game={game}
+        puzzleActionLabel={puzzleActionLabel}
         onCreatePuzzle={auth.isAuthenticated && game.external_match_id ? startPuzzle : undefined}
         createPuzzleDisabled={createPuzzleDisabled}
         puzzleDraftOpen={Boolean(puzzleDraft)}
@@ -1527,8 +1531,8 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                       <button
                         className="atomicDbSettingsButton"
                         type="button"
-                        aria-label="Create puzzle"
-                        title="Create puzzle"
+                        aria-label={puzzleActionLabel}
+                        title={puzzleActionLabel}
                         disabled={createPuzzleDisabled || Boolean(puzzleDraft)}
                         onClick={startPuzzle}
                       >
@@ -1562,6 +1566,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
             moveContent={
               puzzleDraft ? (
                 <PuzzleComposer
+                  publishesDirectly={publishesDirectly}
                   {...(game
                     ? { match: { gameId: game.game_id, matchId: game.external_match_id } }
                     : {})}
