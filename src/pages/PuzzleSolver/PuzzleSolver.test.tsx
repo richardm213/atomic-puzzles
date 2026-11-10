@@ -408,7 +408,10 @@ describe("PuzzleSolverPage solution options", () => {
       render(<PuzzleTestPage />);
 
       await screen.findByTestId("mock-board");
-      expect(mocks.loadPuzzlesById).toHaveBeenCalledWith([1369], true);
+      expect(mocks.loadPuzzlesById).toHaveBeenCalledWith([1369], {
+        activePuzzleId: 1369,
+        testMode: true,
+      });
       expect(await screen.findByRole("region", { name: "Puzzle tags" })).toBeVisible();
       if (puzzleCorrect) {
         mocks.voteOnPuzzleTag.mockResolvedValue([{ tag: "endgame", up: 3, down: 0, vote: 1 }]);
@@ -550,10 +553,36 @@ describe("PuzzleSolverPage solution options", () => {
     expect(screen.getByText(/come back after 00:00 UTC/i)).toBeInTheDocument();
   });
 
-  it("waits for eligibility and skips attempted puzzles, active exclusions, and creator cooldowns", async () => {
+  it("keeps set order at the daily limit and only advances to an attempted puzzle", async () => {
+    mocks.routeParams = { puzzleId: "1369", setKey: "1" };
+    mocks.loadPuzzleCatalog.mockResolvedValueOnce(await mocks.loadPuzzlesById([1371, 1369, 1370]));
+    mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValueOnce(
+      Array.from({ length: 200 }, (_, index) => ({
+        puzzle_id: String(index < 2 ? 1369 + index : 2000 + index),
+        first_attempt_at: new Date().toISOString(),
+        puzzle_correct: true,
+        rated: true,
+      })),
+    );
+
+    const view = render(<PuzzleSolverPage />);
+    await screen.findByText("No more puzzles today");
+    fireEvent.click(screen.getAllByRole("button", { name: "Next" })[0]!);
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/solve/set/$setKey/$puzzleId",
+      params: { setKey: "1", puzzleId: "1370" },
+      replace: true,
+    });
+
+    mocks.routeParams = { puzzleId: "1370", setKey: "1" };
+    view.rerender(<PuzzleSolverPage />);
+    expect(screen.getAllByRole("button", { name: "Next" })[0]).toBeDisabled();
+  });
+
+  it("waits for eligibility and skips attempted puzzles, active or permanent exclusions, and creator cooldowns", async () => {
     mocks.routeParams = { puzzleId: "", setKey: "" };
     mocks.loadPuzzleCatalog.mockResolvedValueOnce(
-      [1, 2, 3, 4, 5].map((puzzleId) => ({
+      [1, 2, 3, 4, 5, 6].map((puzzleId) => ({
         id: puzzleId,
         fen: "",
         solution: "",
@@ -568,6 +597,7 @@ describe("PuzzleSolverPage solution options", () => {
     mocks.fetchPuzzleRatingExclusions.mockResolvedValueOnce([
       { puzzle_id: "3", expires_at: "2099-01-01T00:00:00Z" },
       { puzzle_id: "5", expires_at: "2020-01-01T00:00:00Z" },
+      { puzzle_id: "6", expires_at: "2020-01-01T00:00:00Z", permanent: true },
     ]);
 
     let resolveProgress: (rows: Array<{ puzzle_id: string; rated: boolean }>) => void = () =>
@@ -586,6 +616,7 @@ describe("PuzzleSolverPage solution options", () => {
     resolveProgress([
       { puzzle_id: "1", rated: true },
       { puzzle_id: "2", rated: false },
+      { puzzle_id: "5", rated: false },
     ]);
 
     await waitFor(() =>
@@ -750,6 +781,7 @@ describe("PuzzleSolverPage solution options", () => {
 
     const initialBoard = await screen.findByTestId("mock-board");
     await waitFor(() => expect(prefetchedIds).toHaveLength(3));
+    expect(mocks.loadPuzzlesById).toHaveBeenCalledWith(prefetchedIds, { activePuzzleId: null });
 
     const nextButton = screen.getAllByRole("button", { name: "Next" })[0]!;
     await user.keyboard("{Shift>}{ArrowRight}{/Shift}");

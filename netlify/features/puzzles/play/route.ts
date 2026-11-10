@@ -24,6 +24,7 @@ const puzzleIdSchema = z
 
 const detailsBodySchema = z.object({
   puzzleIds: z.array(puzzleIdSchema).min(1).max(12),
+  activePuzzleId: puzzleIdSchema.nullable().optional(),
   testMode: z.boolean().optional(),
 });
 
@@ -56,6 +57,16 @@ export const puzzlePlayRoute = async (event: FunctionEvent) => {
     throw new HttpError(403, "Puzzle testing is restricted.");
   }
   const puzzleIds = [...new Set(input.puzzleIds.map(Number))];
+  // Older clients treated the first ID as active. Explicit null means prefetch only.
+  const activePuzzleId =
+    input.activePuzzleId === undefined
+      ? puzzleIds[0]
+      : input.activePuzzleId === null
+        ? null
+        : Number(input.activePuzzleId);
+  if (activePuzzleId != null && !puzzleIds.includes(activePuzzleId)) {
+    throw new HttpError(400, "The active puzzle must be part of the request.");
+  }
 
   // Authentication is enforced above. Log the request shape as an additional
   // signal for distinguishing genuine prefetches from account-based enumeration.
@@ -90,7 +101,7 @@ export const puzzlePlayRoute = async (event: FunctionEvent) => {
       throw new Error(`Unable to check puzzle access: ${exclusions.error.message}`);
     }
     const lockedPuzzles = (exclusions.data ?? []) as { puzzle_id: string; expires_at: string }[];
-    const requestedLock = lockedPuzzles.find((row) => row.puzzle_id === String(puzzleIds[0]));
+    const requestedLock = lockedPuzzles.find((row) => row.puzzle_id === String(activePuzzleId));
     if (requestedLock) {
       const until = new Date(requestedLock.expires_at).toLocaleString("en-US", {
         dateStyle: "long",

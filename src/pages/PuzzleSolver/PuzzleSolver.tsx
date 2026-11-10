@@ -175,7 +175,8 @@ const PuzzleElapsedTimer = ({
   );
 };
 
-const loadTestPuzzlesById = (puzzleIds: Array<number | string>) => loadPuzzlesById(puzzleIds, true);
+const loadTestPuzzlesById: typeof loadPuzzlesById = (puzzleIds, options) =>
+  loadPuzzlesById(puzzleIds, { ...options, testMode: true });
 
 export const PuzzleTestPage = () => {
   const { isLoading, user } = useAuth();
@@ -284,9 +285,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const mobileFeedbackIdRef = useRef(0);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const reportIssueDialogRef = useRef<HTMLDialogElement | null>(null);
-  const upcomingPuzzleIndexesRef = useRef<number[]>([]);
-  const upcomingExcludeOwnPuzzlesRef = useRef(excludeOwnPuzzles);
-  const visitedPuzzleIdsRef = useRef<Set<string>>(new Set());
+  const [visitedPuzzleIds, setVisitedPuzzleIds] = useState<Set<string>>(() => new Set());
   const loadingPuzzleIdsRef = useRef<Set<string>>(new Set());
   const isMountedRef = useRef(true);
   const progressWriteQueueRef = useRef(Promise.resolve());
@@ -367,61 +366,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       isMountedRef.current = false;
     };
   }, []);
-
-  const ensureUpcomingPuzzleIndexes = useCallback(
-    (currentIndex: number): number => {
-      if (upcomingExcludeOwnPuzzlesRef.current !== excludeOwnPuzzles) {
-        upcomingPuzzleIndexesRef.current = [];
-        upcomingExcludeOwnPuzzlesRef.current = excludeOwnPuzzles;
-      }
-      if (upcomingPuzzleIndexesRef.current.length === 0) {
-        const candidateIndexes = puzzles
-          .map((_, index) => index)
-          .filter(
-            (index) =>
-              index !== currentIndex &&
-              !(
-                excludeOwnPuzzles &&
-                normalizedUsername &&
-                normalizeUsername(puzzles[index]?.author) === normalizedUsername
-              ) &&
-              !visitedPuzzleIdsRef.current.has(String(puzzles[index]?.puzzleId ?? "")) &&
-              !attemptedPuzzleIds.has(String(puzzles[index]?.puzzleId ?? "")) &&
-              !getPuzzleUnratedReason({
-                username: normalizedUsername,
-                author: puzzles[index]?.author,
-                createdAt: puzzles[index]?.created_at,
-                hasUnratedAttempt: unratedPuzzleIds.has(String(puzzles[index]?.puzzleId ?? "")),
-                excludedUntil: ratingExclusions.get(String(puzzles[index]?.puzzleId ?? "")),
-                permanentlyUnrated: permanentUnratedIds.has(String(puzzles[index]?.puzzleId ?? "")),
-              }),
-          );
-        upcomingPuzzleIndexesRef.current = shuffleIndexes(candidateIndexes);
-      }
-
-      return upcomingPuzzleIndexesRef.current.length;
-    },
-    [
-      attemptedPuzzleIds,
-      excludeOwnPuzzles,
-      normalizedUsername,
-      puzzles,
-      ratingExclusions,
-      permanentUnratedIds,
-      unratedPuzzleIds,
-    ],
-  );
-
-  const getNextShuffledPuzzleIndex = useCallback(
-    (currentIndex: number): number => {
-      if (!attemptedPuzzleIdsReady) return -1;
-      if (puzzles.length === 0) return -1;
-
-      ensureUpcomingPuzzleIndexes(currentIndex);
-      return upcomingPuzzleIndexesRef.current.at(-1) ?? -1;
-    },
-    [attemptedPuzzleIdsReady, ensureUpcomingPuzzleIndexes, puzzles.length],
-  );
 
   const replaceUrlWithPuzzle = useCallback(
     (puzzleId: string | number): void => {
@@ -520,7 +464,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
           setRatingExclusions(
             new Map(exclusions.map((row) => [String(row.puzzle_id), row.expires_at])),
           );
-          upcomingPuzzleIndexesRef.current = [];
           const todayRows = progressRows.filter((row) => isTimestampInUtcDay(row.first_attempt_at));
           setAttemptedPuzzleIds(
             new Set(
@@ -612,25 +555,88 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const testPuzzleUnavailable =
     testMode && Boolean(routePuzzleId) && puzzles.length > 0 && routePuzzleIndex < 0;
 
-  useEffect(() => {
-    if (historyIndex >= 0 || routePuzzleIndex >= 0 || testPuzzleUnavailable) return;
+  const activePuzzleIndex = routePuzzleIndex >= 0 ? routePuzzleIndex : historyPuzzleIndex;
+  const puzzleCountInCatalog = puzzles.length;
+  // Shuffling the order separately keeps prefetched candidates stable as details load.
+  const shuffledPuzzleIndexes = useMemo(
+    () => shuffleIndexes(Array.from({ length: puzzleCountInCatalog }, (_, index) => index)),
+    [puzzleCountInCatalog],
+  );
+  const upcomingPuzzleIndexes = useMemo(() => {
+    if (!attemptedPuzzleIdsReady) return [];
 
-    const initialIndex = getNextShuffledPuzzleIndex(-1);
-    const puzzleId = puzzles[initialIndex]?.puzzleId;
+    const now = new Date();
+    const isEligible = (index: number): boolean => {
+      const puzzle = puzzles[index];
+      if (!puzzle || index === activePuzzleIndex) return false;
+      const key = String(puzzle.puzzleId);
+      if (visitedPuzzleIds.has(key) || attemptedPuzzleIds.has(key)) return false;
+      if (
+        excludeOwnPuzzles &&
+        normalizedUsername &&
+        normalizeUsername(puzzle.author) === normalizedUsername
+      ) {
+        return false;
+      }
+      return (
+        getPuzzleUnratedReason({
+          username: normalizedUsername,
+          author: puzzle.author,
+          createdAt: puzzle.created_at,
+          hasUnratedAttempt: unratedPuzzleIds.has(key),
+          excludedUntil: ratingExclusions.get(key),
+          permanentlyUnrated: permanentUnratedIds.has(key),
+          now,
+        }) === null
+      );
+    };
+
+    const upcoming: number[] = [];
+    for (let position = shuffledPuzzleIndexes.length - 1; position >= 0; position -= 1) {
+      const index = shuffledPuzzleIndexes[position]!;
+      if (isEligible(index)) upcoming.push(index);
+      if (upcoming.length === PUZZLE_PREFETCH_COUNT) break;
+    }
+    return upcoming;
+  }, [
+    activePuzzleIndex,
+    attemptedPuzzleIds,
+    attemptedPuzzleIdsReady,
+    excludeOwnPuzzles,
+    normalizedUsername,
+    permanentUnratedIds,
+    puzzles,
+    ratingExclusions,
+    shuffledPuzzleIndexes,
+    unratedPuzzleIds,
+    visitedPuzzleIds,
+  ]);
+  const nextRandomPuzzleIndex = upcomingPuzzleIndexes[0];
+
+  useEffect(() => {
+    if (
+      historyIndex >= 0 ||
+      routePuzzleIndex >= 0 ||
+      testPuzzleUnavailable ||
+      nextRandomPuzzleIndex === undefined
+    ) {
+      return;
+    }
+
+    const puzzleId = puzzles[nextRandomPuzzleIndex]?.puzzleId;
     if (puzzleId === undefined) return;
 
-    setPuzzleHistory({ history: [initialIndex], historyIndex: 0 });
+    setPuzzleHistory({ history: [nextRandomPuzzleIndex], historyIndex: 0 });
     replaceUrlWithPuzzle(puzzleId);
   }, [
-    getNextShuffledPuzzleIndex,
     historyIndex,
+    nextRandomPuzzleIndex,
     puzzles,
     replaceUrlWithPuzzle,
     routePuzzleIndex,
     testPuzzleUnavailable,
   ]);
 
-  const activePuzzleIndex = routePuzzleIndex >= 0 ? routePuzzleIndex : historyPuzzleIndex;
   const activePuzzle = activePuzzleIndex >= 0 ? (puzzles[activePuzzleIndex] ?? null) : null;
   const activePuzzleId = activePuzzle?.puzzleId;
   const activePuzzleKey = toPuzzleKey(activePuzzleId);
@@ -666,36 +672,25 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const puzzleCount = isSetSolveMode ? orderedSetPuzzleIndexes.length : puzzles.length;
   const dailyLimitReached = dailyAttemptCount >= DAILY_PUZZLE_ATTEMPT_LIMIT;
   const canGoToPreviousPuzzle = isSetSolveMode ? activeSetPuzzlePosition > 0 : historyIndex > 0;
-  const nextSetPuzzleIndex = isSetSolveMode
-    ? orderedSetPuzzleIndexes[activeSetPuzzlePosition + 1]
-    : undefined;
-  const nextSetPuzzleKey =
-    nextSetPuzzleIndex === undefined ? "" : String(puzzles[nextSetPuzzleIndex]?.puzzleId ?? "");
-  const nextSetPuzzleWasAttempted = Boolean(
-    nextSetPuzzleKey &&
-    (attemptedPuzzleIds.has(nextSetPuzzleKey) || unratedPuzzleIds.has(nextSetPuzzleKey)),
+  const hasRecordedAttempt = useCallback(
+    (key: string) =>
+      attemptedPuzzleIds.has(key) ||
+      unratedPuzzleIds.has(key) ||
+      countedTodayPuzzleIdsRef.current.has(key),
+    [attemptedPuzzleIds, unratedPuzzleIds],
   );
-  const nextHistoryPuzzleIndex =
-    historyIndex >= 0 && historyIndex < history.length - 1 ? history[historyIndex + 1] : undefined;
-  const nextHistoryPuzzleKey =
-    nextHistoryPuzzleIndex === undefined
-      ? ""
-      : String(puzzles[nextHistoryPuzzleIndex]?.puzzleId ?? "");
-  const nextHistoryPuzzleWasAttempted = Boolean(
-    nextHistoryPuzzleKey &&
-    (attemptedPuzzleIds.has(nextHistoryPuzzleKey) ||
-      unratedPuzzleIds.has(nextHistoryPuzzleKey) ||
-      countedTodayPuzzleIdsRef.current.has(nextHistoryPuzzleKey)),
-  );
-  const canGoToNextPuzzle = isSetSolveMode
-    ? activeSetPuzzlePosition >= 0 &&
-      activeSetPuzzlePosition < orderedSetPuzzleIndexes.length - 1 &&
-      (!dailyLimitReached || nextSetPuzzleWasAttempted)
-    : puzzles.length > 0 &&
-      (nextHistoryPuzzleIndex !== undefined ||
-        getNextShuffledPuzzleIndex(activePuzzleIndex) >= 0) &&
-      (!dailyLimitReached ||
-        (nextHistoryPuzzleIndex !== undefined && nextHistoryPuzzleWasAttempted));
+  const nextPuzzleIndex = isSetSolveMode
+    ? activeSetPuzzlePosition >= 0
+      ? orderedSetPuzzleIndexes[activeSetPuzzlePosition + 1]
+      : undefined
+    : ((historyIndex >= 0 ? history[historyIndex + 1] : undefined) ??
+      (dailyLimitReached ? undefined : nextRandomPuzzleIndex));
+  const nextCandidate = nextPuzzleIndex === undefined ? undefined : puzzles[nextPuzzleIndex];
+  const nextPuzzle =
+    nextCandidate && (!dailyLimitReached || hasRecordedAttempt(String(nextCandidate.puzzleId)))
+      ? nextCandidate
+      : undefined;
+  const canGoToNextPuzzle = nextPuzzle !== undefined;
   const hasCompletedPuzzleSet = isSetSolveMode && !canGoToNextPuzzle && boardState.solved;
 
   useEffect(() => {
@@ -936,38 +931,29 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
 
   useLayoutEffect(() => {
     activePuzzleKeyRef.current = activePuzzleKey;
-    if (activePuzzleKey) visitedPuzzleIdsRef.current.add(activePuzzleKey);
-    if (activePuzzleIndex < 0) return;
-
-    const upcoming = upcomingPuzzleIndexesRef.current;
-    if (upcoming.at(-1) === activePuzzleIndex) {
-      upcoming.pop();
-    } else {
-      const index = upcoming.indexOf(activePuzzleIndex);
-      if (index >= 0) upcoming.splice(index, 1);
-    }
-  }, [activePuzzleIndex, activePuzzleKey]);
+    setVisitedPuzzleIds((current) =>
+      !activePuzzleKey || current.has(activePuzzleKey)
+        ? current
+        : addValueToSet(current, activePuzzleKey),
+    );
+  }, [activePuzzleKey]);
 
   useEffect(() => {
     if (activePuzzleIndex < 0 || !activePuzzleId) return undefined;
 
-    let candidateIndexes: number[];
-    if (isSetSolveMode) {
-      candidateIndexes = orderedSetPuzzleIndexes.slice(
-        activeSetPuzzlePosition + 1,
-        activeSetPuzzlePosition + 1 + PUZZLE_PREFETCH_COUNT,
-      );
-    } else {
-      ensureUpcomingPuzzleIndexes(activePuzzleIndex);
-      candidateIndexes = upcomingPuzzleIndexesRef.current.slice(-PUZZLE_PREFETCH_COUNT).reverse();
-    }
+    const candidateIndexes = isSetSolveMode
+      ? orderedSetPuzzleIndexes.slice(
+          activeSetPuzzlePosition + 1,
+          activeSetPuzzlePosition + 1 + PUZZLE_PREFETCH_COUNT,
+        )
+      : upcomingPuzzleIndexes;
 
     const missingIds = [...new Set([activePuzzleIndex, ...candidateIndexes])].flatMap((index) => {
       const puzzle = puzzles[index];
       if (!puzzle || puzzle.fen) return [];
       const key = String(puzzle.puzzleId);
       if (loadingPuzzleIdsRef.current.has(key)) return [];
-      if (dailyLimitReached && !attemptedPuzzleIds.has(key) && !unratedPuzzleIds.has(key)) {
+      if (dailyLimitReached && !hasRecordedAttempt(key)) {
         return [];
       }
       return [puzzle.puzzleId];
@@ -975,7 +961,9 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     if (missingIds.length === 0) return undefined;
 
     missingIds.forEach((puzzleId) => loadingPuzzleIdsRef.current.add(String(puzzleId)));
-    void loadDetails(missingIds)
+    void loadDetails(missingIds, {
+      activePuzzleId: missingIds.find((id) => String(id) === activePuzzleKey) ?? null,
+    })
       .then((loadedPuzzles) => {
         if (!isMountedRef.current) return;
         mergeLoadedPuzzles(loadedPuzzles);
@@ -1007,17 +995,17 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   }, [
     activePuzzleId,
     activePuzzleIndex,
+    activePuzzleKey,
     activeSetPuzzlePosition,
-    attemptedPuzzleIds,
     dailyLimitReached,
-    ensureUpcomingPuzzleIndexes,
+    hasRecordedAttempt,
     isSetSolveMode,
     loadDetails,
     mergeLoadedPuzzles,
     orderedSetPuzzleIndexes,
     puzzles,
     setLoadingError,
-    unratedPuzzleIds,
+    upcomingPuzzleIndexes,
   ]);
 
   const enqueuePuzzleProgressWrite = useCallback(
@@ -1306,11 +1294,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   };
 
   const handleNextPuzzle = () => {
-    if (!canGoToNextPuzzle) return;
-    const nextIndex = isSetSolveMode
-      ? nextSetPuzzleIndex
-      : (nextHistoryPuzzleIndex ?? getNextShuffledPuzzleIndex(activePuzzleIndex));
-    const nextPuzzle = nextIndex === undefined ? undefined : puzzles[nextIndex];
     if (nextPuzzle) replaceUrlWithPuzzle(nextPuzzle.puzzleId);
   };
 
@@ -1948,7 +1931,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
           ? addValueToSet(current, puzzleId)
           : removeValueFromSet(current, puzzleId),
       );
-      upcomingPuzzleIndexesRef.current = [];
       if (activePuzzleKeyRef.current === puzzleId) setUnratedMarkStatus({ state: "idle" });
     } catch (error) {
       if (activePuzzleKeyRef.current === puzzleId)

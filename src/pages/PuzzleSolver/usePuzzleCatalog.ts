@@ -43,7 +43,9 @@ export const usePuzzleCatalog = (
         const initialPuzzleId = initialRoutePuzzleIdRef.current;
         const [catalog, initialPuzzles] = await Promise.all([
           initialRouteSetKeyRef.current ? loadPuzzleCatalog() : loadPuzzleSolverIndex(),
-          initialPuzzleId === null ? Promise.resolve([]) : loadDetails([initialPuzzleId]),
+          initialPuzzleId === null
+            ? Promise.resolve([])
+            : loadDetails([initialPuzzleId], { activePuzzleId: initialPuzzleId }),
         ]);
         if (!active) return;
 

@@ -165,7 +165,10 @@ describe("puzzle-play function", () => {
     const response = await handler({
       httpMethod: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ puzzleIds: prefetch ? [414, 415] : [414] }),
+      body: JSON.stringify({
+        puzzleIds: [415, 414],
+        activePuzzleId: prefetch ? null : 414,
+      }),
     });
     if (prefetch) {
       expect(response.statusCode).toBe(200);
@@ -179,7 +182,7 @@ describe("puzzle-play function", () => {
     }
     expect(rpc).toHaveBeenCalledWith("get_locked_puzzle_ids", {
       p_username: "solver",
-      p_puzzle_ids: prefetch ? ["414", "415"] : ["414"],
+      p_puzzle_ids: ["415", "414"],
     });
   });
 

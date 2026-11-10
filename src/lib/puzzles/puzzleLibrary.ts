@@ -5,7 +5,7 @@ import {
   type PuzzleRow,
 } from "../supabase/puzzles";
 import { normalizePuzzleMotifTags } from "./puzzleMotifs";
-import { fetchPuzzleDetails } from "./puzzlePlay";
+import { fetchPuzzleDetails, type PuzzleDetailRequestOptions } from "./puzzlePlay";
 import { normalizeSolutionPgn } from "./solutionPgn";
 
 export type Puzzle = PuzzleRow & {
@@ -85,10 +85,10 @@ export const loadPuzzleSolverIndex = async (): Promise<Puzzle[]> =>
 
 export const loadPuzzlesById = async (
   puzzleIds: Array<number | string>,
-  testMode = false,
+  options?: PuzzleDetailRequestOptions,
 ): Promise<Puzzle[]> => {
   const requestedIds = puzzleIds.map(String);
-  const rows = await fetchPuzzleDetails(puzzleIds, testMode);
+  const rows = await fetchPuzzleDetails(puzzleIds, options);
   const puzzles = rows.map(normalizePuzzleRow).filter((item) => item.fen.length > 0);
 
   const puzzlesById = new Map(puzzles.map((puzzle) => [String(puzzle.puzzleId), puzzle]));

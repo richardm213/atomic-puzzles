@@ -10,23 +10,27 @@ import type { PuzzleRow } from "../supabase/puzzles";
 const puzzleDetailsResponseSchema = z.object({
   puzzles: z.array(z.record(z.string(), z.unknown())),
   blockedPuzzleIds: z.array(z.number()).optional().default([]),
-  dailyLimitReached: z.boolean().optional().default(false),
 });
+
+export type PuzzleDetailRequestOptions = {
+  activePuzzleId?: number | string | null;
+  testMode?: boolean;
+};
 
 export const fetchPuzzleDetails = async (
   puzzleIds: Array<number | string>,
-  testMode = false,
+  { activePuzzleId = null, testMode = false }: PuzzleDetailRequestOptions = {},
 ): Promise<PuzzleRow[]> => {
   const result = await postApi(
     "/api/puzzles/play",
-    { puzzleIds, ...(testMode ? { testMode } : {}) },
+    { puzzleIds, activePuzzleId, ...(testMode ? { testMode } : {}) },
     {
       schema: puzzleDetailsResponseSchema,
       errorMessage: "Unable to load puzzle data.",
       invalidMessage: "The puzzle service returned invalid data.",
     },
   );
-  if (result.dailyLimitReached && result.puzzles.length === 0) {
+  if (activePuzzleId !== null && result.blockedPuzzleIds.includes(Number(activePuzzleId))) {
     throw new ApiError(
       DAILY_PUZZLE_LOAD_BLOCKED_MESSAGE,
       429,

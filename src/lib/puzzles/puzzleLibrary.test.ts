@@ -117,9 +117,9 @@ describe("puzzleLibrary", () => {
       },
     ]);
 
-    const puzzles = await loadPuzzlesById([414]);
+    const puzzles = await loadPuzzlesById([414], { activePuzzleId: 414 });
 
-    expect(fetchPrivateDetailsMock).toHaveBeenCalledWith([414], false);
+    expect(fetchPrivateDetailsMock).toHaveBeenCalledWith([414], { activePuzzleId: 414 });
     expect(puzzles[0]?.solution).toContain("O-O-O");
   });
 });
