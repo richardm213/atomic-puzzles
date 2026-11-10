@@ -1,4 +1,9 @@
-import { faArrowsRotate, faBookOpen, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowsRotate,
+  faBookOpen,
+  faPuzzlePiece,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
@@ -363,10 +368,16 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const auth = useAuth();
   const keyboardShortcuts = useKeyboardShortcutSettings();
   const { _splat: fenPath } = useParams({ strict: false });
-  const locationSearch = typeof window === "undefined" ? "" : window.location.search;
+  const handoffId = new URLSearchParams(
+    typeof window === "undefined" ? "" : window.location.search,
+  ).get("handoff");
+  // Puzzle URL changes must not replay the handoff onto the hidden analysis board.
   const analysisHandoff = useMemo(
-    () => (game ? null : readAnalysisHandoff(locationSearch)),
-    [game, locationSearch],
+    () =>
+      !game && handoffId
+        ? readAnalysisHandoff(new URLSearchParams({ handoff: handoffId }).toString())
+        : null,
+    [game, handoffId],
   );
   const routeFen =
     game && initialFen ? initialFen : (analysisHandoff?.fen ?? fenFromRoute(fenPath));
@@ -411,7 +422,9 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   } | null>(null);
   const [addedPuzzle, setAddedPuzzle] = useState<PuzzleCreationResult | null>(null);
   const puzzleLauncher = useRef<HTMLButtonElement | null>(null);
-  const gameScrollTop = useRef(0);
+  const scrollBeforeDraft = useRef(0);
+  const hashBeforeDraft = useRef("");
+  const documentBeforeDraft = useRef({ fen: "", pgn: "" });
   const boardState = puzzleDraft ? puzzleBoardState : gameBoardState;
   const [atomicDbEngineSettings, setAtomicDbEngineSettings] = useAtomicDbEngineSettings();
   const [boardSize, setBoardSize] = usePersistedState(
@@ -724,7 +737,11 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
 
   const startPuzzle = (event: ReactMouseEvent<HTMLButtonElement>): void => {
     puzzleLauncher.current = event.currentTarget;
-    gameScrollTop.current = window.scrollY;
+    scrollBeforeDraft.current = window.scrollY;
+    hashBeforeDraft.current = window.location.hash;
+    documentBeforeDraft.current = { fen: currentFen, pgn: pgnText };
+    setThreatMode(false);
+    setHoveredExplorerMoveUci(null);
     setPuzzleBoardState(null);
     setAddedPuzzle(null);
     setPuzzleDraft({
@@ -738,9 +755,11 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     setNavigation(null);
     setPuzzleDraft(null);
     setPuzzleBoardState(null);
+    const { fen, pgn } = documentBeforeDraft.current;
+    boardDocument.resetDrafts(fen, pgn);
     if (result) setAddedPuzzle(result);
     window.requestAnimationFrame(() => {
-      window.scrollTo({ top: gameScrollTop.current, behavior: "instant" });
+      window.scrollTo({ top: scrollBeforeDraft.current, behavior: "instant" });
       puzzleLauncher.current?.focus({ preventScroll: true });
     });
   };
@@ -877,14 +896,17 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   }, [finishVariationPlayback]);
 
   useEffect(() => {
-    if (!game || navigation !== null || (!puzzleDraft && !boardState)) return;
+    if (navigation !== null || (!puzzleDraft && !boardState)) return;
     const url = new URL(window.location.href);
     if (puzzleDraft) {
       url.searchParams.set("puzzle", String(puzzleDraft.sourcePly));
       url.hash = `ply-${currentPly}`;
-    } else {
+    } else if (game) {
       if (url.searchParams.has("puzzle")) url.searchParams.delete("puzzle");
       url.hash = gameHashForPly(currentPly);
+    } else if (url.searchParams.has("puzzle")) {
+      url.searchParams.delete("puzzle");
+      url.hash = hashBeforeDraft.current;
     }
     const nextUrl = `${url.pathname}${url.search}${url.hash}`;
     if (url.href !== window.location.href) {
@@ -1435,6 +1457,22 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     </OpeningExplorerPanel>
   ) : null;
 
+  const createPuzzleDisabled = !boardState || Boolean(terminalOutcome) || navigation !== null;
+  const puzzleConfirmation = addedPuzzle ? (
+    <p className={game ? "gamePuzzleConfirmation" : "analysisPuzzleConfirmation"} role="status">
+      {addedPuzzle.destination === "published" ? (
+        <>
+          Puzzle added.{" "}
+          <Link to="/solve/$puzzleId" params={{ puzzleId: String(addedPuzzle.puzzleId) }}>
+            View puzzle
+          </Link>
+        </>
+      ) : (
+        "Puzzle submitted for review."
+      )}
+    </p>
+  ) : null;
+
   // Keep one set of match controls so shortcuts and tab order follow the visible layout.
   const gameDetails = game ? (
     <div className="gameAnalysisSidebarRail">
@@ -1444,23 +1482,10 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
       <GameMatchNavigation
         game={game}
         onCreatePuzzle={auth.isAuthenticated && game.external_match_id ? startPuzzle : undefined}
-        createPuzzleDisabled={!boardState || Boolean(terminalOutcome) || navigation !== null}
+        createPuzzleDisabled={createPuzzleDisabled}
         puzzleDraftOpen={Boolean(puzzleDraft)}
       />
-      {addedPuzzle ? (
-        <p className="gamePuzzleConfirmation" role="status">
-          {addedPuzzle.destination === "published" ? (
-            <>
-              Puzzle added.{" "}
-              <Link to="/solve/$puzzleId" params={{ puzzleId: String(addedPuzzle.puzzleId) }}>
-                View puzzle
-              </Link>
-            </>
-          ) : (
-            "Puzzle submitted for review."
-          )}
-        </p>
-      ) : null}
+      {puzzleConfirmation}
     </div>
   ) : null;
 
@@ -1497,6 +1522,20 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
             engine={
               !game || gameComputerAnalysisEnabled ? (
                 <AtomicDbAnalysisBlock
+                  beforeSettings={
+                    !game && auth.isAuthenticated ? (
+                      <button
+                        className="atomicDbSettingsButton"
+                        type="button"
+                        aria-label="Create puzzle"
+                        title="Create puzzle"
+                        disabled={createPuzzleDisabled || Boolean(puzzleDraft)}
+                        onClick={startPuzzle}
+                      >
+                        <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
+                      </button>
+                    ) : null
+                  }
                   fen={displayedAnalysisFen}
                   analysis={displayedAnalysis}
                   settings={atomicDbEngineSettings}
@@ -1521,9 +1560,11 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
               ) : null
             }
             moveContent={
-              game && puzzleDraft ? (
+              puzzleDraft ? (
                 <PuzzleComposer
-                  match={{ gameId: game.game_id, matchId: game.external_match_id }}
+                  {...(game
+                    ? { match: { gameId: game.game_id, matchId: game.external_match_id } }
+                    : {})}
                   fen={puzzleDraft.fen}
                   solution={navigation || boardDocument.pgn.error ? "" : pgnText}
                   moveContentRef={moveContentRef}
@@ -1554,6 +1595,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
             toggleClassName="explorer"
             toggleTitle="Opening explorer"
           />
+          {!game ? puzzleConfirmation : null}
           {game && !puzzleDraft ? (
             <button
               type="button"

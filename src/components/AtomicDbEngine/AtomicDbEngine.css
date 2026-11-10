@@ -117,10 +117,20 @@
   outline-offset: 2px;
 }
 
+.atomicDbBeforeSettings {
+  margin-inline-start: auto;
+  display: flex;
+  flex: 0 0 auto;
+}
+
 .atomicDbSettings {
   position: relative;
-  margin-left: auto;
+  margin-inline-start: auto;
   flex: 0 0 auto;
+}
+
+.atomicDbBeforeSettings + .atomicDbSettings {
+  margin-inline-start: 0;
 }
 
 .atomicDbSettingsButton {
@@ -139,10 +149,15 @@
     color 140ms ease;
 }
 
-.atomicDbSettingsButton:hover,
+.atomicDbSettingsButton:is(:hover, :active):not(:disabled),
 .atomicDbSettingsButton[aria-expanded="true"] {
   background: color-mix(in srgb, var(--color-panel-deep) 18%, transparent);
   color: var(--color-heading);
+}
+
+.atomicDbSettingsButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .atomicDbSettingsMenu {

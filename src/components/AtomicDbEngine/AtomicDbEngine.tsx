@@ -2,7 +2,7 @@ import "./AtomicDbEngine.css";
 
 import { faAlignLeft, faArrowsRotate, faGear } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useKeyboardShortcutSettings } from "../../context/AppSettings";
@@ -37,6 +37,7 @@ type AtomicDbEngineProps = {
 };
 
 type AtomicDbEngineControlsProps = {
+  beforeSettings?: ReactNode;
   fen: string;
   analysis: AtomicDbAnalysisState;
   settings: AtomicDbEngineSettings;
@@ -97,6 +98,7 @@ const useRetainedAtomicDbView = (analysis: AtomicDbAnalysisState, fen: string): 
 };
 
 export const AtomicDbEngineControls = ({
+  beforeSettings,
   fen,
   analysis,
   settings,
@@ -202,6 +204,7 @@ export const AtomicDbEngineControls = ({
           sourceLabel
         )}
       </span>
+      {beforeSettings ? <div className="atomicDbBeforeSettings">{beforeSettings}</div> : null}
       <div className="atomicDbSettings" ref={settingsRef}>
         <button
           type="button"

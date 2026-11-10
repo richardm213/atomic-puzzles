@@ -226,6 +226,12 @@ body:has(.analysisPage),
   grid-template-rows: minmax(0, 1fr) auto auto;
 }
 
+.analysisPuzzleConfirmation {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-body);
+}
+
 .analysisMovePanel {
   --move-content-start-outset: calc(var(--space-1) / 2);
   --move-content-end-outset: var(--space-1);
