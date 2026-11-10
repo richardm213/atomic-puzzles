@@ -148,7 +148,7 @@ export const refreshCustomPuzzleSet = async (
     "/api/puzzle-sets",
     { action: "refresh", id },
     {
-      errorMessage: "Unable to add newly matching puzzles.",
+      errorMessage: "Unable to refresh this set.",
       invalidMessage: "The server returned an invalid refreshed custom puzzle set.",
       schema: refreshSetResponseSchema,
     },

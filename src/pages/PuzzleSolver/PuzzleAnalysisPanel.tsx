@@ -4,11 +4,13 @@ import { faFlag } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { type CSSProperties, useEffect, useLayoutEffect, useState } from "react";
 
+import type { PuzzleIntro } from "../../../shared/domain/puzzles/gameHistory";
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
 import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
+import { startingPlyFromFen } from "../../lib/chess/pgn";
 import type { PlaybackCommand } from "../../types/chessboard";
 
 const initialEngineSettings = (): AtomicDbEngineSettings => ({
@@ -22,6 +24,7 @@ const initialEngineSettings = (): AtomicDbEngineSettings => ({
 export const PuzzleAnalysisPanel = ({
   fen,
   analysisActive,
+  previousMove,
   terminalOutcome,
   lines,
   moves,
@@ -41,6 +44,7 @@ export const PuzzleAnalysisPanel = ({
 }: {
   fen: string;
   analysisActive: boolean;
+  previousMove?: PuzzleIntro | null | undefined;
   terminalOutcome: "white" | "black" | "draw" | null;
   lines: string[][];
   moves: string[];
@@ -107,6 +111,11 @@ export const PuzzleAnalysisPanel = ({
         <MoveNotation
           lines={analysisActive ? lines : []}
           moves={moves}
+          previousMove={
+            previousMove
+              ? { san: previousMove.san, ply: startingPlyFromFen(previousMove.beforeFen) }
+              : undefined
+          }
           currentPly={currentPly}
           pinnedLineIndex={activeLineIndex}
           inline

@@ -288,20 +288,12 @@ export const ShopPage = () => {
       })
       .map((purchase) => purchase.itemKey),
   );
-  const economyBan = summary.data?.economyBan ?? null;
   const busy = daily.isPending || redeem.isPending;
   const errorValue = summary.error ?? daily.error ?? redeem.error;
   const error = getErrorMessage(errorValue, "");
 
   const redeemItem = (item: (typeof shopItems)[number]) => {
-    if (
-      unavailableItemKeys.has(item.key) ||
-      shopClosed ||
-      balance < item.cost ||
-      busy ||
-      economyBan
-    )
-      return;
+    if (unavailableItemKeys.has(item.key) || shopClosed || balance < item.cost || busy) return;
     redeem.reset();
     setRequestedUsername("");
     setSelectedReward(item);
@@ -313,7 +305,7 @@ export const ShopPage = () => {
 
   const confirmRedemption = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (shopClosed || !selectedReward || balance < selectedReward.cost || busy || economyBan) {
+    if (shopClosed || !selectedReward || balance < selectedReward.cost || busy) {
       return;
     }
     const requested = requestedUsername.trim();
@@ -349,7 +341,7 @@ export const ShopPage = () => {
   }, [selectedReward]);
 
   useEffect(() => {
-    if (summary.data?.dailyClaimAvailable !== false || economyBan) return undefined;
+    if (summary.data?.dailyClaimAvailable !== false) return undefined;
 
     const resetAt = getNextDailyReset();
     let resetReached = false;
@@ -364,7 +356,7 @@ export const ShopPage = () => {
     updateCountdown();
     const intervalId = window.setInterval(updateCountdown, 1000);
     return () => window.clearInterval(intervalId);
-  }, [economyBan, queryClient, summary.data?.dailyClaimAvailable, username]);
+  }, [queryClient, summary.data?.dailyClaimAvailable, username]);
 
   if (isLoading) return <RouteLoadingFallback />;
 
@@ -476,7 +468,7 @@ export const ShopPage = () => {
               </div>
             </div>
             <div className="dailyCoinPanel">
-              {summary.data?.dailyClaimAvailable === false && !economyBan ? (
+              {summary.data?.dailyClaimAvailable === false ? (
                 <p>Next in {dailyCountdown}</p>
               ) : null}
               <button
@@ -484,15 +476,13 @@ export const ShopPage = () => {
                   summary.data?.dailyClaimAvailable === false ? "claimed" : ""
                 } ${daily.isPending ? "claiming" : ""}`}
                 type="button"
-                disabled={!summary.data?.dailyClaimAvailable || busy || Boolean(economyBan)}
+                disabled={!summary.data?.dailyClaimAvailable || busy}
                 onClick={() => daily.mutate()}
               >
                 {daily.isPending ? (
                   "Claiming…"
                 ) : summary.isLoading ? (
                   "Loading…"
-                ) : economyBan ? (
-                  "Suspended"
                 ) : summary.data?.dailyClaimAvailable ? (
                   `Claim +${DAILY_COIN_BONUS}`
                 ) : (
@@ -511,20 +501,6 @@ export const ShopPage = () => {
               <p>
                 Purchases reopen automatically on <time dateTime={SHOP_REOPENS_AT}>November 3</time>
                 at 00:00 UTC.
-              </p>
-            </section>
-          ) : null}
-
-          {economyBan ? (
-            <section className="coinEconomyBanNotice" aria-labelledby="coin-ban-title">
-              <h2 id="coin-ban-title">Coin access suspended</h2>
-              <p>{economyBan.reason}</p>
-              <p>
-                <span>Access returns </span>
-                <time dateTime={economyBan.endsAt}>
-                  {redemptionDateFormatter.format(new Date(economyBan.endsAt))}
-                </time>
-                .
               </p>
             </section>
           ) : null}
@@ -587,7 +563,7 @@ export const ShopPage = () => {
                     </div>
                     <button
                       type="button"
-                      disabled={shopClosed || balance < item.cost || busy || Boolean(economyBan)}
+                      disabled={shopClosed || balance < item.cost || busy}
                       onClick={() => redeemItem(item)}
                     >
                       {shopClosed

@@ -148,7 +148,7 @@ declare
   puzzle_author text;
   puzzle_created_at timestamptz;
 begin
-  if not new.puzzle_correct or public.is_coin_economy_banned(new.username) then
+  if not new.puzzle_correct then
     return new;
   end if;
 

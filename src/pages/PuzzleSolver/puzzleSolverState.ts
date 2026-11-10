@@ -27,6 +27,18 @@ export const getPuzzleAttemptStartedAt = (puzzleId: string): number => {
   return now;
 };
 
+// An existing attempt keeps its wall-clock start across visits, but not replay time.
+export const excludePuzzleIntroTime = (puzzleId: string, durationMs: number): void => {
+  if (!puzzleId || durationMs <= 0) return;
+  const storageKey = `${PUZZLE_ATTEMPT_STARTED_AT_STORAGE_PREFIX}:${puzzleId}`;
+  const startedAt = Number.parseInt(getBrowserStorageItem("local", storageKey) ?? "", 10);
+  const now = Date.now();
+  const ageBeforeIntro = now - durationMs - startedAt;
+  if (ageBeforeIntro >= 0 && ageBeforeIntro <= PUZZLE_ATTEMPT_STORAGE_DURATION_MS) {
+    setBrowserStorageItem("local", storageKey, String(startedAt + durationMs));
+  }
+};
+
 export const addValueToSet = (currentSet: Set<string>, value: string): Set<string> => {
   if (!value) return currentSet;
   const next = new Set(currentSet);

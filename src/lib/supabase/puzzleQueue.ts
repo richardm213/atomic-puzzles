@@ -1,6 +1,10 @@
 import { normalizePuzzlePlayers } from "../../../shared/domain/puzzles/puzzleSetMetadata";
 import { createPostApi, postApi } from "../api/postApi";
-import { compactPuzzleSolution, type PuzzleSubmissionValue } from "../puzzles/puzzleSubmission";
+import {
+  compactPuzzleSolution,
+  type PuzzlePositionHistory,
+  type PuzzleSubmissionValue,
+} from "../puzzles/puzzleSubmission";
 import type { PuzzleQueueRow, PuzzleReviewQueueRow } from "./types";
 
 export { DIFFERENT_START_MOVE_CONFIRMATION } from "../../../shared/domain/puzzles/submissionDuplicates";
@@ -28,7 +32,7 @@ const submissionPlayers = (input: Pick<PuzzleSubmissionValue, "whitePlayer" | "b
 
 export const submitPuzzle = async (
   input: PuzzleSubmissionValue,
-  options: PuzzleSubmissionOptions = {},
+  options: PuzzleSubmissionOptions & { positionHistory?: PuzzlePositionHistory } = {},
 ): Promise<PuzzleSubmissionResult> => {
   const body = await postApi<Partial<PuzzleSubmissionResult>>(
     "/api/puzzles/submit",
@@ -45,6 +49,7 @@ export const submitPuzzle = async (
       opaStyle: input.opaStyle === true,
       author: options.author?.trim() ?? "",
       tags: input.tags ?? [],
+      ...options.positionHistory,
       allowDifferentStartMove: options.allowDifferentStartMove ?? false,
     },
     {

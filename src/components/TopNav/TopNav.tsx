@@ -1,7 +1,6 @@
 import "./TopNav.css";
 
 import {
-  faBan,
   faBars,
   faBell,
   faChartLine,
@@ -9,6 +8,7 @@ import {
   faChevronLeft,
   faChevronRight,
   faClipboardCheck,
+  faFlask,
   faGear,
   faListCheck,
   faRightFromBracket,
@@ -23,6 +23,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
+import { MAX_BLIND_PUZZLE_PLIES } from "../../../shared/domain/puzzles/gameHistory";
+import { PUZZLE_ADMIN_USERNAME } from "../../../shared/domain/puzzles/puzzleAdmin";
 import { atomic960Enabled, modeLabels, publicModeOptions } from "../../constants/matches";
 import {
   type ColorMode,
@@ -190,6 +192,8 @@ export const TopNav = () => {
     setShowRatingGraphLines,
     showPuzzleTimer,
     setShowPuzzleTimer,
+    blindPuzzles,
+    setBlindPuzzles,
     puzzleAnalysisTarget,
     setPuzzleAnalysisTarget,
     lichessLinkTarget,
@@ -215,7 +219,11 @@ export const TopNav = () => {
   const [profileUsername, setProfileUsername] = useState(() =>
     getStoredProfileUsername(user?.username),
   );
+  const isPuzzleTestPage =
+    normalizedAuthUsername === PUZZLE_ADMIN_USERNAME &&
+    /^\/admin\/puzzle-test(?:\/[^/]+)?\/?$/.test(pathname);
   const showBoardSettings =
+    isPuzzleTestPage ||
     pathname === "/solve" ||
     /^\/solve\/[^/]+$/.test(pathname) ||
     /^\/solve\/(?:set|custom|dashboard)\/[^/]+\/[^/]+$/.test(pathname) ||
@@ -234,6 +242,10 @@ export const TopNav = () => {
       pathname !== "/solve/custom-sets" &&
       pathname !== "/solve/leaderboard" &&
       pathname !== "/solve/history");
+  const showBlindPuzzleSetting =
+    isPuzzleTestPage ||
+    showPuzzleTimerSetting ||
+    /^\/solve\/(?:set|custom|dashboard)\/[^/]+\/[^/]+$/.test(pathname);
   const activeBoardColors = getBoardThemeColors(
     boardTheme,
     customLightSquare,
@@ -661,7 +673,7 @@ export const TopNav = () => {
                     </span>
                     Puzzle dashboard
                   </Link>
-                  {normalizedAuthUsername === "seaside_tiramisu" ? (
+                  {normalizedAuthUsername === PUZZLE_ADMIN_USERNAME ? (
                     <>
                       <div className="navProfileDropdownDivider" role="separator" />
                       <Link
@@ -710,14 +722,15 @@ export const TopNav = () => {
                       </Link>
                       <Link
                         className="navProfileDropdownItem"
-                        to="/admin/coin-bans"
+                        to="/admin/puzzle-test/{-$puzzleId}"
+                        params={{ puzzleId: undefined }}
                         role="menuitem"
                         onClick={() => setOpenPanel(null)}
                       >
                         <span className="navProfileDropdownIcon" aria-hidden="true">
-                          <FontAwesomeIcon icon={faBan} />
+                          <FontAwesomeIcon icon={faFlask} />
                         </span>
-                        Coin economy bans
+                        Puzzle test
                       </Link>
                     </>
                   ) : null}
@@ -1155,6 +1168,39 @@ export const TopNav = () => {
               ) : null}
               {showBoardSettings ? (
                 <>
+                  {showBlindPuzzleSetting ? (
+                    <div className="navSettingsSection navBlindPuzzleSettings">
+                      <label className="navSettingsCheckbox">
+                        <span>Blind mode</span>
+                        <input
+                          type="checkbox"
+                          checked={blindPuzzles.enabled}
+                          onChange={(event) => {
+                            const enabled = event.target.checked;
+                            setBlindPuzzles((current) => ({ ...current, enabled }));
+                          }}
+                        />
+                      </label>
+                      {blindPuzzles.enabled ? (
+                        <label className="navSettingsField">
+                          <span className="navSettingsLabel">Plies back</span>
+                          <select
+                            value={blindPuzzles.plies}
+                            onChange={(event) => {
+                              const plies = Number(event.target.value);
+                              setBlindPuzzles((current) => ({ ...current, plies }));
+                            }}
+                          >
+                            {Array.from({ length: MAX_BLIND_PUZZLE_PLIES }, (_, i) => (
+                              <option key={i + 1} value={i + 1}>
+                                {i + 1}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {showPuzzleTimerSetting ? (
                     <div className="navSettingsSection puzzleTimerSettingsSection">
                       <label className="navSettingsCheckbox">

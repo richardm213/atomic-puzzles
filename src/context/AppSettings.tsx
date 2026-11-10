@@ -11,6 +11,7 @@ import {
 } from "react";
 import { z } from "zod";
 
+import { MAX_BLIND_PUZZLE_PLIES } from "../../shared/domain/puzzles/gameHistory";
 import {
   defaultProfileRatingSlotPreferences,
   type ProfileRatingSlotPreferences,
@@ -47,6 +48,7 @@ const STORAGE_KEYS = {
   showCoinChangePopups: "atomic-puzzles.puzzles.show-coin-change-popups",
   // v3 makes the timer visible by default for everyone while preserving later changes.
   showPuzzleTimer: "atomic-puzzles.puzzles.show-timer-v3",
+  blindPuzzles: "atomic-puzzles.puzzles.blind",
   puzzleAnalysisTarget: "atomic-puzzles.puzzles.analysis-link-target",
   lichessLinkTarget: "atomic-puzzles.games.lichess-link-target",
   localAnalysisEngine: LOCAL_ANALYSIS_ENGINE_STORAGE_KEY,
@@ -67,6 +69,12 @@ export const isDarkOnlyTheme = (theme: Theme): theme is typeof DARK_ONLY_THEME =
   theme === DARK_ONLY_THEME;
 
 export type LabeledOption = { value: string; label: string };
+
+const blindPuzzlesSchema = z.object({
+  enabled: z.boolean(),
+  plies: z.number().int().min(1).max(MAX_BLIND_PUZZLE_PLIES),
+});
+type BlindPuzzleSettings = z.infer<typeof blindPuzzlesSchema>;
 
 const LICHESS_PIECE_SETS: LabeledOption[] = [
   { value: "cburnett", label: "Cburnett" },
@@ -243,6 +251,8 @@ export type AppSettingsContextValue = {
   setShowRatingGraphLines: Dispatch<SetStateAction<boolean>>;
   showPuzzleTimer: boolean;
   setShowPuzzleTimer: Dispatch<SetStateAction<boolean>>;
+  blindPuzzles: BlindPuzzleSettings;
+  setBlindPuzzles: Dispatch<SetStateAction<BlindPuzzleSettings>>;
   puzzleAnalysisTarget: "atomic-puzzles" | "lichess";
   setPuzzleAnalysisTarget: Dispatch<SetStateAction<"atomic-puzzles" | "lichess">>;
   lichessLinkTarget: "atomic-puzzles" | "lichess";
@@ -519,6 +529,11 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.boolean(),
     true,
   );
+  const [blindPuzzles, setBlindPuzzles] = usePersistedState(
+    STORAGE_KEYS.blindPuzzles,
+    blindPuzzlesSchema,
+    { enabled: false, plies: 5 },
+  );
   const [puzzleAnalysisTarget, setPuzzleAnalysisTarget] = usePersistedState<
     "atomic-puzzles" | "lichess"
   >(STORAGE_KEYS.puzzleAnalysisTarget, z.enum(["atomic-puzzles", "lichess"]), "atomic-puzzles");
@@ -646,6 +661,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowRatingGraphLines,
       showPuzzleTimer,
       setShowPuzzleTimer,
+      blindPuzzles,
+      setBlindPuzzles,
       puzzleAnalysisTarget,
       setPuzzleAnalysisTarget,
       lichessLinkTarget,
@@ -695,6 +712,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowRatingGraphLines,
       showPuzzleTimer,
       setShowPuzzleTimer,
+      blindPuzzles,
+      setBlindPuzzles,
       puzzleAnalysisTarget,
       setPuzzleAnalysisTarget,
       lichessLinkTarget,

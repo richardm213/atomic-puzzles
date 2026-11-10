@@ -51,7 +51,6 @@ begin
     return jsonb_build_object('balance', coalesce(current_balance, 0), 'redemptionId', redemption.id, 'status', 'fulfilled');
   end if;
 
-  perform public.assert_coin_economy_access(normalized_username);
   insert into public.shop_redemptions (username, item_key, cost, status, fulfilled_at, fulfilled_by)
   values (normalized_username, p_item_key, 100, 'fulfilled', now(), normalized_username)
   returning * into redemption;

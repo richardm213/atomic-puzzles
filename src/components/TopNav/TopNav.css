@@ -508,6 +508,7 @@
 
 @media (max-width: 640px) {
   .navSettingsAppearanceGrid select,
+  .navBlindPuzzleSettings :is(.navSettingsCheckbox, select),
   .navBestMoveArrowSetting {
     min-height: var(--control-height-touch);
   }

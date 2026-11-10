@@ -15,10 +15,11 @@ const puzzleDetailsResponseSchema = z.object({
 
 export const fetchPuzzleDetails = async (
   puzzleIds: Array<number | string>,
+  testMode = false,
 ): Promise<PuzzleRow[]> => {
   const result = await postApi(
     "/api/puzzles/play",
-    { puzzleIds },
+    { puzzleIds, ...(testMode ? { testMode } : {}) },
     {
       schema: puzzleDetailsResponseSchema,
       errorMessage: "Unable to load puzzle data.",

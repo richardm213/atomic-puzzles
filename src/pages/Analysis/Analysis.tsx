@@ -80,6 +80,7 @@ import {
   startingPlyFromFen,
 } from "../../lib/chess/pgn";
 import { keyboardShortcutAction } from "../../lib/keyboardShortcuts";
+import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { atomicDbPositionUrl, requestAtomicDbAnalysis } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
@@ -424,6 +425,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     fen: string;
     orientation: "white" | "black";
     sourcePly: number;
+    positionHistory: PuzzlePositionHistory;
   } | null>(null);
   const [addedPuzzle, setAddedPuzzle] = useState<PuzzleCreationResult | null>(null);
   const puzzleLauncher = useRef<HTMLButtonElement | null>(null);
@@ -536,6 +538,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     canStepForward,
     currentFen,
     currentPly,
+    currentMoves,
     activeLineIndex,
     lineTargets,
     lines: analysisLines,
@@ -757,6 +760,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
       fen: currentFen,
       orientation: boardState?.turn || gameOrientation,
       sourcePly: currentPly,
+      positionHistory: { positionInitialFen: gameRootFen, positionMoves: currentMoves },
     });
   };
 
@@ -1570,6 +1574,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
               puzzleDraft ? (
                 <PuzzleComposer
                   publishesDirectly={publishesDirectly}
+                  positionHistory={puzzleDraft.positionHistory}
                   {...(game
                     ? { match: { gameId: game.game_id, matchId: game.external_match_id } }
                     : {})}

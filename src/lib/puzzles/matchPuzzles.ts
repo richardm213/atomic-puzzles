@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { PuzzlePositionHistory } from "../../../shared/domain/puzzles/puzzleSubmission";
 import { createPostApi } from "../api/postApi";
 
 const matchPuzzleRequest = createPostApi("/api/puzzles/submit", {
@@ -7,7 +8,7 @@ const matchPuzzleRequest = createPostApi("/api/puzzles/submit", {
 });
 
 const matchContextSchema = z.object({
-  setName: z.string().nullable(),
+  setName: z.string(),
   players: z.tuple([z.string(), z.string()]),
   canRenameSet: z.boolean().default(false),
 });
@@ -32,7 +33,7 @@ export const fetchMatchPuzzleContext = (gameId: string) =>
     { errorMessage: "Unable to load the match set.", schema: matchContextSchema },
   );
 
-export const addMatchPuzzle = (input: {
+export const addMatchPuzzle = (input: PuzzlePositionHistory & {
   gameId: string;
   fen: string;
   solution: string;

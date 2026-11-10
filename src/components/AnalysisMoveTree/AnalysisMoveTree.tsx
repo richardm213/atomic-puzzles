@@ -25,6 +25,8 @@ import {
   variationOptions,
 } from "../VariationTree/VariationTree";
 
+export type PreviousMove = { ply: number; san: string };
+
 type CycleOptions = (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
 
 export const AnalysisContinuationChoices = ({
@@ -116,6 +118,7 @@ export const AnalysisMoveTree = ({
   pinnedLineIndex,
   initialPly = 0,
   inline = true,
+  previousMove,
   onSelect,
   onCycleOptions,
   onAnnotate,
@@ -128,6 +131,7 @@ export const AnalysisMoveTree = ({
   pinnedLineIndex?: number | undefined;
   initialPly?: number | undefined;
   inline?: boolean;
+  previousMove?: PreviousMove | undefined;
   onSelect: (lineIndex: number, moveIndex: number) => void;
   onCycleOptions?: CycleOptions | undefined;
   onAnnotate?: ((lineIndex: number, moveIndex: number, annotation: string) => void) | undefined;
@@ -142,7 +146,7 @@ export const AnalysisMoveTree = ({
   } | null>(null);
   const closeAnnotationMenu = useCallback(() => setAnnotationTarget(null), []);
 
-  if (!lines.length) return null;
+  if (!lines.length && !previousMove) return null;
 
   const currentMoves = moves.slice(0, currentPly);
   const matchingLines = matchingLineIndexes(lines, currentMoves);
@@ -250,7 +254,14 @@ export const AnalysisMoveTree = ({
         role="list"
         aria-label="Analysis variations"
       >
-        {renderContinuations(tree, 0, "root", 0, initialPly % 2 === 1)}
+        {previousMove ? (
+          <span className="analysisTreeMove analysisTreePreviousMove" role="listitem">
+            <span className="visuallyHidden">Opponent’s previous move: </span>
+            <span className="analysisTreeMoveNumber">{movePrefix(previousMove.ply, true)}</span>
+            {previousMove.san}
+          </span>
+        ) : null}
+        {renderContinuations(tree, 0, "root", 0, !previousMove && initialPly % 2 === 1)}
       </div>
       {annotationTarget && (onAnnotate || onDelete) ? (
         <MoveAnnotationMenu

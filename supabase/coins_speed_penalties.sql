@@ -38,8 +38,8 @@ declare
   requested_penalty numeric(18, 6) := 0;
   current_balance numeric(18, 6);
 begin
-  -- Economy-banned players and unrated attempts never mutate coin balances.
-  if not new.rated or public.is_coin_economy_banned(new.username) then
+  -- Unrated attempts do not mutate coin balances.
+  if not new.rated then
     return new;
   end if;
 

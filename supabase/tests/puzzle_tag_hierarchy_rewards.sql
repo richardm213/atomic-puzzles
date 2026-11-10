@@ -18,7 +18,6 @@ begin
   join public.puzzle_progress progress on progress.puzzle_id = p.id::text
   join public.coin_accounts account on account.username = progress.username
   where p.deleted_at is null and account.balance >= 1
-    and not public.is_coin_economy_banned(progress.username)
     and not exists (select 1 from public.puzzle_tag_vote_history h
       where h.puzzle_id = p.id and h.voter = progress.username
         and h.tag in ('fork','epaulette_fork','endgame','pawn_endgame','threading_the_needle'))

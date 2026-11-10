@@ -41,21 +41,12 @@ cg-board square.oc.premove-dest {
   );
 }
 
-cg-board square.move-dest:hover,
-cg-board square.move-dest.hover {
-  background: color-mix(in srgb, var(--board-move-ink) 30%, transparent);
-}
-
-cg-board square.premove-dest:hover,
-cg-board square.premove-dest.hover {
-  background: color-mix(in srgb, var(--board-premove-ink) 20%, transparent);
-}
-
 cg-board square.last-move {
   background-color: var(--cg-board-light-last-move, rgba(79, 150, 255, 0.4));
 }
 
-cg-board square.selected {
+cg-board square.selected,
+[data-blind-board] cg-board square.last-move {
   background-color: color-mix(
     in srgb,
     var(--board-move-ink) var(--cg-move-selection-strength, 45%),

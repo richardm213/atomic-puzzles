@@ -83,9 +83,12 @@ export const loadPuzzleCatalog = async (): Promise<Puzzle[]> =>
 export const loadPuzzleSolverIndex = async (): Promise<Puzzle[]> =>
   (await fetchPuzzleSolverIndexFromSupabase()).map(normalizePuzzleCatalogRow);
 
-export const loadPuzzlesById = async (puzzleIds: Array<number | string>): Promise<Puzzle[]> => {
+export const loadPuzzlesById = async (
+  puzzleIds: Array<number | string>,
+  testMode = false,
+): Promise<Puzzle[]> => {
   const requestedIds = puzzleIds.map(String);
-  const rows = await fetchPuzzleDetails(puzzleIds);
+  const rows = await fetchPuzzleDetails(puzzleIds, testMode);
   const puzzles = rows.map(normalizePuzzleRow).filter((item) => item.fen.length > 0);
 
   const puzzlesById = new Map(puzzles.map((puzzle) => [String(puzzle.puzzleId), puzzle]));

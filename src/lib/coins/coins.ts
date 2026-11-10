@@ -23,10 +23,6 @@ export type CoinSummary = {
   balance: number;
   inBets?: number;
   dailyClaimAvailable: boolean;
-  economyBan?: {
-    endsAt: string;
-    reason: string;
-  } | null;
 };
 
 export type CoinRanking = {
@@ -69,14 +65,6 @@ const summarySchema = z.object({
     balance: z.number(),
     inBets: z.number().nonnegative().optional(),
     dailyClaimAvailable: z.boolean().optional().default(false),
-    economyBan: z
-      .object({
-        endsAt: z.string(),
-        reason: z.string(),
-      })
-      .nullable()
-      .optional()
-      .default(null),
     awarded: z.number().optional(),
     redemptionId: z.number().optional(),
     transferId: z.number().optional(),

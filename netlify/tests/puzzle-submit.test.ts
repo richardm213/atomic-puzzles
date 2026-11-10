@@ -129,6 +129,7 @@ describe("puzzle-submit function", () => {
 
   it.each([
     { username: "submitter", setName: "Scam match", publish: false, source: "linked", setId: 42 },
+    { username: "submitter", setName: "Match match-1", publish: false, source: "new", setId: null },
     {
       username: "submitter",
       setName: "Match match-1",
@@ -169,6 +170,7 @@ describe("puzzle-submit function", () => {
         result: 1,
         start_ts: Date.UTC(2026, 10, 9),
         tournament: null,
+        moves: ["e2e4", "e7e5", "g1f3"],
       });
       const roundQuery = {
         select: vi.fn().mockReturnThis(),
@@ -245,7 +247,10 @@ describe("puzzle-submit function", () => {
         body: JSON.stringify({ action: "match-context", gameId: "game-1" }),
       });
       expect(preview.statusCode).toBe(200);
-      expect(JSON.parse(preview.body)).toMatchObject({ setName, canRenameSet: Boolean(renameTo) });
+      expect(JSON.parse(preview.body)).toMatchObject({
+        setName,
+        canRenameSet: Boolean(renameTo) || source === "new",
+      });
       expect(rpc).not.toHaveBeenCalled();
 
       const submitMatch = (
@@ -253,6 +258,7 @@ describe("puzzle-submit function", () => {
         renameFrom?: string,
         creator = username,
         gameId = "game-1",
+        positionMoves = ["e4", "c5"],
       ) =>
         handler({
           httpMethod: "POST",
@@ -260,8 +266,9 @@ describe("puzzle-submit function", () => {
           body: JSON.stringify({
             action: "add-match-puzzle",
             gameId,
-            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            solution: "1. e4",
+            fen: "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+            positionMoves,
+            solution: "2. Nf3",
             explanation: "  The opening move changes the center.  ",
             opaStyle: true,
             matchName,
@@ -269,9 +276,14 @@ describe("puzzle-submit function", () => {
             whitePlayer: "spoofed",
           }),
         });
-      if (!renameTo) {
+      if (!renameTo && source !== "new") {
         const forbidden = await submitMatch("Not allowed", setName);
         expect(forbidden.statusCode).toBe(409);
+        expect(rpc).not.toHaveBeenCalled();
+      }
+      if (source === "linked" && !renameTo) {
+        const mismatch = await submitMatch(setName, undefined, username, "game-1", ["d4"]);
+        expect(mismatch.statusCode).toBe(400);
         expect(rpc).not.toHaveBeenCalled();
       }
       const response = await submitMatch(
@@ -290,6 +302,8 @@ describe("puzzle-submit function", () => {
           ...(renameTo ? { p_rename_from: setName } : {}),
           p_puzzle: expect.objectContaining({
             eventName: savedName,
+            positionMoves: ["e4", "c5"],
+            gameInitialFen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             explanation: "The opening move changes the center.",
             opaStyle: true,
             eventDate: "2026-11-09",
@@ -483,6 +497,55 @@ describe("puzzle-submit function", () => {
         }),
       );
       expect(rpc).not.toHaveBeenCalledWith("enqueue_puzzle_submission", expect.anything());
+    },
+  );
+
+  it.each(["submitter", "wolfram_ep"])(
+    "preserves a standalone board's custom root and lead-up moves for %s",
+    async (username) => {
+      const positionInitialFen = "4k1n1/8/8/8/8/8/8/4K1N1 w - - 0 15";
+      const queue = username === "submitter";
+      const rpc = vi.fn(() =>
+        queue
+          ? { single: async () => ({ data: { id: 4 }, error: null }) }
+          : Promise.resolve({ data: [1801], error: null }),
+      );
+      mocks.createClient.mockReturnValue({
+        from: vi.fn(() => ({ upsert: async () => ({ error: null }) })),
+        rpc,
+      });
+      const response = await handler({
+        httpMethod: "POST",
+        headers: authHeaders(username),
+        body: JSON.stringify({
+          fen: "4k3/8/5n2/8/8/5N2/8/4K3 w - - 2 16",
+          solution: "16. Ng5",
+          explanation: "",
+          positionInitialFen,
+          positionMoves: ["g1f3", "Nf6"],
+        }),
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(JSON.parse(response.body).destination).toBe(queue ? "review" : "published");
+      const saved = expect.objectContaining({
+        positionMoves: ["Nf3", "Nf6"],
+        gameInitialFen: positionInitialFen,
+        players: [],
+        whitePlayer: "",
+        blackPlayer: "",
+      });
+      if (queue) {
+        expect(rpc).toHaveBeenCalledWith(
+          "enqueue_puzzle_with_position_history",
+          expect.objectContaining({ p_puzzle: saved }),
+        );
+      } else {
+        expect(rpc).toHaveBeenCalledWith(
+          "publish_approved_puzzle_batch",
+          expect.objectContaining({ p_puzzles: [saved] }),
+        );
+      }
     },
   );
 

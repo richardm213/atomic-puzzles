@@ -12,6 +12,7 @@ import {
   fetchMatchPuzzleContext,
   matchPuzzleContextKey,
 } from "../../lib/puzzles/matchPuzzles";
+import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
 import { puzzleQueryKeys } from "../../lib/puzzles/puzzleQueries";
 import { DIFFERENT_START_MOVE_CONFIRMATION, submitPuzzle } from "../../lib/supabase/puzzleQueue";
 import { getErrorMessage } from "../../utils/errors";
@@ -24,6 +25,7 @@ export type PuzzleCreationResult =
 
 export const PuzzleComposer = ({
   match,
+  positionHistory,
   fen,
   solution,
   publishesDirectly,
@@ -33,6 +35,7 @@ export const PuzzleComposer = ({
   onAdded,
 }: {
   match?: { gameId: string; matchId: string };
+  positionHistory: PuzzlePositionHistory;
   fen: string;
   solution: string;
   publishesDirectly: boolean;
@@ -57,14 +60,12 @@ export const PuzzleComposer = ({
   const cancelRef = useRef<HTMLButtonElement | null>(null);
   const editNameRef = useRef<HTMLButtonElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
-  const helpId = useId();
   const matchNameId = useId();
   const explanationId = useId();
   const checkingName = context.isFetching && !context.data?.setName;
-  const needsName = !checkingName && !context.isError && context.data?.setName === null;
   const setName = context.data?.setName;
   const canSave = Boolean(
-    solution && (!match || (renameFrom || needsName ? matchName.trim() : setName)),
+    solution && (!match || (renameFrom ? matchName.trim() : setName)),
   );
   const confirmDifferentStart = error === DIFFERENT_START_MOVE_CONFIRMATION;
   const submitLabel = publishesDirectly
@@ -105,11 +106,12 @@ export const PuzzleComposer = ({
       if (match && context.data) {
         const matchResult = await addMatchPuzzle({
           gameId: match.gameId,
+          ...positionHistory,
           fen,
           solution,
           opaStyle,
           explanation,
-          matchName: renaming || needsName ? newName : "",
+          matchName: renaming ? newName : "",
           ...(renaming && renameFrom ? { renameFrom } : {}),
           allowDifferentStartMove: confirmDifferentStart,
         });
@@ -122,7 +124,7 @@ export const PuzzleComposer = ({
       } else {
         result = await submitPuzzle(
           { fen, solution, event: "", explanation: "" },
-          { allowDifferentStartMove: confirmDifferentStart },
+          { allowDifferentStartMove: confirmDifferentStart, positionHistory },
         );
       }
       if (result.destination === "published" || renaming) {
@@ -155,23 +157,6 @@ export const PuzzleComposer = ({
             >
               Retry
             </button>
-          </div>
-        ) : null}
-        {needsName && context.data ? (
-          <div className="boardPuzzleComposerField">
-            <label htmlFor={matchNameId}>Match name</label>
-            <p id={helpId}>We’ll save {context.data.players.join(" vs ")} with this name.</p>
-            <input
-              id={matchNameId}
-              type="text"
-              maxLength={100}
-              required
-              aria-describedby={helpId}
-              placeholder="Scam match"
-              value={matchName}
-              onChange={(event) => setMatchName(event.target.value)}
-              disabled={saving}
-            />
           </div>
         ) : null}
         {children}

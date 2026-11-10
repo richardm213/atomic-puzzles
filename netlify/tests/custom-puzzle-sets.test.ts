@@ -64,12 +64,16 @@ const createSupabaseMock = (completedAt: string | null) => {
   return { update, itemUpdateQuery };
 };
 
-const createRefreshSupabaseMock = () => {
+const createRefreshSupabaseMock = (untaggedOnly: boolean) => {
+  const tags = untaggedOnly ? [] : ["fork"];
   const setRow = {
     id: setId,
-    name: "Fork review",
-    tag_filters: ["fork"],
-    author_filter: null,
+    name: "Review",
+    tag_filters: [
+      ...(untaggedOnly ? ["__custom_set_filter__:untagged"] : tags),
+      "__custom_set_filter__:result:incorrect",
+    ],
+    author_filter: "admin",
     created_at: "2026-09-21T00:00:00.000Z",
     updated_at: "2026-09-21T00:00:00.000Z",
   };
@@ -102,8 +106,11 @@ const createRefreshSupabaseMock = () => {
   progressQuery.order = vi.fn(() => progressQuery);
   progressQuery.range = vi.fn(async () => ({
     data: [
-      { puzzle_id: "1369", puzzle_correct: true },
+      { puzzle_id: "1369", puzzle_correct: false },
       { puzzle_id: "1370", puzzle_correct: false },
+      { puzzle_id: "1371", puzzle_correct: false },
+      { puzzle_id: "1372", puzzle_correct: true },
+      { puzzle_id: "1373", puzzle_correct: false },
     ],
     error: null,
   }));
@@ -113,8 +120,11 @@ const createRefreshSupabaseMock = () => {
   puzzleQuery.is = vi.fn(() => puzzleQuery);
   puzzleQuery.in = vi.fn(async () => ({
     data: [
-      { id: 1369, author: "admin", tags: ["fork"] },
-      { id: 1370, author: "admin", tags: ["fork"] },
+      { id: 1369, author: "admin", tags },
+      { id: 1370, author: "admin", tags },
+      { id: 1371, author: "other", tags },
+      { id: 1372, author: "admin", tags },
+      { id: 1373, author: "admin", tags: ["pin"] },
     ],
     error: null,
   }));
@@ -268,27 +278,30 @@ describe("custom puzzle set progress", () => {
     });
   });
 
-  it("appends newly matching puzzles without changing completed items", async () => {
-    const { insertItems } = createRefreshSupabaseMock();
-    const cookie = createSiteSessionCookie("Solver", {});
+  it.each([false, true])(
+    "uses saved filters and preserves completed items (untagged: %s)",
+    async (untaggedOnly) => {
+      const { insertItems } = createRefreshSupabaseMock(untaggedOnly);
+      const cookie = createSiteSessionCookie("Solver", {});
 
-    const response = await handler({
-      httpMethod: "POST",
-      headers: { cookie: cookie.split(";")[0] },
-      body: JSON.stringify({ action: "refresh", id: setId }),
-    });
+      const response = await handler({
+        httpMethod: "POST",
+        headers: { cookie: cookie.split(";")[0] },
+        body: JSON.stringify({ action: "refresh", id: setId }),
+      });
 
-    expect(response.statusCode).toBe(200);
-    expect(insertItems).toHaveBeenCalledWith([{ set_id: setId, puzzle_id: "1370", position: 1 }]);
-    expect(JSON.parse(response.body ?? "{}")).toMatchObject({
-      addedPuzzleIds: [1370],
-      set: {
-        puzzleIds: [1369, 1370],
-        completedCount: 1,
-        nextPuzzleId: 1370,
-      },
-    });
-  });
+      expect(response.statusCode).toBe(200);
+      expect(insertItems).toHaveBeenCalledWith([{ set_id: setId, puzzle_id: "1370", position: 1 }]);
+      expect(JSON.parse(response.body ?? "{}")).toMatchObject({
+        addedPuzzleIds: [1370],
+        set: {
+          puzzleIds: [1369, 1370],
+          completedCount: 1,
+          nextPuzzleId: 1370,
+        },
+      });
+    },
+  );
 
   it("creates an endgame set with matching puzzles the user has not attempted", async () => {
     const { insertItems } = createEndgameSetSupabaseMock();

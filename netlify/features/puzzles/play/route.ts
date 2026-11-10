@@ -4,6 +4,8 @@ import {
   DAILY_PUZZLE_ATTEMPT_LIMIT,
   utcDayBounds,
 } from "../../../../shared/domain/puzzles/dailyAttemptLimit";
+import { puzzleContextFromGameHistory } from "../../../../shared/domain/puzzles/gameHistory";
+import { PUZZLE_ADMIN_USERNAME } from "../../../../shared/domain/puzzles/puzzleAdmin";
 import {
   authenticateRequest,
   identityResponse,
@@ -12,6 +14,7 @@ import {
 } from "../../../platform/authentication";
 import type { FunctionEvent } from "../../../platform/defineFunction";
 import { createServerSupabase } from "../../../platform/environment";
+import { HttpError } from "../../../platform/errors";
 import { parseJsonBody } from "../../../platform/validation";
 
 const puzzleIdSchema = z
@@ -21,6 +24,7 @@ const puzzleIdSchema = z
 
 const detailsBodySchema = z.object({
   puzzleIds: z.array(puzzleIdSchema).min(1).max(12),
+  testMode: z.boolean().optional(),
 });
 
 const PUZZLE_SET_FIELDS = "id,event_name,event_date,players,source_id";
@@ -30,8 +34,12 @@ const PUZZLE_RATING_RELATION =
   "rating_state:puzzle_ratings!puzzle_ratings_puzzle_id_fkey(rating,rating_deviation,attempts,successes,computed_level,human_level,human_rated_by,human_rated_at,updated_at)";
 const DETAIL_COLUMNS =
   `id,fen,solution,author,created_at,players,puzzle_set_id,${PUZZLE_SET_RELATION},` +
+  "game_moves,position_moves,game_initial_fen," +
   `${PUZZLE_SET_MEMBERSHIP_RELATION},white_player,black_player,explanation,tags,opa_style,` +
   PUZZLE_RATING_RELATION;
+
+type PuzzleDetailRow = Parameters<typeof puzzleContextFromGameHistory>[0] &
+  Record<string, unknown>;
 
 const isSequentialBatch = (ids: number[]): boolean => {
   const sorted = [...ids].sort((left, right) => left - right);
@@ -45,6 +53,9 @@ export const puzzlePlayRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, detailsBodySchema, "Invalid puzzle details request.");
   const identity = await authenticateRequest(event.headers);
   const username = requireUsername(identity, "Log in with Lichess to solve puzzles.");
+  if (input.testMode && username !== PUZZLE_ADMIN_USERNAME) {
+    throw new HttpError(403, "Puzzle testing is restricted.");
+  }
   const puzzleIds = [...new Set(input.puzzleIds.map(Number))];
 
   // Authentication is enforced above. Log the request shape as an additional
@@ -56,34 +67,36 @@ export const puzzlePlayRoute = async (event: FunctionEvent) => {
   });
 
   const supabase = createServerSupabase("Puzzle play service");
-  const { start, end } = utcDayBounds();
-  const { count: dailyAttemptCount, error: dailyAttemptError } = await supabase
-    .from("puzzle_progress")
-    .select("puzzle_id", { count: "exact", head: true })
-    .eq("username", username)
-    .gte("first_attempt_at", start)
-    .lt("first_attempt_at", end);
-  if (dailyAttemptError) {
-    throw new Error(`Unable to check daily puzzle attempts: ${dailyAttemptError.message}`);
-  }
-
   let allowedPuzzleIds = puzzleIds;
   let blockedPuzzleIds: number[] = [];
-  if ((dailyAttemptCount ?? 0) >= DAILY_PUZZLE_ATTEMPT_LIMIT) {
-    const { data: attemptedRows, error: attemptedError } = await supabase
+  if (!input.testMode) {
+    const { start, end } = utcDayBounds();
+    const { count: dailyAttemptCount, error: dailyAttemptError } = await supabase
       .from("puzzle_progress")
-      .select("puzzle_id")
+      .select("puzzle_id", { count: "exact", head: true })
       .eq("username", username)
-      .in("puzzle_id", puzzleIds.map(String));
-    if (attemptedError) {
-      throw new Error(`Unable to check previous puzzle attempts: ${attemptedError.message}`);
+      .gte("first_attempt_at", start)
+      .lt("first_attempt_at", end);
+    if (dailyAttemptError) {
+      throw new Error(`Unable to check daily puzzle attempts: ${dailyAttemptError.message}`);
     }
 
-    const attemptedIds = new Set(
-      (Array.isArray(attemptedRows) ? attemptedRows : []).map((row) => String(row.puzzle_id)),
-    );
-    allowedPuzzleIds = puzzleIds.filter((puzzleId) => attemptedIds.has(String(puzzleId)));
-    blockedPuzzleIds = puzzleIds.filter((puzzleId) => !attemptedIds.has(String(puzzleId)));
+    if ((dailyAttemptCount ?? 0) >= DAILY_PUZZLE_ATTEMPT_LIMIT) {
+      const { data: attemptedRows, error: attemptedError } = await supabase
+        .from("puzzle_progress")
+        .select("puzzle_id")
+        .eq("username", username)
+        .in("puzzle_id", puzzleIds.map(String));
+      if (attemptedError) {
+        throw new Error(`Unable to check previous puzzle attempts: ${attemptedError.message}`);
+      }
+
+      const attemptedIds = new Set(
+        (Array.isArray(attemptedRows) ? attemptedRows : []).map((row) => String(row.puzzle_id)),
+      );
+      allowedPuzzleIds = puzzleIds.filter((puzzleId) => attemptedIds.has(String(puzzleId)));
+      blockedPuzzleIds = puzzleIds.filter((puzzleId) => !attemptedIds.has(String(puzzleId)));
+    }
   }
 
   const { data, error } = allowedPuzzleIds.length
@@ -94,9 +107,19 @@ export const puzzlePlayRoute = async (event: FunctionEvent) => {
         .is("deleted_at", null)
     : { data: [], error: null };
   if (error) throw new Error(`Unable to load puzzles: ${error.message}`);
+  const rows = (Array.isArray(data) ? data : []) as unknown as PuzzleDetailRow[];
 
   return identityResponse(identity, 200, {
-    puzzles: Array.isArray(data) ? data : [],
+    // Do not expose the source continuation: it can give away the solution.
+    puzzles: rows.map(({ game_moves, position_moves, game_initial_fen, ...puzzle }) => ({
+      ...puzzle,
+      ...puzzleContextFromGameHistory({
+        fen: puzzle.fen,
+        game_moves,
+        position_moves,
+        game_initial_fen,
+      }),
+    })),
     blockedPuzzleIds,
     dailyLimitReached: blockedPuzzleIds.length > 0,
   });

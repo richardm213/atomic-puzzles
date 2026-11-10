@@ -164,7 +164,6 @@ begin
   if market_row.status <> 'open' or market_row.closes_at <= now() then
     raise exception 'Prediction market is closed';
   end if;
-  perform public.assert_coin_economy_access(normalized_username);
 
   if exists (
     select 1

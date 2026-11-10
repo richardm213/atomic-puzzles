@@ -18,7 +18,6 @@ describe("CoinEarnedToast", () => {
       balance: 100.25,
       dailyClaimAvailable: false,
       awarded: 0,
-      economyBan: null,
     });
     render(
       <QueryClientProvider client={queryClient}>

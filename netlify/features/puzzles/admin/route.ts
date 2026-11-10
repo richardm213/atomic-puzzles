@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { PUZZLE_ADMIN_USERNAME } from "../../../../shared/domain/puzzles/puzzleAdmin";
 import {
   authenticateRequest,
   requireSameOrigin,
@@ -13,7 +14,6 @@ import { parseJsonBody } from "../../../platform/validation";
 import { PuzzleAdminRepository } from "./repository";
 import { PuzzleAdminService } from "./service";
 
-const ADMIN = "seaside_tiramisu";
 const puzzleId = z.number().int().positive();
 const bodySchema = z.discriminatedUnion("action", [
   z.object({
@@ -45,7 +45,7 @@ export const puzzleAdminRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, bodySchema, "Invalid puzzle administration request.");
   const identity = await authenticateRequest(event.headers);
   const username = requireUsername(identity, "Log in with Lichess to administer puzzles.");
-  if (username !== ADMIN) throw new HttpError(403, "This page is restricted.");
+  if (username !== PUZZLE_ADMIN_USERNAME) throw new HttpError(403, "This page is restricted.");
 
   const service = new PuzzleAdminService(
     new PuzzleAdminRepository(createServerSupabase("Puzzle administration service")),

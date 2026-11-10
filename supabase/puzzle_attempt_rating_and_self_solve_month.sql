@@ -59,8 +59,8 @@ declare
   current_balance integer;
   transaction_id bigint;
 begin
-  -- Economy-banned players can still submit puzzles without any coin mutation.
-  if not new.rated or public.is_coin_economy_banned(new.username) then
+  -- Unrated attempts do not mutate coin balances.
+  if not new.rated then
     return new;
   end if;
 

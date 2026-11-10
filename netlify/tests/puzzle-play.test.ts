@@ -11,12 +11,17 @@ const authHeaders = () => ({
   cookie: createSiteSessionCookie("solver", {}).split(";")[0],
 });
 
+const puzzleFen = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1";
+const beforeFen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+
 const createPuzzleQuery = () => {
   const query = {
     select: vi.fn(),
     in: vi.fn(),
     is: vi.fn(async () => ({
-      data: [{ id: 414, fen: "puzzle fen", solution: "18. O-O-O" }],
+      data: [
+        { id: 414, fen: puzzleFen, solution: "2. Nf3", game_moves: ["e4", "e5", "Nf3"] },
+      ],
       error: null,
     })),
   };
@@ -79,7 +84,38 @@ describe("puzzle-play function", () => {
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
-  it("returns playable puzzle data to a signed-in user", async () => {
+  it("denies test-mode detail requests from regular players before querying data", async () => {
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ puzzleIds: [414], testMode: true }),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+
+  it("serves admin test-mode details without accessing the attempt ledger", async () => {
+    const query = createPuzzleQuery();
+    const from = vi.fn(() => query);
+    mocks.createClient.mockReturnValue({ from });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { cookie: createSiteSessionCookie("seaside_tiramisu", {}).split(";")[0] },
+      body: JSON.stringify({ puzzleIds: [414], testMode: true }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toMatchObject({
+      puzzles: [{ id: 414 }],
+      dailyLimitReached: false,
+    });
+    expect(from.mock.calls).toEqual([["puzzles"]]);
+    expect(query.is).toHaveBeenCalledWith("deleted_at", null);
+  });
+
+  it("returns the opponent intro but not the source game continuation", async () => {
     const query = createPuzzleQuery();
     const dailyAttemptQuery = createDailyAttemptQuery();
     mocks.createClient.mockReturnValue({
@@ -94,7 +130,15 @@ describe("puzzle-play function", () => {
 
     expect(response.statusCode).toBe(200);
     expect(JSON.parse(response.body)).toEqual({
-      puzzles: [{ id: 414, fen: "puzzle fen", solution: "18. O-O-O" }],
+      puzzles: [
+        {
+          id: 414,
+          fen: puzzleFen,
+          solution: "2. Nf3",
+          intro: { beforeFen, san: "e5", uci: "e7e5" },
+          leadIn: { beforeFen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", moves: ["e4", "e5"] },
+        },
+      ],
       blockedPuzzleIds: [],
       dailyLimitReached: false,
     });

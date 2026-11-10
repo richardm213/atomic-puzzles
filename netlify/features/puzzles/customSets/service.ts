@@ -143,16 +143,9 @@ export class CustomPuzzleSetService {
     const activePuzzleIds = new Set(
       currentItems.filter((item) => !item.removed_at).map((item) => item.puzzle_id),
     );
-    const addedPuzzleIds = filters.tags.length
-      ? (
-          await this.loadMatchingPuzzleIds({
-            tags: filters.tags,
-            untaggedOnly: false,
-            authors: [],
-            resultFilter: "all",
-          })
-        ).filter((puzzleId) => !activePuzzleIds.has(puzzleId))
-      : [];
+    const addedPuzzleIds = (await this.loadMatchingPuzzleIds(filters)).filter(
+      (puzzleId) => !activePuzzleIds.has(puzzleId),
+    );
     if (!addedPuzzleIds.length) {
       return {
         statusCode: 200,

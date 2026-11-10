@@ -1,4 +1,4 @@
-import { act, fireEvent, render } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import type { ComponentProps } from "react";
 
@@ -32,6 +32,7 @@ vi.mock("@lichess-org/chessground", () => ({
       setAutoShapes: mocks.setAutoShapes,
       playPremove: mocks.playPremove,
       cancelPremove: mocks.cancelPremove,
+      destroy: vi.fn(),
     };
   }),
 }));
@@ -99,6 +100,80 @@ describe("Chessboard orchestration", () => {
     mocks.enableBoardPremoves = true;
     mocks.boardSoundsEnabled = false;
     mocks.playBoardMoveSound.mockClear();
+  });
+
+  it("plays the opponent move before enabling puzzle input without adding a solution ply", () => {
+    vi.useFakeTimers();
+    try {
+      const fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+      const onIntroEnd = vi.fn();
+      const onAttemptResolved = vi.fn();
+      const states = renderBoard({
+        fen,
+        orientation: "black",
+        analysisMode: false,
+        intro: { beforeFen: STARTING_FEN, san: "e4", uci: "e2e4" },
+        solution: "1... e5",
+        onIntroEnd,
+        onAttemptResolved,
+      });
+      expect(mocks.set).toHaveBeenCalledWith(expect.objectContaining({ fen: STARTING_FEN }));
+      play("e7", "e5");
+      act(() => vi.advanceTimersByTime(549));
+      const replayPosition = expect.objectContaining({ fen, lastMove: ["e2", "e4"] });
+      expect(mocks.set).not.toHaveBeenCalledWith(replayPosition);
+      act(() => vi.advanceTimersByTime(1));
+      expect(mocks.set).toHaveBeenCalledWith(replayPosition);
+      expect(states).toHaveLength(0);
+      play("e7", "e5");
+      expect(onIntroEnd).not.toHaveBeenCalled();
+      expect(onAttemptResolved).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(120));
+      expect(onIntroEnd).toHaveBeenCalledWith(670, true);
+      expect(states.at(-1)?.lineMoves).toEqual([]);
+      play("e7", "e5");
+      act(() => vi.advanceTimersByTime(250));
+      expect(onAttemptResolved).toHaveBeenCalledWith(expect.objectContaining({ puzzleCorrect: true }));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("uses the hidden position for blind clicks, including after the opponent moves", () => {
+    vi.useFakeTimers();
+    try {
+      const states = renderBoard({
+        blindFen: STARTING_FEN,
+        fen: "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+        analysisMode: false,
+        solution: "2. e5 c4 3. e6",
+      });
+      const square = (name: string) => screen.getByRole("button", { name, exact: true });
+
+      fireEvent.click(square("e2"));
+      expect(square("e2")).toHaveAttribute("aria-pressed", "false");
+      fireEvent.click(square("e4"));
+      expect(square("e4")).toHaveAttribute("aria-pressed", "true");
+      fireEvent.click(square("e6"));
+      expect(states.at(-1)).toMatchObject({ error: "Illegal move", lineMoves: [] });
+      fireEvent.click(square("e4"));
+      fireEvent.click(square("e5"));
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(states.at(-1)).toMatchObject({ error: "", lineMoves: ["e5", "c4"] });
+
+      fireEvent.click(square("e4"));
+      expect(square("e4")).toHaveAttribute("aria-pressed", "false");
+      fireEvent.click(square("e5"));
+      fireEvent.click(square("e6"));
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(states.at(-1)?.solved).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("does not mutate previously emitted move arrays", () => {

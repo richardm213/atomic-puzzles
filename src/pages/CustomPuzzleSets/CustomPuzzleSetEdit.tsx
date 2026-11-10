@@ -1,6 +1,6 @@
 import "./CustomPuzzleSetEdit.css";
 
-import { faArrowLeft, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faRotate, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
@@ -29,7 +29,7 @@ export const CustomPuzzleSetEditPage = () => {
   const { getName } = usePuzzleMotifNames();
   const validSetId = SET_ID_PATTERN.test(setId);
   const [pendingPuzzleId, setPendingPuzzleId] = useState("");
-  const [addingPuzzles, setAddingPuzzles] = useState(false);
+  const [refreshingSet, setRefreshingSet] = useState(false);
   const [message, setMessage] = useState<{ type: "status" | "error"; text: string } | null>(null);
 
   const setQuery = useQuery({
@@ -81,9 +81,9 @@ export const CustomPuzzleSetEditPage = () => {
     }
   };
 
-  const handleAddMatching = async (): Promise<void> => {
-    if (!customSet?.tags.length) return;
-    setAddingPuzzles(true);
+  const handleRefresh = async (): Promise<void> => {
+    if (!customSet || pendingPuzzleId || refreshingSet) return;
+    setRefreshingSet(true);
     setMessage(null);
     try {
       const result = await refreshCustomPuzzleSet(setId);
@@ -92,15 +92,15 @@ export const CustomPuzzleSetEditPage = () => {
         type: "status",
         text: result.addedPuzzleIds.length
           ? `Added ${result.addedPuzzleIds.length} puzzle${result.addedPuzzleIds.length === 1 ? "" : "s"}.`
-          : "Every eligible puzzle with these tags is already in the set.",
+          : "No new matching puzzles.",
       });
     } catch (error) {
       setMessage({
         type: "error",
-        text: getErrorMessage(error, "Unable to add matching puzzles."),
+        text: getErrorMessage(error, "Unable to refresh this set."),
       });
     } finally {
-      setAddingPuzzles(false);
+      setRefreshingSet(false);
     }
   };
 
@@ -131,12 +131,11 @@ export const CustomPuzzleSetEditPage = () => {
             <button
               type="button"
               className="customSetEditAddButton"
-              onClick={() => void handleAddMatching()}
-              disabled={addingPuzzles || customSet.tags.length === 0}
-              title={customSet.tags.length ? undefined : "This set has no tag filters."}
+              onClick={() => void handleRefresh()}
+              disabled={refreshingSet || Boolean(pendingPuzzleId)}
             >
-              <FontAwesomeIcon icon={faPlus} aria-hidden="true" />
-              {addingPuzzles ? "Adding…" : "Add all matching tag puzzles"}
+              <FontAwesomeIcon icon={faRotate} aria-hidden="true" />
+              {refreshingSet ? "Refreshing…" : "Refresh set"}
             </button>
           ) : null}
         </header>
@@ -212,7 +211,7 @@ export const CustomPuzzleSetEditPage = () => {
                         type="button"
                         className="customSetEditRemove"
                         onClick={() => void handleRemove(puzzleId)}
-                        disabled={Boolean(pendingPuzzleId) || addingPuzzles}
+                        disabled={Boolean(pendingPuzzleId) || refreshingSet}
                         aria-label={`Remove puzzle ${puzzleId} from this set`}
                       >
                         <FontAwesomeIcon icon={faTrash} aria-hidden="true" />

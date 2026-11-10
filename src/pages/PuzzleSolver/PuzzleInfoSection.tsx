@@ -21,6 +21,7 @@ type SaveStatus = AsyncActionStatus;
 
 type PuzzleInfoSectionProps = {
   mobile?: boolean;
+  lockedDetailsHint?: string;
   activeTab: PuzzleInfoTab | null;
   solution: {
     canReveal: boolean;
@@ -52,7 +53,7 @@ type PuzzleInfoSectionProps = {
     rows: PuzzleProgressWithUsernameRow[];
     onToggle: () => void;
   };
-  comments: { canView: boolean; puzzleId: number | undefined; onSelect: () => void };
+  comments: { canView: boolean; puzzleId: number | undefined; onSelect: () => void } | null;
 };
 
 const AttemptsPanel = ({
@@ -109,9 +110,14 @@ const AttemptsPanel = ({
                 >
                   <FontAwesomeIcon
                     icon={attempt.puzzle_correct ? faCheck : faXmark}
-                    aria-hidden="true"
+                    aria-hidden={hideAnswers}
+                    aria-label={
+                      hideAnswers ? undefined : attempt.puzzle_correct ? "Correct" : "Incorrect"
+                    }
                   />
-                  <span>{attempt.puzzle_correct ? "Correct" : "Incorrect"}</span>
+                  {hideAnswers ? (
+                    <span>{attempt.puzzle_correct ? "Correct" : "Incorrect"}</span>
+                  ) : null}
                   {attempt.rated === false ? (
                     <span className="puzzleOtherAttemptRated">Unrated</span>
                   ) : null}
@@ -157,6 +163,7 @@ const AttemptsPanel = ({
 
 export const PuzzleInfoSection = ({
   mobile = false,
+  lockedDetailsHint,
   activeTab,
   solution,
   explanation,
@@ -276,7 +283,8 @@ export const PuzzleInfoSection = ({
               showExplanation
                 ? "Hide the puzzle explanation"
                 : !explanation.canView
-                  ? "Attempt this puzzle before viewing or editing the explanation."
+                  ? (lockedDetailsHint ??
+                    "Attempt this puzzle before viewing or editing the explanation.")
                   : explanation.canManage
                     ? explanation.hasContent
                       ? "View or edit the puzzle explanation"
@@ -308,7 +316,7 @@ export const PuzzleInfoSection = ({
                 : "Hide other attempts"
               : attempts.canView
                 ? "View other attempts for this puzzle"
-                : "Attempt this puzzle before viewing other attempts."
+                : (lockedDetailsHint ?? "Attempt this puzzle before viewing other attempts.")
           }
         >
           <FontAwesomeIcon icon={faUsers} aria-hidden="true" />
@@ -319,27 +327,29 @@ export const PuzzleInfoSection = ({
             </span>
           ) : null}
         </button>
-        <CommunityCommentsLink
-          target={{ type: "puzzle", id: String(comments.puzzleId ?? "") }}
-          href="#puzzle-community"
-          hideWhenEmpty
-          role="tab"
-          className={`puzzleInfoTab ${showComments ? "active" : ""}`}
-          onClick={(event) => {
-            if (!comments.canView) {
-              event.preventDefault();
-              return;
+        {comments ? (
+          <CommunityCommentsLink
+            target={{ type: "puzzle", id: String(comments.puzzleId ?? "") }}
+            href="#puzzle-community"
+            hideWhenEmpty
+            role="tab"
+            className={`puzzleInfoTab ${showComments ? "active" : ""}`}
+            onClick={(event) => {
+              if (!comments.canView) {
+                event.preventDefault();
+                return;
+              }
+              comments.onSelect();
+            }}
+            aria-disabled={!comments.canView}
+            aria-selected={showComments}
+            title={
+              comments.canView
+                ? "Jump to the puzzle discussion"
+                : "Attempt this puzzle before viewing comments."
             }
-            comments.onSelect();
-          }}
-          aria-disabled={!comments.canView}
-          aria-selected={showComments}
-          title={
-            comments.canView
-              ? "Jump to the puzzle discussion"
-              : "Attempt this puzzle before viewing comments."
-          }
-        />
+          />
+        ) : null}
       </div>
       {panel}
     </div>

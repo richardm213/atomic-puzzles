@@ -1,7 +1,7 @@
 import { Chessground } from "@lichess-org/chessground";
 import type { Api } from "@lichess-org/chessground/api";
 import type { Color } from "chessops";
-import { type MutableRefObject, type RefObject, useEffect, useId, useRef } from "react";
+import { type MutableRefObject, type RefObject, useId, useLayoutEffect, useRef } from "react";
 
 export const useChessground = ({
   elementRef,
@@ -31,7 +31,7 @@ export const useChessground = ({
   onAfterMoveRef.current = onAfterMove;
   const markerNamespace = useId().replace(/:/g, "");
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!elementRef.current) return;
     const initial = initialConfigRef.current;
     const dimensionsTarget = dimensionsRef?.current;
@@ -82,6 +82,7 @@ export const useChessground = ({
     apiRef.current = api;
 
     return () => {
+      api.destroy();
       apiRef.current = null;
       onCleanup();
     };

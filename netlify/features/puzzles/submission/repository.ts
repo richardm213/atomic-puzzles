@@ -16,6 +16,8 @@ export type QueuedPuzzleSubmission = {
   opaStyle: boolean;
   author: string;
   tags: string[];
+  positionMoves?: string[];
+  gameInitialFen?: string;
 };
 
 export class PuzzleSubmissionRepository {
@@ -47,24 +49,29 @@ export class PuzzleSubmissionRepository {
 
   async enqueue(username: string, puzzle: QueuedPuzzleSubmission, allowDifferentStartMove = false) {
     await this.ensureUser(username);
-    const { data, error } = await this.supabase
-      .rpc("enqueue_puzzle_submission", {
-        p_fen: puzzle.fen,
-        p_solution: puzzle.solution,
-        p_event: puzzle.event,
-        p_event_name: puzzle.eventName,
-        p_event_date: puzzle.eventDate,
-        p_players: puzzle.players,
-        p_white_player: puzzle.whitePlayer,
-        p_black_player: puzzle.blackPlayer,
-        p_explanation: puzzle.explanation,
-        p_opa_style: puzzle.opaStyle,
-        p_author: puzzle.author,
-        p_tags: puzzle.tags,
-        p_submitted_by: username,
-        p_allow_different_start_move: allowDifferentStartMove,
-      })
-      .single();
+    const request = puzzle.positionMoves
+      ? this.supabase.rpc("enqueue_puzzle_with_position_history", {
+          p_puzzle: puzzle,
+          p_submitted_by: username,
+          p_allow_different_start_move: allowDifferentStartMove,
+        })
+      : this.supabase.rpc("enqueue_puzzle_submission", {
+          p_fen: puzzle.fen,
+          p_solution: puzzle.solution,
+          p_event: puzzle.event,
+          p_event_name: puzzle.eventName,
+          p_event_date: puzzle.eventDate,
+          p_players: puzzle.players,
+          p_white_player: puzzle.whitePlayer,
+          p_black_player: puzzle.blackPlayer,
+          p_explanation: puzzle.explanation,
+          p_opa_style: puzzle.opaStyle,
+          p_author: puzzle.author,
+          p_tags: puzzle.tags,
+          p_submitted_by: username,
+          p_allow_different_start_move: allowDifferentStartMove,
+        });
+    const { data, error } = await request.single();
     if (
       error?.message.includes("Puzzle start move already exists for FEN in queue") ||
       error?.message.includes("Puzzle moves already exist for FEN in queue")
