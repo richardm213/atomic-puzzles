@@ -26,6 +26,7 @@ import {
   isTimestampInUtcDay,
   utcDayBounds,
 } from "../../../shared/domain/puzzles/dailyAttemptLimit";
+import { rewindPuzzleLeadIn } from "../../../shared/domain/puzzles/gameHistory";
 import {
   normalizePuzzleLevel,
   type PuzzleLevel,
@@ -95,6 +96,7 @@ import { orientationFromFen } from "../../utils/chessNotation";
 import { getErrorMessage } from "../../utils/errors";
 import { formatElapsedDuration, formatSignedDecimal } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
+import { BlindPuzzlePanel } from "./BlindPuzzlePanel";
 import { PuzzleAnalysisPanel } from "./PuzzleAnalysisPanel";
 import { PuzzleInfoSection, type PuzzleInfoTab } from "./PuzzleInfoSection";
 import { PuzzleIssueDialog, type PuzzleIssueStatus } from "./PuzzleIssueDialog";
@@ -183,7 +185,7 @@ export const PuzzleSolverPage = () => {
     ...puzzleUserRatingQueryOptions(normalizedUsername),
     enabled: Boolean(normalizedUsername),
   });
-  const { showPuzzleTimer } = useAppSettings();
+  const { showPuzzleTimer, blindPuzzles } = useAppSettings();
   const { puzzles, setPuzzles, loadingError, setLoadingError, mergeLoadedPuzzles } =
     usePuzzleCatalog(routePuzzleId, routeSetKey || routeDashboardSetId);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
@@ -194,6 +196,11 @@ export const PuzzleSolverPage = () => {
   const [resolvedAttemptedPuzzleIds, setResolvedAttemptedPuzzleIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [blindEntry, setBlindEntry] = useState<{
+    key: string;
+    eligible: boolean;
+    resolved: boolean;
+  } | null>(null);
   const [history, setHistory] = useState<number[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isMobileLayout, setIsMobileLayout] = useState(false);
@@ -276,6 +283,28 @@ export const PuzzleSolverPage = () => {
   });
   const playerNicknamesQuery = useQuery(puzzlePlayerNicknamesQueryOptions());
   const customPuzzleSet = customPuzzleSetQuery.data;
+  const customSetPuzzleIds = customPuzzleSet?.puzzleIds;
+  useEffect(() => {
+    if (!customSetPuzzleIds?.length || !puzzles.length) return;
+    setPuzzles((current) => {
+      const knownIds = new Set(current.map((puzzle) => puzzle.puzzleId));
+      const missing = customSetPuzzleIds.filter((id) => !knownIds.has(id));
+      // The saved set can be newer than the cached public puzzle index.
+      return missing.length
+        ? [
+            ...current,
+            ...missing.map((id) => ({
+              id,
+              puzzleId: id,
+              fen: "",
+              solution: "",
+              explanation: "",
+              tags: [],
+            })),
+          ]
+        : current;
+    });
+  }, [customSetPuzzleIds, puzzles.length, setPuzzles]);
   const isCustomSetRoute = Boolean(routeCustomSetId);
   const dashboardPuzzleSet = useMemo(
     () => readDashboardPuzzleSet(routeDashboardSetId),
@@ -645,7 +674,58 @@ export const PuzzleSolverPage = () => {
   const hasPersistedAttempt = activePuzzleKey ? attemptedPuzzleIds.has(activePuzzleKey) : false;
   const hasSolvedPuzzle = activePuzzleKey ? solvedPuzzleIds.has(activePuzzleKey) : false;
   const hasUnratedAttempt = activePuzzleKey ? unratedPuzzleIds.has(activePuzzleKey) : false;
+  const unratedReason = getPuzzleUnratedReason({
+    username: normalizedUsername,
+    author,
+    createdAt: activePuzzle?.created_at,
+    hasUnratedAttempt,
+  });
+  const blindEntryKey = JSON.stringify([
+    attemptedPuzzleIdsUsername,
+    routeSetKey,
+    routeCustomSetId,
+    routeDashboardSetId,
+    activePuzzleKey,
+  ]);
+  const blindEntryReady = attemptedPuzzleIdsReady && blindEntry?.key === blindEntryKey;
+  const blindPlies = blindPuzzles?.enabled ? blindPuzzles.plies : 0;
+  useLayoutEffect(() => {
+    if (!activePuzzleKey || !attemptedPuzzleIdsReady) return;
+    // Decide once the puzzle details are loaded; a first attempt must not rewind mid-visit.
+    setBlindEntry((entry) => {
+      if (entry?.key === blindEntryKey) return entry;
+      if (!fen) return null;
+      return {
+        key: blindEntryKey,
+        eligible:
+          unratedReason !== null ||
+          hasPersistedAttempt ||
+          hasSolvedPuzzle ||
+          countedTodayPuzzleIdsRef.current.has(activePuzzleKey),
+        resolved: false,
+      };
+    });
+  }, [
+    activePuzzleKey,
+    attemptedPuzzleIdsReady,
+    blindEntryKey,
+    fen,
+    hasPersistedAttempt,
+    hasSolvedPuzzle,
+    unratedReason,
+  ]);
+  const leadIn = activePuzzle?.leadIn;
+  const blindLeadIn = useMemo(
+    () =>
+      leadIn && blindPlies && blindEntryReady && blindEntry?.eligible && !dailyLimitReached
+        ? rewindPuzzleLeadIn(leadIn, blindPlies)
+        : null,
+    [blindPlies, dailyLimitReached, leadIn, blindEntry?.eligible, blindEntryReady],
+  );
+  const blindMode = Boolean(blindLeadIn);
+  const blindPosition = !isAnalysisMode ? blindLeadIn : null;
   const puzzleIntro =
+    !blindMode &&
     !dailyLimitReached &&
     (!hasSolvedPuzzle || isCustomSetRoute || isDashboardSetSolveMode)
       ? activePuzzle?.intro
@@ -659,12 +739,6 @@ export const PuzzleSolverPage = () => {
     [activePuzzleKey, hasSolvedPuzzle],
   );
   const shouldShowPuzzleTimer = showPuzzleTimer && attemptedPuzzleIdsReady && !hasSolvedPuzzle;
-  const unratedReason = getPuzzleUnratedReason({
-    username: normalizedUsername,
-    author,
-    createdAt: activePuzzle?.created_at,
-    hasUnratedAttempt,
-  });
   const unratedLabel =
     unratedReason === "existing-unrated"
       ? "Your latest attempt is unrated. Wait one month after that attempt for a rated try."
@@ -675,8 +749,9 @@ export const PuzzleSolverPage = () => {
   // A custom or dashboard set is a fresh solving pass. A historical attempt may still be
   // acknowledged by the badge, but it must not reveal post-attempt UI before
   // the solver finishes this pass through the puzzle.
-  const hasAttemptedActivePuzzle =
-    hasResolvedAttempt || (!isCustomSetRoute && !isDashboardSetSolveMode && hasPersistedAttempt);
+  const hasAttemptedActivePuzzle = blindMode
+    ? Boolean(blindEntry?.resolved)
+    : hasResolvedAttempt || (!isCustomSetRoute && !isDashboardSetSolveMode && hasPersistedAttempt);
   const sourceMatchId = activePuzzle
     ? getPuzzleSetSourceId(activePuzzle, Number.parseInt(routeSetKey, 10))
     : "";
@@ -891,6 +966,9 @@ export const PuzzleSolverPage = () => {
       setElapsedTimerRunning(false);
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       dispatchPuzzleSession({ type: "attempt-resolved", correct: puzzleCorrect });
+      setBlindEntry((entry) =>
+        entry?.key === blindEntryKey ? { ...entry, resolved: true } : entry,
+      );
       setResolvedAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
       if (puzzleCorrect) {
         setSolvedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
@@ -913,7 +991,7 @@ export const PuzzleSolverPage = () => {
           .catch((error) => globalThis.console?.error(error));
       }
     },
-    [enqueuePuzzleProgressWrite, queryClient, routeCustomSetId],
+    [enqueuePuzzleProgressWrite, queryClient, blindEntryKey, routeCustomSetId],
   );
 
   const resetPuzzleUiState = useCallback(() => {
@@ -937,15 +1015,16 @@ export const PuzzleSolverPage = () => {
   useLayoutEffect(() => {
     resetPuzzleUiState();
     setFinishedIntroKey("");
+    setBoardState(createInitialBoardState());
     setMobileFeedback(null);
     setOtherPuzzleAttemptsStatus("idle");
     setOtherPuzzleAttempts([]);
     previousBoardSnapshotRef.current = createInitialBoardSnapshot();
-  }, [activePuzzleKey, fen, resetPuzzleUiState]);
+  }, [activePuzzleKey, blindMode, fen, resetPuzzleUiState]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!activePuzzleKey || !attemptedPuzzleIdsReady || hasResolvedAttempt) return;
-    if (isCustomSetRoute || isDashboardSetSolveMode) return;
+    if (blindMode || isCustomSetRoute || isDashboardSetSolveMode) return;
 
     dispatchPuzzleSession({
       type: "hydrate",
@@ -954,6 +1033,7 @@ export const PuzzleSolverPage = () => {
   }, [
     activePuzzleKey,
     attemptedPuzzleIdsReady,
+    blindMode,
     hasPersistedAttempt,
     hasResolvedAttempt,
     hasSolvedPuzzle,
@@ -1072,7 +1152,7 @@ export const PuzzleSolverPage = () => {
     } catch (error) {
       setCustomSetRefreshState({
         status: "error",
-        message: getErrorMessage(error, "Unable to add newly matching puzzles."),
+        message: getErrorMessage(error, "Unable to refresh this set."),
       });
     }
   };
@@ -1587,7 +1667,7 @@ export const PuzzleSolverPage = () => {
 
   const renderPlayerRows = (mobile = false) => (
     <PuzzlePositionRows
-      fen={currentFen}
+      fen={blindPosition?.beforeFen ?? currentFen}
       white={{ name: whitePlayer, label: whitePlayerLabel }}
       black={{ name: blackPlayer, label: blackPlayerLabel }}
       mobile={mobile}
@@ -1902,7 +1982,7 @@ export const PuzzleSolverPage = () => {
           <div id="desktop-puzzle-vote-slot" className="puzzleVoteSlot" />
         ) : null}
 
-        {(loadingError || boardState.error) && !dailyLimitReached ? (
+        {(loadingError || (!blindPosition && boardState.error)) && !dailyLimitReached ? (
           <div className="errorText" role="alert">
             {loadingError || boardState.error}
           </div>
@@ -1925,7 +2005,7 @@ export const PuzzleSolverPage = () => {
               </p>
             </div>
             <div className="puzzleSetCompleteActions">
-              {isCustomSetSolveMode && customPuzzleSet?.tags.length ? (
+              {isCustomSetSolveMode ? (
                 <button
                   type="button"
                   className="puzzleSetCompleteLink primary"
@@ -1938,9 +2018,7 @@ export const PuzzleSolverPage = () => {
                 </button>
               ) : null}
               <Link
-                className={`puzzleSetCompleteLink ${
-                  isCustomSetSolveMode && customPuzzleSet?.tags.length ? "" : "primary"
-                }`.trim()}
+                className={`puzzleSetCompleteLink ${isCustomSetSolveMode ? "" : "primary"}`.trim()}
                 to="/solve"
               >
                 Continue with regular puzzles
@@ -2010,10 +2088,13 @@ export const PuzzleSolverPage = () => {
                 </span>
               </div>
             ) : null}
-            {fen && (!puzzleIntro || attemptedPuzzleIdsReady) ? (
+            {fen &&
+            (!puzzleIntro || attemptedPuzzleIdsReady) &&
+            (!blindPlies || blindEntryReady) ? (
               <Chessboard
-                key={activePuzzleId}
+                key={`${activePuzzleId}:${blindMode}`}
                 intro={puzzleIntro}
+                blindFen={blindPosition?.beforeFen}
                 onIntroEnd={handleIntroEnd}
                 puzzleId={activePuzzleId}
                 fen={fen}
@@ -2055,7 +2136,18 @@ export const PuzzleSolverPage = () => {
         </div>
       </div>
 
-      {!isMobileLayout ? puzzleAnalysisPanel : null}
+      {blindPosition ? (
+        <BlindPuzzlePanel
+          key={activePuzzleId}
+          leadIn={blindPosition}
+          played={currentAnalysisMoves}
+          error={boardState.error}
+          canGiveUp={!isMobileLayout && puzzleSession.attempt === "wrong" && !isRetryFeedbackActive}
+          onGiveUp={handleGiveUp}
+        />
+      ) : !isMobileLayout ? (
+        puzzleAnalysisPanel
+      ) : null}
 
       {isMobileLayout ? (
         <>

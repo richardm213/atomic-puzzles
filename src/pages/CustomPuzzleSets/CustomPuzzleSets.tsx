@@ -5,6 +5,7 @@ import {
   faPen,
   faPlay,
   faPlus,
+  faRotate,
   faRotateLeft,
   faSliders,
   faTrash,
@@ -23,6 +24,7 @@ import {
   type CustomPuzzleSet,
   deleteCustomPuzzleSet,
   listCustomPuzzleSets,
+  refreshCustomPuzzleSet,
   renameCustomPuzzleSet,
   resetCustomPuzzleSetProgress,
 } from "../../lib/puzzles/customPuzzleSets";
@@ -57,6 +59,11 @@ export const CustomPuzzleSetsPage = () => {
   const [editingId, setEditingId] = useState("");
   const [editingName, setEditingName] = useState("");
   const [pendingAction, setPendingAction] = useState("");
+  const [refreshFeedback, setRefreshFeedback] = useState<{
+    setId: string;
+    error: boolean;
+    text: string;
+  } | null>(null);
   const [confirmResetId, setConfirmResetId] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState("");
 
@@ -177,6 +184,36 @@ export const CustomPuzzleSetsPage = () => {
       await refreshSets();
     } catch (actionError) {
       setMessage(getErrorMessage(actionError, "Unable to update the set."));
+    } finally {
+      setPendingAction("");
+    }
+  };
+
+  const handleRefreshSet = async (setId: string): Promise<void> => {
+    if (pendingAction) return;
+    setPendingAction(`refresh-${setId}`);
+    setRefreshFeedback(null);
+    try {
+      const { set, addedPuzzleIds } = await refreshCustomPuzzleSet(setId);
+      queryClient.setQueryData([...customSetQueryKey, setId], set);
+      queryClient.setQueryData<CustomPuzzleSet[]>(customSetQueryKey, (current) =>
+        current?.map((entry) => (entry.id === setId ? set : entry)),
+      );
+      const count = addedPuzzleIds.length;
+      setRefreshFeedback({
+        setId,
+        error: false,
+        text: count
+          ? `Added ${count} puzzle${count === 1 ? "" : "s"}.`
+          : "No new matching puzzles.",
+      });
+      await refreshSets();
+    } catch (refreshError) {
+      setRefreshFeedback({
+        setId,
+        error: true,
+        text: getErrorMessage(refreshError, "Unable to refresh this set."),
+      });
     } finally {
       setPendingAction("");
     }
@@ -402,6 +439,8 @@ export const CustomPuzzleSetsPage = () => {
                     const percent = total ? Math.round((set.completedCount / total) * 100) : 0;
                     const isCompleted = total > 0 && set.completedCount >= total;
                     const startPuzzleId = set.nextPuzzleId ?? set.puzzleIds[0];
+                    const isRefreshing = pendingAction === `refresh-${set.id}`;
+                    const feedback = refreshFeedback?.setId === set.id ? refreshFeedback : null;
                     return (
                       <article
                         key={set.id}
@@ -431,15 +470,35 @@ export const CustomPuzzleSetsPage = () => {
                             <strong>{set.correctCount}</strong> correct
                           </span>
                         </div>
-                        {startPuzzleId ? (
-                          <Link
-                            className="customSetsButton primary"
-                            to="/solve/custom/$setId/$puzzleId"
-                            params={{ setId: set.id, puzzleId: String(startPuzzleId) }}
+                        <div className="customSetCardActions">
+                          {startPuzzleId ? (
+                            <Link
+                              className="customSetsButton primary"
+                              to="/solve/custom/$setId/$puzzleId"
+                              params={{ setId: set.id, puzzleId: String(startPuzzleId) }}
+                            >
+                              <FontAwesomeIcon icon={faPlay} aria-hidden="true" />
+                              {set.completedCount ? "Continue set" : "Start set"}
+                            </Link>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="customSetsButton secondary"
+                            aria-label={`${isRefreshing ? "Refreshing set" : "Refresh set"}: ${set.label}`}
+                            onClick={() => void handleRefreshSet(set.id)}
+                            disabled={Boolean(pendingAction)}
                           >
-                            <FontAwesomeIcon icon={faPlay} aria-hidden="true" />
-                            {set.completedCount ? "Continue set" : "Start set"}
-                          </Link>
+                            <FontAwesomeIcon icon={faRotate} aria-hidden="true" />
+                            {isRefreshing ? "Refreshing…" : "Refresh set"}
+                          </button>
+                        </div>
+                        {feedback ? (
+                          <p
+                            className={`customSetRefreshFeedback${feedback.error ? " error" : ""}`}
+                            role={feedback.error ? "alert" : "status"}
+                          >
+                            {feedback.text}
+                          </p>
                         ) : null}
                       </article>
                     );

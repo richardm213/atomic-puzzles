@@ -40,6 +40,42 @@
   box-shadow: var(--shadow-soft);
 }
 
+.puzzleBlindInstructions,
+.puzzleBlindActions,
+.puzzleBlindError:not(:empty) {
+  padding: var(--space-2) var(--space-3);
+}
+
+.puzzleBlindInstructions strong {
+  color: var(--color-heading);
+}
+
+.puzzleBlindMoves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  max-height: 12rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  list-style: none;
+  background: var(--color-panel-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.puzzleBlindMoves span {
+  color: var(--color-text-muted);
+}
+
+.puzzleBlindActions button {
+  min-height: var(--control-height-touch);
+  padding-inline: var(--space-3);
+}
+
+.puzzleBlindError {
+  color: var(--color-warning);
+}
+
 .puzzleAnalysisEngine {
   border-bottom: 1px solid var(--color-border);
 }
@@ -1910,6 +1946,13 @@ button.puzzleRatingBadge.editable:focus-visible {
     grid-area: auto;
     order: -1;
     padding-top: 0;
+  }
+
+  .puzzlePage > .puzzleBlindPanel {
+    grid-area: auto;
+    width: min(100%, 548px);
+    margin-inline: auto;
+    font-size: 1rem;
   }
 
   .mobileWorkflowPanel {

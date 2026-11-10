@@ -23,6 +23,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
+import { MAX_BLIND_PUZZLE_PLIES } from "../../../shared/domain/puzzles/gameHistory";
 import { atomic960Enabled, modeLabels, publicModeOptions } from "../../constants/matches";
 import {
   type ColorMode,
@@ -190,6 +191,8 @@ export const TopNav = () => {
     setShowRatingGraphLines,
     showPuzzleTimer,
     setShowPuzzleTimer,
+    blindPuzzles,
+    setBlindPuzzles,
     puzzleAnalysisTarget,
     setPuzzleAnalysisTarget,
     lichessLinkTarget,
@@ -234,6 +237,9 @@ export const TopNav = () => {
       pathname !== "/solve/custom-sets" &&
       pathname !== "/solve/leaderboard" &&
       pathname !== "/solve/history");
+  const showBlindPuzzleSetting =
+    showPuzzleTimerSetting ||
+    /^\/solve\/(?:set|custom|dashboard)\/[^/]+\/[^/]+$/.test(pathname);
   const activeBoardColors = getBoardThemeColors(
     boardTheme,
     customLightSquare,
@@ -1155,6 +1161,39 @@ export const TopNav = () => {
               ) : null}
               {showBoardSettings ? (
                 <>
+                  {showBlindPuzzleSetting ? (
+                    <div className="navSettingsSection navBlindPuzzleSettings">
+                      <label className="navSettingsCheckbox">
+                        <span>Blind mode</span>
+                        <input
+                          type="checkbox"
+                          checked={blindPuzzles.enabled}
+                          onChange={(event) => {
+                            const enabled = event.target.checked;
+                            setBlindPuzzles((current) => ({ ...current, enabled }));
+                          }}
+                        />
+                      </label>
+                      {blindPuzzles.enabled ? (
+                        <label className="navSettingsField">
+                          <span className="navSettingsLabel">Plies back</span>
+                          <select
+                            value={blindPuzzles.plies}
+                            onChange={(event) => {
+                              const plies = Number(event.target.value);
+                              setBlindPuzzles((current) => ({ ...current, plies }));
+                            }}
+                          >
+                            {Array.from({ length: MAX_BLIND_PUZZLE_PLIES }, (_, i) => (
+                              <option key={i + 1} value={i + 1}>
+                                {i + 1}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {showPuzzleTimerSetting ? (
                     <div className="navSettingsSection puzzleTimerSettingsSection">
                       <label className="navSettingsCheckbox">

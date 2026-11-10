@@ -37,6 +37,7 @@ import type {
   PlaybackCommand,
   SolutionNavigation,
 } from "../../types/chessboard";
+import { BlindMoveSquares } from "./BlindMoveSquares";
 import {
   appendBoardMove,
   assertBoardHistory,
@@ -90,6 +91,7 @@ export type ChessboardProps = {
   solutionUciLines?: UciSolutionLine[];
   showSolution: boolean;
   intro?: PuzzleIntro | null | undefined;
+  blindFen?: string | undefined;
   onIntroEnd?: (durationMs: number, completed: boolean) => void;
   analysisMode?: boolean;
   solutionNavigation?: SolutionNavigation | null | undefined;
@@ -175,6 +177,7 @@ const ChessboardComponent = ({
   solutionUciLines: suppliedSolutionUciLines,
   showSolution,
   intro,
+  blindFen,
   onIntroEnd,
   analysisMode = false,
   solutionNavigation,
@@ -234,6 +237,7 @@ const ChessboardComponent = ({
   const analysisModeRef = useLatestRef(analysisMode);
   const restrictMovesToSolutionRef = useLatestRef(restrictMovesToSolution);
   const disabledRef = useLatestRef(disabled);
+  const blindFenRef = useLatestRef(blindFen);
   const initialIntroRef = useRef(intro);
   const introPlayingRef = useRef(false);
   const introPlayedRef = useRef(false);
@@ -432,6 +436,7 @@ const ChessboardComponent = ({
     (position: Atomic): MovableConfig => {
       if (
         disabledRef.current ||
+        blindFenRef.current ||
         introPlayingRef.current ||
         boardStatusRef.current.locked
       ) {
@@ -467,6 +472,7 @@ const ChessboardComponent = ({
     },
     [
       allowedSolutionContinuations,
+      blindFenRef,
       boardStatusRef,
       disabledRef,
       premoveColorRef,
@@ -555,17 +561,18 @@ const ChessboardComponent = ({
       positionRef.current = position;
 
       const movable = getMovableConfig(position);
+      const referenceFen = blindFenRef.current;
       const displayTurn = getDisplayTurn(position, nextState);
       const displayCheck =
         displayTurn === position.turn && position.isCheck() ? position.turn : false;
 
       cgRef.current?.set({
-        fen: makeFen(position.toSetup()),
+        fen: referenceFen ?? makeFen(position.toSetup()),
         orientation: orientationRef.current,
         coordinates: coordinatesRef.current,
-        turnColor: displayTurn,
-        lastMove: lastMove ?? [],
-        check: displayCheck,
+        turnColor: referenceFen ? colorFromFen(referenceFen) : displayTurn,
+        lastMove: referenceFen ? [] : (lastMove ?? []),
+        check: !referenceFen && displayCheck,
         movable,
       });
 
@@ -581,6 +588,7 @@ const ChessboardComponent = ({
       }
     },
     [
+      blindFenRef,
       boardStatusRef,
       coordinatesRef,
       disabledRef,
@@ -995,7 +1003,7 @@ const ChessboardComponent = ({
 
       boardStatusRef.current = { ...boardStatusRef.current, mode: "evaluating", locked: true };
       cgRef.current?.set({
-        lastMove: keyPair(orig, dest),
+        lastMove: blindFenRef.current ? [] : keyPair(orig, dest),
         movable: {
           dests: new Map(),
           free: false,
@@ -1100,6 +1108,7 @@ const ChessboardComponent = ({
     [
       autoplayOpponentMove,
       allowedSolutionContinuations,
+      blindFenRef,
       boardStatusRef,
       candidateLinesRef,
       clearMoveEvaluationTimer,
@@ -1270,6 +1279,20 @@ const ChessboardComponent = ({
     [boardStatusRef, isSolutionPlaybackLocked, orientationRef, playUserMove, syncBoard],
   );
 
+  const getBlindLegalDestinations = (origin: Key): readonly Key[] => {
+    const position = positionRef.current;
+    if (
+      !position ||
+      boardStatusRef.current.locked ||
+      isSolutionPlaybackLocked() ||
+      pendingPromotionRef.current
+    ) {
+      return [];
+    }
+    // The rewind is visual only; never give Chessground the hidden position's destination map.
+    return chessgroundDests(position).get(origin) ?? [];
+  };
+
   const cleanupBoard = useCallback(() => {
     clearMoveEvaluationTimer();
     positionRef.current = null;
@@ -1280,7 +1303,7 @@ const ChessboardComponent = ({
     elementRef,
     dimensionsRef,
     apiRef: cgRef,
-    fen: intro && !prefersReducedMotion() ? intro.beforeFen : fen,
+    fen: blindFen ?? (intro && !prefersReducedMotion() ? intro.beforeFen : fen),
     orientation,
     coordinates,
     movableColor: premoveColor,
@@ -1518,7 +1541,7 @@ const ChessboardComponent = ({
 
   useBoardShortcuts(
     navigatePlayback,
-    !enableNavigationShortcuts || pendingPromotion !== null,
+    !enableNavigationShortcuts || Boolean(blindFen) || pendingPromotion !== null,
     captureNavigationShortcuts,
   );
 
@@ -1578,7 +1601,7 @@ const ChessboardComponent = ({
     const showPuzzlePosition = () => {
       syncBoard(position, lastMove, { solved: false, viewingSolution: showSolution });
     };
-    if (!openingMove || introPlayedRef.current || showSolution) {
+    if (!openingMove || blindFenRef.current || introPlayedRef.current || showSolution) {
       showPuzzlePosition();
       return;
     }
@@ -1637,6 +1660,7 @@ const ChessboardComponent = ({
     };
   }, [
     fen,
+    blindFenRef,
     solutionUciLines,
     clearMoveEvaluationTimer,
     clearPendingPromotion,
@@ -1653,6 +1677,7 @@ const ChessboardComponent = ({
     syncBoard,
   ]);
 
+  const previousBlindFenRef = useRef(blindFen);
   useEffect(() => {
     if (introPlayingRef.current) {
       cgRef.current?.set({ orientation, coordinates });
@@ -1673,16 +1698,20 @@ const ChessboardComponent = ({
       displayTurn === position.turn && position.isCheck() ? position.turn : false;
 
     const lastMove = history.plies[history.index]?.lastMove;
+    const blindViewChanged = previousBlindFenRef.current !== blindFen;
+    previousBlindFenRef.current = blindFen;
     cgRef.current?.set({
+      ...(blindViewChanged ? { fen: blindFen ?? makeFen(position.toSetup()) } : {}),
       orientation,
       coordinates,
       movable,
-      turnColor: displayTurn,
-      lastMove: lastMove ?? [],
-      check: displayCheck,
+      turnColor: blindFen ? colorFromFen(blindFen) : displayTurn,
+      lastMove: blindFen ? [] : (lastMove ?? []),
+      check: !blindFen && displayCheck,
     });
   }, [
     orientation,
+    blindFen,
     coordinates,
     disabled,
     fenRef,
@@ -1694,15 +1723,29 @@ const ChessboardComponent = ({
   return (
     <div
       hidden={hidden}
+      data-blind-board={blindFen ? "" : undefined}
       className={`cg-boardShell cg-pieceTheme${showBoardCoordinates === false ? " coordinatesHidden" : ""}`}
       style={{ ...pieceStyle, ...boardStyle }}
     >
       <div ref={elementRef} className="cg-board" />
+      {blindFen && !disabled && !pendingPromotion ? (
+        <BlindMoveSquares
+          key={blindFen}
+          orientation={orientation}
+          getLegalDestinations={getBlindLegalDestinations}
+          onSelect={(square) => cgRef.current?.set({ lastMove: square ? [square] : [] })}
+          onMove={handleBoardMove}
+          onIllegalMove={() => {
+            if (positionRef.current) emitState(positionRef.current, { error: "Illegal move" });
+          }}
+        />
+      ) : null}
       {pendingPromotion && (
         <BoardPromotionPicker
           pending={pendingPromotion}
           orientation={orientation}
           onChoose={choosePromotion}
+          {...(blindFen ? { onCancel: clearPendingPromotion } : {})}
         />
       )}
     </div>

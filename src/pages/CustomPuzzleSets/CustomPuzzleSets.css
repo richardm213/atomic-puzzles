@@ -502,15 +502,30 @@
 .customSetStats strong {
   color: var(--color-heading);
 }
-.customSetCard > .customSetsButton {
-  width: 100%;
+.customSetCardActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-self: end;
+  gap: var(--space-2);
 }
-.customSetCard.isCompleted > .customSetsButton.primary {
+.customSetCardActions > .primary {
+  flex: 1;
+}
+.customSetCardActions .customSetsButton {
+  min-height: var(--control-height-touch);
+}
+.customSetCard .customSetRefreshFeedback {
+  margin: 0;
+}
+.customSetRefreshFeedback.error {
+  color: var(--color-danger);
+}
+.customSetCard.isCompleted .customSetCardActions > .primary {
   border-color: color-mix(in srgb, var(--color-success) 54%, var(--color-border));
   background: var(--color-success-soft-bg);
   color: var(--color-success);
 }
-.customSetCard.isCompleted > .customSetsButton.primary:hover:not(:disabled) {
+.customSetCard.isCompleted .customSetCardActions > .primary:hover:not(:disabled) {
   border-color: var(--color-success);
   background: color-mix(in srgb, var(--color-success) 17%, var(--color-panel-strong));
 }

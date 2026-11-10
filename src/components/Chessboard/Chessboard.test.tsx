@@ -1,4 +1,4 @@
-import { act, fireEvent, render } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import type { ComponentProps } from "react";
 
@@ -131,6 +131,43 @@ describe("Chessboard orchestration", () => {
       play("e7", "e5");
       act(() => vi.advanceTimersByTime(250));
       expect(onAttemptResolved).toHaveBeenCalledWith(expect.objectContaining({ puzzleCorrect: true }));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("uses the hidden position for blind clicks, including after the opponent moves", () => {
+    vi.useFakeTimers();
+    try {
+      const states = renderBoard({
+        blindFen: STARTING_FEN,
+        fen: "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+        analysisMode: false,
+        solution: "2. e5 c4 3. e6",
+      });
+      const square = (name: string) => screen.getByRole("button", { name, exact: true });
+
+      fireEvent.click(square("e2"));
+      expect(square("e2")).toHaveAttribute("aria-pressed", "false");
+      fireEvent.click(square("e4"));
+      expect(square("e4")).toHaveAttribute("aria-pressed", "true");
+      fireEvent.click(square("e6"));
+      expect(states.at(-1)).toMatchObject({ error: "Illegal move", lineMoves: [] });
+      fireEvent.click(square("e4"));
+      fireEvent.click(square("e5"));
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(states.at(-1)).toMatchObject({ error: "", lineMoves: ["e5", "c4"] });
+
+      fireEvent.click(square("e4"));
+      expect(square("e4")).toHaveAttribute("aria-pressed", "false");
+      fireEvent.click(square("e5"));
+      fireEvent.click(square("e6"));
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(states.at(-1)?.solved).toBe(true);
     } finally {
       vi.useRealTimers();
     }

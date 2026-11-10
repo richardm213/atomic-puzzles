@@ -105,6 +105,7 @@ describe("puzzle-play function", () => {
           fen: puzzleFen,
           solution: "2. Nf3",
           intro: { beforeFen, san: "e5", uci: "e7e5" },
+          leadIn: { beforeFen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", moves: ["e4", "e5"] },
         },
       ],
       blockedPuzzleIds: [],

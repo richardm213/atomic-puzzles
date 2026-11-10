@@ -43,12 +43,9 @@ export const usePuzzleCatalog = (routePuzzleId: string, routeSetKey: string) => 
         ]);
         if (!active) return;
 
-        const initialPuzzlesById = new Map(
-          initialPuzzles.map((puzzle) => [String(puzzle.puzzleId), puzzle] as const),
-        );
-        setPuzzles(
-          catalog.map((puzzle) => initialPuzzlesById.get(String(puzzle.puzzleId)) ?? puzzle),
-        );
+        const puzzlesById = new Map(catalog.map((puzzle) => [puzzle.puzzleId, puzzle]));
+        for (const puzzle of initialPuzzles) puzzlesById.set(puzzle.puzzleId, puzzle);
+        setPuzzles([...puzzlesById.values()]);
       } catch (error) {
         if (!active) return;
         setPuzzles([]);

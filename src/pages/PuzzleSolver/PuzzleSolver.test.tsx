@@ -16,6 +16,7 @@ import type { AttemptResolved, SolutionNavigation } from "../../types/chessboard
 const mocks = vi.hoisted(() => ({
   chessboardProps: [] as Array<{
     disabled?: boolean;
+    blindFen?: string;
     onIntroEnd?: (durationMs: number, completed: boolean) => void;
     analysisMode?: boolean;
     showSolution?: boolean;
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
     onStateChange?: (state: unknown) => void;
   }>,
   attemptedPuzzleIds: new Set(["1369"]),
+  blindPuzzles: { enabled: false, plies: 5 },
   fetchPuzzleProgressRowsForUsername: vi.fn(),
   fetchCustomPuzzleSet: vi.fn(),
   fetchPuzzleAttemptsForPuzzle: vi.fn(),
@@ -82,7 +84,11 @@ vi.mock("../../context/AuthContext", () => ({
 
 vi.mock("../../context/AppSettings", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../context/AppSettings")>()),
-  useAppSettings: () => ({ showPuzzleTimer: true, puzzleAnalysisTarget: "atomic-puzzles" }),
+  useAppSettings: () => ({
+    showPuzzleTimer: true,
+    puzzleAnalysisTarget: "atomic-puzzles",
+    blindPuzzles: mocks.blindPuzzles,
+  }),
 }));
 
 vi.mock("../../lib/puzzles/puzzleLibrary", () => ({
@@ -223,6 +229,7 @@ describe("PuzzleSolverPage solution options", () => {
     window.localStorage.clear();
     mocks.chessboardProps.length = 0;
     mocks.attemptedPuzzleIds = new Set(["1369"]);
+    mocks.blindPuzzles = { enabled: false, plies: 5 };
     mocks.fetchPuzzleProgressRowsForUsername.mockReset().mockImplementation(async () =>
       [...mocks.attemptedPuzzleIds].map((puzzleId) => ({
         puzzle_id: puzzleId,
@@ -391,20 +398,50 @@ describe("PuzzleSolverPage solution options", () => {
     }
   });
 
-  it("labels a puzzle when the user's current attempt is unrated", async () => {
-    mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValueOnce([
+  it.each([
+    { visit: "an unrated first attempt", ownPuzzle: true, hasAttempt: false, blind: true },
+    { visit: "a retry after an unrated attempt", ownPuzzle: false, hasAttempt: true, blind: true },
+    { visit: "a rated first attempt", ownPuzzle: false, hasAttempt: false, blind: false },
+  ])("applies the Blind mode setting on $visit", async ({ ownPuzzle, hasAttempt, blind }) => {
+    const earliestFen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    mocks.blindPuzzles = { enabled: true, plies: 50 };
+    mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValueOnce(
+      hasAttempt
+        ? [
+            {
+              puzzle_id: "1369",
+              first_attempt_at: "2026-10-02T00:00:00.000Z",
+              puzzle_correct: true,
+              rated: false,
+            },
+          ]
+        : [],
+    );
+    mocks.loadPuzzlesById.mockResolvedValueOnce([
       {
-        puzzle_id: "1369",
-        first_attempt_at: "2026-10-02T00:00:00.000Z",
-        puzzle_correct: true,
-        rated: false,
-        incorrect_move: null,
+        id: 1369,
+        puzzleId: 1369,
+        fen: "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+        solution: "2. e5",
+        author: ownPuzzle ? mocks.username : "other-creator",
+        created_at: new Date(Date.now() - 60_000).toISOString(),
+        explanation: "",
+        tags: [],
+        leadIn: { beforeFen: earliestFen, moves: ["c5"] },
       },
     ]);
 
     render(<PuzzleSolverPage />);
 
-    expect((await screen.findAllByText("Unrated")).length).toBeGreaterThan(0);
+    await screen.findByTestId("mock-board");
+    expect(mocks.chessboardProps.at(-1)?.blindFen).toBe(blind ? earliestFen : undefined);
+    if (blind) {
+      const panel = screen.getByRole("region", { name: "Blind mode" });
+      expect(within(panel).getByRole("list")).toHaveTextContent("1... c5");
+      expect(screen.getAllByText("Unrated").length).toBeGreaterThan(0);
+    } else {
+      expect(screen.queryByRole("region", { name: "Blind mode" })).not.toBeInTheDocument();
+    }
   });
 
   it("locks the board and explains the UTC reset after 200 attempts today", async () => {
