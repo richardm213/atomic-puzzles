@@ -627,6 +627,10 @@ const solveSetsRoute = createRoute({
   path: "/solve/sets",
   validateSearch: (search: Record<string, unknown>) => ({
     filter: typeof search.filter === "string" ? search.filter : undefined,
+    year:
+      typeof search.year === "number" || typeof search.year === "string"
+        ? String(search.year)
+        : undefined,
   }),
   component: AuthenticatedPuzzleSetsPage,
 });

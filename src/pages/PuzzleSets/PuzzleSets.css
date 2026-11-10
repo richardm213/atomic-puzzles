@@ -44,11 +44,21 @@
   line-height: 1.04;
 }
 
+.puzzleSetsFilters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
 .puzzleSetsFilterControl {
   display: grid;
   grid-template-columns: auto minmax(180px, 230px);
   align-items: center;
   gap: 10px;
+}
+
+.puzzleSetsYearFilter {
+  grid-template-columns: auto minmax(112px, 1fr);
 }
 
 .puzzleSetsFilterControl > span {
@@ -119,6 +129,16 @@
   border-radius: var(--radius-ui);
   background: var(--color-panel-strong);
   color: var(--color-muted);
+}
+
+.puzzleSetGrid + .puzzleSetsMisc {
+  margin-top: var(--space-6);
+}
+
+.puzzleSetsMisc > h2 {
+  margin: 0 0 var(--space-4);
+  color: var(--color-heading);
+  font-size: 24px;
 }
 
 .puzzleSetGrid {
@@ -266,10 +286,24 @@
     flex-direction: column;
   }
 
-  .puzzleSetsFilterControl {
+  .puzzleSetsFilters {
+    display: grid;
     width: 100%;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    align-items: end;
+  }
+
+  .puzzleSetsFilterControl {
+    grid-template-columns: minmax(0, 1fr);
     gap: 6px;
+  }
+
+  .puzzleSetsFilterControl:only-child {
+    grid-column: 1 / -1;
+  }
+
+  .puzzleSetsFilterControl select {
+    min-height: 44px;
   }
 
   .puzzleSetGrid {

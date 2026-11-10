@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { PuzzleEventGroup } from "../../lib/puzzles/puzzleSets";
 import {
+  getPuzzleSetYear,
   hasChessMoveInPuzzleSetName,
   matchesEventFilter,
   orderPuzzleSetGroups,
@@ -22,6 +23,18 @@ describe("puzzle set category filters", () => {
     expect(matchesEventFilter({ eventName: "Wolfrandom" }, "wolfrandom")).toBe(true);
     expect(matchesEventFilter({ eventName: "Tipau Endgames" }, "endgames")).toBe(true);
     expect(matchesEventFilter({ eventName: "Nh3 d4 Qd3 tricks" }, "openings")).toBe(true);
+  });
+
+  it("puts only sets outside the named categories in Misc", () => {
+    expect(matchesEventFilter({ eventName: "Atomic Marathon" }, "misc")).toBe(true);
+    expect(matchesEventFilter({ eventName: "960 Swiss" }, "misc")).toBe(false);
+    expect(matchesEventFilter({ eventName: "Nh3 d4 Qd3 tricks" }, "misc")).toBe(false);
+  });
+
+  it("uses the event date or a named tournament year without guessing for undated sets", () => {
+    expect(getPuzzleSetYear({ eventName: "Wolfarena", eventDate: "2026-09" })).toBe("2026");
+    expect(getPuzzleSetYear({ eventName: "AWC 2018 Finals", eventDate: "" })).toBe("2018");
+    expect(getPuzzleSetYear({ eventName: "960 Swiss", eventDate: "" })).toBe("");
   });
 
   it("recognizes SAN move tokens in opening set names without matching ordinary labels", () => {

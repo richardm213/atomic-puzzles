@@ -35,6 +35,7 @@ const EVENT_FILTERS = [
   { id: "chess960", label: "960" },
   { id: "openings", label: "Openings" },
   { id: "endgames", label: "Endgames" },
+  { id: "misc", label: "Misc" },
 ];
 const EVENT_FILTER_IDS = new Set(EVENT_FILTERS.map((filter) => filter.id));
 const puzzleSetShuffleSeedStorageKey = "atomic-puzzles:puzzle-set-shuffle-seed";
@@ -108,6 +109,11 @@ export const matchesEventFilter = (
   filterId: string,
 ): boolean => {
   if (filterId === "all") return true;
+  if (filterId === "misc") {
+    return !EVENT_FILTERS.some(
+      ({ id }) => id !== "all" && id !== "misc" && matchesEventFilter(group, id),
+    );
+  }
 
   const normalizedEvent = String(group?.eventName ?? "")
     .trim()
@@ -151,8 +157,14 @@ export const matchesEventFilter = (
     return hasChessMoveInPuzzleSetName(group.eventName);
   }
 
-  return true;
+  return false;
 };
+
+export const getPuzzleSetYear = ({
+  eventDate,
+  eventName,
+}: Pick<PuzzleEventGroup, "eventDate" | "eventName">): string =>
+  eventDate.slice(0, 4) || eventName.match(/\b(?:19|20)\d{2}\b/)?.[0] || "";
 
 export const PuzzleSetsPage = () => {
   const { user } = useAuth();
@@ -178,14 +190,37 @@ export const PuzzleSetsPage = () => {
     : "";
 
   const puzzleGroups = useMemo(() => groupPuzzlesByEvent(puzzles), [puzzles]);
+  const categoryGroups = useMemo(
+    () => puzzleGroups.filter((group) => matchesEventFilter(group, activeFilterId)),
+    [activeFilterId, puzzleGroups],
+  );
+  const availableYears = useMemo(
+    () => [...new Set(categoryGroups.map(getPuzzleSetYear).filter(Boolean))].sort().reverse(),
+    [categoryGroups],
+  );
+  const requestedYear = String(location.search.year ?? "");
+  const activeYear = availableYears.includes(requestedYear) ? requestedYear : "";
+
   const filteredPuzzleGroups = useMemo(
     () =>
       orderPuzzleSetGroups(
-        puzzleGroups.filter((group) => matchesEventFilter(group, activeFilterId)),
+        activeYear
+          ? categoryGroups.filter((group) => getPuzzleSetYear(group) === activeYear)
+          : categoryGroups,
         shuffleSeed,
       ),
-    [activeFilterId, puzzleGroups, shuffleSeed],
+    [activeYear, categoryGroups, shuffleSeed],
   );
+  // In All, show uncategorized sets separately without listing any set twice.
+  const [mainGroups, miscGroups] = useMemo(() => {
+    if (activeFilterId !== "all") return [filteredPuzzleGroups, []];
+    const categorized: PuzzleEventGroup[] = [];
+    const misc: PuzzleEventGroup[] = [];
+    for (const group of filteredPuzzleGroups) {
+      (matchesEventFilter(group, "misc") ? misc : categorized).push(group);
+    }
+    return [categorized, misc];
+  }, [activeFilterId, filteredPuzzleGroups]);
   const completedPuzzleIds = useMemo(
     () =>
       new Set(
@@ -212,10 +247,13 @@ export const PuzzleSetsPage = () => {
     });
     return labels.length === 2 ? `${labels[0]} vs ${labels[1]}` : labels.join(" · ");
   };
-  const selectEventFilter = (filterId: string) => {
+  const selectFilters = (filterId: string, year = "") => {
     void navigate({
       to: "/solve/sets",
-      search: filterId === "all" ? {} : { filter: filterId },
+      search: {
+        filter: filterId === "all" ? undefined : filterId,
+        year: year || undefined,
+      },
     });
   };
 
@@ -299,33 +337,58 @@ export const PuzzleSetsPage = () => {
         <section className="puzzleSetsSection" aria-label="Puzzle set filters and results">
           <header className="puzzleSetsHero">
             <h1>Puzzle sets</h1>
-            <label className="puzzleSetsFilterControl">
-              <span>Category</span>
-              <select
-                aria-label="Filter puzzle sets"
-                value={activeFilterId}
-                onChange={(event) => selectEventFilter(event.target.value)}
-              >
-                {EVENT_FILTERS.map((filter) => (
-                  <option key={filter.id} value={filter.id}>
-                    {filter.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="puzzleSetsFilters">
+              <label className="puzzleSetsFilterControl">
+                <span>Category</span>
+                <select
+                  aria-label="Filter puzzle sets"
+                  value={activeFilterId}
+                  onChange={(event) => selectFilters(event.target.value)}
+                >
+                  {EVENT_FILTERS.map((filter) => (
+                    <option key={filter.id} value={filter.id}>
+                      {filter.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {availableYears.length > 0 ? (
+                <label className="puzzleSetsFilterControl puzzleSetsYearFilter">
+                  <span>Year</span>
+                  <select
+                    value={activeYear}
+                    onChange={(event) => selectFilters(activeFilterId, event.target.value)}
+                  >
+                    <option value="">All years</option>
+                    {availableYears.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+            </div>
           </header>
 
           {error ? <div className="puzzleSetsStateCard">{error}</div> : null}
 
-          {filteredPuzzleGroups.length > 0 ? (
-            renderPuzzleSetGrid(filteredPuzzleGroups, "Puzzle sets")
-          ) : (
+          {mainGroups.length > 0 ? renderPuzzleSetGrid(mainGroups, "Puzzle sets") : null}
+
+          {miscGroups.length > 0 ? (
+            <section className="puzzleSetsMisc" aria-labelledby="puzzle-sets-misc">
+              <h2 id="puzzle-sets-misc">Misc</h2>
+              {renderPuzzleSetGrid(miscGroups, "Misc puzzle sets")}
+            </section>
+          ) : null}
+
+          {filteredPuzzleGroups.length === 0 ? (
             <div className="puzzleSetsStateCard">
               {puzzleGroups.length > 0
                 ? "No puzzle sets match this filter yet."
                 : "No puzzle sets are available yet."}
             </div>
-          )}
+          ) : null}
         </section>
       </div>
     </div>
