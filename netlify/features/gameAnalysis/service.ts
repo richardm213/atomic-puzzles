@@ -8,13 +8,25 @@ import {
   applyGameAnalysisOpeningReview,
   buildGameAnalysisSummary,
   GAME_ANALYSIS_BUDGET_NODES,
-  parseStoredAtomicDbPosition,
+  GAME_ANALYSIS_VARIATION_SIZE,
+  gameAnalysisOpeningKey,
+  gameAnalysisPositionKey,
+  referenceGameAnalysisOpenings,
+  unavailableGameAnalysisOpening,
   type StoredAtomicDbPosition,
   WOLFRANDOM_RANDOMIZED_PLIES,
 } from "../../../shared/domain/gameAnalysis";
 import { createAtomicPosition } from "../../../shared/domain/puzzles/solutionPgn";
 import { queryArchiveResource } from "../../archive/queries";
 import { createServerSupabase } from "../../platform/environment";
+
+import {
+  loadGameAnalysisOpenings,
+  openingEvaluationData,
+  queryGameAnalysisVariations,
+} from "./openings";
+
+export { gameAnalysisPositionKey } from "../../../shared/domain/gameAnalysis";
 
 const ATOMIC_DB_BASE_URL = "https://belzedar.duckdns.org/atomicdb";
 const MAX_RETRIES = 12;
@@ -87,7 +99,7 @@ const retryAfterMs = (value: string | null): number => {
 };
 
 const atomicDbFetch = async (
-  input: string | URL,
+  input: Parameters<typeof fetch>[0],
   init: Omit<RequestInit, "signal">,
   timeoutMs: number,
 ): Promise<Response> => {
@@ -100,9 +112,6 @@ const atomicDbFetch = async (
   }
   throw new Error("AtomicDB request failed.");
 };
-
-export const gameAnalysisPositionKey = (fen: string): string =>
-  fen.trim().split(/\s+/).slice(0, 4).join(" ");
 
 export const uniqueGameAnalysisPositionIndexes = (
   states: { fen: string }[],
@@ -132,10 +141,10 @@ const loadSharedPositions = async (
   const byKey = new Map(rows.map((row) => [row.fen_key, row]));
   for (const state of states) {
     const shared = byKey.get(gameAnalysisPositionKey(state.fen));
-    if (!shared) continue;
-    if (shared.completed && shared.data) {
+    if (!shared || state.completed) continue;
+    if (shared.completed && shared.data?.variationPlies === GAME_ANALYSIS_VARIATION_SIZE) {
       state.completed = true;
-      state.data = shared.data;
+      state.data = { ...shared.data, fen: state.fen };
       delete state.error;
     } else {
       if (shared.request_status) state.requestStatus = shared.request_status;
@@ -243,7 +252,10 @@ const readStates = (
     return {
       fen,
       terminal: Boolean(state.terminal),
-      completed: Boolean(state.completed),
+      completed: Boolean(
+        state.completed &&
+        (state.terminal || state.data?.variationPlies === GAME_ANALYSIS_VARIATION_SIZE),
+      ),
       ...(typeof state.requestStatus === "string" ? { requestStatus: state.requestStatus } : {}),
       ...(state.task === null || typeof state.task === "string" || typeof state.task === "number"
         ? { task: state.task }
@@ -316,21 +328,10 @@ const atomicDbRequest = async (
   return body as Record<string, unknown>;
 };
 
-const atomicDbQuery = async (fen: string): Promise<StoredAtomicDbPosition | null> => {
-  const url = new URL(`${ATOMIC_DB_BASE_URL}/api/query`);
-  url.searchParams.set("fen", fen);
-  const response = await atomicDbFetch(
-    url,
-    {
-      headers: { Accept: "application/json" },
-    },
-    15_000,
+const atomicDbQuery = (fen: string) =>
+  queryGameAnalysisVariations(fen, AbortSignal.timeout(15_000), (input, init) =>
+    atomicDbFetch(input, init ?? {}, 15_000),
   );
-  if (response.status === 404) return null;
-  const body: unknown = await response.json().catch(() => null);
-  if (!response.ok) throw new Error("AtomicDB position lookup failed.");
-  return parseStoredAtomicDbPosition(fen, body);
-};
 
 export const isCompletedAtomicDbPosition = (position: StoredAtomicDbPosition | null): boolean => {
   if (!position) return false;
@@ -508,7 +509,29 @@ const processClaimedGameAnalysisJob = async (
   // all six randomized opening positions; the graph begins with White's fourth move.
   const skippedPositionCount = randomizedOpeningPlyCount ? randomizedOpeningPlyCount + 1 : 0;
   const states = readStates(data, fens, skippedPositionCount);
+  const openingStates = states.flatMap((state) => {
+    if (state.terminal || state.data?.status === "SKIPPED") return [];
+    const key = gameAnalysisOpeningKey(state.fen);
+    return key ? [{ state, key }] : [];
+  });
+  const openings = openingEvaluationData(
+    await loadGameAnalysisOpenings(
+      supabase,
+      openingStates.map(({ key }) => key),
+    ),
+  );
+  for (const { state, key } of openingStates) {
+    const position = openings.get(key) ?? unavailableGameAnalysisOpening(state.fen);
+    openings.set(key, position);
+    state.completed = true;
+    state.data = { ...position, fen: state.fen };
+  }
   await loadSharedPositions(supabase, states);
+  const openingStateSet = new Set(openingStates.map(({ state }) => state));
+  const persistedStates = () =>
+    states.map((state) =>
+      openingStateSet.has(state) ? { fen: state.fen, completed: true, terminal: false } : state,
+    );
   const pendingIndexes = states
     .map((state, index) => ({ state, index }))
     .filter(({ state }) => !state.completed)
@@ -546,7 +569,7 @@ const processClaimedGameAnalysisJob = async (
   if (preflightCompletedPositions > data.completed_positions) {
     await updateJob(supabase, data.game_id, {
       status: "processing",
-      position_states: states,
+      position_states: persistedStates(),
       queued_positions: states.filter((state) => state.completed || Boolean(state.requestStatus))
         .length,
       completed_positions: preflightCompletedPositions,
@@ -571,7 +594,7 @@ const processClaimedGameAnalysisJob = async (
       position_states: [],
       queued_positions: preflightCompletedPositions,
       completed_positions: preflightCompletedPositions,
-      result,
+      result: referenceGameAnalysisOpenings(result, openings),
       error: null,
       retry_count: retryCount,
       completed_at: new Date().toISOString(),
@@ -637,7 +660,7 @@ const processClaimedGameAnalysisJob = async (
 
   await updateJob(supabase, data.game_id, {
     status: "processing",
-    position_states: states,
+    position_states: persistedStates(),
     queued_positions: queuedPositions,
     completed_positions: completedPositions,
     error: null,

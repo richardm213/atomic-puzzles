@@ -52,6 +52,7 @@ const positionSchema = z.object({
   budgetNodes: z.number().nullable(),
   lines: z.array(atomicDbLineSchema),
   candidates: z.array(candidateSchema).optional(),
+  variationPlies: z.number().int().nonnegative().optional(),
 });
 
 const countsSchema = z.record(z.enum(MOVE_CLASSIFICATIONS), z.number());

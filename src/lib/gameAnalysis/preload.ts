@@ -1,6 +1,7 @@
-import type {
-  GameAnalysisRecord,
-  StoredAtomicDbPosition,
+import {
+  GAME_ANALYSIS_VARIATION_SIZE,
+  type GameAnalysisRecord,
+  type StoredAtomicDbPosition,
 } from "../../../shared/domain/gameAnalysis";
 import type { AtomicDbOutcome, AtomicDbPosition } from "../../utils/atomicDb";
 import {
@@ -78,7 +79,8 @@ const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGameP
 
   return {
     fen: stored.fen,
-    complete: stored.candidates !== undefined,
+    complete:
+      stored.status === "SKIPPED" || (stored.variationPlies ?? 0) >= GAME_ANALYSIS_VARIATION_SIZE,
     position: {
       key: stored.key,
       outcome: outcome(stored.status),

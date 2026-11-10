@@ -4,6 +4,7 @@ import { atomicOpenings, getOpeningVariations } from "./atomicOpenings";
 import { atomicWinChance } from "./atomicWinChance";
 import { buildSolutionMoveTree, fenAfterAtomicMove, parseSolutionUciLines } from "./chess/pgn";
 
+export const GAME_ANALYSIS_VARIATION_SIZE = 5;
 export const GAME_ANALYSIS_COST = 1;
 export const GAME_ANALYSIS_BUDGET_NODES = 128_000_000;
 const GAME_ANALYSIS_INITIAL_ACCURACY_PLIES = 2;
@@ -54,6 +55,7 @@ export type StoredAtomicDbPosition = {
   budgetNodes: number | null;
   lines: AtomicDbAnalysisLine[];
   candidates?: StoredAtomicDbCandidate[] | undefined;
+  variationPlies?: number | undefined;
 };
 
 export type GameMoveAssessment = {
@@ -77,6 +79,16 @@ export type GameAnalysisSummary = {
   blackAverageCentipawnLoss: number;
   whiteCounts: Record<MoveClassification, number>;
   blackCounts: Record<MoveClassification, number>;
+};
+
+export type GameAnalysisOpeningReference = { fen: string; openingKey: string };
+export type PersistedGameAnalysisPosition = StoredAtomicDbPosition | GameAnalysisOpeningReference;
+export type PersistedGameAnalysisSummary = Omit<
+  GameAnalysisSummary,
+  "positions" | "evaluations"
+> & {
+  positions: PersistedGameAnalysisPosition[];
+  evaluations: (number | null)[];
 };
 
 export type GameAnalysisRecord = {
@@ -143,9 +155,7 @@ export const parseStoredAtomicDbPosition = (
         ];
       })
     : [];
-  const lineByMove = new Map(
-    lines.flatMap((line) => (line.move ? ([[line.move, line]] as const) : [])),
-  );
+  const lineByMove = new Map(lines.map((line) => [line.move ?? line.pv[0], line]));
   const candidates = Array.isArray(response.moves)
     ? response.moves
         .flatMap((entry): StoredAtomicDbCandidate[] => {
@@ -191,6 +201,66 @@ export const parseStoredAtomicDbPosition = (
     lines,
     candidates,
   };
+};
+
+const variationPrefix = (move: string, pv: unknown): string[] => {
+  if (!Array.isArray(pv) || pv[0] !== move) return [];
+  const moves: string[] = [];
+  for (const ply of pv.slice(0, GAME_ANALYSIS_VARIATION_SIZE)) {
+    if (typeof ply !== "string" || !/^[a-h][1-8][a-h][1-8][nbrq]?$/.test(ply)) break;
+    moves.push(ply);
+  }
+  return moves;
+};
+
+/** Some backed continuations stop early, even though the same response has a full engine PV. */
+export const fillStoredAtomicDbVariations = (
+  position: StoredAtomicDbPosition,
+): StoredAtomicDbPosition => {
+  if (position.variationPlies !== GAME_ANALYSIS_VARIATION_SIZE || !position.candidates) {
+    return position;
+  }
+  const rawLines = new Map(position.lines.map((line) => [line.move ?? line.pv[0], line.pv]));
+  return {
+    ...position,
+    candidates: position.candidates.map((candidate) => {
+      const raw = variationPrefix(candidate.move, rawLines.get(candidate.move));
+      if (raw.length <= candidate.pv.length) return candidate;
+      let fen = position.fen;
+      const valid: string[] = [];
+      for (const ply of raw) {
+        const next = fenAfterAtomicMove(fen, ply);
+        if (!next) break;
+        fen = next;
+        valid.push(ply);
+      }
+      // Do not splice a raw line into a different backed branch: use one legal line end to end.
+      return valid.length > candidate.pv.length ? { ...candidate, pv: valid } : candidate;
+    }),
+  };
+};
+
+/** Use the same ranked continuation bundle as the interactive analysis board. */
+export const parseStoredAtomicDbVariationBundle = (
+  fen: string,
+  bundle: { position: unknown; lines: Record<string, unknown> },
+): StoredAtomicDbPosition | null => {
+  const position = parseStoredAtomicDbPosition(fen, bundle.position);
+  if (!position) return null;
+  const candidates = new Map(position.candidates?.map((candidate) => [candidate.move, candidate]));
+  const ordered = [...new Set([...Object.keys(bundle.lines), ...candidates.keys()])];
+  return fillStoredAtomicDbVariations({
+    ...position,
+    variationPlies: GAME_ANALYSIS_VARIATION_SIZE,
+    candidates: ordered
+      .flatMap((move) => {
+        const candidate = candidates.get(move);
+        if (!candidate) return [];
+        const pv = variationPrefix(move, bundle.lines[move]);
+        return [{ ...candidate, pv: pv.length > 0 ? pv : [move] }];
+      })
+      .slice(0, GAME_ANALYSIS_VARIATION_SIZE),
+  });
 };
 
 const terminalCentipawns = (status: string, fen: string): number | null => {
@@ -389,12 +459,97 @@ export const averageCentipawnLossForEvaluations = (
   };
 };
 
-const positionKey = (fen: string): string => fen.trim().split(/\s+/).slice(0, 4).join(" ");
-const standardStartKey = positionKey(INITIAL_FEN);
+export const gameAnalysisPositionKey = (fen: string): string =>
+  fen.trim().split(/\s+/).slice(0, 4).join(" ");
+const standardStartKey = gameAnalysisPositionKey(INITIAL_FEN);
+
+let openingFens: ReadonlyMap<string, string> | undefined;
+export const gameAnalysisOpeningFens = (): ReadonlyMap<string, string> => {
+  if (openingFens) return openingFens;
+  const fens = new Map([[standardStartKey, INITIAL_FEN]]);
+  for (const opening of atomicOpenings) {
+    const pgns = [
+      opening.setup,
+      ...getOpeningVariations(opening).map(({ pgn }) => pgn),
+      ...(opening.branches ?? []).flatMap((branch) => [
+        ...(branch.setup ? [branch.setup] : []),
+        ...(branch.groups ?? []).map(({ setup }) => setup),
+      ]),
+    ];
+    for (const pgn of pgns) {
+      for (const line of parseSolutionUciLines(INITIAL_FEN, pgn)) {
+        for (const fen of buildGamePositionFens(
+          INITIAL_FEN,
+          line.map(({ uci }) => uci),
+        )) {
+          fens.set(gameAnalysisPositionKey(fen), fen);
+        }
+      }
+    }
+  }
+  return (openingFens = fens);
+};
+
+export const gameAnalysisOpeningKey = (fen: string): string | null => {
+  const key = gameAnalysisPositionKey(fen);
+  return gameAnalysisOpeningFens().has(key) ? key : null;
+};
+
+export const unavailableGameAnalysisOpening = (fen: string): StoredAtomicDbPosition => ({
+  fen,
+  key: null,
+  status: "UNKNOWN",
+  closure: null,
+  score: null,
+  point: null,
+  bestMove: null,
+  budgetNodes: null,
+  lines: [],
+  candidates: [],
+  variationPlies: GAME_ANALYSIS_VARIATION_SIZE,
+});
+
+export const isGameAnalysisOpeningReference = (
+  position: PersistedGameAnalysisPosition,
+): position is GameAnalysisOpeningReference => "openingKey" in position;
+
+export const referenceGameAnalysisOpenings = (
+  summary: GameAnalysisSummary,
+  openings: ReadonlyMap<string, StoredAtomicDbPosition>,
+): PersistedGameAnalysisSummary => {
+  const positions = summary.positions.map((position) => {
+    const openingKey = gameAnalysisOpeningKey(position.fen);
+    return openingKey && position.status !== "SKIPPED" && openings.has(openingKey)
+      ? { fen: position.fen, openingKey }
+      : position;
+  });
+  return {
+    ...summary,
+    positions,
+    evaluations: summary.evaluations.map((value, index) => {
+      const position = positions[index];
+      return position && isGameAnalysisOpeningReference(position) ? null : value;
+    }),
+  };
+};
+
+export const mergeGameAnalysisOpenings = (
+  positions: readonly PersistedGameAnalysisPosition[],
+  openings: ReadonlyMap<string, StoredAtomicDbPosition>,
+): StoredAtomicDbPosition[] =>
+  positions.map((position) => {
+    const reference = isGameAnalysisOpeningReference(position);
+    const key = reference ? position.openingKey : gameAnalysisOpeningKey(position.fen);
+    if (key && (isGameAnalysisOpeningReference(position) || position.status !== "SKIPPED")) {
+      const opening = openings.get(key);
+      if (opening) return { ...opening, fen: position.fen };
+    }
+    return reference ? unavailableGameAnalysisOpening(position.fen) : position;
+  });
 let openingBook: ReturnType<typeof buildSolutionMoveTree> | undefined;
 
 export const catalogOpeningPlyCount = (initialFen: string, moves: Iterable<string>): number => {
-  if (positionKey(initialFen) !== standardStartKey) return 0;
+  if (gameAnalysisPositionKey(initialFen) !== standardStartKey) return 0;
   openingBook ??= buildSolutionMoveTree(
     atomicOpenings.flatMap((opening) =>
       [opening.setup, ...getOpeningVariations(opening).map(({ pgn }) => pgn)].flatMap((pgn) =>

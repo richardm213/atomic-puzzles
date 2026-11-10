@@ -6,7 +6,10 @@ import {
   buildGameAnalysisSummary,
   buildGamePositionFens,
   evaluationsForPositions,
+  gameAnalysisOpeningKey,
+  mergeGameAnalysisOpenings,
   parseStoredAtomicDbPosition,
+  referenceGameAnalysisOpenings,
   type StoredAtomicDbPosition,
 } from "../../../shared/domain/gameAnalysis";
 import { fetchGameAnalysis } from "./gameAnalysis";
@@ -74,6 +77,26 @@ describe("AtomicDB game analysis classification", () => {
       move: "a1b1",
       depth: 24,
     });
+  });
+
+  it("stores catalog evaluations by reference and restores them in ply order", () => {
+    const fens = buildGamePositionFens(INITIAL_FEN, ["g1f3", "a7a5"]);
+    const [start, book, offBook] = fens.map((fen) => position(fen, 20, "g1f3"));
+    const opening = gameAnalysisOpeningKey(book!.fen);
+    const offBookKey = gameAnalysisOpeningKey(offBook!.fen);
+    expect(opening).not.toBeNull();
+    expect(offBookKey).toBeNull();
+    const shared = { ...book!, fen: book!.fen.replace(/1 1$/, "0 5"), score: 50 };
+    const catalog = new Map([[opening!, shared]]);
+    const summary = buildGameAnalysisSummary(["g1f3", "a7a5"], [start!, book!, offBook!]);
+    const saved = referenceGameAnalysisOpenings(summary, catalog);
+    expect(saved.positions[1]).toEqual({ fen: book!.fen, openingKey: opening });
+    expect(saved.evaluations[1]).toBeNull();
+    expect(mergeGameAnalysisOpenings(saved.positions, catalog)).toEqual([
+      start,
+      { ...shared, fen: book!.fen },
+      offBook,
+    ]);
   });
 
   it("charts AtomicDB's backed position value instead of the current engine pass", () => {
