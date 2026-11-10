@@ -37,6 +37,17 @@ describe("safeNotificationPath", () => {
 });
 
 describe("notificationCopy", () => {
+  it("shows a fine notice as a fine rather than a feature announcement", () => {
+    const notification = {
+      ...makeNotification("feature"),
+      feature_key: "coin-fine:123",
+      feature_message: "You were fined 300 coins for abusing a site glitch.",
+    };
+    expect(notificationCategory(notification)).toBe("Fine");
+    expect(notificationCopy(notification)).toBe(notification.feature_message);
+    expect(notificationMessage(notification)).toBe("");
+  });
+
   it("groups unfunded order cancellations with prediction-order activity", () => {
     expect(
       notificationCategory({

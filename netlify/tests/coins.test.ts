@@ -262,6 +262,7 @@ describe("coins function", () => {
 
   it("returns a bounded, filtered public transaction feed without source keys", async () => {
     const reasons = [
+      "fine",
       "coin_transfer",
       "puzzle_correct",
       "puzzle_attempted",

@@ -45,6 +45,7 @@ export const REDEEMABLE_SHOP_ITEM_KEYS = [
 ] as const satisfies readonly ShopItemKey[];
 
 export const COIN_TRANSACTION_REASONS = [
+  "fine",
   "coin_transfer",
   "puzzle_correct",
   "puzzle_attempted",

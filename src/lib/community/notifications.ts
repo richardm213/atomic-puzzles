@@ -84,6 +84,11 @@ export const isCommentMentionNotification = (notification: UserNotification): bo
   notification.notification_type === "comment_mention";
 
 export const notificationCategory = (notification: UserNotification): string => {
+  if (
+    notification.notification_type === "feature" &&
+    notification.feature_key?.startsWith("coin-fine:")
+  )
+    return "Fine";
   if (isCommentMentionNotification(notification)) return "Mention";
   if (
     isPredictionOrderFillNotification(notification) ||

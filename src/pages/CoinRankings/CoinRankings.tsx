@@ -22,6 +22,7 @@ import { formatLocalDateTime } from "../../utils/formatters";
 
 type CoinView = "rankings" | "transactions";
 type TransactionCategory =
+  | "fines"
   | "gifts"
   | "solves"
   | "submissions"
@@ -33,6 +34,7 @@ type TransactionCategory =
 
 const filterStorageKey = "atomic-puzzles.coin-transaction-filters";
 const transactionFilters: { key: TransactionCategory; label: string }[] = [
+  { key: "fines", label: "Fines" },
   { key: "gifts", label: "Gifts" },
   { key: "solves", label: "Puzzle solves" },
   { key: "submissions", label: "Puzzle submissions" },
@@ -45,6 +47,7 @@ const transactionFilters: { key: TransactionCategory; label: string }[] = [
 const allTransactionCategories = transactionFilters.map(({ key }) => key);
 
 const reasonCategory: Record<CoinTransactionReason, TransactionCategory> = {
+  fine: "fines",
   coin_transfer: "gifts",
   puzzle_correct: "solves",
   puzzle_attempted: "solves",
@@ -89,6 +92,12 @@ const metadataString = (transaction: CoinTransaction, key: string): string => {
 };
 
 const transactionDescription = (transaction: CoinTransaction) => {
+  if (transaction.reason === "fine") {
+    const category = metadataString(transaction, "category");
+    const reason = metadataString(transaction, "reason");
+    const label = category === "abuse" ? "Fine · Abuse" : "Fine";
+    return reason ? `${label} — ${reason}` : label;
+  }
   const puzzleId = metadataString(transaction, "puzzleId");
   if (transaction.reason === "coin_transfer") {
     const otherPlayer = metadataString(
@@ -171,7 +180,7 @@ const readSavedFilters = (): TransactionCategory[] => {
     const migrated = saved.includes("purchases") ? [...saved, "game-analysis"] : saved;
     if (
       allTransactionCategories.every(
-        (category) => category === "tagging" || migrated.includes(category),
+        (category) => category === "tagging" || category === "fines" || migrated.includes(category),
       )
     ) {
       return allTransactionCategories;
@@ -181,7 +190,11 @@ const readSavedFilters = (): TransactionCategory[] => {
   const categories =
     saved && typeof saved === "object" && "categories" in saved ? saved.categories : null;
   if (!Array.isArray(categories)) return allTransactionCategories;
-  return allTransactionCategories.filter((category) => categories.includes(category));
+  const migrated =
+    saved && typeof saved === "object" && "version" in saved && saved.version === 2
+      ? categories
+      : [...categories, "fines"];
+  return allTransactionCategories.filter((category) => migrated.includes(category));
 };
 
 export const CoinRankingsPage = () => {
@@ -258,7 +271,7 @@ export const CoinRankingsPage = () => {
     setTransactionPage(1);
     setSelectedCategories((current) => {
       const next = checked ? [...current, category] : current.filter((entry) => entry !== category);
-      setBrowserStorageJson("local", filterStorageKey, { categories: next });
+      setBrowserStorageJson("local", filterStorageKey, { version: 2, categories: next });
       return next;
     });
   };
