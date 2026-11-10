@@ -36,11 +36,13 @@ export const addMatchPuzzle = (input: {
   gameId: string;
   fen: string;
   solution: string;
+  opaStyle: boolean;
+  explanation: string;
   matchName: string;
   renameFrom?: string | undefined;
   allowDifferentStartMove: boolean;
 }) =>
   matchPuzzleRequest(
-    { action: "add-match-puzzle", explanation: "", ...input },
+    { action: "add-match-puzzle", ...input },
     { schema: matchPuzzleResultSchema },
   );

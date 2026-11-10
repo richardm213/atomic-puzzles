@@ -38,7 +38,7 @@
   font-weight: 600;
 }
 
-.boardPuzzleComposerField input {
+.boardPuzzleComposerField :is(input, textarea) {
   width: 100%;
   min-width: 0;
   min-height: var(--control-height-touch);
@@ -47,6 +47,31 @@
   border-radius: var(--radius-sm);
   background: var(--color-panel-deep);
   font-size: var(--text-control);
+}
+
+.boardPuzzleComposerMetadata {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+}
+
+.boardPuzzleComposerCheckbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--space-6);
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+.boardPuzzleComposerCheckbox input {
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
+.boardPuzzleComposerField textarea {
+  padding-block: var(--space-2);
+  resize: vertical;
 }
 
 .boardPuzzleComposerFooter {
@@ -132,7 +157,7 @@
 
 :is(.boardPuzzleComposerActions, .boardPuzzleComposerRetry) button:focus-visible,
 .boardPuzzleSetEdit:focus-visible,
-.boardPuzzleComposerField input:focus-visible {
+.boardPuzzleComposerField :is(input, textarea):focus-visible {
   outline: 2px solid var(--color-primary-ring);
   outline-offset: -2px;
 }
@@ -151,6 +176,14 @@
   .boardPuzzleSetEdit {
     min-width: var(--control-height-touch);
     min-height: var(--control-height-touch);
+  }
+
+  .boardPuzzleComposerCheckbox {
+    min-height: var(--control-height-touch);
+  }
+
+  .boardPuzzleComposerField textarea {
+    font-size: max(1rem, var(--text-control));
   }
 }
 

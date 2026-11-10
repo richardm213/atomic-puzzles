@@ -49,6 +49,8 @@ export const PuzzleComposer = ({
   });
   const [matchName, setMatchName] = useState("");
   const [renameFrom, setRenameFrom] = useState<string | null>(null);
+  const [opaStyle, setOpaStyle] = useState(false);
+  const [explanation, setExplanation] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -57,6 +59,7 @@ export const PuzzleComposer = ({
   const renameInputRef = useRef<HTMLInputElement>(null);
   const helpId = useId();
   const matchNameId = useId();
+  const explanationId = useId();
   const checkingName = context.isFetching && !context.data?.setName;
   const needsName = !checkingName && !context.isError && context.data?.setName === null;
   const setName = context.data?.setName;
@@ -104,6 +107,8 @@ export const PuzzleComposer = ({
           gameId: match.gameId,
           fen,
           solution,
+          opaStyle,
+          explanation,
           matchName: renaming || needsName ? newName : "",
           ...(renaming && renameFrom ? { renameFrom } : {}),
           allowDifferentStartMove: confirmDifferentStart,
@@ -170,6 +175,30 @@ export const PuzzleComposer = ({
           </div>
         ) : null}
         {children}
+        {match ? (
+          <div className="boardPuzzleComposerMetadata">
+            <label className="boardPuzzleComposerCheckbox">
+              <input
+                type="checkbox"
+                checked={opaStyle}
+                onChange={(event) => setOpaStyle(event.target.checked)}
+                disabled={saving}
+              />
+              OPA style
+            </label>
+            <div className="boardPuzzleComposerField">
+              <label htmlFor={explanationId}>Explanation</label>
+              <textarea
+                id={explanationId}
+                rows={2}
+                maxLength={5000}
+                value={explanation}
+                onChange={(event) => setExplanation(event.target.value)}
+                disabled={saving}
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
       <div className="boardPuzzleComposerFooter">
         {renameFrom ? (

@@ -749,7 +749,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     setAddedPuzzle(null);
     setPuzzleDraft({
       fen: currentFen,
-      orientation,
+      orientation: boardState?.turn || gameOrientation,
       sourcePly: currentPly,
     });
   };

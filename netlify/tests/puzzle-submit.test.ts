@@ -262,7 +262,8 @@ describe("puzzle-submit function", () => {
             gameId,
             fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             solution: "1. e4",
-            explanation: "",
+            explanation: "  The opening move changes the center.  ",
+            opaStyle: true,
             matchName,
             renameFrom,
             whitePlayer: "spoofed",
@@ -289,6 +290,8 @@ describe("puzzle-submit function", () => {
           ...(renameTo ? { p_rename_from: setName } : {}),
           p_puzzle: expect.objectContaining({
             eventName: savedName,
+            explanation: "The opening move changes the center.",
+            opaStyle: true,
             eventDate: "2026-11-09",
             whitePlayer: "bob",
             blackPlayer: "alice",
