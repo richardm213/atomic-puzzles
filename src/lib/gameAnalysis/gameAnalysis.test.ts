@@ -2,6 +2,7 @@ import { INITIAL_FEN } from "chessops/fen";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  alignGameAnalysisPositionFens,
   applyGameAnalysisOpeningReview,
   buildGameAnalysisSummary,
   buildGamePositionFens,
@@ -97,6 +98,17 @@ describe("AtomicDB game analysis classification", () => {
       { ...shared, fen: book!.fen },
       offBook,
     ]);
+  });
+
+  it("restores the actual move counters without applying an evaluation to a different board", () => {
+    const [start, first, second] = buildGamePositionFens(INITIAL_FEN, ["g1f3", "f7f6"]);
+    const borrowedFen = first!.replace(/1 1$/, "5 3");
+    const saved = [position(start!, 20, "g1f3"), position(borrowedFen, -20, "f7f6")];
+    expect(alignGameAnalysisPositionFens(saved, [start!, first!]).map(({ fen }) => fen)).toEqual([
+      start,
+      first,
+    ]);
+    expect(alignGameAnalysisPositionFens(saved, [start!, second!])).toEqual(saved);
   });
 
   it("charts AtomicDB's backed position value instead of the current engine pass", () => {

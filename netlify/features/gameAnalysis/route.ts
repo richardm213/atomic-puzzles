@@ -3,6 +3,7 @@ import process from "node:process";
 import { z } from "zod";
 
 import {
+  alignGameAnalysisPositionFens,
   applyGameAnalysisOpeningReview,
   buildGameAnalysisSummary,
   buildGamePositionFens,
@@ -55,6 +56,7 @@ type GameAnalysisRow = {
   cost: number;
   error: string | null;
   result: PersistedGameAnalysisSummary | null;
+  position_fens: string[];
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -97,13 +99,16 @@ const selectRecord = async (gameId: string): Promise<GameAnalysisRow | null> => 
   const { data, error } = await supabase
     .from("game_analyses")
     .select(
-      "game_id,status,requested_by,total_positions,completed_positions,queued_positions,cost,error,result,created_at,updated_at,completed_at",
+      "game_id,status,requested_by,total_positions,completed_positions,queued_positions,cost,error,result,position_fens,created_at,updated_at,completed_at",
     )
     .eq("game_id", gameId)
     .maybeSingle<GameAnalysisRow>();
   if (error) throw new Error(`Unable to load game analysis: ${error.message}`);
   if (!data?.result || data.status !== "ready") return data;
-  const positions = await hydrateGameAnalysisPositions(supabase, data.result);
+  const positions = await hydrateGameAnalysisPositions(supabase, {
+    ...data.result,
+    positions: alignGameAnalysisPositionFens(data.result.positions, data.position_fens),
+  });
   const moves = data.result.assessments.map(({ uci }) => uci);
   if (positions.length !== moves.length + 1) {
     return {

@@ -513,6 +513,20 @@ export const isGameAnalysisOpeningReference = (
   position: PersistedGameAnalysisPosition,
 ): position is GameAnalysisOpeningReference => "openingKey" in position;
 
+// Older reviews could inherit the halfmove/fullmove counters of a shared transposition.
+export const alignGameAnalysisPositionFens = (
+  positions: readonly PersistedGameAnalysisPosition[],
+  positionFens: readonly string[],
+): PersistedGameAnalysisPosition[] =>
+  positions.map((position, index) => {
+    const fen = positionFens[index];
+    return fen &&
+      fen !== position.fen &&
+      gameAnalysisPositionKey(fen) === gameAnalysisPositionKey(position.fen)
+      ? { ...position, fen }
+      : position;
+  });
+
 export const referenceGameAnalysisOpenings = (
   summary: GameAnalysisSummary,
   openings: ReadonlyMap<string, StoredAtomicDbPosition>,

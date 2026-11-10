@@ -9,6 +9,7 @@ import {
 } from "../netlify/features/gameAnalysis/openings";
 import { createServerSupabase } from "../netlify/platform/environment";
 import {
+  alignGameAnalysisPositionFens,
   applyGameAnalysisOpeningReview,
   buildGameAnalysisSummary,
   evaluationsForPositions,
@@ -46,6 +47,7 @@ type AnalysisRow = {
   game_id: string;
   updated_at: string;
   result: PersistedGameAnalysisSummary | null;
+  position_fens: string[];
 };
 type CheckpointEntry = {
   key: string;
@@ -79,7 +81,7 @@ const readyPages = async function* (): AsyncGenerator<AnalysisRow[]> {
   for (;;) {
     let query = supabase
       .from("game_analyses")
-      .select("game_id,updated_at,result")
+      .select("game_id,updated_at,result,position_fens")
       .eq("status", "ready")
       .order("game_id")
       .limit(PAGE_SIZE);
@@ -187,8 +189,9 @@ const main = async () => {
   let checkpointWrite = Promise.resolve();
   for await (const rows of readyPages()) {
     const pageKeys = new Map<string, string>();
-    for (const { result } of rows) {
-      for (const position of mergeGameAnalysisOpenings(result?.positions ?? [], openings)) {
+    for (const { result, position_fens } of rows) {
+      const aligned = alignGameAnalysisPositionFens(result?.positions ?? [], position_fens);
+      for (const position of mergeGameAnalysisOpenings(aligned, openings)) {
         if (position.status === "SKIPPED") continue;
         if (gameAnalysisOpeningKey(position.fen)) {
           totals.openings += 1;
