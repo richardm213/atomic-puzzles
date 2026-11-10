@@ -21,6 +21,23 @@ export type QueuedPuzzleSubmission = {
 export class PuzzleSubmissionRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
+  async findPuzzleAtStartingPosition(position: string): Promise<number | null> {
+    // Match the position fields literally, allowing whitespace and optional numeric counters.
+    const fields = position.split(" ").map((field) => field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const pattern = `^[[:space:]]*${fields.join("[[:space:]]+")}([[:space:]]+[0-9]+){0,2}[[:space:]]*$`;
+    const { data, error } = await this.supabase
+      .from("puzzles")
+      .select("id")
+      .is("deleted_at", null)
+      .eq("has_solution", true)
+      .filter("fen", "match", pattern)
+      .order("id")
+      .limit(1)
+      .maybeSingle<{ id: number }>();
+    if (error) throw new Error(`Unable to check the starting FEN: ${error.message}`);
+    return data?.id ?? null;
+  }
+
   private async ensureUser(username: string) {
     const { error: userError } = await this.supabase
       .from("users")

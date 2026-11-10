@@ -6,6 +6,7 @@ import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FormEvent, ReactNode, Ref } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { PuzzleStartingFenWarning } from "../../components/PuzzleStartingFenWarning/PuzzleStartingFenWarning";
 import {
   addMatchPuzzle,
   fetchMatchPuzzleContext,
@@ -228,6 +229,7 @@ export const PuzzleComposer = ({
             {error}
           </p>
         ) : null}
+        <PuzzleStartingFenWarning fen={fen} />
         <div className="boardPuzzleComposerActions">
           <button type="button" ref={cancelRef} disabled={saving} onClick={onCancel}>
             Cancel

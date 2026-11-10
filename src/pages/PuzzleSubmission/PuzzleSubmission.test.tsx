@@ -285,10 +285,13 @@ describe("PuzzleSubmissionPage fields", () => {
   it("asks before sending an alternate starting move to the review queue", async () => {
     const user = userEvent.setup();
     let submissionRequestCount = 0;
-    const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = input instanceof Request ? input.url : String(input);
       if (!url.includes("/api/puzzles/submit")) {
         return Promise.resolve(new Response(null, { status: 503 }));
+      }
+      if (JSON.parse(String(init?.body)).action === "starting-fen-match") {
+        return Promise.resolve(Response.json({ puzzleId: 42 }));
       }
       submissionRequestCount += 1;
       return Promise.resolve(
@@ -309,6 +312,11 @@ describe("PuzzleSubmissionPage fields", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Solution PGN" }), {
       target: { value: `1. e4` },
     });
+    expect(await screen.findByRole("link", { name: "puzzle 42" })).toHaveAttribute(
+      "href",
+      "/solve/42",
+    );
+    expect(submissionRequestCount).toBe(0);
     await user.click(screen.getByRole("button", { name: "Submit for review" }));
 
     expect(await screen.findByText(DIFFERENT_START_MOVE_CONFIRMATION)).toBeVisible();
@@ -316,9 +324,12 @@ describe("PuzzleSubmissionPage fields", () => {
     await user.click(screen.getByRole("button", { name: "Send to review" }));
 
     expect(await screen.findByText(/Puzzle submitted for review/)).toBeVisible();
-    const submissionCalls = fetchMock.mock.calls.filter(([input]) => {
+    const submissionCalls = fetchMock.mock.calls.filter(([input, request]) => {
       const url = input instanceof Request ? input.url : String(input);
-      return url.includes("/api/puzzles/submit");
+      return (
+        url.includes("/api/puzzles/submit") &&
+        JSON.parse(String(request?.body)).action !== "starting-fen-match"
+      );
     });
     const [, secondRequest] = submissionCalls[1] ?? [];
     expect(JSON.parse(String(secondRequest?.body))).toEqual(

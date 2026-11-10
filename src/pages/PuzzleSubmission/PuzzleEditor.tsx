@@ -86,6 +86,7 @@ type PuzzleEditorProps = {
   value: PuzzleSubmissionValue;
   onChange: (value: PuzzleSubmissionValue) => void;
   resetKey: string | number;
+  beforeActions?: ReactNode;
   actions?: ReactNode;
   boardFooter?: ReactNode;
   fieldsBeforeEvent?: ReactNode;
@@ -121,6 +122,7 @@ export const PuzzleEditor = ({
   value,
   onChange,
   resetKey,
+  beforeActions,
   actions,
   boardFooter,
   fieldsBeforeEvent,
@@ -873,6 +875,7 @@ export const PuzzleEditor = ({
             {feedback.text}
           </div>
         ) : null}
+        {beforeActions}
         {actions}
       </div>
     </div>

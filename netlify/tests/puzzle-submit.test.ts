@@ -57,6 +57,37 @@ describe("puzzle-submit function", () => {
     expect(response.statusCode).toBe(400);
   });
 
+  it("looks up a playable puzzle by position, not by the FEN move counters", async () => {
+    const position = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+    const query = {
+      select: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      filter: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn(async () => ({ data: { id: 42 }, error: null })),
+    };
+    const from = vi.fn(() => query);
+    mocks.createClient.mockReturnValue({ from });
+    const response = await handler({
+      httpMethod: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ action: "starting-fen-match", fen: `${position} 15 31` }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toEqual({ puzzleId: 42 });
+    expect(from).toHaveBeenCalledExactlyOnceWith("puzzles");
+    expect(query.is).toHaveBeenCalledWith("deleted_at", null);
+    expect(query.eq).toHaveBeenCalledWith("has_solution", true);
+    const [column, operator, pattern] = query.filter.mock.calls[0] ?? [];
+    expect([column, operator]).toEqual(["fen", "match"]);
+    const matches = new RegExp(String(pattern).replaceAll("[[:space:]]", "\\s"));
+    expect(matches.test(`${position} 0 1`)).toBe(true);
+    expect(matches.test(position.replace(" w ", " b "))).toBe(false);
+  });
+
   it("does not accept an invalid match request as a standalone puzzle", async () => {
     const response = await handler({
       httpMethod: "POST",

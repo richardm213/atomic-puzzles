@@ -74,7 +74,9 @@ test("practice keeps its PGN and position when creating puzzles or changing oppo
     }),
   );
   await page.route("**/api/puzzles/submit", (route) => {
-    submissions.push(route.request().postDataJSON());
+    const input = route.request().postDataJSON();
+    if (input.action === "starting-fen-match") return route.fulfill({ json: { puzzleId: null } });
+    submissions.push(input);
     return route.fulfill({ json: { destination: "review", puzzle: { id: 42 } } });
   });
 

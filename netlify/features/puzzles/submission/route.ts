@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { isPuzzleMotifTag } from "../../../../shared/domain/puzzles/puzzleMotifs";
+import { startingFenKey } from "../../../../shared/domain/puzzles/submissionDuplicates";
 import {
   authenticateRequest,
   requireSameOrigin,
@@ -8,7 +9,7 @@ import {
 } from "../../../platform/authentication";
 import type { FunctionEvent } from "../../../platform/defineFunction";
 import { createServerSupabase } from "../../../platform/environment";
-import { errorResponse } from "../../../platform/errors";
+import { errorResponse, HttpError } from "../../../platform/errors";
 import { jsonResponse } from "../../../platform/response";
 import { parseJsonBody } from "../../../platform/validation";
 import { type FetchMatchPuzzleGame, loadMatchPuzzleContext } from "./matchContext";
@@ -34,6 +35,7 @@ const singleSubmissionSchema = z.object({
 });
 
 const submissionBodySchema = z.union([
+  z.object({ action: z.literal("starting-fen-match"), fen: singleSubmissionSchema.shape.fen }),
   z.object({ action: z.literal("match-context"), gameId: z.string().trim().min(1).max(128) }),
   singleSubmissionSchema.extend({
     action: z.literal("add-match-puzzle"),
@@ -77,7 +79,13 @@ export const puzzleSubmissionRoute = async (
   const identity = await authenticateRequest(event.headers);
   const username = requireUsername(identity, "Log in with Lichess to submit a puzzle.");
   const db = createServerSupabase("Puzzle submission service");
-  const service = new PuzzleSubmissionService(new PuzzleSubmissionRepository(db));
+  const repository = new PuzzleSubmissionRepository(db);
+  if (input.action === "starting-fen-match") {
+    const position = startingFenKey(input.fen);
+    if (!position) throw new HttpError(400, "Invalid starting FEN.");
+    return jsonResponse(200, { puzzleId: await repository.findPuzzleAtStartingPosition(position) });
+  }
+  const service = new PuzzleSubmissionService(repository);
   if (input.action === "add-match-puzzle") {
     const context = await loadMatchPuzzleContext(db, input.gameId, fetchGame);
     return jsonResponse(201, await service.submitMatchPuzzle(username, input, context));

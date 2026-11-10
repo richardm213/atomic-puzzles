@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { isApprovedPuzzleCreator } from "../../../shared/domain/puzzles/approvedPuzzleCreators";
 import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
+import { PuzzleStartingFenWarning } from "../../components/PuzzleStartingFenWarning/PuzzleStartingFenWarning";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
@@ -304,6 +305,7 @@ export const PuzzleSubmissionPage = () => {
                       }
                     : undefined
             }
+            beforeActions={<PuzzleStartingFenWarning fen={value.fen} />}
             actions={
               <div className="puzzleQueueSubmitRow">
                 <span>
