@@ -37,7 +37,9 @@ export const useBoardDocument = ({
   onCommitFen,
   onCommitPgn,
   pgnAfterFenCommit,
-}: BoardDocumentOptions): BoardDocument => {
+}: BoardDocumentOptions): BoardDocument & {
+  resetDrafts: (nextFen: string, nextPgn: string) => void;
+} => {
   const dirtyRef = useRef<Record<DocumentKind, boolean>>({ fen: false, pgn: false });
   const activeEditorRef = useRef<DocumentKind | null>(null);
   const [fenDraft, setFenDraft] = useState(fen);
@@ -146,5 +148,12 @@ export const useBoardDocument = ({
     fen: field("fen", fenDraft, fenError, setFenDraft, commitFen),
     pgn: field("pgn", pgnDraft, pgnError, setPgnDraft, commitPgn),
     clearErrors,
+    resetDrafts: (nextFen, nextPgn) => {
+      activeEditorRef.current = null;
+      dirtyRef.current = { fen: false, pgn: false };
+      setFenDraft(nextFen);
+      setPgnDraft(nextPgn);
+      clearErrors();
+    },
   };
 };

@@ -5,6 +5,7 @@ import {
   faDice,
   faPause,
   faPlay,
+  faPuzzlePiece,
   faRobot,
   faRotateLeft,
   faShuffle,
@@ -12,9 +13,9 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
-import type { CSSProperties } from "react";
+import type { CSSProperties, MouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -26,12 +27,14 @@ import {
   isTextEntryTarget,
   shortcutIndexFromKeyboardEvent,
 } from "../../components/Chessboard/boardShortcuts";
+import { buildPgnHistory } from "../../components/Chessboard/pgnHistory";
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import type { OpeningDatabaseMove } from "../../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
 import { Seo } from "../../components/Seo/Seo";
 import { ShareExportPanel } from "../../components/ShareExportPanel/ShareExportPanel";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
 import { useKeyboardShortcutSettings } from "../../context/AppSettings";
+import { useAuth } from "../../context/AuthContext";
 import { AnalysisEngineExplorerPanels } from "../../features/analysisWorkspace/AnalysisEngineExplorerPanels";
 import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
 import {
@@ -45,6 +48,10 @@ import {
   OpeningExplorerResizeHandle,
 } from "../../features/analysisWorkspace/OpeningExplorerPanel";
 import {
+  PuzzleComposer,
+  type PuzzleCreationResult,
+} from "../../features/analysisWorkspace/PuzzleComposer";
+import {
   useBoardAlignedPanelHeight,
   useOpeningExplorerSplit,
 } from "../../features/analysisWorkspace/useAnalysisWorkspaceLayout";
@@ -54,7 +61,7 @@ import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { type OpeningExplorerRequest, useOpeningExplorer } from "../../hooks/useOpeningExplorer";
-import { usePersistedState } from "../../hooks/usePersistedState";
+import { readPersistedState, usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { buildBoardLoadNavigation } from "../../lib/analysis/boardLoading";
 import {
@@ -64,10 +71,11 @@ import {
 } from "../../lib/analysis/boardState";
 import { apiRequest } from "../../lib/api/postApi";
 import { keyboardShortcutAction, keyboardShortcutHint } from "../../lib/keyboardShortcuts";
-import { movePrefix } from "../../lib/puzzles/solutionPgn";
+import { serializeSanLinesToPgn, startingPlyFromFen } from "../../lib/puzzles/solutionPgn";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
+import { setBrowserStorageJson } from "../../utils/browserStorage";
 import { getErrorMessage } from "../../utils/errors";
 import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
@@ -93,6 +101,13 @@ const randomOpeningPlayerSchema = z.object({ username: z.string().trim().min(1) 
 const PRACTICE_AUTOMOVE_MIN_THINK_MS = 240;
 const PLAYER_MIN_RATING = 1700;
 const MOVES_OPEN_STORAGE_KEY = "atomic-puzzles.practice.moves-open";
+const PRACTICE_BOARD_STORAGE_KEY = "atomic-puzzles.practice.board";
+const practiceBoardSchema = z.object({
+  fen: z.string().min(1),
+  pgn: z.string(),
+  line: z.number().int().nonnegative(),
+  ply: z.number().int().nonnegative(),
+});
 const buildPracticePgn = (rootFen: string, moveText = ""): string =>
   [
     '[Variant "Atomic"]',
@@ -195,6 +210,7 @@ const chooseOpponentMove = (moves: PracticeMove[], mode: OpponentMode): Practice
 };
 
 export const PracticePage = () => {
+  const auth = useAuth();
   const keyboardShortcuts = useKeyboardShortcutSettings();
   const pauseShortcutHint = keyboardShortcutHint(keyboardShortcuts, "pausePractice");
   const explorerShortcutHint = keyboardShortcutHint(keyboardShortcuts, "toggleExplorer");
@@ -241,11 +257,26 @@ export const PracticePage = () => {
   const movePanelRef = useRef<HTMLDivElement | null>(null);
   const remainingClockMsRef = useRef(clockMinutes * 60_000);
   const lastAutoFenRef = useRef("");
-  const navigationRef = useRef<SolutionNavigation | null>(null);
   const triedMoveUcisByFenRef = useRef<Map<string, Set<string>>>(new Map());
+  const [restoredBoard] = useState(() =>
+    readPersistedState(PRACTICE_BOARD_STORAGE_KEY, practiceBoardSchema),
+  );
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
-  const [practiceRootFen, setPracticeRootFen] = useState(STARTING_FEN);
-  const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
+  const [practiceRootFen, setPracticeRootFen] = useState(restoredBoard?.fen ?? STARTING_FEN);
+  const [navigation, setNavigation] = useState<SolutionNavigation | null>(() =>
+    restoredBoard ? buildBoardLoadNavigation(restoredBoard) : null,
+  );
+  const navigationRef = useRef(navigation);
+  const [puzzleDraft, setPuzzleDraft] = useState<{
+    fen: string;
+    orientation: "white" | "black";
+    sourcePly: number;
+  } | null>(null);
+  const [draftBoardState, setDraftBoardState] = useState<ChessboardState | null>(null);
+  const [draftNavigation, setDraftNavigation] = useState<SolutionNavigation | null>(null);
+  const [createdPuzzle, setCreatedPuzzle] = useState<PuzzleCreationResult | null>(null);
+  const puzzleLauncher = useRef<HTMLButtonElement | null>(null);
+  const practiceScrollTop = useRef(0);
   const [pendingAutoMove, setPendingAutoMove] = useState<PendingAutoMove | null>(null);
   const {
     isOpen: usernamePickerOpen,
@@ -257,6 +288,7 @@ export const PracticePage = () => {
   } = useUsernamePicker("player");
   const [exhaustedFen, setExhaustedFen] = useState<string | null>(null);
   const [movesOpen, setMovesOpen] = usePersistedState(MOVES_OPEN_STORAGE_KEY, z.boolean(), true);
+  const explorerOpen = !puzzleDraft && !movesOpen;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const alignedPanelHeight = useBoardAlignedPanelHeight(
     practicePanelRef,
@@ -270,7 +302,7 @@ export const PracticePage = () => {
     separatorProps,
   } = useOpeningExplorerSplit({
     scope: "practice",
-    enabled: !movesOpen,
+    enabled: explorerOpen,
     panelRef: practicePanelRef,
     movePanelRef,
     defaultPercent: 60,
@@ -295,6 +327,8 @@ export const PracticePage = () => {
     moveList,
     terminalOutcome,
   } = getBoardMoveState(boardState, practiceRootFen);
+  const draftBoard = getBoardMoveState(draftBoardState, puzzleDraft?.fen ?? currentFen);
+  const analysisFen = puzzleDraft ? draftBoard.currentFen : currentFen;
   const {
     analysis: atomicDbAnalysis,
     engineMoves,
@@ -303,15 +337,15 @@ export const PracticePage = () => {
     finishVariationPlayback,
     variationPlaying: atomicDbLinePlaying,
   } = useAtomicDbBoardAnalysis({
-    currentFen,
+    currentFen: analysisFen,
     enabled: atomicDbEngineSettings.enabled,
     atomicDbEnabled: atomicDbEngineSettings.atomicDbEnabled !== false,
-    navigation,
+    navigation: puzzleDraft ? draftNavigation : navigation,
     lineCount: atomicDbEngineSettings.lineCount,
     showFollowUpMoves: atomicDbEngineSettings.showFollowUpMoves,
-    terminalOutcome,
+    terminalOutcome: puzzleDraft ? draftBoard.terminalOutcome : terminalOutcome,
   });
-  const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(currentFen);
+  const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(analysisFen);
   const currentTurn = boardState?.turn || "white";
   const gameFinished = terminalOutcome !== null;
   const opponentSide = oppositeSide(side);
@@ -409,20 +443,38 @@ export const PracticePage = () => {
     opponentUsernames.length > 1
       ? `${opponentUsernames.length} players · as ${opponentSide}`
       : `as ${opponentSide}`;
-  const currentMoveText = useMemo(
-    () =>
-      moveList
-        .slice(0, currentPly)
-        .map((move, index) => `${movePrefix(index, index % 2 === 1)}${move}`.trim())
-        .join(" "),
-    [currentPly, moveList],
-  );
-  const currentPracticePgn = useMemo(
-    () => buildPracticePgn(practiceRootFen, currentMoveText),
-    [currentMoveText, practiceRootFen],
-  );
+  const practiceMoveText = serializeSanLinesToPgn(practiceRootFen, analysisLines);
+  const currentPracticePgn = buildPracticePgn(practiceRootFen, practiceMoveText);
+  const draftMoveText = puzzleDraft
+    ? serializeSanLinesToPgn(puzzleDraft.fen, draftBoard.lines)
+    : "";
+
+  useEffect(() => {
+    if (!boardState || navigation || boardState.status === "Invalid PGN") return;
+    setBrowserStorageJson("local", PRACTICE_BOARD_STORAGE_KEY, {
+      fen: practiceRootFen,
+      pgn: practiceMoveText,
+      line: activeLineIndex,
+      ply: currentPly,
+    });
+  }, [activeLineIndex, boardState, currentPly, navigation, practiceMoveText, practiceRootFen]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (puzzleDraft) {
+      url.searchParams.set("puzzle", String(puzzleDraft.sourcePly));
+      url.hash = `ply-${draftBoard.currentPly}`;
+    } else if (url.searchParams.has("puzzle")) {
+      url.searchParams.delete("puzzle");
+      url.hash = "";
+    }
+    if (url.href !== window.location.href) {
+      window.history.replaceState(window.history.state, "", url);
+    }
+  }, [draftBoard.currentPly, puzzleDraft]);
   const totalGames = practiceMoves.reduce((total, move) => total + move.games, 0);
-  const canRunPractice = canUsePlayerSource && !gameFinished && !(clockEnabled && clockExpired);
+  const canRunPractice =
+    !puzzleDraft && canUsePlayerSource && !gameFinished && !(clockEnabled && clockExpired);
   const maxPracticePlayers = allowMultiplePlayers ? MAX_PRACTICE_PLAYERS : 1;
   const canAddPracticePlayer = opponentUsernames.length < maxPracticePlayers;
   const canChoosePracticePlayer = allowMultiplePlayers ? canAddPracticePlayer : true;
@@ -578,7 +630,7 @@ export const PracticePage = () => {
 
   useEffect(() => {
     setHoveredMoveUci(null);
-  }, [currentFen]);
+  }, [analysisFen]);
 
   useEffect(() => {
     if (
@@ -705,13 +757,17 @@ export const PracticePage = () => {
 
   const requestNavigation = useCallback(
     (command: PlaybackCommand): void => {
+      if (puzzleDraft) {
+        setDraftNavigation({ type: "command", command });
+        return;
+      }
       clearAutoMoveState();
       if (command === "previous" || command === "start") {
         setGamePaused(true);
       }
       queueNavigation({ type: "command", command });
     },
-    [clearAutoMoveState, queueNavigation],
+    [clearAutoMoveState, puzzleDraft, queueNavigation],
   );
 
   const navigateToPly = useCallback(
@@ -769,8 +825,8 @@ export const PracticePage = () => {
 
   useBoardWheelNavigation({
     boardPanelRef,
-    canStepBack,
-    canStepForward,
+    canStepBack: puzzleDraft ? draftBoard.canStepBack : canStepBack,
+    canStepForward: puzzleDraft ? draftBoard.canStepForward : canStepForward,
     onNavigate: requestNavigation,
   });
 
@@ -785,14 +841,11 @@ export const PracticePage = () => {
     openPicker();
   }, [openPicker, updateSettings]);
 
-  const resetBoardForOpponent = useCallback((): void => {
+  const pauseForOpponentChange = useCallback((): void => {
     resetOpponentMoveChoices();
     setHoveredMoveUci(null);
     resetPracticeClock();
-    setSessionStarted(false);
-    setPracticeRootFen(STARTING_FEN);
-    queueNavigation(buildBoardLoadNavigation({ fen: STARTING_FEN }));
-  }, [queueNavigation, resetOpponentMoveChoices, resetPracticeClock]);
+  }, [resetOpponentMoveChoices, resetPracticeClock]);
 
   useEffect(() => {
     if (!routeInitializedRef.current) {
@@ -806,7 +859,6 @@ export const PracticePage = () => {
           opponentUsernames: routeOpponentUsernames,
           allowMultiplePlayers: routeOpponentUsernames.length > 1,
         }));
-        resetBoardForOpponent();
       } else if (opponentSource === "player" && opponentUsernames.length > 0) {
         navigateToPracticeOpponents(opponentUsernames, true);
       }
@@ -826,25 +878,17 @@ export const PracticePage = () => {
     } else {
       updateSettings({ opponentSource: "general" });
     }
-    resetBoardForOpponent();
+    pauseForOpponentChange();
   }, [
     navigateToPracticeOpponents,
     opponentSource,
     opponentUsernames,
-    resetBoardForOpponent,
+    pauseForOpponentChange,
     routeOpponentUsernames,
     routeOpponents,
     setSettings,
     updateSettings,
   ]);
-
-  const restartPracticeGame = useCallback((): void => {
-    resetOpponentMoveChoices();
-    setHoveredMoveUci(null);
-    resetPracticeClock();
-    setSessionStarted(false);
-    queueNavigation(buildBoardLoadNavigation({ fen: practiceRootFen }));
-  }, [practiceRootFen, queueNavigation, resetOpponentMoveChoices, resetPracticeClock]);
 
   const boardDocument = useBoardDocument({
     fen: currentFen,
@@ -860,15 +904,72 @@ export const PracticePage = () => {
       queueNavigation(buildBoardLoadNavigation({ fen: nextFen }));
     },
     onCommitPgn: (draft, initialFen) => {
+      const nextRootFen = initialFen ?? practiceRootFen;
+      const imported = buildPgnHistory(nextRootFen, draft);
+      if (!imported.ok) throw new Error(imported.error);
+      if (practiceMoveText && imported.history.plies.length <= 1) {
+        throw new Error("Use Start over to clear the practice PGN.");
+      }
       resetOpponentMoveChoices();
       setHoveredMoveUci(null);
       resetPracticeClock();
       setSessionStarted(false);
-      const nextRootFen = initialFen ?? practiceRootFen;
       if (initialFen) setPracticeRootFen(initialFen);
       queueNavigation(buildBoardLoadNavigation({ fen: nextRootFen, pgn: draft }));
     },
   });
+
+  const restartPracticeGame = (): void => {
+    resetOpponentMoveChoices();
+    setHoveredMoveUci(null);
+    resetPracticeClock();
+    setSessionStarted(false);
+    boardDocument.resetDrafts(practiceRootFen, buildPracticePgn(practiceRootFen));
+    queueNavigation(buildBoardLoadNavigation({ fen: practiceRootFen }));
+  };
+
+  const draftDocument = useBoardDocument({
+    fen: puzzleDraft?.fen ?? "",
+    pgn: draftMoveText,
+    boardState: draftBoardState,
+    onCommitFen: () => {},
+    onCommitPgn: (pgn, initialFen) => {
+      if (!puzzleDraft) return;
+      if (initialFen && initialFen !== puzzleDraft.fen) {
+        throw new Error("Keep the puzzle’s selected starting position.");
+      }
+      setDraftNavigation(buildBoardLoadNavigation({ fen: puzzleDraft.fen, pgn }));
+    },
+  });
+
+  const startPuzzle = (event: MouseEvent<HTMLButtonElement>): void => {
+    if (!boardState || gameFinished || navigation || puzzleDraft) return;
+    puzzleLauncher.current = event.currentTarget;
+    practiceScrollTop.current = window.scrollY;
+    setGamePaused(true);
+    clearAutoMoveState();
+    setHoveredMoveUci(null);
+    setCreatedPuzzle(null);
+    setDraftBoardState(null);
+    setPuzzleDraft({ fen: currentFen, orientation: currentTurn, sourcePly: currentPly });
+  };
+
+  const closePuzzle = (result?: PuzzleCreationResult): void => {
+    setPuzzleDraft(null);
+    setDraftNavigation(null);
+    setDraftBoardState(null);
+    setHoveredMoveUci(null);
+    if (result) setCreatedPuzzle(result);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: practiceScrollTop.current, behavior: "instant" });
+      puzzleLauncher.current?.focus({ preventScroll: true });
+    });
+  };
+
+  const navigateToDraftMove = (line: number, index: number): void => {
+    const target = draftBoard.lineTargets[line];
+    if (target) setDraftNavigation(boardLineNavigation(target, index + 1));
+  };
 
   const commitUsername = useCallback(
     (nextUsername: string): void => {
@@ -885,7 +986,7 @@ export const PracticePage = () => {
         opponentSource: "player",
       }));
       navigateToPracticeOpponents(nextUsernames);
-      resetBoardForOpponent();
+      pauseForOpponentChange();
       rememberUsername(trimmedUsername);
 
       if (!allowMultiplePlayers) {
@@ -898,7 +999,7 @@ export const PracticePage = () => {
       navigateToPracticeOpponents,
       opponentUsernames,
       rememberUsername,
-      resetBoardForOpponent,
+      pauseForOpponentChange,
       setSettings,
     ],
   );
@@ -989,6 +1090,7 @@ export const PracticePage = () => {
       const isSpacebarShortcut = action === "playBestMove";
       const isMoveShortcut = shortcutIndex !== null && !isSpacebarShortcut;
       if (
+        puzzleDraft ||
         usernamePickerOpen ||
         !action ||
         event.defaultPrevented ||
@@ -1065,6 +1167,7 @@ export const PracticePage = () => {
     movesOpen,
     playPracticeMove,
     practiceMoves,
+    puzzleDraft,
     requestAlternateAutoMove,
     setAtomicDbEngineSettings,
     setMovesOpen,
@@ -1256,7 +1359,7 @@ export const PracticePage = () => {
     </div>
   );
 
-  const practiceOpeningExplorer = !movesOpen ? (
+  const practiceOpeningExplorer = explorerOpen ? (
     <OpeningExplorerPanel
       className={`practiceMovesPanel ${settingsOpen ? "settingsOpen" : ""}`}
       ariaLabel="Opening explorer"
@@ -1342,7 +1445,7 @@ export const PracticePage = () => {
 
       <AnalysisWorkspacePanel
         ref={practicePanelRef}
-        className={`practicePanel ${!movesOpen ? "explorerOpen" : "explorerCollapsed"} ${movePanelHeight !== null ? "customExplorerSplit" : ""} ${movePanelHeight === 0 ? "movesCollapsed" : ""} ${explorerResizing ? "explorerResizing" : ""}`}
+        className={`practicePanel ${puzzleDraft ? "puzzleDraftOpen" : ""} ${explorerOpen ? "explorerOpen" : "explorerCollapsed"} ${movePanelHeight !== null ? "customExplorerSplit" : ""} ${movePanelHeight === 0 ? "movesCollapsed" : ""} ${explorerResizing ? "explorerResizing" : ""}`}
         style={
           {
             ...(alignedPanelHeight === null
@@ -1383,8 +1486,9 @@ export const PracticePage = () => {
             <button
               type="button"
               onClick={restartPracticeGame}
-              aria-label="Restart game"
-              title="Restart from the initial position"
+              disabled={Boolean(puzzleDraft)}
+              aria-label="Start over"
+              title="Start over from the initial position"
             >
               <FontAwesomeIcon icon={faRotateLeft} aria-hidden="true" />
             </button>
@@ -1393,24 +1497,50 @@ export const PracticePage = () => {
                 type="button"
                 className="practiceRandomBoppButton"
                 onClick={selectRandomPlayer}
-                disabled={randomPlayerLoading || !canChoosePracticePlayer}
+                disabled={Boolean(puzzleDraft) || randomPlayerLoading || !canChoosePracticePlayer}
                 aria-label="Practice a random opponent"
               >
                 <FontAwesomeIcon icon={faDice} />
               </button>
             </span>
+            {auth.isAuthenticated ? (
+              <span className="practiceActionTooltip" data-tooltip="Create puzzle">
+                <button
+                  type="button"
+                  onClick={startPuzzle}
+                  disabled={Boolean(puzzleDraft || navigation) || !boardState || gameFinished}
+                  aria-label="Create puzzle"
+                >
+                  <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
+                </button>
+              </span>
+            ) : null}
             <span className="practiceActionTooltip" data-tooltip="Swap opponent’s move">
               <button
                 type="button"
                 className="practiceAlternateMoveButton"
                 onClick={requestAlternateAutoMove}
-                disabled={status !== "ready"}
+                disabled={Boolean(puzzleDraft) || status !== "ready"}
                 aria-label="Choose a different opponent move"
               >
                 <FontAwesomeIcon icon={faShuffle} />
               </button>
             </span>
           </div>
+          {createdPuzzle ? (
+            <p className="practicePuzzleConfirmation" role="status">
+              {createdPuzzle.destination === "published" ? (
+                <>
+                  Puzzle created.{" "}
+                  <Link to="/solve/$puzzleId" params={{ puzzleId: String(createdPuzzle.puzzleId) }}>
+                    View puzzle
+                  </Link>
+                </>
+              ) : (
+                "Puzzle submitted for review."
+              )}
+            </p>
+          ) : null}
         </div>
 
         <AnalysisEngineExplorerPanels
@@ -1424,43 +1554,87 @@ export const PracticePage = () => {
               settings={atomicDbEngineSettings}
               setSettings={setAtomicDbEngineSettings}
               onDisable={() => setHoveredMoveUci(null)}
-              onFlipBoard={flipPracticeSide}
-              onPlayLine={playAtomicDbLine}
+              onFlipBoard={() => {
+                if (!puzzleDraft) flipPracticeSide();
+                else
+                  setPuzzleDraft({
+                    ...puzzleDraft,
+                    orientation: oppositeSide(puzzleDraft.orientation),
+                  });
+              }}
+              onPlayLine={(ucis) => {
+                if (!puzzleDraft) playAtomicDbLine(ucis);
+                else {
+                  beginVariationPlayback();
+                  setDraftNavigation({ type: "line", ucis });
+                }
+              }}
               onHoverMove={setHoveredMoveUci}
               disabled={atomicDbLinePlaying}
             />
           }
           moveContent={
-            <MoveNotation
-              lines={analysisLines}
-              moves={moveList}
-              currentPly={currentPly}
-              pinnedLineIndex={activeLineIndex}
-              inline
-              onNavigate={navigateToPly}
-              onSelectVariation={navigateToAnalysisMove}
-              onAnnotate={annotateMove}
-            />
+            puzzleDraft ? (
+              <PuzzleComposer
+                fen={puzzleDraft.fen}
+                solution={draftNavigation || draftDocument.pgn.error ? "" : draftMoveText}
+                onCancel={() => closePuzzle()}
+                onAdded={closePuzzle}
+              >
+                <MoveNotation
+                  lines={draftBoard.lines}
+                  moves={draftBoard.moveList}
+                  currentPly={draftBoard.currentPly}
+                  initialPly={startingPlyFromFen(puzzleDraft.fen)}
+                  pinnedLineIndex={draftBoard.activeLineIndex}
+                  inline
+                  onNavigate={(ply) => setDraftNavigation({ type: "history", ply })}
+                  onSelectVariation={navigateToDraftMove}
+                />
+                <AnalysisContinuationChoices
+                  lines={draftBoard.lines}
+                  moves={draftBoard.moveList}
+                  currentPly={draftBoard.currentPly}
+                  initialPly={startingPlyFromFen(puzzleDraft.fen)}
+                  pinnedLineIndex={draftBoard.activeLineIndex}
+                  onSelect={navigateToDraftMove}
+                />
+              </PuzzleComposer>
+            ) : (
+              <MoveNotation
+                lines={analysisLines}
+                moves={moveList}
+                currentPly={currentPly}
+                pinnedLineIndex={activeLineIndex}
+                inline
+                onNavigate={navigateToPly}
+                onSelectVariation={navigateToAnalysisMove}
+                onAnnotate={annotateMove}
+              />
+            )
           }
           explorer={practiceOpeningExplorer}
           continuationChoices={
-            <AnalysisContinuationChoices
-              lines={analysisLines}
-              moves={moveList}
-              currentPly={currentPly}
-              pinnedLineIndex={activeLineIndex}
-              onSelect={navigateToAnalysisMove}
-            />
+            puzzleDraft ? null : (
+              <AnalysisContinuationChoices
+                lines={analysisLines}
+                moves={moveList}
+                currentPly={currentPly}
+                pinnedLineIndex={activeLineIndex}
+                onSelect={navigateToAnalysisMove}
+              />
+            )
           }
         />
 
         <AnalysisToolbar
-          active={!movesOpen}
+          active={explorerOpen}
           ariaLabel="Practice navigation"
-          canStepBack={canStepBack}
-          canStepForward={canStepForward}
+          canStepBack={puzzleDraft ? draftBoard.canStepBack : canStepBack}
+          canStepForward={puzzleDraft ? draftBoard.canStepForward : canStepForward}
           className="practiceToolbar"
           onNavigate={requestNavigation}
+          toggleDisabled={Boolean(puzzleDraft)}
           onToggle={() => {
             setSettingsOpen(false);
             setMovesOpen((open) => !open);
@@ -1502,18 +1676,40 @@ export const PracticePage = () => {
           premovesEnabled:
             sessionStarted && !gamePaused && !gameFinished && !(clockEnabled && clockExpired),
           captureNavigationShortcuts: true,
-          solutionNavigation: navigation,
+          solutionNavigation: puzzleDraft ? null : navigation,
           previewMove: hoveredMoveUci,
           engineMoves,
           onNavigateHandled: handleNavigationHandled,
           onStateChange: handleBoardStateChange,
         }}
+        draftChessboardProps={
+          puzzleDraft
+            ? {
+                puzzleId: "practice-puzzle-draft",
+                fen: puzzleDraft.fen,
+                orientation: puzzleDraft.orientation,
+                coordinates: true,
+                solution: "",
+                showSolution: false,
+                analysisMode: true,
+                captureNavigationShortcuts: true,
+                solutionNavigation: draftNavigation,
+                previewMove: hoveredMoveUci,
+                engineMoves,
+                onNavigateHandled: () => {
+                  finishVariationPlayback();
+                  setDraftNavigation(null);
+                },
+                onStateChange: setDraftBoardState,
+              }
+            : undefined
+        }
         boardOverlay={
           <AtomicDbEvalBar
             fen={atomicDbFen}
             analysis={atomicDbAnalysis}
             enabled={atomicDbEngineSettings.enabled}
-            orientation={side}
+            orientation={puzzleDraft?.orientation ?? side}
           />
         }
         boardAfter={
@@ -1530,8 +1726,14 @@ export const PracticePage = () => {
             <ShareExportPanel
               className="practiceShareExport"
               title="Share & export"
-              document={boardDocument}
-              fileName="atomic-practice.pgn"
+              document={
+                puzzleDraft
+                  ? { ...draftDocument, fen: { value: puzzleDraft.fen, readOnly: true, error: "" } }
+                  : practiceMoveText
+                    ? { ...boardDocument, fen: { value: currentFen, readOnly: true, error: "" } }
+                    : boardDocument
+              }
+              fileName={puzzleDraft ? "atomic-puzzle.pgn" : "atomic-practice.pgn"}
               actions={
                 <>
                   <a href={currentLichessAnalysisUrl} target="_blank" rel="noreferrer">

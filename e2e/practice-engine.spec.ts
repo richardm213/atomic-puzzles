@@ -60,3 +60,67 @@ test("practice plays the engine fallback move when the databases have no move", 
     /^rnbqkbnr\/pppppppp\/8\/8\/4P3\/8\/PPPP1PPP\/RNBQKBNR b /,
   );
 });
+
+test("practice keeps its PGN and position when creating puzzles or changing opponents", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const submissions: unknown[] = [];
+  await page.route("**/api/opening-explorer?**", (route) =>
+    route.fulfill({
+      json: new URL(route.request().url()).searchParams.has("randomPlayer")
+        ? { username: "random-player" }
+        : { moves: [], recentGames: [] },
+    }),
+  );
+  await page.route("**/api/puzzles/submit", (route) => {
+    submissions.push(route.request().postDataJSON());
+    return route.fulfill({ json: { destination: "review", puzzle: { id: 42 } } });
+  });
+
+  await page.goto("/practice");
+  const pgn = page.getByRole("textbox", { name: "PGN", exact: true });
+  const fen = page.getByRole("textbox", { name: "FEN", exact: true });
+  const importPgn = async (text: string) => {
+    await pgn.fill(text);
+    await pgn.press("Enter");
+  };
+  await importPgn("1. e4 (1. d4 d5) e5 2. Nf3");
+  const moves = page.getByRole("region", { name: "Position analysis and played moves" });
+  await moves.getByRole("button", { name: "1. e4", exact: true }).click();
+  await expect(fen).toHaveValue(/4P3.* b /);
+  const savedPgn = await pgn.inputValue();
+  const savedFen = await fen.inputValue();
+
+  const launcher = page
+    .getByRole("group", { name: "Practice controls", exact: true })
+    .getByRole("button", { name: "Create puzzle", exact: true });
+  const composer = moves.getByRole("form", { name: "Puzzle draft" });
+  await launcher.click();
+  await expect(page).toHaveURL(/\?puzzle=1#ply-0$/);
+  await importPgn("1... c5");
+  await composer.getByRole("button", { name: "Cancel" }).click();
+  await expect(launcher).toBeFocused();
+  await expect(pgn).toHaveValue(savedPgn);
+  await expect(fen).toHaveValue(savedFen);
+  expect(submissions).toHaveLength(0);
+
+  await launcher.click();
+  await importPgn("1... c5");
+  await expect(page).toHaveURL(/\?puzzle=1#ply-1$/);
+  await composer.getByRole("button", { name: "Create puzzle" }).click();
+  await expect(page.getByText("Puzzle submitted for review.")).toBeVisible();
+  expect(submissions).toEqual([expect.objectContaining({ fen: savedFen, solution: "1... c5" })]);
+  await expect(pgn).toHaveValue(savedPgn);
+  await expect(fen).toHaveValue(savedFen);
+
+  await page.getByRole("button", { name: "Practice a random opponent" }).click();
+  await expect(page).toHaveURL(/\/practice\/random-player$/);
+  await page.reload();
+  await expect(pgn).toHaveValue(savedPgn);
+  await expect(fen).toHaveValue(savedFen);
+  await page.getByRole("button", { name: "Start over", exact: true }).click();
+  await expect(pgn).not.toHaveValue(/\be4\b|\bd4\b/);
+  await page.reload();
+  await expect(pgn).not.toHaveValue(/\be4\b|\bd4\b/);
+});

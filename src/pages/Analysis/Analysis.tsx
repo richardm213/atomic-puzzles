@@ -37,6 +37,7 @@ import {
   OpeningExplorerPanel,
   OpeningExplorerResizeHandle,
 } from "../../features/analysisWorkspace/OpeningExplorerPanel";
+import { PuzzleComposer, type PuzzleCreationResult } from "../../features/analysisWorkspace/PuzzleComposer";
 import {
   useBoardAlignedPanelHeight,
   useOpeningExplorerSplit,
@@ -71,7 +72,6 @@ import {
   startingPlyFromFen,
 } from "../../lib/chess/pgn";
 import { keyboardShortcutAction } from "../../lib/keyboardShortcuts";
-import type { MatchPuzzleResult } from "../../lib/puzzles/matchPuzzles";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
 import { atomicDbPositionUrl, requestAtomicDbAnalysis } from "../../utils/atomicDb";
 import { selectSpacebarMove } from "../../utils/boardMoveSelection";
@@ -89,7 +89,6 @@ import {
   GameMatchNavigation,
 } from "../Game/GameAnalysisHeader";
 import { GameComputerAnalysis, GameComputerAnalysisPlayers } from "../Game/GameComputerAnalysis";
-import { GamePuzzleComposer } from "../Game/GamePuzzleComposer";
 import { GameUnderboard, type GameUnderboardTab } from "../Game/GameUnderboard";
 
 const EXPLORER_RESIZE_STEP = 24;
@@ -410,7 +409,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     orientation: "white" | "black";
     sourcePly: number;
   } | null>(null);
-  const [addedPuzzle, setAddedPuzzle] = useState<MatchPuzzleResult | null>(null);
+  const [addedPuzzle, setAddedPuzzle] = useState<PuzzleCreationResult | null>(null);
   const puzzleLauncher = useRef<HTMLButtonElement | null>(null);
   const gameScrollTop = useRef(0);
   const boardState = puzzleDraft ? puzzleBoardState : gameBoardState;
@@ -735,7 +734,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     });
   };
 
-  const closePuzzle = (result?: MatchPuzzleResult): void => {
+  const closePuzzle = (result?: PuzzleCreationResult): void => {
     setNavigation(null);
     setPuzzleDraft(null);
     setPuzzleBoardState(null);
@@ -1523,9 +1522,8 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
             }
             moveContent={
               game && puzzleDraft ? (
-                <GamePuzzleComposer
-                  gameId={game.game_id}
-                  matchId={game.external_match_id}
+                <PuzzleComposer
+                  match={{ gameId: game.game_id, matchId: game.external_match_id }}
                   fen={puzzleDraft.fen}
                   solution={navigation || boardDocument.pgn.error ? "" : pgnText}
                   moveContentRef={moveContentRef}
@@ -1534,7 +1532,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                 >
                   {moveNotation}
                   {continuationChoices}
-                </GamePuzzleComposer>
+                </PuzzleComposer>
               ) : (
                 moveNotation
               )

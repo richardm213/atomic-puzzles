@@ -1,6 +1,8 @@
+import "./PuzzleComposer.css";
+
 import { faPencil, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FormEvent, ReactNode, Ref } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
@@ -8,15 +10,19 @@ import {
   addMatchPuzzle,
   fetchMatchPuzzleContext,
   matchPuzzleContextKey,
-  type MatchPuzzleResult,
 } from "../../lib/puzzles/matchPuzzles";
 import { puzzleQueryKeys } from "../../lib/puzzles/puzzleQueries";
-import { DIFFERENT_START_MOVE_CONFIRMATION } from "../../lib/supabase/puzzleQueue";
+import { DIFFERENT_START_MOVE_CONFIRMATION, submitPuzzle } from "../../lib/supabase/puzzleQueue";
 import { getErrorMessage } from "../../utils/errors";
 
-export const GamePuzzleComposer = ({
-  gameId,
-  matchId,
+export type PuzzleCreationResult =
+  | { destination: "published"; puzzleId: number }
+  | {
+      destination: "review";
+    };
+
+export const PuzzleComposer = ({
+  match,
   fen,
   solution,
   children,
@@ -24,19 +30,18 @@ export const GamePuzzleComposer = ({
   onCancel,
   onAdded,
 }: {
-  gameId: string;
-  matchId: string;
+  match?: { gameId: string; matchId: string };
   fen: string;
   solution: string;
   children: ReactNode;
-  moveContentRef: Ref<HTMLDivElement>;
+  moveContentRef?: Ref<HTMLDivElement>;
   onCancel: () => void;
-  onAdded: (result: MatchPuzzleResult) => void;
+  onAdded: (result: PuzzleCreationResult) => void;
 }) => {
   const queryClient = useQueryClient();
   const context = useQuery({
-    queryKey: matchPuzzleContextKey(matchId),
-    queryFn: () => fetchMatchPuzzleContext(gameId),
+    queryKey: matchPuzzleContextKey(match?.matchId ?? ""),
+    queryFn: match ? () => fetchMatchPuzzleContext(match.gameId) : skipToken,
     refetchOnWindowFocus: false,
   });
   const [matchName, setMatchName] = useState("");
@@ -52,7 +57,9 @@ export const GamePuzzleComposer = ({
   const checkingName = context.isFetching && !context.data?.setName;
   const needsName = !checkingName && !context.isError && context.data?.setName === null;
   const setName = context.data?.setName;
-  const canSave = Boolean(solution && (renameFrom || needsName ? matchName.trim() : setName));
+  const canSave = Boolean(
+    solution && (!match || (renameFrom || needsName ? matchName.trim() : setName)),
+  );
   const confirmDifferentStart = error === DIFFERENT_START_MOVE_CONFIRMATION;
 
   useEffect(() => {
@@ -78,26 +85,35 @@ export const GamePuzzleComposer = ({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!canSave || !context.data || savingRef.current) return;
+    if (!canSave || (match && !context.data) || savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
     setError("");
     const newName = matchName.trim();
     const renaming = Boolean(renameFrom && renameFrom !== newName);
     try {
-      const result = await addMatchPuzzle({
-        gameId,
-        fen,
-        solution,
-        matchName: renaming || needsName ? newName : "",
-        ...(renaming && renameFrom ? { renameFrom } : {}),
-        allowDifferentStartMove: confirmDifferentStart,
-      });
-      queryClient.setQueryData(matchPuzzleContextKey(matchId), {
-        ...context.data,
-        setName: result.setName,
-        canRenameSet: context.data.canRenameSet && result.setName.includes(matchId),
-      });
+      let result: PuzzleCreationResult;
+      if (match && context.data) {
+        const matchResult = await addMatchPuzzle({
+          gameId: match.gameId,
+          fen,
+          solution,
+          matchName: renaming || needsName ? newName : "",
+          ...(renaming && renameFrom ? { renameFrom } : {}),
+          allowDifferentStartMove: confirmDifferentStart,
+        });
+        queryClient.setQueryData(matchPuzzleContextKey(match.matchId), {
+          ...context.data,
+          setName: matchResult.setName,
+          canRenameSet: context.data.canRenameSet && matchResult.setName.includes(match.matchId),
+        });
+        result = matchResult;
+      } else {
+        result = await submitPuzzle(
+          { fen, solution, event: "", explanation: "" },
+          { allowDifferentStartMove: confirmDifferentStart },
+        );
+      }
       if (result.destination === "published" || renaming) {
         void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.catalog });
       }
@@ -112,14 +128,14 @@ export const GamePuzzleComposer = ({
 
   return (
     <form
-      className="gamePuzzleComposer"
+      className="boardPuzzleComposer"
       aria-label="Puzzle draft"
       onSubmit={(event) => void submit(event)}
     >
-      <div className="analysisMoveContent gamePuzzleComposerBody" ref={moveContentRef}>
+      <div className="analysisMoveContent boardPuzzleComposerBody" ref={moveContentRef}>
         {checkingName ? <p role="status">Loading match set…</p> : null}
         {context.isError ? (
-          <div className="gamePuzzleComposerRetry">
+          <div className="boardPuzzleComposerRetry">
             <p role="alert">{getErrorMessage(context.error, "Unable to load the match set.")}</p>
             <button
               type="button"
@@ -131,7 +147,7 @@ export const GamePuzzleComposer = ({
           </div>
         ) : null}
         {needsName && context.data ? (
-          <div className="gamePuzzleComposerField">
+          <div className="boardPuzzleComposerField">
             <label htmlFor={matchNameId}>Match name</label>
             <p id={helpId}>We’ll save {context.data.players.join(" vs ")} with this name.</p>
             <input
@@ -149,10 +165,10 @@ export const GamePuzzleComposer = ({
         ) : null}
         {children}
       </div>
-      <div className="gamePuzzleComposerFooter">
+      <div className="boardPuzzleComposerFooter">
         {renameFrom ? (
-          <div className="gamePuzzleSetName">
-            <div className="gamePuzzleComposerField">
+          <div className="boardPuzzleSetName">
+            <div className="boardPuzzleComposerField">
               <label htmlFor={matchNameId}>Set name</label>
               <input
                 id={matchNameId}
@@ -171,7 +187,7 @@ export const GamePuzzleComposer = ({
               />
             </div>
             <button
-              className="gamePuzzleSetEdit"
+              className="boardPuzzleSetEdit"
               type="button"
               aria-label="Keep current set name"
               title="Keep current set name"
@@ -182,11 +198,11 @@ export const GamePuzzleComposer = ({
             </button>
           </div>
         ) : setName ? (
-          <div className="gamePuzzleSetName">
+          <div className="boardPuzzleSetName">
             <p>Set: {setName}</p>
             {context.data?.canRenameSet ? (
               <button
-                className="gamePuzzleSetEdit"
+                className="boardPuzzleSetEdit"
                 ref={editNameRef}
                 type="button"
                 aria-label="Edit set name"
@@ -203,11 +219,11 @@ export const GamePuzzleComposer = ({
           </div>
         ) : null}
         {error ? (
-          <p className="gamePuzzleComposerError" role="alert">
+          <p className="boardPuzzleComposerError" role="alert">
             {error}
           </p>
         ) : null}
-        <div className="gamePuzzleComposerActions">
+        <div className="boardPuzzleComposerActions">
           <button type="button" ref={cancelRef} disabled={saving} onClick={onCancel}>
             Cancel
           </button>
