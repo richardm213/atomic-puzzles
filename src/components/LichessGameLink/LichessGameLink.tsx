@@ -11,6 +11,7 @@ export type LichessGameLinkProps = {
   gameId: string | number;
   source?: unknown;
   mode?: unknown;
+  openInAtomicPuzzles?: boolean | undefined;
   children?: ReactNode;
   className?: string;
   onClick?: MouseEventHandler<HTMLAnchorElement> | undefined;
@@ -27,6 +28,7 @@ export const LichessGameLink = ({
   gameId,
   source,
   mode,
+  openInAtomicPuzzles,
   children,
   className = "rankingLink",
   onClick,
@@ -44,7 +46,9 @@ export const LichessGameLink = ({
     .replace(/^(?:chesscom|pychess):/i, "")
     .trim();
   const internalGameUrl = buildAtomicPuzzlesGameUrl(normalizedGameId);
-  if (shouldUseAtomicPuzzlesGameLink({ source, mode, lichessLinkTarget }) && internalGameUrl) {
+  const useAtomicPuzzles =
+    openInAtomicPuzzles ?? shouldUseAtomicPuzzlesGameLink({ source, mode, lichessLinkTarget });
+  if (useAtomicPuzzles && internalGameUrl) {
     return (
       <a
         className={className}
@@ -57,7 +61,7 @@ export const LichessGameLink = ({
       </a>
     );
   }
-  const gameUrl = buildExternalGameUrl(gameId, {
+  const gameUrl = buildExternalGameUrl(openInAtomicPuzzles === false ? normalizedGameId : gameId, {
     source,
     ...(orientation ? { orientation } : {}),
     ...(ply !== undefined ? { ply } : {}),

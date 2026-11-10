@@ -2,6 +2,7 @@ import "./MatchPage.css";
 
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
+import { useState } from "react";
 
 import { BannedPlayerMark } from "../../components/BannedPlayerMark/BannedPlayerMark";
 import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
@@ -10,6 +11,7 @@ import { CommunityDiscussion } from "../../components/PuzzleCommunity/PuzzleComm
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { modeLabels } from "../../constants/matches";
+import { useAppSettings } from "../../context/AppSettings";
 import { toMatchCardData } from "../../lib/matches/data";
 import { matchupToSlug } from "../../lib/matches/h2hRoutes";
 import { matchDetailQueryOptions } from "../../lib/matches/queries";
@@ -21,6 +23,13 @@ import { formatLocalDateTime, formatScore, formatSignedDecimal } from "../../uti
 export const MatchPage = () => {
   const { matchId: matchIdParam } = useParams({ strict: false });
   const decodedMatchId = decodeRouteParam(matchIdParam);
+  return <MatchPageContent key={decodedMatchId} decodedMatchId={decodedMatchId} />;
+};
+
+const MatchPageContent = ({ decodedMatchId }: { decodedMatchId: string }) => {
+  const { lichessLinkTarget } = useAppSettings();
+  const [linkOverride, setLinkOverride] = useState<boolean>();
+  const openInAtomicPuzzles = linkOverride ?? lichessLinkTarget === "atomic-puzzles";
   const hasValidMatchKey = Boolean(decodedMatchId);
   const matchQuery = useQuery({
     ...matchDetailQueryOptions(decodedMatchId),
@@ -125,13 +134,25 @@ export const MatchPage = () => {
                       </span>
                     </Link>
                   ) : null}
-                  <Link
-                    className="matchPageH2HLink"
-                    to="/h2h/$matchup"
-                    params={{ matchup: matchupToSlug(match.playerA, match.playerB) }}
-                  >
-                    View H2H
-                  </Link>
+                  <div className="matchPageMatchActions">
+                    <Link
+                      className="matchPageH2HLink"
+                      to="/h2h/$matchup"
+                      params={{ matchup: matchupToSlug(match.playerA, match.playerB) }}
+                    >
+                      View H2H
+                    </Link>
+                    {match.games.length > 0 ? (
+                      <label className="matchPageGameLinkOption">
+                        <input
+                          type="checkbox"
+                          checked={openInAtomicPuzzles}
+                          onChange={(event) => setLinkOverride(event.target.checked)}
+                        />
+                        <span>Open game links in Atomic Puzzles</span>
+                      </label>
+                    ) : null}
+                  </div>
                 </div>
               </section>
 
@@ -139,6 +160,7 @@ export const MatchPage = () => {
                 <MatchDetails
                   match={match}
                   matchKey={`standalone-${match.matchId || match.firstGameId}`}
+                  openInAtomicPuzzles={openInAtomicPuzzles}
                   showRunningScore
                   showSummary={false}
                 />

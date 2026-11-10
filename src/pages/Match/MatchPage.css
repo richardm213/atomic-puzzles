@@ -184,6 +184,42 @@
   align-items: start;
 }
 
+.matchPageMatchActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.matchPageMatchActions .matchPageH2HLink {
+  grid-column: 2;
+}
+
+.matchPageGameLinkOption {
+  display: inline-flex;
+  grid-column: 3;
+  justify-self: start;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.matchPageGameLinkOption:hover,
+.matchPageGameLinkOption:focus-within {
+  color: var(--color-heading);
+}
+
+.matchPageGameLinkOption input {
+  flex: none;
+  margin: 0;
+}
+
 .matchPageContent .matchGames {
   overflow: hidden;
   border-radius: 14px;

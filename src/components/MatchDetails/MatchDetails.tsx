@@ -11,6 +11,7 @@ import { MatchH2HLink } from "../MatchH2HLink/MatchH2HLink";
 export type MatchDetailsProps = {
   match: MatchCardData;
   matchKey: string;
+  openInAtomicPuzzles?: boolean;
   showH2HLink?: boolean;
   showRunningScore?: boolean;
   showSummary?: boolean;
@@ -27,6 +28,7 @@ const getMatchSourceLabel = (sourceValue: unknown): string => {
 export const MatchDetails = ({
   match,
   matchKey,
+  openInAtomicPuzzles,
   showH2HLink = false,
   showRunningScore = false,
   showSummary = true,
@@ -100,6 +102,7 @@ export const MatchDetails = ({
                 gameId={game.id}
                 source={match.sourceValue}
                 mode={match.mode}
+                openInAtomicPuzzles={openInAtomicPuzzles}
                 onClick={stopPropagation}
               >
                 {game.id}
