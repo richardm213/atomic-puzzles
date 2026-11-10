@@ -2,6 +2,7 @@ import { faArrowLeft, faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
+import type { Ref } from "react";
 
 import { BoardClock } from "../../components/BoardClock/BoardClock";
 import { lichessIcons } from "../../components/PlayerHoverCard/lichessIcons";
@@ -90,10 +91,12 @@ export const GameBoardClock = ({
   game,
   currentPly,
   color,
+  rowRef,
 }: {
   game: ArchiveGame;
   currentPly: number;
   color: "white" | "black";
+  rowRef?: Ref<HTMLDivElement> | undefined;
 }) => {
   const { white, black } = decodeGameResult(game);
   const startingClock = initialClock(game.time_control);
@@ -105,6 +108,7 @@ export const GameBoardClock = ({
 
   return (
     <BoardClock
+      rowRef={rowRef}
       value={formatClock(clock)}
       ariaLabel={`${username} clock, ${active ? "to move" : "waiting"}`}
       active={active}

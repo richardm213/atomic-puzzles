@@ -14,6 +14,7 @@
     max(440px, var(--analysis-board-column-height)),
     var(--analysis-side-panel-max-height)
   );
+  --analysis-default-explorer-split: minmax(0, 3fr) minmax(0, 2fr);
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
   width: min(100%, max(1200px, calc(var(--analysis-board-size, 516px) + 426px)));
@@ -204,7 +205,7 @@ body:has(.analysisPage),
   height: var(--analysis-side-panel-height);
   max-height: var(--analysis-side-panel-max-height);
   min-height: 0;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: var(--analysis-default-explorer-split) auto;
   overflow: hidden;
 }
 
@@ -221,6 +222,10 @@ body:has(.analysisPage),
   grid-template-rows: minmax(0, 1fr) auto;
 }
 
+.analysisRightPanel.explorerCollapsed:has(> .analysisContinuationChoices) {
+  grid-template-rows: minmax(0, 1fr) auto auto;
+}
+
 .analysisMovePanel {
   --move-content-start-outset: calc(var(--space-1) / 2);
   --move-content-end-outset: var(--space-1);
@@ -233,10 +238,6 @@ body:has(.analysisPage),
   margin-inline: calc(-1 * var(--move-content-start-outset))
     calc(-1 * var(--move-content-end-outset));
   overflow: hidden;
-}
-
-.analysisRightPanel:not(.customExplorerSplit):not(.explorerCollapsed) .analysisMovePanel {
-  grid-template-rows: auto 0;
 }
 
 .analysisEngineBlock {
@@ -521,6 +522,17 @@ button.analysisLichessLink {
   color: var(--color-danger);
   font-size: 11px;
   line-height: 1.35;
+}
+
+.analysisExplorerStack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.analysisExplorerStack > .analysisOpeningExplorer {
+  flex: 1;
 }
 
 .analysisExplorerPanel {
@@ -1544,6 +1556,7 @@ button.analysisLichessLink {
 @media (max-width: 560px) {
   .analysisPage {
     --analysis-side-panel-height: auto;
+    --analysis-default-explorer-split: clamp(180px, 36dvh, 280px) clamp(160px, 28dvh, 220px);
     padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right));
     padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
   }

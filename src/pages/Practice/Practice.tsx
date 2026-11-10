@@ -14,14 +14,11 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
-import type {
-  CSSProperties,
-  KeyboardEvent as ReactKeyboardEvent,
-  PointerEvent as ReactPointerEvent,
-} from "react";
+import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
+import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardClock } from "../../components/BoardClock/BoardClock";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
@@ -47,6 +44,10 @@ import {
   OpeningExplorerPanel,
   OpeningExplorerResizeHandle,
 } from "../../features/analysisWorkspace/OpeningExplorerPanel";
+import {
+  useBoardAlignedPanelHeight,
+  useOpeningExplorerSplit,
+} from "../../features/analysisWorkspace/useAnalysisWorkspaceLayout";
 import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
@@ -113,10 +114,6 @@ const formatClockTime = (milliseconds: number): string => {
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 };
-
-const MIN_PRACTICE_MOVE_PANEL_HEIGHT = 0;
-const MIN_PRACTICE_EXPLORER_HEIGHT = 12;
-const EXPLORER_RESIZE_STEP = 24;
 
 const oppositeSide = (side: PracticeSide): PracticeSide => (side === "white" ? "black" : "white");
 
@@ -239,6 +236,7 @@ export const PracticePage = () => {
     [navigate],
   );
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
+  const lowerClockRef = useRef<HTMLDivElement | null>(null);
   const practicePanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
   const remainingClockMsRef = useRef(clockMinutes * 60_000);
@@ -260,8 +258,23 @@ export const PracticePage = () => {
   const [exhaustedFen, setExhaustedFen] = useState<string | null>(null);
   const [movesOpen, setMovesOpen] = usePersistedState(MOVES_OPEN_STORAGE_KEY, z.boolean(), true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [movePanelHeight, setMovePanelHeight] = useState<number | null>(null);
-  const [explorerResizing, setExplorerResizing] = useState(false);
+  const alignedPanelHeight = useBoardAlignedPanelHeight(
+    practicePanelRef,
+    boardPanelRef,
+    lowerClockRef,
+    clockEnabled,
+  );
+  const {
+    movePanelHeight,
+    resizing: explorerResizing,
+    separatorProps,
+  } = useOpeningExplorerSplit({
+    scope: "practice",
+    enabled: !movesOpen,
+    panelRef: practicePanelRef,
+    movePanelRef,
+    defaultPercent: 60,
+  });
   const [hoveredMoveUci, setHoveredMoveUci] = useState<string | null>(null);
   const [randomPlayerLoading, setRandomPlayerLoading] = useState(false);
   const [randomPlayerError, setRandomPlayerError] = useState("");
@@ -1062,86 +1075,6 @@ export const PracticePage = () => {
     keyboardShortcuts,
   ]);
 
-  const clampMovePanelHeight = useCallback((nextHeight: number): number | null => {
-    const panel = practicePanelRef.current;
-    if (!panel) return null;
-
-    const panelStyles = window.getComputedStyle(panel);
-    const panelContentHeight =
-      panel.clientHeight -
-      (Number.parseFloat(panelStyles.paddingTop) || 0) -
-      (Number.parseFloat(panelStyles.paddingBottom) || 0);
-    const rowGap = Number.parseFloat(panelStyles.rowGap) || 0;
-    const sessionControls = panel.querySelector<HTMLElement>(".practiceSessionControls");
-    const toolbar = panel.querySelector<HTMLElement>(".analysisBottomToolbar");
-    const reservedHeight =
-      (sessionControls?.getBoundingClientRect().height ?? 0) +
-      (toolbar?.getBoundingClientRect().height ?? 0) +
-      rowGap * 3;
-    const maxHeight = Math.max(
-      MIN_PRACTICE_MOVE_PANEL_HEIGHT,
-      panelContentHeight - reservedHeight - MIN_PRACTICE_EXPLORER_HEIGHT,
-    );
-    return Math.round(Math.min(Math.max(nextHeight, MIN_PRACTICE_MOVE_PANEL_HEIGHT), maxHeight));
-  }, []);
-
-  const adjustExplorerSplit = useCallback(
-    (delta: number): void => {
-      const fallbackHeight =
-        movePanelRef.current?.getBoundingClientRect().height ?? MIN_PRACTICE_MOVE_PANEL_HEIGHT;
-      const nextHeight = clampMovePanelHeight((movePanelHeight ?? fallbackHeight) + delta);
-      if (nextHeight !== null) setMovePanelHeight(nextHeight);
-    },
-    [clampMovePanelHeight, movePanelHeight],
-  );
-
-  const handleExplorerResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
-    if (!practicePanelRef.current) return;
-
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setExplorerResizing(true);
-
-    const ownerDocument = event.currentTarget.ownerDocument;
-    const startY = event.clientY;
-    const startHeight =
-      movePanelHeight ??
-      movePanelRef.current?.getBoundingClientRect().height ??
-      MIN_PRACTICE_MOVE_PANEL_HEIGHT;
-    const finishResize = (): void => {
-      setExplorerResizing(false);
-      ownerDocument.removeEventListener("pointermove", handlePointerMove);
-      ownerDocument.removeEventListener("pointerup", finishResize);
-      ownerDocument.removeEventListener("pointercancel", finishResize);
-    };
-    const handlePointerMove = (pointerEvent: PointerEvent): void => {
-      pointerEvent.preventDefault();
-      const nextHeight = clampMovePanelHeight(startHeight + pointerEvent.clientY - startY);
-      if (nextHeight !== null) setMovePanelHeight(nextHeight);
-    };
-
-    ownerDocument.addEventListener("pointermove", handlePointerMove);
-    ownerDocument.addEventListener("pointerup", finishResize);
-    ownerDocument.addEventListener("pointercancel", finishResize);
-  };
-
-  const handleExplorerResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      adjustExplorerSplit(-EXPLORER_RESIZE_STEP);
-    } else if (event.key === "ArrowDown") {
-      event.preventDefault();
-      adjustExplorerSplit(EXPLORER_RESIZE_STEP);
-    }
-  };
-
-  const explorerSplitValue =
-    movePanelHeight === null
-      ? 40
-      : Math.round(
-          (movePanelHeight / Math.max(1, practicePanelRef.current?.clientHeight ?? 1)) * 100,
-        );
-
   const practiceSettingsContent = (
     <div className="analysisFilterPanel practiceSettingsPanel" id="practice-settings-panel">
       {opponentSource === "player" ? (
@@ -1349,11 +1282,7 @@ export const PracticePage = () => {
             }
       }
     >
-      <OpeningExplorerResizeHandle
-        valueNow={explorerSplitValue}
-        onPointerDown={handleExplorerResizePointerDown}
-        onKeyDown={handleExplorerResizeKeyDown}
-      />
+      <OpeningExplorerResizeHandle {...separatorProps} />
       <section className="practiceSettings" aria-label="Opponent settings">
         <OpeningExplorerCompactHeader
           controlsId="practice-settings-panel"
@@ -1413,11 +1342,21 @@ export const PracticePage = () => {
 
       <AnalysisWorkspacePanel
         ref={practicePanelRef}
-        className={`practicePanel ${!movesOpen ? "explorerOpen" : "explorerCollapsed"} ${movePanelHeight !== null ? "customExplorerSplit" : ""} ${movePanelHeight === MIN_PRACTICE_MOVE_PANEL_HEIGHT ? "movesCollapsed" : ""} ${explorerResizing ? "explorerResizing" : ""}`}
+        className={`practicePanel ${!movesOpen ? "explorerOpen" : "explorerCollapsed"} ${movePanelHeight !== null ? "customExplorerSplit" : ""} ${movePanelHeight === 0 ? "movesCollapsed" : ""} ${explorerResizing ? "explorerResizing" : ""}`}
         style={
-          movePanelHeight !== null
-            ? ({ "--practice-move-panel-height": `${movePanelHeight}px` } as CSSProperties)
-            : undefined
+          {
+            ...(alignedPanelHeight === null
+              ? {}
+              : {
+                  "--analysis-side-panel-height": `${alignedPanelHeight}px`,
+                  "--analysis-side-panel-max-height": `${alignedPanelHeight}px`,
+                }),
+            ...(movePanelHeight === null
+              ? {}
+              : {
+                  "--practice-move-panel-height": `${movePanelHeight}px`,
+                }),
+          } as CSSProperties
         }
         aria-label="Practice controls"
       >
@@ -1500,11 +1439,19 @@ export const PracticePage = () => {
               inline
               onNavigate={navigateToPly}
               onSelectVariation={navigateToAnalysisMove}
-              onCycleOptions={requestNavigation}
               onAnnotate={annotateMove}
             />
           }
           explorer={practiceOpeningExplorer}
+          continuationChoices={
+            <AnalysisContinuationChoices
+              lines={analysisLines}
+              moves={moveList}
+              currentPly={currentPly}
+              pinnedLineIndex={activeLineIndex}
+              onSelect={navigateToAnalysisMove}
+            />
+          }
         />
 
         <AnalysisToolbar
@@ -1573,6 +1520,7 @@ export const PracticePage = () => {
           <>
             {clockEnabled ? (
               <BoardClock
+                rowRef={lowerClockRef}
                 value={formatClockTime(remainingClockMs)}
                 ariaLabel={`Your clock: ${formatClockTime(remainingClockMs)}`}
                 active={clockRunning}

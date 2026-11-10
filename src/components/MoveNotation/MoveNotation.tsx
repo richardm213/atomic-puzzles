@@ -25,7 +25,8 @@ export const MoveNotation = ({
   inline: boolean;
   onNavigate: (ply: number) => void;
   onSelectVariation: (lineIndex: number, moveIndex: number) => void;
-  onCycleOptions: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
+  onCycleOptions?:
+    ((command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void) | undefined;
   onAnnotate?:
     ((lineIndex: number | undefined, moveIndex: number, annotation: string) => void) | undefined;
   onDelete?: ((lineIndex: number, moveIndex: number) => void) | undefined;

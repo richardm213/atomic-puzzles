@@ -5,6 +5,7 @@ const classNames = (...names: Array<string | undefined>): string => names.filter
 type AnalysisEngineExplorerPanelsProps = {
   engine: ReactNode;
   explorer?: ReactNode;
+  continuationChoices?: ReactNode;
   moveContent: ReactNode;
   moveContentRef?: Ref<HTMLDivElement>;
   movePanelAriaLabel?: string;
@@ -12,10 +13,24 @@ type AnalysisEngineExplorerPanelsProps = {
   movePanelRef?: Ref<HTMLDivElement>;
 };
 
+const AnalysisExplorerStack = ({
+  continuationChoices,
+  explorer,
+}: {
+  continuationChoices: ReactNode;
+  explorer: ReactNode;
+}) => (
+  <div className="analysisExplorerStack">
+    {continuationChoices}
+    {explorer}
+  </div>
+);
+
 /** Shared engine-first stack used by analysis, game analysis, and practice. */
 export const AnalysisEngineExplorerPanels = ({
   engine,
   explorer,
+  continuationChoices,
   moveContent,
   moveContentRef,
   movePanelAriaLabel,
@@ -34,6 +49,10 @@ export const AnalysisEngineExplorerPanels = ({
         {moveContent}
       </div>
     </div>
-    {explorer}
+    {explorer && continuationChoices ? (
+      <AnalysisExplorerStack continuationChoices={continuationChoices} explorer={explorer} />
+    ) : (
+      (explorer ?? continuationChoices)
+    )}
   </>
 );

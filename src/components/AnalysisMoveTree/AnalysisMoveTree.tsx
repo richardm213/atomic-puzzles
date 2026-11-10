@@ -25,6 +25,79 @@ import {
   variationOptions,
 } from "../VariationTree/VariationTree";
 
+type CycleOptions = (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
+
+export const AnalysisContinuationChoices = ({
+  lines,
+  moves,
+  currentPly,
+  pinnedLineIndex,
+  initialPly = 0,
+  onSelect,
+  onCycleOptions,
+}: {
+  lines: string[][];
+  moves: string[];
+  currentPly: number;
+  pinnedLineIndex?: number | undefined;
+  initialPly?: number | undefined;
+  onSelect: (lineIndex: number, moveIndex: number) => void;
+  onCycleOptions?: CycleOptions | undefined;
+}) => {
+  const matchingLines = matchingLineIndexes(lines, moves.slice(0, currentPly));
+  const options = variationOptions(lines, currentPly, matchingLines);
+  if (options.length < 2) return null;
+
+  const activeLine = activeLineIndex(matchingLines, pinnedLineIndex ?? null);
+  const activeMove =
+    options.find((option) => option.lineIndex === activeLine)?.move ?? options[0]?.move;
+  const ply = initialPly + currentPly;
+
+  return (
+    <div
+      className={`analysisContinuationChoices${onCycleOptions ? "" : " compact"}`}
+      role="group"
+      aria-label="Choose continuation"
+    >
+      <span>{options.length} options</span>
+      <div className="analysisContinuationMoves">
+        {options.map((option) => (
+          <button
+            key={`${option.lineIndex}-${option.plyIndex}-${option.move}`}
+            type="button"
+            className={option.move === activeMove ? "active" : ""}
+            aria-current={option.move === activeMove ? "true" : undefined}
+            onClick={() => onSelect(option.lineIndex, option.plyIndex)}
+          >
+            {movePrefix(ply, ply % 2 === 1)}
+            {option.move}
+          </button>
+        ))}
+      </div>
+      {onCycleOptions && (
+        <div className="analysisContinuationArrows">
+          <button
+            type="button"
+            aria-label="Previous continuation"
+            title="Previous continuation (Arrow Up)"
+            onClick={() => onCycleOptions("previousOption")}
+          >
+            <FontAwesomeIcon icon={faChevronUp} />
+          </button>
+          <button
+            type="button"
+            aria-label="Next continuation"
+            title="Next continuation (Arrow Down)"
+            onClick={() => onCycleOptions("nextOption")}
+          >
+            <FontAwesomeIcon icon={faChevronDown} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const BLOCK_VARIATION_MIN_PLIES = 5;
 
 const isLongVariation = (node: IndexedSolutionMoveNode): boolean => {
@@ -56,7 +129,7 @@ export const AnalysisMoveTree = ({
   initialPly?: number | undefined;
   inline?: boolean;
   onSelect: (lineIndex: number, moveIndex: number) => void;
-  onCycleOptions: (command: Extract<PlaybackCommand, "previousOption" | "nextOption">) => void;
+  onCycleOptions?: CycleOptions | undefined;
   onAnnotate?: ((lineIndex: number, moveIndex: number, annotation: string) => void) | undefined;
   onDelete?: ((lineIndex: number, moveIndex: number) => void) | undefined;
   assessments?: GameMoveAssessment[] | undefined;
@@ -74,9 +147,6 @@ export const AnalysisMoveTree = ({
   const currentMoves = moves.slice(0, currentPly);
   const matchingLines = matchingLineIndexes(lines, currentMoves);
   const activeLine = activeLineIndex(matchingLines, pinnedLineIndex ?? null);
-  const options = variationOptions(lines, currentPly, matchingLines);
-  const activeMove =
-    options.find((option) => option.lineIndex === activeLine)?.move ?? options[0]?.move;
   const tree = buildIndexedSolutionMoveTree(lines);
 
   const renderMove = (
@@ -164,43 +234,17 @@ export const AnalysisMoveTree = ({
 
   return (
     <>
-      {options.length >= 2 ? (
-        <div className="analysisContinuationChoices" aria-label="Choose continuation">
-          <span>{options.length} options</span>
-          <div className="analysisContinuationMoves">
-            {options.map((option) => (
-              <button
-                key={`${option.lineIndex}-${option.plyIndex}-${option.move}`}
-                type="button"
-                className={option.move === activeMove ? "active" : ""}
-                aria-current={option.move === activeMove ? "true" : undefined}
-                onClick={() => onSelect(option.lineIndex, option.plyIndex)}
-              >
-                {movePrefix(initialPly + currentPly, (initialPly + currentPly) % 2 === 1)}
-                {option.move}
-              </button>
-            ))}
-          </div>
-          <div className="analysisContinuationArrows">
-            <button
-              type="button"
-              aria-label="Previous continuation"
-              title="Previous continuation (Arrow Up)"
-              onClick={() => onCycleOptions("previousOption")}
-            >
-              <FontAwesomeIcon icon={faChevronUp} />
-            </button>
-            <button
-              type="button"
-              aria-label="Next continuation"
-              title="Next continuation (Arrow Down)"
-              onClick={() => onCycleOptions("nextOption")}
-            >
-              <FontAwesomeIcon icon={faChevronDown} />
-            </button>
-          </div>
-        </div>
-      ) : null}
+      {onCycleOptions && (
+        <AnalysisContinuationChoices
+          lines={lines}
+          moves={moves}
+          currentPly={currentPly}
+          pinnedLineIndex={pinnedLineIndex}
+          initialPly={initialPly}
+          onSelect={onSelect}
+          onCycleOptions={onCycleOptions}
+        />
+      )}
       <div
         className={`analysisTree ${inline ? "inline" : "nonInline"}`}
         role="list"

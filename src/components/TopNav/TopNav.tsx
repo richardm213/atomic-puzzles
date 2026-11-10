@@ -194,8 +194,6 @@ export const TopNav = () => {
     setPuzzleAnalysisTarget,
     lichessLinkTarget,
     setLichessLinkTarget,
-    gameExplorerOnLeft,
-    setGameExplorerOnLeft,
     localAnalysisEngine,
     setLocalAnalysisEngine,
     showBestMoveArrow,
@@ -1021,18 +1019,6 @@ export const TopNav = () => {
                   />
                 </label>
               </div>
-              {/^\/game\/[^/]+\/?$/.test(pathname) ? (
-                <div className="navSettingsSection">
-                  <label className="navSettingsCheckbox">
-                    <span>Opening explorer on left</span>
-                    <input
-                      type="checkbox"
-                      checked={gameExplorerOnLeft}
-                      onChange={(event) => setGameExplorerOnLeft(event.target.checked)}
-                    />
-                  </label>
-                </div>
-              ) : null}
               {pathname === "/rankings" || pathname === "/rankings/yearly" ? (
                 <div className="navSettingsSection navSettingsStack">
                   <span className="navSettingsGroupTitle">Rankings</span>

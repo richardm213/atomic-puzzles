@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 
-import { AnalysisMoveTree } from "./AnalysisMoveTree";
+import { AnalysisContinuationChoices, AnalysisMoveTree } from "./AnalysisMoveTree";
 
 const lines = [
   ["Nf3", "f6", "Bf4", "Bb4+", "c3"],
@@ -11,16 +11,23 @@ const lines = [
 describe("AnalysisMoveTree", () => {
   it("keeps longer alternatives next to their fork and navigates to their moves", () => {
     const onSelect = vi.fn();
-    const onCycleOptions = vi.fn();
     render(
-      <AnalysisMoveTree
-        lines={lines}
-        moves={["Nf3"]}
-        currentPly={1}
-        pinnedLineIndex={0}
-        onSelect={onSelect}
-        onCycleOptions={onCycleOptions}
-      />,
+      <>
+        <AnalysisMoveTree
+          lines={lines}
+          moves={["Nf3"]}
+          currentPly={1}
+          pinnedLineIndex={0}
+          onSelect={onSelect}
+        />
+        <AnalysisContinuationChoices
+          lines={lines}
+          moves={["Nf3"]}
+          currentPly={1}
+          pinnedLineIndex={0}
+          onSelect={onSelect}
+        />
+      </>,
     );
 
     const tree = within(screen.getByRole("list", { name: "Analysis variations" }));
@@ -38,8 +45,7 @@ describe("AnalysisMoveTree", () => {
     fireEvent.click(within(choices).getByRole("button", { name: "1... h6" }));
     expect(onSelect).toHaveBeenCalledWith(1, 1);
 
-    fireEvent.click(screen.getByRole("button", { name: "Next continuation" }));
-    expect(onCycleOptions).toHaveBeenCalledWith("nextOption");
+    expect(within(choices).getAllByRole("button")).toHaveLength(2);
   });
 
   it("can render variations in non-inline mode", () => {

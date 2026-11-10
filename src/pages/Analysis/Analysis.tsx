@@ -12,6 +12,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { z } from "zod";
 
 import { WOLFRANDOM_RANDOMIZED_PLIES } from "../../../shared/domain/gameAnalysis";
+import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
 import {
@@ -22,7 +23,7 @@ import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import { pairPlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
-import { useAppSettings, useKeyboardShortcutSettings } from "../../context/AppSettings";
+import { useKeyboardShortcutSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { AnalysisEngineExplorerPanels } from "../../features/analysisWorkspace/AnalysisEngineExplorerPanels";
 import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
@@ -36,6 +37,10 @@ import {
   OpeningExplorerPanel,
   OpeningExplorerResizeHandle,
 } from "../../features/analysisWorkspace/OpeningExplorerPanel";
+import {
+  useBoardAlignedPanelHeight,
+  useOpeningExplorerSplit,
+} from "../../features/analysisWorkspace/useAnalysisWorkspaceLayout";
 import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
@@ -80,11 +85,8 @@ import {
 import { GameComputerAnalysis, GameComputerAnalysisPlayers } from "../Game/GameComputerAnalysis";
 import { GameUnderboard, type GameUnderboardTab } from "../Game/GameUnderboard";
 
-const MIN_MOVE_PANEL_HEIGHT = 0;
-const MIN_EXPLORER_PANEL_HEIGHT = 12;
 const EXPLORER_RESIZE_STEP = 24;
 const MIN_GAME_ANALYSIS_PANEL_HEIGHT = 440;
-const DEFAULT_GAME_PANEL_OVERHANG = 32;
 
 type ExplorerScope = "general" | "player";
 type ExplorerSpeed = "bullet" | "blitz" | "hyperbullet";
@@ -97,6 +99,7 @@ const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings
 const BOARD_SIZE_STORAGE_KEY = "atomic-puzzles.analysis.board-size";
 const NOTATION_LAYOUT_STORAGE_KEY = "atomic-puzzles.analysis.notation-layout";
 const EXPLORER_OPEN_STORAGE_KEY = "atomic-puzzles.analysis.explorer-open";
+const GAME_EXPLORER_OPEN_STORAGE_KEY = "atomic-puzzles.games.explorer-open";
 const DEFAULT_ANALYSIS_BOARD_SIZE = 516;
 const MIN_ANALYSIS_BOARD_SIZE = 320;
 const MAX_ANALYSIS_BOARD_SIZE = 920;
@@ -352,7 +355,6 @@ type AnalysisPageProps = {
 export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPageProps = {}) => {
   const navigate = useNavigate();
   const auth = useAuth();
-  const { gameExplorerOnLeft } = useAppSettings();
   const keyboardShortcuts = useKeyboardShortcutSettings();
   const { _splat: fenPath } = useParams({ strict: false });
   const locationSearch = typeof window === "undefined" ? "" : window.location.search;
@@ -387,6 +389,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     });
   }, [analysisHandoff, game, initialMoves, routeFen]);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
+  const lowerClockRef = useRef<HTMLDivElement | null>(null);
   const rightPanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
   const moveContentRef = useRef<HTMLDivElement | null>(null);
@@ -411,14 +414,11 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [explorerOpen, setExplorerOpen] = usePersistedState(
-    EXPLORER_OPEN_STORAGE_KEY,
+    game ? GAME_EXPLORER_OPEN_STORAGE_KEY : EXPLORER_OPEN_STORAGE_KEY,
     z.boolean(),
-    defaultExplorerOpen(),
+    defaultExplorerOpen,
   );
-  const [movePanelHeight, setMovePanelHeight] = useState<number | null>(null);
-  const [explorerResizing, setExplorerResizing] = useState(false);
   const [gamePanelHeight, setGamePanelHeight] = useState<number | null>(null);
-  const [defaultGamePanelHeight, setDefaultGamePanelHeight] = useState<number | null>(null);
   const [gamePanelResizing, setGamePanelResizing] = useState(false);
   const [gameUnderboardTab, setGameUnderboardTab] = useState<GameUnderboardTab>("analysis");
   const [gameComputerAnalysisEnabled, setGameComputerAnalysisEnabled] = useState(true);
@@ -617,26 +617,37 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const playerRatingValue = clampRating(minRating);
   const activeStartDate = explorerScope === "player" ? playerStartDate : generalStartDate;
   const wideGameLayout = viewportWidth >= GAME_THREE_COLUMN_MIN_WIDTH;
-  const moveGameExplorerLeft = Boolean(game && gameExplorerOnLeft && wideGameLayout);
-  const explorerInAnalysisPanel = explorerOpen && !moveGameExplorerLeft;
-  const resolvedGamePanelHeight = gamePanelHeight ?? defaultGamePanelHeight;
+  const alignedPanelHeight = useBoardAlignedPanelHeight(
+    rightPanelRef,
+    boardPanelRef,
+    lowerClockRef,
+    Boolean(game),
+  );
+  const {
+    movePanelHeight,
+    resizing: explorerResizing,
+    separatorProps,
+  } = useOpeningExplorerSplit({
+    scope: game ? "games" : "analysis",
+    enabled: explorerOpen,
+    panelRef: rightPanelRef,
+    movePanelRef,
+    defaultPercent: 60,
+  });
+  const resolvedPanelHeight = (game ? gamePanelHeight : null) ?? alignedPanelHeight;
   const rightPanelStyle = {
-    ...(explorerInAnalysisPanel && movePanelHeight !== null
+    ...(explorerOpen && movePanelHeight !== null
       ? { "--analysis-move-panel-height": `${movePanelHeight}px` }
       : {}),
-    ...(game && resolvedGamePanelHeight !== null
-      ? { "--game-analysis-panel-height": `${resolvedGamePanelHeight}px` }
-      : {}),
+    ...(resolvedPanelHeight === null
+      ? {}
+      : game
+        ? { "--game-analysis-panel-height": `${resolvedPanelHeight}px` }
+        : {
+            "--analysis-side-panel-height": `${resolvedPanelHeight}px`,
+            "--analysis-side-panel-max-height": `${resolvedPanelHeight}px`,
+          }),
   } as CSSProperties;
-  const explorerSplitValue =
-    movePanelHeight === null
-      ? 32
-      : Math.min(
-          100,
-          Math.round(
-            (movePanelHeight / Math.max(1, rightPanelRef.current?.clientHeight ?? 1)) * 100,
-          ),
-        );
 
   const movePairs = pairPlayedMoves(moveList);
 
@@ -648,21 +659,6 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
 
   const variationPgn = analysisLines.length ? serializeSanLinesToPgn(rootFen, analysisLines) : "";
 
-  useEffect(() => {
-    if (!game || typeof ResizeObserver === "undefined") return;
-    const workspace = rightPanelRef.current?.closest<HTMLElement>(".gameAnalysisPage");
-    const boardColumn = workspace?.querySelector<HTMLElement>(".analysisBoardColumn");
-    if (!boardColumn) return;
-
-    const syncHeight = (): void =>
-      setDefaultGamePanelHeight(
-        Math.round(boardColumn.getBoundingClientRect().height + DEFAULT_GAME_PANEL_OVERHANG),
-      );
-    syncHeight();
-    const observer = new ResizeObserver(syncHeight);
-    observer.observe(boardColumn);
-    return () => observer.disconnect();
-  }, [game]);
   const pgnText = variationPgn
     ? `${variationPgn} *`
     : movePairs.length
@@ -853,91 +849,6 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
       playerStartDate: getPlayerStartDate(current.playerStartDate),
     }));
   }, [setExplorerSettings]);
-
-  const clampMovePanelHeight = useCallback((nextHeight: number): number | null => {
-    const panel = rightPanelRef.current;
-    if (!panel) return null;
-
-    const panelStyles = window.getComputedStyle(panel);
-    const panelContentHeight =
-      panel.clientHeight -
-      (Number.parseFloat(panelStyles.paddingTop) || 0) -
-      (Number.parseFloat(panelStyles.paddingBottom) || 0);
-    const rowGap = Number.parseFloat(panelStyles.rowGap) || 0;
-    const toolbar = panel.querySelector<HTMLElement>(".analysisBottomToolbar");
-    const toolbarStyles = toolbar ? window.getComputedStyle(toolbar) : null;
-    const toolbarOuterHeight = toolbar
-      ? toolbar.getBoundingClientRect().height +
-        (Number.parseFloat(toolbarStyles?.marginTop ?? "0") || 0) +
-        (Number.parseFloat(toolbarStyles?.marginBottom ?? "0") || 0)
-      : 0;
-    const maxHeight = Math.max(
-      MIN_MOVE_PANEL_HEIGHT,
-      panelContentHeight - toolbarOuterHeight - rowGap * 2 - MIN_EXPLORER_PANEL_HEIGHT,
-    );
-    return Math.round(Math.min(Math.max(nextHeight, MIN_MOVE_PANEL_HEIGHT), maxHeight));
-  }, []);
-
-  const adjustExplorerSplit = useCallback(
-    (delta: number): void => {
-      const panel = rightPanelRef.current;
-      const fallbackHeight =
-        movePanelRef.current?.getBoundingClientRect().height ??
-        (panel ? panel.getBoundingClientRect().height * 0.32 : MIN_MOVE_PANEL_HEIGHT);
-      const currentHeight = movePanelHeight ?? fallbackHeight;
-      const nextHeight = clampMovePanelHeight(currentHeight + delta);
-      if (nextHeight !== null) {
-        setMovePanelHeight(nextHeight);
-      }
-    },
-    [clampMovePanelHeight, movePanelHeight],
-  );
-
-  const handleExplorerResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
-    if (!rightPanelRef.current) return;
-
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setExplorerResizing(true);
-
-    const ownerDocument = event.currentTarget.ownerDocument;
-    const startY = event.clientY;
-    const startHeight =
-      movePanelHeight ??
-      movePanelRef.current?.getBoundingClientRect().height ??
-      MIN_MOVE_PANEL_HEIGHT;
-
-    const handlePointerMove = (pointerEvent: PointerEvent): void => {
-      pointerEvent.preventDefault();
-      const nextHeight = clampMovePanelHeight(startHeight + pointerEvent.clientY - startY);
-      if (nextHeight !== null) {
-        setMovePanelHeight(nextHeight);
-      }
-    };
-    const handlePointerUp = (): void => {
-      setExplorerResizing(false);
-      ownerDocument.removeEventListener("pointermove", handlePointerMove);
-      ownerDocument.removeEventListener("pointerup", handlePointerUp);
-      ownerDocument.removeEventListener("pointercancel", handlePointerUp);
-    };
-
-    ownerDocument.addEventListener("pointermove", handlePointerMove);
-    ownerDocument.addEventListener("pointerup", handlePointerUp);
-    ownerDocument.addEventListener("pointercancel", handlePointerUp);
-  };
-
-  const handleExplorerResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      adjustExplorerSplit(-EXPLORER_RESIZE_STEP);
-      return;
-    }
-
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      adjustExplorerSplit(EXPLORER_RESIZE_STEP);
-    }
-  };
 
   const gamePanelHeightBounds = useCallback((): { min: number; max: number } | null => {
     const panel = rightPanelRef.current;
@@ -1241,6 +1152,15 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     keyboardShortcuts,
   ]);
 
+  const continuationChoices = (
+    <AnalysisContinuationChoices
+      lines={analysisLines}
+      moves={moveList}
+      currentPly={currentPly}
+      pinnedLineIndex={activeLineIndex}
+      onSelect={navigateToAnalysisMove}
+    />
+  );
   const openingExplorerPanel = explorerOpen ? (
     <OpeningExplorerPanel
       className="analysisExplorerPanel"
@@ -1266,13 +1186,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           : undefined
       }
     >
-      {moveGameExplorerLeft ? null : (
-        <OpeningExplorerResizeHandle
-          valueNow={explorerSplitValue}
-          onPointerDown={handleExplorerResizePointerDown}
-          onKeyDown={handleExplorerResizeKeyDown}
-        />
-      )}
+      <OpeningExplorerResizeHandle {...separatorProps} />
       <OpeningExplorerCompactHeader
         controlsId="analysis-explorer-filters"
         settingsOpen={filtersOpen}
@@ -1454,12 +1368,8 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   // Keep one set of match controls so shortcuts and tab order follow the visible layout.
   const gameDetails = game ? (
     <div className="gameAnalysisSidebarRail">
-      <aside
-        className={`gameAnalysisSidebar ${moveGameExplorerLeft ? "withExplorer" : ""}`}
-        aria-label="Game details"
-      >
+      <aside className="gameAnalysisSidebar" aria-label="Game details">
         <GameAnalysisHeader game={game} />
-        {moveGameExplorerLeft ? openingExplorerPanel : null}
       </aside>
       <GameMatchNavigation game={game} />
     </div>
@@ -1483,11 +1393,9 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
       <div className={game ? "gameAnalysisRightRail" : "analysisRightRail"}>
         <AnalysisWorkspacePanel
           ref={rightPanelRef}
-          className={`analysisRightPanel ${game ? "gameAnalysisPanel" : ""} ${explorerInAnalysisPanel ? "explorerOpen" : "explorerCollapsed"} ${
-            explorerInAnalysisPanel && movePanelHeight === MIN_MOVE_PANEL_HEIGHT
-              ? "movesCollapsed"
-              : ""
-          } ${explorerInAnalysisPanel && movePanelHeight !== null ? "customExplorerSplit" : ""} ${
+          className={`analysisRightPanel ${game ? "gameAnalysisPanel" : ""} ${explorerOpen ? "explorerOpen" : "explorerCollapsed"} ${
+            explorerOpen && movePanelHeight === 0 ? "movesCollapsed" : ""
+          } ${explorerOpen && movePanelHeight !== null ? "customExplorerSplit" : ""} ${
             explorerResizing ? "explorerResizing" : ""
           } ${gamePanelResizing ? "gamePanelResizing" : ""} ${
             game && !gameComputerAnalysisEnabled ? "computerAnalysisDisabled" : ""
@@ -1532,14 +1440,14 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                 inline={notationLayout === "inline"}
                 onNavigate={navigateToPly}
                 onSelectVariation={navigateToAnalysisMove}
-                onCycleOptions={requestNavigation}
                 onAnnotate={game ? undefined : annotateMove}
                 onDelete={game ? undefined : deleteMove}
                 assessments={game && gameComputerAnalysisEnabled ? gameAssessments : undefined}
               />
             }
             moveContentRef={moveContentRef}
-            explorer={moveGameExplorerLeft ? null : openingExplorerPanel}
+            explorer={openingExplorerPanel}
+            continuationChoices={continuationChoices}
           />
 
           <AnalysisToolbar
@@ -1642,6 +1550,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
               game={game}
               currentPly={currentPly}
               color={orientation === "white" ? "white" : "black"}
+              rowRef={lowerClockRef}
             />
           ) : null
         }
