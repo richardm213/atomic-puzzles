@@ -207,7 +207,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     ...puzzleUserRatingQueryOptions(normalizedUsername),
     enabled: Boolean(normalizedUsername),
   });
-  const { showPuzzleTimer, blindPuzzles } = useAppSettings();
+  const { showPuzzleTimer, blindPuzzles, excludeOwnPuzzles } = useAppSettings();
   const loadDetails = testMode ? loadTestPuzzlesById : loadPuzzlesById;
   const { puzzles, setPuzzles, loadingError, setLoadingError, mergeLoadedPuzzles } =
     usePuzzleCatalog(routePuzzleId, routeSetKey || routeDashboardSetId, loadDetails);
@@ -281,6 +281,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const reportIssueDialogRef = useRef<HTMLDialogElement | null>(null);
   const upcomingPuzzleIndexesRef = useRef<number[]>([]);
+  const upcomingExcludeOwnPuzzlesRef = useRef(excludeOwnPuzzles);
   const visitedPuzzleIdsRef = useRef<Set<string>>(new Set());
   const loadingPuzzleIdsRef = useRef<Set<string>>(new Set());
   const isMountedRef = useRef(true);
@@ -365,12 +366,21 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
 
   const ensureUpcomingPuzzleIndexes = useCallback(
     (currentIndex: number): number => {
+      if (upcomingExcludeOwnPuzzlesRef.current !== excludeOwnPuzzles) {
+        upcomingPuzzleIndexesRef.current = [];
+        upcomingExcludeOwnPuzzlesRef.current = excludeOwnPuzzles;
+      }
       if (upcomingPuzzleIndexesRef.current.length === 0) {
         const candidateIndexes = puzzles
           .map((_, index) => index)
           .filter(
             (index) =>
               index !== currentIndex &&
+              !(
+                excludeOwnPuzzles &&
+                normalizedUsername &&
+                normalizeUsername(puzzles[index]?.author) === normalizedUsername
+              ) &&
               !visitedPuzzleIdsRef.current.has(String(puzzles[index]?.puzzleId ?? "")) &&
               !attemptedPuzzleIds.has(String(puzzles[index]?.puzzleId ?? "")) &&
               !getPuzzleUnratedReason({
@@ -386,7 +396,14 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
 
       return upcomingPuzzleIndexesRef.current.length;
     },
-    [attemptedPuzzleIds, normalizedUsername, puzzles, ratingExclusions, unratedPuzzleIds],
+    [
+      attemptedPuzzleIds,
+      excludeOwnPuzzles,
+      normalizedUsername,
+      puzzles,
+      ratingExclusions,
+      unratedPuzzleIds,
+    ],
   );
 
   const getNextShuffledPuzzleIndex = useCallback(
@@ -664,6 +681,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       activeSetPuzzlePosition < orderedSetPuzzleIndexes.length - 1 &&
       (!dailyLimitReached || nextSetPuzzleWasAttempted)
     : puzzles.length > 0 &&
+      (nextHistoryPuzzleIndex !== undefined ||
+        getNextShuffledPuzzleIndex(activePuzzleIndex) >= 0) &&
       (!dailyLimitReached ||
         (nextHistoryPuzzleIndex !== undefined && nextHistoryPuzzleWasAttempted));
   const hasCompletedPuzzleSet = isSetSolveMode && !canGoToNextPuzzle && boardState.solved;

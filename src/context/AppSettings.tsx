@@ -48,6 +48,7 @@ const STORAGE_KEYS = {
   showCoinChangePopups: "atomic-puzzles.puzzles.show-coin-change-popups",
   // v3 makes the timer visible by default for everyone while preserving later changes.
   showPuzzleTimer: "atomic-puzzles.puzzles.show-timer-v3",
+  excludeOwnPuzzles: "atomic-puzzles.puzzles.exclude-own",
   blindPuzzles: "atomic-puzzles.puzzles.blind",
   puzzleAnalysisTarget: "atomic-puzzles.puzzles.analysis-link-target",
   lichessLinkTarget: "atomic-puzzles.games.lichess-link-target",
@@ -249,6 +250,8 @@ export type AppSettingsContextValue = {
   setRatingGraphFrequency: Dispatch<SetStateAction<"weekly" | "monthly">>;
   showRatingGraphLines: boolean;
   setShowRatingGraphLines: Dispatch<SetStateAction<boolean>>;
+  excludeOwnPuzzles: boolean;
+  setExcludeOwnPuzzles: Dispatch<SetStateAction<boolean>>;
   showPuzzleTimer: boolean;
   setShowPuzzleTimer: Dispatch<SetStateAction<boolean>>;
   blindPuzzles: BlindPuzzleSettings;
@@ -529,6 +532,11 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.boolean(),
     true,
   );
+  const [excludeOwnPuzzles, setExcludeOwnPuzzles] = usePersistedState(
+    STORAGE_KEYS.excludeOwnPuzzles,
+    z.boolean(),
+    false,
+  );
   const [blindPuzzles, setBlindPuzzles] = usePersistedState(
     STORAGE_KEYS.blindPuzzles,
     blindPuzzlesSchema,
@@ -659,6 +667,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setRatingGraphFrequency,
       showRatingGraphLines,
       setShowRatingGraphLines,
+      excludeOwnPuzzles,
+      setExcludeOwnPuzzles,
       showPuzzleTimer,
       setShowPuzzleTimer,
       blindPuzzles,
@@ -710,6 +720,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setRatingGraphFrequency,
       showRatingGraphLines,
       setShowRatingGraphLines,
+      excludeOwnPuzzles,
+      setExcludeOwnPuzzles,
       showPuzzleTimer,
       setShowPuzzleTimer,
       blindPuzzles,

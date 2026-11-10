@@ -190,6 +190,8 @@ export const TopNav = () => {
     setRatingGraphFrequency,
     showRatingGraphLines,
     setShowRatingGraphLines,
+    excludeOwnPuzzles,
+    setExcludeOwnPuzzles,
     showPuzzleTimer,
     setShowPuzzleTimer,
     blindPuzzles,
@@ -1026,7 +1028,10 @@ export const TopNav = () => {
                   ) : null}
                   <input
                     type="checkbox"
-                    aria-keyshortcuts={keyboardShortcutAria(keyboardShortcuts, "toggleBestMoveArrow")}
+                    aria-keyshortcuts={keyboardShortcutAria(
+                      keyboardShortcuts,
+                      "toggleBestMoveArrow",
+                    )}
                     checked={showBestMoveArrow}
                     onChange={(event) => setShowBestMoveArrow(event.target.checked)}
                   />
@@ -1199,6 +1204,18 @@ export const TopNav = () => {
                           </select>
                         </label>
                       ) : null}
+                    </div>
+                  ) : null}
+                  {showPuzzleTimerSetting ? (
+                    <div className="navSettingsSection">
+                      <label className="navSettingsCheckbox">
+                        <span>Skip my puzzles</span>
+                        <input
+                          type="checkbox"
+                          checked={excludeOwnPuzzles}
+                          onChange={(event) => setExcludeOwnPuzzles(event.target.checked)}
+                        />
+                      </label>
                     </div>
                   ) : null}
                   {showPuzzleTimerSetting ? (

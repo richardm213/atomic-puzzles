@@ -30,11 +30,15 @@ describe("AppSettings", () => {
     window.localStorage.setItem("atomic-puzzles.puzzles.show-timer-v2", "false");
     const first = renderSettings();
     expect(first.result.current.showPuzzleTimer).toBe(true);
+    expect(first.result.current.excludeOwnPuzzles).toBe(false);
 
     act(() => first.result.current.setShowPuzzleTimer(false));
+    act(() => first.result.current.setExcludeOwnPuzzles(true));
     first.unmount();
 
-    expect(renderSettings().result.current.showPuzzleTimer).toBe(false);
+    const restored = renderSettings();
+    expect(restored.result.current.showPuzzleTimer).toBe(false);
+    expect(restored.result.current.excludeOwnPuzzles).toBe(true);
   });
 
   it("defaults to Atomic-Stockfish and restores an explicit FSF14 selection", () => {

@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
     onStateChange?: (state: unknown) => void;
   }>,
   attemptedPuzzleIds: new Set(["1369"]),
+  excludeOwnPuzzles: false,
   blindPuzzles: { enabled: false, plies: 5 },
   fetchPuzzleProgressRowsForUsername: vi.fn(),
   fetchPuzzleRatingExclusions: vi.fn(),
@@ -87,6 +88,7 @@ vi.mock("../../context/AppSettings", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../context/AppSettings")>()),
   useAppSettings: () => ({
     showPuzzleTimer: true,
+    excludeOwnPuzzles: mocks.excludeOwnPuzzles,
     puzzleAnalysisTarget: "atomic-puzzles",
     blindPuzzles: mocks.blindPuzzles,
   }),
@@ -321,6 +323,7 @@ describe("PuzzleSolverPage solution options", () => {
     });
     mocks.navigate.mockReset();
     mocks.username = "solver";
+    mocks.excludeOwnPuzzles = false;
     mocks.loadPuzzleTagVotes
       .mockReset()
       .mockResolvedValue([{ tag: "fork", up: 3, down: 0, vote: 0 }]);
@@ -586,6 +589,31 @@ describe("PuzzleSolverPage solution options", () => {
         replace: true,
       }),
     );
+  });
+
+  it("includes own puzzles by default and rebuilds the prepared queue when the setting changes", async () => {
+    const [active] = await mocks.loadPuzzlesById([1369]);
+    mocks.loadPuzzleCatalog.mockResolvedValueOnce([
+      active,
+      { ...active, id: 2, puzzleId: 2, author: "SoLvEr", created_at: "2020-01-01T00:00:00Z" },
+    ]);
+    const view = render(<PuzzleSolverPage />);
+    const next = screen.getAllByRole("button", { name: "Next" })[0]!;
+    await waitFor(() => expect(next).toBeEnabled());
+
+    mocks.excludeOwnPuzzles = true;
+    view.rerender(<PuzzleSolverPage />);
+    expect(next).toBeDisabled();
+
+    mocks.excludeOwnPuzzles = false;
+    view.rerender(<PuzzleSolverPage />);
+    expect(next).toBeEnabled();
+    fireEvent.click(next);
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/solve/$puzzleId",
+      params: { puzzleId: "2" },
+      replace: true,
+    });
   });
 
   it("does not render a cached board for a locked puzzle by another author", async () => {
