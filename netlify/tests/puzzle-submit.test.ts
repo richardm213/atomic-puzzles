@@ -72,6 +72,30 @@ describe("puzzle-submit function", () => {
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
+  it("reports an unavailable archive as a lookup failure before any puzzle write", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const rpc = vi.fn();
+      mocks.createClient.mockReturnValue({ rpc });
+      mocks.queryArchiveResource.mockRejectedValue(new Error("Archive server returned 404"));
+
+      const response = await handler({
+        httpMethod: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ action: "match-context", gameId: "game-1" }),
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(JSON.parse(response.body)).toEqual({
+        error: "Unable to load the match set. Try again.",
+        code: "internal_error",
+      });
+      expect(rpc).not.toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   it.each([
     { username: "submitter", setName: "Scam match", publish: false, source: "linked", setId: 42 },
     {
@@ -173,6 +197,7 @@ describe("puzzle-submit function", () => {
       });
       expect(preview.statusCode).toBe(200);
       expect(JSON.parse(preview.body)).toMatchObject({ setName });
+      expect(rpc).not.toHaveBeenCalled();
 
       const response = await handler({
         httpMethod: "POST",

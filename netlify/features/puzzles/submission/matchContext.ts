@@ -53,10 +53,17 @@ const tournamentRoundLabel = ({ bracket, round }: TournamentRound): string => {
   return round;
 };
 
-export const loadMatchPuzzleContext = async (db: SupabaseClient, gameId: string) => {
-  const game = (await queryArchiveResource(
-    new URLSearchParams({ resource: "game", gameId }),
-  )) as MatchGame | null;
+export type FetchMatchPuzzleGame = (gameId: string) => Promise<unknown>;
+
+const fetchArchiveGame: FetchMatchPuzzleGame = (gameId) =>
+  queryArchiveResource(new URLSearchParams({ resource: "game", gameId }));
+
+export const loadMatchPuzzleContext = async (
+  db: SupabaseClient,
+  gameId: string,
+  fetchGame = fetchArchiveGame,
+) => {
+  const game = (await fetchGame(gameId)) as MatchGame | null;
   const matchId = game?.external_match_id?.trim();
   if (!game || !matchId) throw new HttpError(404, "This game is not linked to an archived match.");
 

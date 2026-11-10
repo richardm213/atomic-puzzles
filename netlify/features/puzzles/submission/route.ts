@@ -8,9 +8,10 @@ import {
 } from "../../../platform/authentication";
 import type { FunctionEvent } from "../../../platform/defineFunction";
 import { createServerSupabase } from "../../../platform/environment";
+import { errorResponse } from "../../../platform/errors";
 import { jsonResponse } from "../../../platform/response";
 import { parseJsonBody } from "../../../platform/validation";
-import { loadMatchPuzzleContext } from "./matchContext";
+import { type FetchMatchPuzzleGame, loadMatchPuzzleContext } from "./matchContext";
 import { PuzzleSubmissionRepository } from "./repository";
 import { PuzzleSubmissionService } from "./service";
 
@@ -51,18 +52,29 @@ const submissionBodySchema = z.union([
   }),
 ]);
 
-export const puzzleSubmissionRoute = async (event: FunctionEvent) => {
+export const puzzleSubmissionRoute = async (
+  event: FunctionEvent,
+  fetchGame?: FetchMatchPuzzleGame,
+) => {
   requireSameOrigin(event.headers, "Cross-site puzzle submissions are not allowed.");
   const input = parseJsonBody(event, submissionBodySchema, "Invalid puzzle submission.");
+  if (input.action === "match-context") {
+    try {
+      const identity = await authenticateRequest(event.headers);
+      requireUsername(identity, "Log in with Lichess to create a match puzzle.");
+      const db = createServerSupabase("Match set lookup");
+      const { setName, players } = await loadMatchPuzzleContext(db, input.gameId, fetchGame);
+      return jsonResponse(200, { setName, players });
+    } catch (error) {
+      return errorResponse(error, "Unable to load the match set. Try again.");
+    }
+  }
   const identity = await authenticateRequest(event.headers);
   const username = requireUsername(identity, "Log in with Lichess to submit a puzzle.");
   const db = createServerSupabase("Puzzle submission service");
   const service = new PuzzleSubmissionService(new PuzzleSubmissionRepository(db));
-  if (input.action) {
-    const context = await loadMatchPuzzleContext(db, input.gameId);
-    if (input.action === "match-context") {
-      return jsonResponse(200, { setName: context.setName, players: context.players });
-    }
+  if (input.action === "add-match-puzzle") {
+    const context = await loadMatchPuzzleContext(db, input.gameId, fetchGame);
     return jsonResponse(201, await service.submitMatchPuzzle(username, input, context));
   }
   return jsonResponse(

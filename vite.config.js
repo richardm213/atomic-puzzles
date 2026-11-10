@@ -29,14 +29,18 @@ const requestHeaders = (headers) =>
 const DEFAULT_LOCAL_ARCHIVE_ORIGIN = "https://atomicpuzzles.org";
 const DEFAULT_LOCAL_OPENING_EXPLORER_ORIGIN = "https://atomicpuzzles.org";
 
-const proxyArchiveRequest = async (req, res, archiveOrigin) => {
-  const requestUrl = new URL(req.url ?? "/", "http://localhost");
+const fetchArchiveResponse = (archiveOrigin, search, options) => {
   // Proxy the function's stable Netlify URL directly. The public /api route can
   // be shadowed by the SPA fallback on an older deploy, which returns index.html
   // with a 200 and makes valid archive requests look like malformed JSON.
   const upstreamUrl = new URL("/.netlify/functions/archive-data", archiveOrigin);
-  upstreamUrl.search = requestUrl.search;
-  const response = await fetch(upstreamUrl, {
+  upstreamUrl.search = search;
+  return fetch(upstreamUrl, options);
+};
+
+const proxyArchiveRequest = async (req, res, archiveOrigin) => {
+  const requestUrl = new URL(req.url ?? "/", "http://localhost");
+  const response = await fetchArchiveResponse(archiveOrigin, requestUrl.search, {
     method: req.method,
     headers: { Accept: req.headers.accept ?? "application/json" },
   });
@@ -106,6 +110,16 @@ const remoteOpeningExplorerPlugin = (origin) => {
 };
 
 const localPuzzleFunctionsPlugin = ({ archiveOrigin, useLocalArchive }) => {
+  // Use the same archive for the game page and the server-side puzzle lookup in dev.
+  const fetchPuzzleGame = async (gameId) => {
+    const search = new URLSearchParams({ resource: "game", gameId });
+    const response = await fetchArchiveResponse(archiveOrigin, search.toString(), {
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) throw new Error(`Game archive lookup returned HTTP ${response.status}.`);
+    return response.json();
+  };
+  const puzzleHandlers = new WeakMap();
   const functions = new Map([
     ["/api/auth/session", "/netlify/functions/auth-session.ts"],
     ["/api/puzzles/submit", "/netlify/functions/puzzle-submit.ts"],
@@ -143,8 +157,18 @@ const localPuzzleFunctionsPlugin = ({ archiveOrigin, useLocalArchive }) => {
               return;
             }
             const module = await server.ssrLoadModule(modulePath);
+            let handler = module.handler;
+            if (route === "/api/puzzles/submit" && !useLocalArchive) {
+              // Retain rate-limiter state until the function module is reloaded.
+              const factory = module.createPuzzleSubmissionHandler;
+              handler = puzzleHandlers.get(factory);
+              if (!handler) {
+                handler = factory(fetchPuzzleGame);
+                puzzleHandlers.set(factory, handler);
+              }
+            }
             const requestUrl = new URL(req.url ?? "/", "http://localhost");
-            const response = await module.handler({
+            const response = await handler({
               httpMethod: req.method,
               headers: requestHeaders(req.headers),
               body: await readRequestBody(req),
