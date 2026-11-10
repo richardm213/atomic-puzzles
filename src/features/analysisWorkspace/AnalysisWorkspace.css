@@ -93,8 +93,7 @@
 }
 
 :root[data-theme="light"] .analysisPage .atomicDbTopSource,
-:root[data-theme="light"] .analysisPage .atomicDbEngineDepth,
-:root[data-theme="light"] .analysisPage .atomicDbEngineLineUnavailable {
+:root[data-theme="light"] .analysisPage .atomicDbEngineDepth {
   color: var(--color-muted);
 }
 
@@ -224,6 +223,12 @@ body:has(.analysisPage),
 
 .analysisRightPanel.explorerCollapsed:has(> .analysisContinuationChoices) {
   grid-template-rows: minmax(0, 1fr) auto auto;
+}
+
+.analysisPuzzleConfirmation {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-body);
 }
 
 .analysisMovePanel {

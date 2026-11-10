@@ -32,7 +32,7 @@ export const MoveNotation = ({
   onDelete?: ((lineIndex: number, moveIndex: number) => void) | undefined;
   assessments?: GameMoveAssessment[] | undefined;
 }) => {
-  if (!inline && lines.length <= 1) {
+  if (!inline && lines.length <= 1 && initialPly === 0) {
     const mainline = lines[0] ?? moves;
     return (
       <PlayedMoves

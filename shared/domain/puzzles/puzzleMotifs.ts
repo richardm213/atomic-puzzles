@@ -1,9 +1,18 @@
+import { atomicOpenings, getOpeningVariations } from "../atomicOpenings";
+
 export type PuzzleMotif = {
   tag: string;
   name: string;
   description: string;
   parentTag?: string;
 };
+
+const openingTheoryMotif = (id: string, name: string, pgn: string): PuzzleMotif => ({
+  tag: `theory_${id.replaceAll("-", "_")}`,
+  name,
+  parentTag: "theory",
+  description: `Opening line: ${pgn}`,
+});
 
 export const puzzleMotifs: PuzzleMotif[] = [
   {
@@ -271,6 +280,17 @@ export const puzzleMotifs: PuzzleMotif[] = [
     description:
       "The solution requires precise play in an endgame where pawns, promotion races, and king activity are the central factors.",
   },
+  {
+    tag: "theory",
+    name: "Theory",
+    description: "The solution tests a move or idea from atomic opening theory.",
+  },
+  ...atomicOpenings.flatMap((opening) => [
+    openingTheoryMotif(opening.id, opening.tag.label, opening.setup),
+    ...getOpeningVariations(opening).flatMap((line) =>
+      line.tag ? [openingTheoryMotif(line.id, line.tag.label, line.pgn)] : [],
+    ),
+  ]),
 ];
 
 const puzzleMotifTagSet = new Set(puzzleMotifs.map((motif) => motif.tag));

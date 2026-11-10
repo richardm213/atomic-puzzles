@@ -1,11 +1,10 @@
 import { useMemo } from "react";
 
-import { buildPieceStyle } from "../../components/Chessboard/boardStyle";
+import { MaterialDifferencePieces } from "../../components/MaterialDifferencePieces/MaterialDifferencePieces";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
-import { useAppSettings } from "../../context/AppSettings";
+import { materialCountFromFen } from "../../lib/chess/materialCount";
 import { normalizeUsername } from "../../utils/playerNames";
 import { castlingRightsFromFen } from "./castlingRights";
-import { materialCountFromFen } from "./materialCount";
 
 type PuzzlePlayer = { name: string; label: string };
 
@@ -22,8 +21,6 @@ export const PuzzlePositionRows = ({
   mobile?: boolean;
   showEmpty?: boolean;
 }) => {
-  const { pieceSet } = useAppSettings();
-  const materialStyle = useMemo(() => buildPieceStyle(pieceSet || "cburnett"), [pieceSet]);
   const material = useMemo(() => materialCountFromFen(fen), [fen]);
   const castling = castlingRightsFromFen(fen);
   const hasPlayerNames = Boolean(white?.name || black?.name);
@@ -38,7 +35,6 @@ export const PuzzlePositionRows = ({
     <section
       className={`${mobile ? "mobilePuzzlePlayers" : "puzzlePlayers"}${positionClasses}${hasPlayerNames ? " hasPlayerNames" : ""}`}
       aria-label={showEmpty ? "Castling rights and material" : "Game players"}
-      style={materialStyle}
     >
       {(["white", "black"] as const).map((side) => {
         const label = side === "white" ? "White" : "Black";
@@ -82,24 +78,7 @@ export const PuzzlePositionRows = ({
               </strong>
             ) : null}
             {hasMaterial ? (
-              <span
-                className={`materialDifferencePieces${pieces.length ? "" : " isEmpty"}`}
-                aria-label={`Material difference: ${materialStatus}`}
-                title={showEmpty ? `Material difference: ${materialStatus}` : undefined}
-              >
-                {pieces.map((role, index) => (
-                  <span
-                    className={`materialDifferencePiece ${role}`}
-                    style={{
-                      maskImage: `var(--cg-piece-white-${role})`,
-                      WebkitMaskImage: `var(--cg-piece-white-${role})`,
-                    }}
-                    aria-hidden="true"
-                    key={`${role}-${index}`}
-                  />
-                ))}
-                {showEmpty && !pieces.length ? <span aria-hidden="true">—</span> : null}
-              </span>
+              <MaterialDifferencePieces pieces={pieces} showEmpty={showEmpty} />
             ) : null}
           </div>
         );

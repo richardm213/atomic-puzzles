@@ -83,7 +83,7 @@ describe("AnalysisMoveTree", () => {
     expect(screen.queryByRole("menu", { name: "Move annotation" })).not.toBeInTheDocument();
 
     fireEvent.contextMenu(move);
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Annotate with ?" }));
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Annotate with ?" }));
     expect(onAnnotate).toHaveBeenCalledWith(0, 0, "?");
   });
 
@@ -101,6 +101,7 @@ describe("AnalysisMoveTree", () => {
     );
 
     fireEvent.contextMenu(screen.getAllByRole("button", { name: "1. Nf3" })[0]!);
+    expect(screen.queryByRole("menuitemcheckbox")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
     expect(onDelete).toHaveBeenCalledWith(0, 0);
   });

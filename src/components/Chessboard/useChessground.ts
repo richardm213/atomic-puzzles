@@ -1,7 +1,7 @@
 import { Chessground } from "@lichess-org/chessground";
 import type { Api } from "@lichess-org/chessground/api";
 import type { Color } from "chessops";
-import { type MutableRefObject, type RefObject, useEffect, useRef } from "react";
+import { type MutableRefObject, type RefObject, useEffect, useId, useRef } from "react";
 
 export const useChessground = ({
   elementRef,
@@ -29,6 +29,7 @@ export const useChessground = ({
   const initialConfigRef = useRef({ fen, orientation, coordinates, movableColor, premovesEnabled });
   const onAfterMoveRef = useRef(onAfterMove);
   onAfterMoveRef.current = onAfterMove;
+  const markerNamespace = useId().replace(/:/g, "");
 
   useEffect(() => {
     if (!elementRef.current) return;
@@ -56,18 +57,26 @@ export const useChessground = ({
       selectable: { enabled: true },
       drawable: { visible: true },
     });
+    const brushes = {
+      ...api.state.drawable.brushes,
+      bestMove: { key: "best-move", color: "var(--color-primary)", opacity: 0.9, lineWidth: 12 },
+      otherEngineMove: {
+        key: "other-engine-move",
+        color: "var(--color-primary)",
+        opacity: 0.35,
+        lineWidth: 9,
+      },
+      threat: { key: "threat", color: "var(--board-threat-ink)", opacity: 1, lineWidth: 12 },
+    };
+    // Chessground uses brush keys as document-wide SVG marker IDs, even on hidden boards.
     api.set({
       drawable: {
-        brushes: {
-          ...api.state.drawable.brushes,
-          bestMove: { key: "best-move", color: "var(--color-primary)", opacity: 0.9, lineWidth: 12 },
-          otherEngineMove: {
-            key: "other-engine-move",
-            color: "var(--color-primary)",
-            opacity: 0.35,
-            lineWidth: 9,
-          },
-        },
+        brushes: Object.fromEntries(
+          Object.entries(brushes).map(([name, brush]) => [
+            name,
+            { ...brush, key: `${markerNamespace}-${brush.key}` },
+          ]),
+        ),
       },
     });
     apiRef.current = api;
@@ -76,5 +85,5 @@ export const useChessground = ({
       apiRef.current = null;
       onCleanup();
     };
-  }, [apiRef, dimensionsRef, elementRef, onCleanup]);
+  }, [apiRef, dimensionsRef, elementRef, markerNamespace, onCleanup]);
 };

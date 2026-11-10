@@ -23,7 +23,7 @@ import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDb
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
-import { buildBoardLoadNavigation } from "../../lib/analysis/boardLoading";
+import { buildBoardLoadNavigation, pgnLineIndexForPrefix } from "../../lib/analysis/boardLoading";
 import {
   convertUciLineToSan,
   formatSolutionMove,
@@ -86,6 +86,7 @@ type PuzzleEditorProps = {
   value: PuzzleSubmissionValue;
   onChange: (value: PuzzleSubmissionValue) => void;
   resetKey: string | number;
+  beforeActions?: ReactNode;
   actions?: ReactNode;
   boardFooter?: ReactNode;
   fieldsBeforeEvent?: ReactNode;
@@ -121,6 +122,7 @@ export const PuzzleEditor = ({
   value,
   onChange,
   resetKey,
+  beforeActions,
   actions,
   boardFooter,
   fieldsBeforeEvent,
@@ -391,7 +393,14 @@ export const PuzzleEditor = ({
       fen: appliedFen,
       solution: nextMovetext,
     });
-    const nextActiveLineIndex = Math.min(targetLineIndex, nextLines.length - 1);
+    const nextActiveLineIndex =
+      resetBoardHistory && targetPly !== undefined
+        ? pgnLineIndexForPrefix(
+            appliedFen,
+            nextDraft,
+            nextLines[targetLineIndex]?.slice(0, targetPly) ?? [],
+          )
+        : Math.min(targetLineIndex, nextLines.length - 1);
 
     if (fixedFenRef.current === null) fixedFenRef.current = appliedFen;
     setSolutionDraft(nextDraft);
@@ -722,7 +731,6 @@ export const PuzzleEditor = ({
           restrictMovesToSolution={!canEditSolution}
           solutionNavigation={navigation}
           previewMove={hoveredEngineMove}
-          previewMoveBrush="paleBlue"
           engineMoves={showAnalysisEngine ? engine.engineMoves : undefined}
           onNavigateHandled={finishNavigation}
           onStateChange={handleBoardState}
@@ -873,6 +881,7 @@ export const PuzzleEditor = ({
             {feedback.text}
           </div>
         ) : null}
+        {beforeActions}
         {actions}
       </div>
     </div>

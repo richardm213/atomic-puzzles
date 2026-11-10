@@ -152,6 +152,9 @@ export const useAtomicDbAnalysis = (
       position: AtomicDbPosition | null,
       lines: Record<string, string[]> = cachedLinesFor(position),
     ): void => {
+      const supplemented = position?.moves.some(
+        (move) => move.origin === "engine" || move.variationSource === "engine",
+      );
       startTransition(() => {
         setState({
           result: { fen, position },
@@ -159,7 +162,8 @@ export const useAtomicDbAnalysis = (
           status: "ready",
           error: "",
           principalVariations: lines,
-          source: "atomicdb",
+          source: supplemented ? "mixed" : "atomicdb",
+          ...(supplemented ? { engine: assistanceEngine } : {}),
         });
       });
     };

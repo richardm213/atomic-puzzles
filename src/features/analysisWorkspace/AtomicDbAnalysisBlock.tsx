@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 
 import {
   AtomicDbEngine,
@@ -9,6 +9,7 @@ import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettin
 
 type AtomicDbAnalysisBlockProps = {
   analysis: AtomicDbAnalysisState;
+  beforeSettings?: ReactNode;
   disabled?: boolean;
   fen: string;
   notationInline?: boolean;
@@ -16,7 +17,6 @@ type AtomicDbAnalysisBlockProps = {
   onFlipBoard?: () => void;
   onHoverMove: (uci: string | null) => void;
   onPlayLine: (ucis: string[]) => void;
-  reserveLines?: boolean;
   onThreatModeChange?: (enabled: boolean) => void;
   onToggleNotation?: () => void;
   setSettings: Dispatch<SetStateAction<AtomicDbEngineSettings>>;
@@ -27,6 +27,7 @@ type AtomicDbAnalysisBlockProps = {
 
 export const AtomicDbAnalysisBlock = ({
   analysis,
+  beforeSettings,
   disabled,
   fen,
   notationInline,
@@ -34,7 +35,6 @@ export const AtomicDbAnalysisBlock = ({
   onFlipBoard,
   onHoverMove,
   onPlayLine,
-  reserveLines,
   onThreatModeChange,
   onToggleNotation,
   setSettings,
@@ -48,6 +48,7 @@ export const AtomicDbAnalysisBlock = ({
     onPointerLeave={() => onHoverMove(null)}
   >
     <AtomicDbEngineControls
+      beforeSettings={beforeSettings}
       fen={fen}
       analysis={analysis}
       settings={settings}
@@ -67,7 +68,6 @@ export const AtomicDbAnalysisBlock = ({
       onPlayLine={onPlayLine}
       onHoverMove={onHoverMove}
       {...(disabled === undefined ? {} : { disabled })}
-      {...(reserveLines === undefined ? {} : { reserveLines })}
       {...(threatMode === undefined ? {} : { threatMode })}
     />
   </div>

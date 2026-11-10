@@ -2,7 +2,15 @@ import process from "node:process";
 
 import { z } from "zod";
 
-import { buildGamePositionFens, GAME_ANALYSIS_COST } from "../../../shared/domain/gameAnalysis";
+import {
+  alignGameAnalysisPositionFens,
+  applyGameAnalysisOpeningReview,
+  buildGameAnalysisSummary,
+  buildGamePositionFens,
+  evaluationsForPositions,
+  GAME_ANALYSIS_COST,
+  type PersistedGameAnalysisSummary,
+} from "../../../shared/domain/gameAnalysis";
 import {
   authenticateRequest,
   identityResponse,
@@ -13,6 +21,8 @@ import type { FunctionEvent } from "../../platform/defineFunction";
 import { createServerSupabase } from "../../platform/environment";
 import { HttpError } from "../../platform/errors";
 import { parseJsonBody } from "../../platform/validation";
+
+import { hydrateGameAnalysisPositions } from "./openings";
 
 const gameIdSchema = z.string().trim().min(1).max(160);
 const inputSchema = z.discriminatedUnion("action", [
@@ -45,7 +55,8 @@ type GameAnalysisRow = {
   queued_positions: number;
   cost: number;
   error: string | null;
-  result: unknown;
+  result: PersistedGameAnalysisSummary | null;
+  position_fens: string[];
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -88,12 +99,27 @@ const selectRecord = async (gameId: string): Promise<GameAnalysisRow | null> => 
   const { data, error } = await supabase
     .from("game_analyses")
     .select(
-      "game_id,status,requested_by,total_positions,completed_positions,queued_positions,cost,error,result,created_at,updated_at,completed_at",
+      "game_id,status,requested_by,total_positions,completed_positions,queued_positions,cost,error,result,position_fens,created_at,updated_at,completed_at",
     )
     .eq("game_id", gameId)
     .maybeSingle<GameAnalysisRow>();
   if (error) throw new Error(`Unable to load game analysis: ${error.message}`);
-  return data;
+  if (!data?.result || data.status !== "ready") return data;
+  const positions = await hydrateGameAnalysisPositions(supabase, {
+    ...data.result,
+    positions: alignGameAnalysisPositionFens(data.result.positions, data.position_fens),
+  });
+  const moves = data.result.assessments.map(({ uci }) => uci);
+  if (positions.length !== moves.length + 1) {
+    return {
+      ...data,
+      result: { ...data.result, positions, evaluations: evaluationsForPositions(positions) },
+    };
+  }
+  const result = applyGameAnalysisOpeningReview(buildGameAnalysisSummary(moves, positions), {
+    wolfrandom: positions.some(({ closure }) => closure === "WOLFRANDOM_OPENING"),
+  });
+  return { ...data, result };
 };
 
 const selectStatuses = async (gameIds: string[]) => {

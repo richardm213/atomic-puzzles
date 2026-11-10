@@ -143,18 +143,12 @@ export const PlayedMoves = ({
           position={annotationTarget.position}
           current={annotationTarget.current}
           onClose={closeAnnotationMenu}
-          onSelect={(annotation) => {
-            onAnnotate?.(annotationTarget.moveIndex, annotation);
-            closeAnnotationMenu();
-          }}
-          onDelete={
-            onDelete
-              ? () => {
-                  onDelete(annotationTarget.moveIndex);
-                  closeAnnotationMenu();
-                }
+          onSelect={
+            onAnnotate
+              ? (annotation) => onAnnotate(annotationTarget.moveIndex, annotation)
               : undefined
           }
+          onDelete={onDelete ? () => onDelete(annotationTarget.moveIndex) : undefined}
         />
       ) : null}
     </>

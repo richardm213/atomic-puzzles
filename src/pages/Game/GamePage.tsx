@@ -63,5 +63,12 @@ export const GamePage = () => {
     );
   }
 
-  return <AnalysisPage game={game} initialFen={initialFen} initialMoves={game.moves} />;
+  return (
+    <AnalysisPage
+      key={game.game_id}
+      game={game}
+      initialFen={initialFen}
+      initialMoves={game.moves}
+    />
+  );
 };

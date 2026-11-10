@@ -103,6 +103,21 @@
   opacity: 0.48;
 }
 
+.gamePuzzleConfirmation {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel);
+  overflow-wrap: anywhere;
+}
+
+.gamePuzzleConfirmation {
+  margin-block-start: var(--space-2);
+  font-size: var(--text-body);
+}
+
 .gameAnalysisMetaRow {
   min-width: 0;
   display: grid;

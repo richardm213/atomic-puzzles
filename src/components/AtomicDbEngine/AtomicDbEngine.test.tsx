@@ -96,16 +96,24 @@ describe("AtomicDbEngine", () => {
     expect(onDisable).not.toHaveBeenCalled();
   });
 
-  it("links the AtomicDB source label to the current database position", () => {
+  it("links to AtomicDB and lists Stockfish only when it scores a substantial share of visible moves", () => {
     const position = parseAtomicDbResponse({
       key: "atomic-position-key",
       status: "UNKNOWN",
       score: 1100,
       best_move: "g1f3",
-      moves: [{ uci: "g1f3", status: "UNKNOWN", score: 1100 }],
-    });
-
-    render(
+      moves: ["g1f3", "e2e4", "d2d4", "g1h3", "c2c4"].map((uci) => ({
+        uci,
+        status: "UNKNOWN",
+        score: 1100,
+      })),
+    })!;
+    position.moves = position.moves.map((move, index) => ({
+      ...move,
+      ...(index === 0 ? { variationSource: "engine" as const } : {}),
+      ...(index >= 3 ? { origin: "engine" as const } : {}),
+    }));
+    const controls = (lineCount: number) => (
       <AtomicDbEngineControls
         fen={STARTING_FEN}
         analysis={{
@@ -115,19 +123,21 @@ describe("AtomicDbEngine", () => {
           result: { fen: STARTING_FEN, position },
           principalVariations: {},
         }}
-        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: true }}
+        settings={{ enabled: true, lineCount, showFollowUpMoves: true }}
         setSettings={vi.fn()}
         onDisable={vi.fn()}
-      />,
+      />
     );
-
-    expect(screen.getByRole("link", { name: "Open this position on AtomicDB" })).toHaveAttribute(
+    const { rerender } = render(controls(4));
+    const source = screen.getByRole("link", { name: "Open this position on AtomicDB" });
+    expect(source).toHaveAttribute(
       "href",
       "https://belzedar.duckdns.org/atomicdb/explore/atomic-position-key/",
     );
-    expect(screen.getByRole("link", { name: "Open this position on AtomicDB" })).toHaveTextContent(
-      "AtomicDB + Atomic-Stockfish",
-    );
+    expect(source).toHaveTextContent(/^AtomicDB$/);
+
+    rerender(controls(5));
+    expect(source).toHaveTextContent("AtomicDB + Atomic-Stockfish");
   });
 
   it("shows an evaluation instead of a game result for a non-terminal solved position", () => {
@@ -266,7 +276,7 @@ describe("AtomicDbEngine", () => {
     );
   });
 
-  it("does not show empty line placeholders beyond the legal move count", () => {
+  it("reserves the configured row count while loading and when fewer moves are legal", () => {
     const fen = "rn1r4/pp2kR1p/2p5/5P1P/1P6/4P3/P1P5/2K5 b - - 8 27";
     const position = parseAtomicDbResponse({
       status: "UNKNOWN",
@@ -278,25 +288,43 @@ describe("AtomicDbEngine", () => {
       ],
     });
 
-    render(
+    const settings = { enabled: true, lineCount: 5, showFollowUpMoves: false };
+    const analysis: AtomicDbAnalysisState = {
+      status: "ready",
+      error: "",
+      source: "mixed",
+      engine: "atomic-stockfish",
+      result: { fen, position },
+      principalVariations: {},
+    };
+    const onHoverMove = vi.fn();
+    const onPlayLine = vi.fn();
+    const { container, rerender } = render(
       <AtomicDbEngine
         fen={fen}
-        settings={{ enabled: true, lineCount: 5, showFollowUpMoves: false }}
-        analysis={{
-          status: "ready",
-          error: "",
-          source: "mixed",
-          engine: "atomic-stockfish",
-          result: { fen, position },
-          principalVariations: {},
-        }}
-        onPlayLine={vi.fn()}
-        onHoverMove={vi.fn()}
+        settings={settings}
+        analysis={{ ...analysis, status: "loading", result: null }}
+        onPlayLine={onPlayLine}
+        onHoverMove={onHoverMove}
+      />,
+    );
+    const rows = () => container.querySelectorAll(".atomicDbEngineLines > li");
+    expect(screen.getByText("Loading analysis…")).toBeVisible();
+    expect(rows()).toHaveLength(5);
+
+    rerender(
+      <AtomicDbEngine
+        fen={fen}
+        settings={settings}
+        analysis={analysis}
+        onPlayLine={onPlayLine}
+        onHoverMove={onHoverMove}
       />,
     );
 
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
-    expect(screen.queryByText("No analyzed line")).not.toBeInTheDocument();
+    expect(rows()).toHaveLength(5);
+    for (const row of Array.from(rows()).slice(2)) expect(row).toBeEmptyDOMElement();
   });
 
   it("keeps an analyzed game's stored search depth visible before a refresh", () => {

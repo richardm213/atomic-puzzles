@@ -4,6 +4,7 @@ import type { GameAnalysisRecord } from "../../../shared/domain/gameAnalysis";
 import {
   clearPreloadedAtomicDbGamePositions,
   peekAtomicDbPosition,
+  peekAtomicDbVariationLines,
 } from "../atomicDb/analysisRepository";
 import { preloadCompletedGameAnalysis } from "./preload";
 
@@ -88,6 +89,14 @@ describe("completed game analysis preload", () => {
     if (!cached.found) return;
     expect(cached.value?.moves.map((move) => move.nodeBackedPlies)).toEqual([null, null]);
     expect(cached.value?.moves.map((move) => move.searchDepth)).toEqual([26, 26]);
+
+    expect(cached.completePreload).toBe(false);
+    const stored = analysis.result!.positions[0]!;
+    stored.variationPlies = 5;
+    stored.lines[1]!.pv = ["a1b1", "h1h2"];
+    preloadCompletedGameAnalysis(analysis);
+    expect(peekAtomicDbPosition(FEN)).toMatchObject({ completePreload: true });
+    expect(peekAtomicDbVariationLines(FEN, ["a1b1"], 5)).toEqual({ a1b1: ["a1b1", "h1h2"] });
 
     preloadCompletedGameAnalysis(null);
     expect(peekAtomicDbPosition(FEN).found).toBe(false);

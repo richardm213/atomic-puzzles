@@ -7,6 +7,7 @@
 }
 
 .boardClock {
+  flex: none;
   min-width: 52px;
   padding: 3px 6px;
   border: 1px solid var(--color-border);
@@ -18,6 +19,15 @@
   font-variant-numeric: tabular-nums;
   line-height: 1;
   text-align: center;
+}
+
+.boardClockMaterial {
+  display: flex;
+  align-items: center;
+  min-inline-size: 0;
+  /* The clock remains the only item that sets the row's height. */
+  block-size: 0;
+  margin-inline-end: var(--space-2);
 }
 
 .boardClockRow.active .boardClock {

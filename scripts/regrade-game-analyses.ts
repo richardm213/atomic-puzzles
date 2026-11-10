@@ -1,10 +1,18 @@
 import { isDeepStrictEqual } from "node:util";
 
+import {
+  loadGameAnalysisOpenings,
+  openingEvaluationData,
+} from "../netlify/features/gameAnalysis/openings";
 import { createServerSupabase } from "../netlify/platform/environment";
 import {
   applyGameAnalysisOpeningReview,
   buildGameAnalysisSummary,
-  type GameAnalysisSummary,
+  gameAnalysisOpeningFens,
+  isGameAnalysisOpeningReference,
+  mergeGameAnalysisOpenings,
+  type PersistedGameAnalysisSummary,
+  type StoredAtomicDbPosition,
 } from "../shared/domain/gameAnalysis";
 
 const APPLY = process.argv.includes("--apply");
@@ -77,8 +85,12 @@ const wolfrandomGameIds = async (): Promise<Set<string>> => {
   return result;
 };
 
-const rebuildResult = (row: AnalysisRow, wolfrandomIds: ReadonlySet<string>) => {
-  const result = row.result as Partial<GameAnalysisSummary> | null;
+const rebuildResult = (
+  row: AnalysisRow,
+  wolfrandomIds: ReadonlySet<string>,
+  openings: ReadonlyMap<string, StoredAtomicDbPosition>,
+) => {
+  const result = row.result as Partial<PersistedGameAnalysisSummary> | null;
   const moves = row.moves as unknown[];
   if (
     !Array.isArray(moves) ||
@@ -88,17 +100,27 @@ const rebuildResult = (row: AnalysisRow, wolfrandomIds: ReadonlySet<string>) => 
   ) {
     throw new Error(`Saved moves and positions do not match for ${row.game_id}.`);
   }
+  const persistedPositions = result.positions;
+  const positions = mergeGameAnalysisOpenings(persistedPositions, openings);
   const wolfrandom =
     wolfrandomIds.has(row.game_id) ||
-    result.positions.some(({ closure }) => closure === "WOLFRANDOM_OPENING");
-  const regraded = applyGameAnalysisOpeningReview(
-    buildGameAnalysisSummary(moves, result.positions),
-    { wolfrandom },
+    positions.some(({ closure }) => closure === "WOLFRANDOM_OPENING");
+  const regraded = applyGameAnalysisOpeningReview(buildGameAnalysisSummary(moves, positions), {
+    wolfrandom,
+  });
+  const evaluations = regraded.evaluations.map((value, index) =>
+    isGameAnalysisOpeningReference(persistedPositions[index]!) ? null : value,
   );
-  return { wolfrandom, result: { ...result, ...regraded } };
+  return {
+    wolfrandom,
+    result: { ...result, ...regraded, positions: persistedPositions, evaluations },
+  };
 };
 
-const updateResult = async (row: AnalysisRow, result: GameAnalysisSummary): Promise<void> => {
+const updateResult = async (
+  row: AnalysisRow,
+  result: PersistedGameAnalysisSummary,
+): Promise<void> => {
   const { data, error } = await supabase
     .from("game_analyses")
     .update({ result, updated_at: new Date().toISOString() })
@@ -112,13 +134,16 @@ const updateResult = async (row: AnalysisRow, result: GameAnalysisSummary): Prom
 };
 
 const scan = async (wolfrandomIds: ReadonlySet<string>, apply: boolean) => {
+  const openings = openingEvaluationData(
+    await loadGameAnalysisOpenings(supabase, gameAnalysisOpeningFens().keys()),
+  );
   const totals = { ready: 0, wolfrandom: 0, changed: 0 };
   for await (const rows of readyPages()) {
     const changed = rows.flatMap((row) => {
-      const { wolfrandom, result } = rebuildResult(row, wolfrandomIds);
+      const { wolfrandom, result } = rebuildResult(row, wolfrandomIds, openings);
       if (wolfrandom) totals.wolfrandom += 1;
       // Compare the JSON that is actually stored: JSONB round-trips a signed zero as zero.
-      const persisted = JSON.parse(JSON.stringify(result)) as GameAnalysisSummary;
+      const persisted = JSON.parse(JSON.stringify(result)) as PersistedGameAnalysisSummary;
       return isDeepStrictEqual(row.result, persisted) ? [] : [{ row, result: persisted }];
     });
     if (apply) {

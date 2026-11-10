@@ -207,6 +207,7 @@ export const PuzzleRecentPage = () => {
 
   const puzzle = response?.puzzle ?? null;
   const deleted = Boolean(puzzle?.deleted_at);
+  const explanation = puzzle?.explanation?.trim();
 
   return (
     <section className="puzzleQueuePage puzzleRecentPage">
@@ -364,6 +365,14 @@ export const PuzzleRecentPage = () => {
                     onChange={(event) => setValue({ ...value, explanation: event.target.value })}
                   />
                 </label>
+              ) : explanation ? (
+                <section
+                  className="puzzleReviewBoardExplanation"
+                  aria-labelledby="recent-puzzle-explanation-heading"
+                >
+                  <h2 id="recent-puzzle-explanation-heading">Explanation</h2>
+                  <p>{explanation}</p>
+                </section>
               ) : null
             }
             fieldsBeforeEvent={

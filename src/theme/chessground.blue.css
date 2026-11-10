@@ -5,40 +5,50 @@ cg-board {
   background-blend-mode: var(--cg-board-background-blend-mode, normal);
 }
 
+/* Keep the familiar blue cues on Default; give tonal boards stronger markers. */
+:root:not([data-palette="default"])[data-palette] cg-board {
+  --cg-move-dot-strength: 82%;
+  --cg-move-capture-strength: 65%;
+  --cg-move-selection-strength: 65%;
+  --cg-move-selection-edge: color-mix(in srgb, var(--board-move-ink) 24%, white);
+}
+
 cg-board square.move-dest {
   background: radial-gradient(
-    rgba(18, 92, 173, 0.5) 22%,
-    #125cad 0,
-    rgba(0, 0, 0, 0.3) 0,
-    rgba(0, 0, 0, 0) 0
+    color-mix(in srgb, var(--board-move-ink) var(--cg-move-dot-strength, 50%), transparent) 22%,
+    transparent 22%
   );
 }
 
 cg-board square.premove-dest {
   background: radial-gradient(
-    rgba(45, 82, 167, 0.45) 22%,
-    #2d52a7 0,
-    rgba(0, 0, 0, 0.3) 0,
-    rgba(0, 0, 0, 0) 0
+    color-mix(in srgb, var(--board-premove-ink) 45%, transparent) 22%,
+    transparent 22%
   );
 }
 
 cg-board square.oc.move-dest {
-  background: radial-gradient(transparent 0%, transparent 80%, rgba(18, 92, 173, 0.35) 80%);
+  background: radial-gradient(
+    transparent 80%,
+    color-mix(in srgb, var(--board-move-ink) var(--cg-move-capture-strength, 35%), transparent) 80%
+  );
 }
 
 cg-board square.oc.premove-dest {
-  background: radial-gradient(transparent 0%, transparent 80%, rgba(45, 82, 167, 0.25) 80%);
+  background: radial-gradient(
+    transparent 80%,
+    color-mix(in srgb, var(--board-premove-ink) 25%, transparent) 80%
+  );
 }
 
 cg-board square.move-dest:hover,
 cg-board square.move-dest.hover {
-  background: rgba(18, 92, 173, 0.3);
+  background: color-mix(in srgb, var(--board-move-ink) 30%, transparent);
 }
 
 cg-board square.premove-dest:hover,
 cg-board square.premove-dest.hover {
-  background: rgba(45, 82, 167, 0.2);
+  background: color-mix(in srgb, var(--board-premove-ink) 20%, transparent);
 }
 
 cg-board square.last-move {
@@ -46,7 +56,12 @@ cg-board square.last-move {
 }
 
 cg-board square.selected {
-  background-color: rgba(18, 92, 173, 0.45);
+  background-color: color-mix(
+    in srgb,
+    var(--board-move-ink) var(--cg-move-selection-strength, 45%),
+    transparent
+  );
+  box-shadow: inset 0 0 0 2px var(--cg-move-selection-edge, transparent);
 }
 
 cg-board square.check {
@@ -60,7 +75,7 @@ cg-board square.check {
 }
 
 cg-board square.current-premove {
-  background-color: rgba(45, 82, 167, 0.45);
+  background-color: color-mix(in srgb, var(--board-premove-ink) 45%, transparent);
 }
 
 .orientation-white .ranks :nth-child(odd),

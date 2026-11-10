@@ -15,6 +15,10 @@
   --color-accent-soft-text: #ecfeff;
   --color-table-hover: rgba(147, 197, 253, 0.08);
   --color-primary-ring: rgba(156, 188, 255, 0.72);
+  --board-move-ink: #125cad;
+  --board-premove-ink: #2d52a7;
+  /* Threats use a contrasting hue instead of tinting the best-move accent. */
+  --board-threat-ink: oklch(43% 0.23 344);
   --page-background:
     radial-gradient(ellipse 70% 44% at 12% 6%, rgba(49, 91, 232, 0.2), transparent 100%),
     radial-gradient(ellipse 58% 38% at 88% 0%, rgba(22, 138, 161, 0.14), transparent 100%),
@@ -125,6 +129,7 @@
   --gem-nav-hue: 295;
   --gem-action-chroma: 0.2;
   --gem-accent-chroma: 0.14;
+  --board-threat-ink: oklch(42% 0.11 74);
 }
 
 :root[data-palette="ruby"] {
@@ -134,11 +139,13 @@
   --gem-accent-dark-lightness: 72%;
   --gem-nav-hue: 20;
   --gem-nav-chroma: 0.2;
+  --board-threat-ink: oklch(40% 0.095 212);
 }
 
 :root[data-palette="emerald"] {
   --gem-hue: 164;
   --gem-nav-hue: 157;
+  --board-threat-ink: oklch(42% 0.22 321);
 }
 
 /* Gemstone accents are shared across modes. */
@@ -181,6 +188,9 @@
   --feature-card-hover-tint: 15%;
   --color-table-hover: var(--color-accent-soft-bg);
   --color-primary-ring: var(--color-primary-soft);
+  /* Use a deeper accent on the board, where even the dark squares are midtones. */
+  --board-move-ink: color-mix(in oklch, var(--color-primary) 64%, black);
+  --board-premove-ink: var(--board-move-ink);
   --brand-wordmark-gradient: linear-gradient(
     180deg,
     var(--color-heading),
@@ -332,6 +342,7 @@
   --color-primary-pale: #eeeeee;
   --color-primary-text: var(--color-primary-soft);
   --color-on-primary: var(--color-heading);
+  --board-threat-ink: oklch(44% 0.21 23);
   --color-cyan: #858585;
   --color-cyan-bright: #c4c4c4;
   --color-action-fill: var(--color-primary);
@@ -342,6 +353,8 @@
   --color-accent-soft-text: var(--color-primary-pale);
   --color-table-hover: var(--color-accent-soft-bg);
   --color-primary-ring: #cccccc;
+  --board-move-ink: var(--theme-raised-ink);
+  --board-premove-ink: var(--board-move-ink);
   --color-nav-badge: #5a5a5a;
   --color-feature-card-accent: var(--color-primary-soft);
   --feature-card-tint: 6%;

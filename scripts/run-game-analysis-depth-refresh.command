@@ -14,9 +14,9 @@ set -a
 source .env.local
 set +a
 
-printf '\033]0;Game analysis depth refresh\007'
-echo "Game analysis depth refresh"
+printf '\033]0;Game analysis 5×5 refresh\007'
+echo "Game analysis 5×5 refresh"
 echo "Resuming from the last saved checkpoint. Press Ctrl+C to stop."
 echo
 
-exec caffeinate -i npx --yes tsx scripts/refresh-game-analysis-depths.ts --apply
+exec caffeinate -i npx --yes tsx scripts/refresh-game-analysis-depths.ts --apply "$@"

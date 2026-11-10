@@ -93,12 +93,13 @@ export const queryAtomicDbPrincipalVariations = async (
   lineCount: number,
   plyCount: number,
   signal: AbortSignal,
+  fetchResponse: typeof fetch = fetch,
 ): Promise<AtomicDbPrincipalVariations | null> => {
   const url = new URL(ATOMIC_DB_PRINCIPAL_VARIATIONS_URL);
   url.searchParams.set("fen", fen);
   url.searchParams.set("line_count", String(lineCount));
   url.searchParams.set("ply_count", String(plyCount));
-  const response = await fetch(url, { headers: { Accept: "application/json" }, signal });
+  const response = await fetchResponse(url, { headers: { Accept: "application/json" }, signal });
   const body: unknown = await response.json().catch(() => null);
 
   if (response.status === 404) return null;

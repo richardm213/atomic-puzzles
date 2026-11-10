@@ -26,7 +26,12 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  if old.completed then
+  if old.completed and not (
+    new.completed
+    and new.data->>'variationPlies' is not distinct from '5'
+    and (new.request_status is not distinct from 'refreshed'
+         or old.data->>'variationPlies' is distinct from '5')
+  ) then
     new.completed := true;
     new.data := old.data;
     new.completed_at := old.completed_at;

@@ -14,6 +14,10 @@
   grid-template-rows: auto var(--analysis-default-explorer-split) auto;
 }
 
+.practicePanel.puzzleDraftOpen {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
 .practicePanel.explorerOpen.customExplorerSplit {
   grid-template-rows:
     auto minmax(0, var(--practice-move-panel-height)) minmax(0, 1fr)
@@ -36,6 +40,13 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
+}
+
+.practicePuzzleConfirmation {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-body);
 }
 
 .practiceHeaderTitle {
@@ -548,7 +559,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .practicePanel {
+  .practicePanel,
+  .practicePanel.puzzleDraftOpen {
     grid-column: 1;
     grid-row: 2;
     width: 100%;

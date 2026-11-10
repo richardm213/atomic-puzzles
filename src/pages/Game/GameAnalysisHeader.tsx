@@ -11,6 +11,7 @@ import { modeLabels } from "../../constants/matches";
 import { useBoardItemShortcuts } from "../../hooks/useBoardItemShortcuts";
 import type { ArchiveGame } from "../../lib/archive/games";
 import { decodeGameResult } from "../../lib/archive/games";
+import type { MaterialCount } from "../../lib/chess/materialCount";
 import { gameTerminationLabel } from "../../lib/games/termination";
 import { loadRawMatchById } from "../../lib/matches/data";
 import { buildExternalGameUrl } from "../../lib/matches/routes";
@@ -91,11 +92,13 @@ export const GameBoardClock = ({
   game,
   currentPly,
   color,
+  material,
   rowRef,
 }: {
   game: ArchiveGame;
   currentPly: number;
   color: "white" | "black";
+  material: MaterialCount;
   rowRef?: Ref<HTMLDivElement> | undefined;
 }) => {
   const { white, black } = decodeGameResult(game);
@@ -112,6 +115,10 @@ export const GameBoardClock = ({
       value={formatClock(clock)}
       ariaLabel={`${username} clock, ${active ? "to move" : "waiting"}`}
       active={active}
+      material={{
+        side: color,
+        pieces: color === "white" ? material.whitePieces : material.blackPieces,
+      }}
     />
   );
 };
@@ -178,7 +185,13 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
   );
 };
 
-export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
+export const GameMatchNavigation = ({
+  game,
+  puzzleDraftOpen = false,
+}: {
+  game: ArchiveGame;
+  puzzleDraftOpen?: boolean;
+}) => {
   const navigate = useNavigate();
   const matchQuery = useQuery({
     queryKey: ["games", "match-crosstable", game.external_match_id],
@@ -188,8 +201,8 @@ export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
   });
   const games = matchQuery.data?.games ?? [];
   const currentIndex = games.findIndex((matchGame) => matchGame.id === game.game_id);
-  const previousGame = games[currentIndex - 1] ?? null;
-  const nextGame = currentIndex >= 0 ? (games[currentIndex + 1] ?? null) : null;
+  const previousGame = puzzleDraftOpen ? null : (games[currentIndex - 1] ?? null);
+  const nextGame = !puzzleDraftOpen && currentIndex >= 0 ? (games[currentIndex + 1] ?? null) : null;
   const previousGameId = previousGame?.id;
   const nextGameId = nextGame?.id;
 
@@ -229,8 +242,16 @@ export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
           <button
             type="button"
             className="gameAnalysisGameNavigationButton"
-            aria-label="No previous game"
-            title={`No previous game${previousHint ? ` (${previousHint})` : ""}`}
+            aria-label={
+              puzzleDraftOpen
+                ? "Previous game unavailable while creating a puzzle"
+                : "No previous game"
+            }
+            title={
+              puzzleDraftOpen
+                ? "Finish creating the puzzle to switch games"
+                : `No previous game${previousHint ? ` (${previousHint})` : ""}`
+            }
             disabled
           >
             <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
@@ -251,8 +272,14 @@ export const GameMatchNavigation = ({ game }: { game: ArchiveGame }) => {
           <button
             type="button"
             className="gameAnalysisGameNavigationButton"
-            aria-label="No next game"
-            title={`No next game${nextHint ? ` (${nextHint})` : ""}`}
+            aria-label={
+              puzzleDraftOpen ? "Next game unavailable while creating a puzzle" : "No next game"
+            }
+            title={
+              puzzleDraftOpen
+                ? "Finish creating the puzzle to switch games"
+                : `No next game${nextHint ? ` (${nextHint})` : ""}`
+            }
             disabled
           >
             <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />

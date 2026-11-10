@@ -11,6 +11,7 @@ type BoardWorkspaceProps = {
   boardAriaLabel: string;
   boardTabIndex?: number;
   chessboardProps: ComponentProps<typeof Chessboard>;
+  draftChessboardProps?: ComponentProps<typeof Chessboard> | undefined;
   boardBefore?: ReactNode;
   boardAfter?: ReactNode;
   boardOverlay?: ReactNode;
@@ -63,6 +64,7 @@ export const BoardWorkspace = ({
   boardAriaLabel,
   boardTabIndex,
   chessboardProps,
+  draftChessboardProps,
   boardBefore,
   boardAfter,
   boardOverlay,
@@ -135,7 +137,17 @@ export const BoardWorkspace = ({
         aria-label={boardAriaLabel}
         tabIndex={boardTabIndex}
       >
-        <Chessboard {...chessboardProps} dimensionsRef={boardPanelRef} />
+        {/* Keep the original move tree mounted while the draft uses its own board. */}
+        <Chessboard
+          {...chessboardProps}
+          dimensionsRef={boardPanelRef}
+          {...(draftChessboardProps
+            ? { hidden: true, disabled: true, enableNavigationShortcuts: false }
+            : {})}
+        />
+        {draftChessboardProps ? (
+          <Chessboard {...draftChessboardProps} dimensionsRef={boardPanelRef} />
+        ) : null}
         {boardOverlay}
       </div>
       {boardAfter}

@@ -285,10 +285,13 @@ describe("PuzzleSubmissionPage fields", () => {
   it("asks before sending an alternate starting move to the review queue", async () => {
     const user = userEvent.setup();
     let submissionRequestCount = 0;
-    const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = input instanceof Request ? input.url : String(input);
       if (!url.includes("/api/puzzles/submit")) {
         return Promise.resolve(new Response(null, { status: 503 }));
+      }
+      if (JSON.parse(String(init?.body)).action === "starting-fen-match") {
+        return Promise.resolve(Response.json({ puzzleId: 42 }));
       }
       submissionRequestCount += 1;
       return Promise.resolve(
@@ -309,6 +312,11 @@ describe("PuzzleSubmissionPage fields", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Solution PGN" }), {
       target: { value: `1. e4` },
     });
+    expect(await screen.findByRole("link", { name: "puzzle 42" })).toHaveAttribute(
+      "href",
+      "/solve/42",
+    );
+    expect(submissionRequestCount).toBe(0);
     await user.click(screen.getByRole("button", { name: "Submit for review" }));
 
     expect(await screen.findByText(DIFFERENT_START_MOVE_CONFIRMATION)).toBeVisible();
@@ -316,9 +324,12 @@ describe("PuzzleSubmissionPage fields", () => {
     await user.click(screen.getByRole("button", { name: "Send to review" }));
 
     expect(await screen.findByText(/Puzzle submitted for review/)).toBeVisible();
-    const submissionCalls = fetchMock.mock.calls.filter(([input]) => {
+    const submissionCalls = fetchMock.mock.calls.filter(([input, request]) => {
       const url = input instanceof Request ? input.url : String(input);
-      return url.includes("/api/puzzles/submit");
+      return (
+        url.includes("/api/puzzles/submit") &&
+        JSON.parse(String(request?.body)).action !== "starting-fen-match"
+      );
     });
     const [, secondRequest] = submissionCalls[1] ?? [];
     expect(JSON.parse(String(secondRequest?.body))).toEqual(
@@ -515,25 +526,36 @@ describe("PuzzleEditor move tree", () => {
     );
   });
 
-  it("removes a deleted alternate branch from both the PGN and board history", async () => {
+  it("returns to the move before deletion even when rewriting PGN reorders branches", async () => {
     const user = userEvent.setup();
-    render(<EditorHarness allowSolutionEditing showAnalysisEngine />);
+    render(
+      <EditorHarness
+        allowSolutionEditing
+        showAnalysisEngine
+        initialSolution="1. e4 (1. d4 d5 2. c4) e5 (1... c5 2. Nf3) 2. Nf3 (2. Bc4)"
+      />,
+    );
 
-    const alternateMove = screen.getByRole("button", { name: "1... c5" });
+    const alternateMove = screen.getByRole("button", { name: "2. c4" });
     fireEvent.contextMenu(alternateMove);
     await user.click(screen.getByRole("menuitem", { name: "Delete" }));
 
     const textarea = screen.getByRole("textbox", { name: "Solution PGN" }) as HTMLTextAreaElement;
     await waitFor(() =>
-      expect(lineSet(solutionLinesFromTextarea(textarea))).toEqual([startingLines[0]!.join(" ")]),
+      expect(solutionLinesFromTextarea(textarea)).toEqual([
+        ["e4", "e5", "Nf3"],
+        ["d4", "d5"],
+        ["e4", "c5", "Nf3"],
+        ["e4", "e5", "Bc4"],
+      ]),
     );
     expect(chessboardMocks.navigations.at(-1)).toMatchObject({
       type: "loadPgn",
-      line: 0,
-      ply: 1,
+      line: 1,
+      ply: 2,
     });
     expect(chessboardMocks.navigations.at(-1)).toHaveProperty("pgn");
-    expect((chessboardMocks.navigations.at(-1) as { pgn: string }).pgn).not.toContain("c5");
+    expect((chessboardMocks.navigations.at(-1) as { pgn: string }).pgn).not.toMatch(/\bc4\b/);
   });
 
   it("can add the same line again after deleting it", async () => {

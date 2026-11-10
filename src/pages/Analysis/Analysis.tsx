@@ -1,10 +1,16 @@
-import { faArrowsRotate, faBookOpen, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowsRotate,
+  faBookOpen,
+  faPuzzlePiece,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   SetStateAction,
 } from "react";
@@ -12,6 +18,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { z } from "zod";
 
 import { WOLFRANDOM_RANDOMIZED_PLIES } from "../../../shared/domain/gameAnalysis";
+import { isApprovedPuzzleCreator } from "../../../shared/domain/puzzles/approvedPuzzleCreators";
 import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
@@ -20,7 +27,6 @@ import {
   shortcutIndexFromKeyboardEvent,
 } from "../../components/Chessboard/boardShortcuts";
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
-import { pairPlayedMoves } from "../../components/PlayedMoves/PlayedMoves";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
 import { useKeyboardShortcutSettings } from "../../context/AppSettings";
@@ -37,6 +43,7 @@ import {
   OpeningExplorerPanel,
   OpeningExplorerResizeHandle,
 } from "../../features/analysisWorkspace/OpeningExplorerPanel";
+import { PuzzleComposer, type PuzzleCreationResult } from "../../features/analysisWorkspace/PuzzleComposer";
 import {
   useBoardAlignedPanelHeight,
   useOpeningExplorerSplit,
@@ -50,7 +57,12 @@ import { useGameAnalysis } from "../../hooks/useGameAnalysis";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
-import { buildBoardLoadNavigation, gamePlyFromHash } from "../../lib/analysis/boardLoading";
+import {
+  buildBoardLoadNavigation,
+  gameHashForPly,
+  gamePlyFromHash,
+  pgnLineIndexForPrefix,
+} from "../../lib/analysis/boardLoading";
 import {
   boardLineAnnotationNavigation,
   boardLineNavigation,
@@ -59,11 +71,13 @@ import {
 import { readAnalysisHandoff } from "../../lib/analysis/handoff";
 import { type ArchiveGame, decodeGameResult } from "../../lib/archive/games";
 import { isAtomicTablebasePosition } from "../../lib/atomicTablebase/material";
+import { materialCountFromFen } from "../../lib/chess/materialCount";
 import {
   createAtomicPosition,
   prunePgnLinesFromMove,
   sameSolutionMove,
   serializeSanLinesToPgn,
+  startingPlyFromFen,
 } from "../../lib/chess/pgn";
 import { keyboardShortcutAction } from "../../lib/keyboardShortcuts";
 import type { ChessboardState, PlaybackCommand, SolutionNavigation } from "../../types/chessboard";
@@ -355,26 +369,37 @@ type AnalysisPageProps = {
 export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPageProps = {}) => {
   const navigate = useNavigate();
   const auth = useAuth();
+  const publishesDirectly = isApprovedPuzzleCreator(auth.user?.username ?? "");
+  const puzzleActionLabel = publishesDirectly ? "Create puzzle" : "Submit puzzle";
   const keyboardShortcuts = useKeyboardShortcutSettings();
   const { _splat: fenPath } = useParams({ strict: false });
-  const locationSearch = typeof window === "undefined" ? "" : window.location.search;
+  const handoffId = new URLSearchParams(
+    typeof window === "undefined" ? "" : window.location.search,
+  ).get("handoff");
+  // Puzzle URL changes must not replay the handoff onto the hidden analysis board.
   const analysisHandoff = useMemo(
-    () => (game ? null : readAnalysisHandoff(locationSearch)),
-    [game, locationSearch],
+    () =>
+      !game && handoffId
+        ? readAnalysisHandoff(new URLSearchParams({ handoff: handoffId }).toString())
+        : null,
+    [game, handoffId],
   );
   const routeFen =
     game && initialFen ? initialFen : (analysisHandoff?.fen ?? fenFromRoute(fenPath));
   const initialBoardNavigation = useMemo(() => {
     if (game) {
       const moves = initialMoves ?? [];
+      const location = typeof window === "undefined" ? null : window.location;
+      const draftSourcePly = new URLSearchParams(location?.search).get("puzzle");
+      // An unsaved draft link can return to its source position, not recreate its moves.
+      const hash =
+        draftSourcePly !== null && /^\d+$/.test(draftSourcePly)
+          ? `#ply-${draftSourcePly}`
+          : (location?.hash ?? "");
       return buildBoardLoadNavigation({
         fen: routeFen,
         moves,
-        ply:
-          gamePlyFromHash(
-            typeof window === "undefined" ? "" : window.location.hash,
-            moves.length,
-          ) ?? 0,
+        ply: gamePlyFromHash(hash, moves.length) ?? 0,
       });
     }
     return buildBoardLoadNavigation({
@@ -393,7 +418,19 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const rightPanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
   const moveContentRef = useRef<HTMLDivElement | null>(null);
-  const [boardState, setBoardState] = useState<ChessboardState | null>(null);
+  const [gameBoardState, setGameBoardState] = useState<ChessboardState | null>(null);
+  const [puzzleBoardState, setPuzzleBoardState] = useState<ChessboardState | null>(null);
+  const [puzzleDraft, setPuzzleDraft] = useState<{
+    fen: string;
+    orientation: "white" | "black";
+    sourcePly: number;
+  } | null>(null);
+  const [addedPuzzle, setAddedPuzzle] = useState<PuzzleCreationResult | null>(null);
+  const puzzleLauncher = useRef<HTMLButtonElement | null>(null);
+  const scrollBeforeDraft = useRef(0);
+  const hashBeforeDraft = useRef("");
+  const documentBeforeDraft = useRef({ fen: "", pgn: "" });
+  const boardState = puzzleDraft ? puzzleBoardState : gameBoardState;
   const [atomicDbEngineSettings, setAtomicDbEngineSettings] = useAtomicDbEngineSettings();
   const [boardSize, setBoardSize] = usePersistedState(
     BOARD_SIZE_STORAGE_KEY,
@@ -409,15 +446,18 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     notationLayoutSchema,
     "inline",
   );
-  const [rootFen, setRootFen] = useState(routeFen);
-  const [orientation, setOrientation] = useState<"white" | "black">("white");
+  const [gameRootFen, setRootFen] = useState(routeFen);
+  const rootFen = puzzleDraft?.fen ?? gameRootFen;
+  const [gameOrientation, setOrientation] = useState<"white" | "black">("white");
+  const orientation = puzzleDraft?.orientation ?? gameOrientation;
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [explorerOpen, setExplorerOpen] = usePersistedState(
+  const [explorerPreference, setExplorerOpen] = usePersistedState(
     game ? GAME_EXPLORER_OPEN_STORAGE_KEY : EXPLORER_OPEN_STORAGE_KEY,
     z.boolean(),
     defaultExplorerOpen,
   );
+  const explorerOpen = !puzzleDraft && explorerPreference;
   const [gamePanelHeight, setGamePanelHeight] = useState<number | null>(null);
   const [gamePanelResizing, setGamePanelResizing] = useState(false);
   const [gameUnderboardTab, setGameUnderboardTab] = useState<GameUnderboardTab>("analysis");
@@ -502,14 +542,19 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     moveList,
     terminalOutcome,
   } = getBoardMoveState(boardState, rootFen);
-  const gameAnalysis = useGameAnalysis(game, rootFen, auth.user?.username ?? "");
+  const gameMaterial = useMemo(
+    () => materialCountFromFen(game ? currentFen : null),
+    [game, currentFen],
+  );
+  const gameAnalysis = useGameAnalysis(game, gameRootFen, auth.user?.username ?? "");
   const positionAnalysisEnabled =
     atomicDbEngineSettings.enabled && (!game || gameComputerAnalysisEnabled);
   const wolfrandomOpening =
-    game?.mode === "wolfrandom" && currentPly <= WOLFRANDOM_RANDOMIZED_PLIES;
+    !puzzleDraft && game?.mode === "wolfrandom" && currentPly <= WOLFRANDOM_RANDOMIZED_PLIES;
   const positionAnalysisActive = positionAnalysisEnabled && !wolfrandomOpening;
   const gameAssessments = gameAnalysis.analysis?.result?.assessments ?? [];
-  const currentAssessment = currentPly > 0 ? (gameAssessments[currentPly - 1] ?? null) : null;
+  const currentAssessment =
+    !puzzleDraft && currentPly > 0 ? (gameAssessments[currentPly - 1] ?? null) : null;
   const currentVisibleAssessment =
     currentAssessment?.classification === "best" ? null : currentAssessment;
   currentFenRef.current = currentFen;
@@ -649,28 +694,14 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           }),
   } as CSSProperties;
 
-  const movePairs = pairPlayedMoves(moveList);
-
   useLayoutEffect(() => {
     if (currentPly <= 2 && moveContentRef.current) {
       moveContentRef.current.scrollTop = 0;
     }
   }, [currentPly, game?.game_id]);
 
-  const variationPgn = analysisLines.length ? serializeSanLinesToPgn(rootFen, analysisLines) : "";
-
-  const pgnText = variationPgn
-    ? `${variationPgn} *`
-    : movePairs.length
-      ? `${movePairs
-          .map((pair) => {
-            const whiteMove = pair.white ?? "";
-            return pair.black
-              ? `${pair.number}. ${whiteMove} ${pair.black}`
-              : `${pair.number}. ${whiteMove}`;
-          })
-          .join(" ")} *`
-      : "";
+  const variationPgn = serializeSanLinesToPgn(rootFen, analysisLines);
+  const pgnText = variationPgn ? `${variationPgn} *` : "";
   const boardDocument = useBoardDocument({
     fen: currentFen,
     pgn: pgnText,
@@ -682,8 +713,11 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
       void navigate({ to: analysisPathFromFen(nextFen) });
     },
     onCommitPgn: (nextPgn, initialFen) => {
+      if (puzzleDraft && initialFen && initialFen !== puzzleDraft.fen) {
+        throw new Error("Keep the puzzle’s selected starting position.");
+      }
       const nextRootFen = initialFen ?? rootFen;
-      if (initialFen) setRootFen(initialFen);
+      if (initialFen && !puzzleDraft) setRootFen(initialFen);
       setNavigation(buildBoardLoadNavigation({ fen: nextRootFen, pgn: nextPgn }));
     },
   });
@@ -699,8 +733,45 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   }, []);
 
   const flipBoard = useCallback((): void => {
-    setOrientation((current) => (current === "white" ? "black" : "white"));
-  }, []);
+    if (puzzleDraft) {
+      setPuzzleDraft((current) =>
+        current
+          ? { ...current, orientation: current.orientation === "white" ? "black" : "white" }
+          : current,
+      );
+    } else {
+      setOrientation((current) => (current === "white" ? "black" : "white"));
+    }
+  }, [puzzleDraft]);
+
+  const startPuzzle = (event: ReactMouseEvent<HTMLButtonElement>): void => {
+    puzzleLauncher.current = event.currentTarget;
+    scrollBeforeDraft.current = window.scrollY;
+    hashBeforeDraft.current = window.location.hash;
+    documentBeforeDraft.current = { fen: currentFen, pgn: pgnText };
+    setThreatMode(false);
+    setHoveredExplorerMoveUci(null);
+    setPuzzleBoardState(null);
+    setAddedPuzzle(null);
+    setPuzzleDraft({
+      fen: currentFen,
+      orientation: boardState?.turn || gameOrientation,
+      sourcePly: currentPly,
+    });
+  };
+
+  const closePuzzle = (result?: PuzzleCreationResult): void => {
+    setNavigation(null);
+    setPuzzleDraft(null);
+    setPuzzleBoardState(null);
+    const { fen, pgn } = documentBeforeDraft.current;
+    boardDocument.resetDrafts(fen, pgn);
+    if (result) setAddedPuzzle(result);
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollBeforeDraft.current, behavior: "instant" });
+      puzzleLauncher.current?.focus({ preventScroll: true });
+    });
+  };
 
   const requestBoardWheelNavigation = useCallback(
     (command: "next" | "previous"): void => setNavigation({ type: "command", command }),
@@ -773,14 +844,14 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   }, []);
 
   useEffect(() => {
-    if (!game) return;
+    if (!game || puzzleDraft) return;
     const handleHashChange = (): void => {
       const hashPly = gamePlyFromHash(window.location.hash, game.moves?.length ?? 0);
       if (hashPly !== null && hashPly !== currentPly) navigateToPly(hashPly);
     };
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
-  }, [currentPly, game, navigateToPly]);
+  }, [currentPly, game, navigateToPly, puzzleDraft]);
 
   const navigateToAnalysisMove = useCallback(
     (lineIndex: number, moveIndex: number): void => {
@@ -804,12 +875,14 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const deleteMove = useCallback(
     (lineIndex: number, moveIndex: number): void => {
       const pruned = prunePgnLinesFromMove(analysisLines, lineIndex, moveIndex, sameSolutionMove);
+      if (!pruned.changed) return;
       const pgn = serializeSanLinesToPgn(rootFen, pruned.lines);
+      const retainedMoves = pruned.lines[pruned.lineIndex]?.slice(0, pruned.ply) ?? [];
       setNavigation(
         buildBoardLoadNavigation({
           fen: rootFen,
           pgn,
-          line: pruned.lineIndex,
+          line: pgnLineIndexForPrefix(rootFen, pgn, retainedMoves),
           ply: pruned.ply,
         }),
       );
@@ -834,14 +907,23 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   }, [finishVariationPlayback]);
 
   useEffect(() => {
-    if (!game || navigation !== null) return;
-    const moveNumber = Math.ceil(currentPly / 2);
-    const hash = moveNumber > 0 ? `#${moveNumber}` : "";
-    const nextUrl = `${window.location.pathname}${window.location.search}${hash}`;
-    if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== nextUrl) {
+    if (navigation !== null || (!puzzleDraft && !boardState)) return;
+    const url = new URL(window.location.href);
+    if (puzzleDraft) {
+      url.searchParams.set("puzzle", String(puzzleDraft.sourcePly));
+      url.hash = `ply-${currentPly}`;
+    } else if (game) {
+      if (url.searchParams.has("puzzle")) url.searchParams.delete("puzzle");
+      url.hash = gameHashForPly(currentPly);
+    } else if (url.searchParams.has("puzzle")) {
+      url.searchParams.delete("puzzle");
+      url.hash = hashBeforeDraft.current;
+    }
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+    if (url.href !== window.location.href) {
       window.history.replaceState(window.history.state, "", nextUrl);
     }
-  }, [currentPly, game, navigation]);
+  }, [boardState, currentPly, game, navigation, puzzleDraft]);
 
   const ensurePlayerStartDate = useCallback((): void => {
     setExplorerSettings((current) => ({
@@ -1037,7 +1119,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     status: explorerStatus,
     error: explorerError,
   } = useOpeningExplorer({
-    enabled: explorerOpen || !atomicDbEngineSettings.enabled,
+    enabled: !puzzleDraft && (explorerOpen || !atomicDbEngineSettings.enabled),
     cacheKey: explorerUrl ?? undefined,
     // The backend cancels superseded navigation requests, so a short trailing
     // debounce is enough to collapse move-list scrubbing without making each
@@ -1113,10 +1195,12 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
       }
 
       if (action === "toggleExplorer") {
-        setExplorerOpen((open) => !open);
-      } else if (action === "toggleGameAnalysis" && game) {
-        event.preventDefault();
-        setGameComputerAnalysisEnabled((enabled) => !enabled);
+        if (!puzzleDraft) setExplorerOpen((open) => !open);
+      } else if (action === "toggleGameAnalysis") {
+        if (game && !puzzleDraft) {
+          event.preventDefault();
+          setGameComputerAnalysisEnabled((enabled) => !enabled);
+        }
       } else if (action === "toggleFollowUps") {
         setAtomicDbEngineSettings((current) => ({
           ...current,
@@ -1145,6 +1229,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     flipBoard,
     game,
     positionAnalysisActive,
+    puzzleDraft,
     setAtomicDbEngineSettings,
     setExplorerOpen,
     threatFen,
@@ -1157,8 +1242,26 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
       lines={analysisLines}
       moves={moveList}
       currentPly={currentPly}
+      initialPly={puzzleDraft ? startingPlyFromFen(rootFen) : 0}
       pinnedLineIndex={activeLineIndex}
       onSelect={navigateToAnalysisMove}
+    />
+  );
+  const moveNotation = (
+    <MoveNotation
+      lines={analysisLines}
+      moves={moveList}
+      currentPly={currentPly}
+      initialPly={puzzleDraft ? startingPlyFromFen(rootFen) : 0}
+      pinnedLineIndex={activeLineIndex}
+      inline={notationLayout === "inline"}
+      onNavigate={navigateToPly}
+      onSelectVariation={navigateToAnalysisMove}
+      onAnnotate={game && !puzzleDraft ? undefined : annotateMove}
+      onDelete={game && !puzzleDraft ? undefined : deleteMove}
+      assessments={
+        game && !puzzleDraft && gameComputerAnalysisEnabled ? gameAssessments : undefined
+      }
     />
   );
   const openingExplorerPanel = explorerOpen ? (
@@ -1365,13 +1468,30 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     </OpeningExplorerPanel>
   ) : null;
 
+  const createPuzzleDisabled = !boardState || Boolean(terminalOutcome) || navigation !== null;
+  const puzzleConfirmation = addedPuzzle ? (
+    <p className={game ? "gamePuzzleConfirmation" : "analysisPuzzleConfirmation"} role="status">
+      {addedPuzzle.destination === "published" ? (
+        <>
+          Puzzle added.{" "}
+          <Link to="/solve/$puzzleId" params={{ puzzleId: String(addedPuzzle.puzzleId) }}>
+            View puzzle
+          </Link>
+        </>
+      ) : (
+        "Puzzle submitted for review."
+      )}
+    </p>
+  ) : null;
+
   // Keep one set of match controls so shortcuts and tab order follow the visible layout.
   const gameDetails = game ? (
     <div className="gameAnalysisSidebarRail">
       <aside className="gameAnalysisSidebar" aria-label="Game details">
         <GameAnalysisHeader game={game} />
       </aside>
-      <GameMatchNavigation game={game} />
+      <GameMatchNavigation game={game} puzzleDraftOpen={Boolean(puzzleDraft)} />
+      {puzzleConfirmation}
     </div>
   ) : null;
 
@@ -1408,6 +1528,22 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
             engine={
               !game || gameComputerAnalysisEnabled ? (
                 <AtomicDbAnalysisBlock
+                  beforeSettings={
+                    auth.isAuthenticated && (!game || game.external_match_id) ? (
+                      <button
+                        className="atomicDbSettingsButton"
+                        type="button"
+                        aria-label={puzzleActionLabel}
+                        title={
+                          createPuzzleDisabled ? "Choose a playable position" : puzzleActionLabel
+                        }
+                        disabled={createPuzzleDisabled || Boolean(puzzleDraft)}
+                        onClick={startPuzzle}
+                      >
+                        <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
+                      </button>
+                    ) : null
+                  }
                   fen={displayedAnalysisFen}
                   analysis={displayedAnalysis}
                   settings={atomicDbEngineSettings}
@@ -1427,27 +1563,32 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                   onPlayLine={playAtomicDbLine}
                   onHoverMove={setHoveredExplorerMoveUci}
                   disabled={atomicDbLinePlaying || effectiveThreatMode}
-                  reserveLines={wolfrandomOpening}
                 />
               ) : null
             }
             moveContent={
-              <MoveNotation
-                lines={analysisLines}
-                moves={moveList}
-                currentPly={currentPly}
-                pinnedLineIndex={activeLineIndex}
-                inline={notationLayout === "inline"}
-                onNavigate={navigateToPly}
-                onSelectVariation={navigateToAnalysisMove}
-                onAnnotate={game ? undefined : annotateMove}
-                onDelete={game ? undefined : deleteMove}
-                assessments={game && gameComputerAnalysisEnabled ? gameAssessments : undefined}
-              />
+              puzzleDraft ? (
+                <PuzzleComposer
+                  publishesDirectly={publishesDirectly}
+                  {...(game
+                    ? { match: { gameId: game.game_id, matchId: game.external_match_id } }
+                    : {})}
+                  fen={puzzleDraft.fen}
+                  solution={navigation || boardDocument.pgn.error ? "" : pgnText}
+                  moveContentRef={moveContentRef}
+                  onCancel={() => closePuzzle()}
+                  onAdded={closePuzzle}
+                >
+                  {moveNotation}
+                  {continuationChoices}
+                </PuzzleComposer>
+              ) : (
+                moveNotation
+              )
             }
-            moveContentRef={moveContentRef}
+            moveContentRef={puzzleDraft ? undefined : moveContentRef}
             explorer={openingExplorerPanel}
-            continuationChoices={continuationChoices}
+            continuationChoices={puzzleDraft ? null : continuationChoices}
           />
 
           <AnalysisToolbar
@@ -1457,11 +1598,13 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
             canStepForward={canStepForward}
             onNavigate={requestNavigation}
             onToggle={() => setExplorerOpen((open) => !open)}
+            toggleDisabled={Boolean(puzzleDraft)}
             toggleAriaLabel={explorerOpen ? "Hide opening explorer" : "Show opening explorer"}
             toggleClassName="explorer"
             toggleTitle="Opening explorer"
           />
-          {game ? (
+          {!game ? puzzleConfirmation : null}
+          {game && !puzzleDraft ? (
             <button
               type="button"
               className="gameAnalysisPanelResizeHandle"
@@ -1474,7 +1617,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
         </AnalysisWorkspacePanel>
 
         {singleColumnLayout ? gameDetails : null}
-        {game && gameComputerAnalysisEnabled && gameUnderboardTab === "analysis" ? (
+        {game && !puzzleDraft && gameComputerAnalysisEnabled && gameUnderboardTab === "analysis" ? (
           <div className="gameComputerSummaryDock">
             <GameComputerAnalysisPlayers game={game} analysis={gameAnalysis.analysis} />
           </div>
@@ -1506,16 +1649,16 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
         boardTabIndex={0}
         chessboardProps={{
           puzzleId: "analysis",
-          fen: rootFen,
-          orientation,
+          fen: gameRootFen,
+          orientation: gameOrientation,
           coordinates: true,
           solution: "",
           showSolution: false,
           analysisMode: true,
           captureNavigationShortcuts: true,
-          solutionNavigation: navigation,
-          previewMove: threatMoveUci ?? hoveredExplorerMoveUci,
-          previewMoveBrush: threatMoveUci ? "red" : "paleBlue",
+          solutionNavigation: puzzleDraft ? null : navigation,
+          previewMove: hoveredExplorerMoveUci,
+          threatMove: threatMoveUci,
           engineMoves: effectiveThreatMode ? null : engineMoves,
           analysisMarker:
             gameComputerAnalysisEnabled &&
@@ -1533,13 +1676,34 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                 }
               : null,
           onNavigateHandled: handleNavigationHandled,
-          onStateChange: setBoardState,
+          onStateChange: setGameBoardState,
         }}
+        draftChessboardProps={
+          puzzleDraft
+            ? {
+                puzzleId: "match-puzzle-draft",
+                fen: puzzleDraft.fen,
+                orientation,
+                coordinates: true,
+                solution: "",
+                showSolution: false,
+                analysisMode: true,
+                captureNavigationShortcuts: true,
+                solutionNavigation: navigation,
+                previewMove: hoveredExplorerMoveUci,
+                threatMove: threatMoveUci,
+                engineMoves: effectiveThreatMode ? null : engineMoves,
+                onNavigateHandled: handleNavigationHandled,
+                onStateChange: setPuzzleBoardState,
+              }
+            : undefined
+        }
         boardBefore={
           game ? (
             <GameBoardClock
               game={game}
-              currentPly={currentPly}
+              material={gameMaterial}
+              currentPly={puzzleDraft ? (gameBoardState?.lineIndex ?? 0) : currentPly}
               color={orientation === "white" ? "black" : "white"}
             />
           ) : null
@@ -1548,7 +1712,8 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           game ? (
             <GameBoardClock
               game={game}
-              currentPly={currentPly}
+              material={gameMaterial}
+              currentPly={puzzleDraft ? (gameBoardState?.lineIndex ?? 0) : currentPly}
               color={orientation === "white" ? "white" : "black"}
               rowRef={lowerClockRef}
             />
@@ -1577,10 +1742,14 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
         showActions={!game}
         atomicDbHref={atomicDbHref}
         {...(!game && atomicDbRequest ? { atomicDbRequest } : {})}
-        document={boardDocument}
-        showDocument={!game}
+        document={
+          puzzleDraft
+            ? { ...boardDocument, fen: { value: puzzleDraft.fen, readOnly: true, error: "" } }
+            : boardDocument
+        }
+        showDocument={!game || Boolean(puzzleDraft)}
       />
-      {game ? (
+      {game && !puzzleDraft ? (
         <GameUnderboard
           game={game}
           currentPly={currentPly}

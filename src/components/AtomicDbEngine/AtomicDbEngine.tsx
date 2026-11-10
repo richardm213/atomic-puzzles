@@ -2,13 +2,12 @@ import "./AtomicDbEngine.css";
 
 import { faAlignLeft, faArrowsRotate, faGear } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import type { Dispatch, SetStateAction } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useKeyboardShortcutSettings } from "../../context/AppSettings";
 import type { AtomicDbAnalysisState } from "../../hooks/useAtomicDbAnalysis";
 import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
-import { atomicLegalMoveCount } from "../../lib/chess/pgn";
 import {
   keyboardShortcutAction,
   keyboardShortcutAria,
@@ -32,11 +31,11 @@ type AtomicDbEngineProps = {
   onPlayLine: (ucis: string[]) => void;
   onHoverMove: (uci: string | null) => void;
   disabled?: boolean;
-  reserveLines?: boolean;
   threatMode?: boolean;
 };
 
 type AtomicDbEngineControlsProps = {
+  beforeSettings?: ReactNode;
   fen: string;
   analysis: AtomicDbAnalysisState;
   settings: AtomicDbEngineSettings;
@@ -50,16 +49,32 @@ type AtomicDbEngineControlsProps = {
   onToggleNotation?: () => void;
 };
 
-const analysisSourceLabel = (analysis: AtomicDbAnalysisState, threatMode = false): string => {
+const analysisSourceLabel = (
+  analysis: AtomicDbAnalysisState,
+  view: AtomicDbView,
+  threatMode: boolean,
+  lineCount?: number,
+): string => {
   const engine = localAnalysisEngineLabel(analysis.engine ?? "atomic-stockfish");
-  const source =
-    analysis.source === "terminal"
-      ? "Game over"
-      : analysis.source === "engine"
-        ? engine
-        : analysis.source === "mixed"
-          ? `AtomicDB + ${engine}`
-          : "AtomicDB";
+  let source = "AtomicDB";
+  if (analysis.source === "terminal") {
+    source = "Game over";
+  } else if (analysis.source === "engine") {
+    source = engine;
+  } else if (analysis.source === "mixed" && lineCount !== undefined) {
+    const evaluations = (view.position?.moves ?? [])
+      .slice(0, lineCount)
+      .filter((move) => getAtomicDbMoveEvaluation(move, view.fen).type !== "unknown");
+    const engineCount = evaluations.filter((move) => move.origin === "engine").length;
+    // Extending an AtomicDB variation doesn't change where its evaluation came from.
+    if (!evaluations.length || engineCount * 3 > evaluations.length) {
+      source = `AtomicDB + ${engine}`;
+    }
+  } else if (analysis.source === "mixed") {
+    // The meter describes the position score, not the sources of its candidate lines.
+    const best = view.position?.moves.find((move) => move.uci === view.position?.bestMove);
+    if (best?.origin === "engine" && best.mate !== null) source = engine;
+  }
   return threatMode ? `Threat · ${source}` : source;
 };
 
@@ -81,6 +96,7 @@ const useRetainedAtomicDbView = (analysis: AtomicDbAnalysisState, fen: string): 
 };
 
 export const AtomicDbEngineControls = ({
+  beforeSettings,
   fen,
   analysis,
   settings,
@@ -98,7 +114,7 @@ export const AtomicDbEngineControls = ({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const view = useRetainedAtomicDbView(analysis, fen);
-  const sourceLabel = analysisSourceLabel(analysis, threatMode);
+  const sourceLabel = analysisSourceLabel(analysis, view, threatMode, settings.lineCount);
   const finalResult = analysis.source === "terminal" ? resultLabel(view) : null;
   const atomicDbHref =
     !threatMode &&
@@ -186,6 +202,7 @@ export const AtomicDbEngineControls = ({
           sourceLabel
         )}
       </span>
+      {beforeSettings ? <div className="atomicDbBeforeSettings">{beforeSettings}</div> : null}
       <div className="atomicDbSettings" ref={settingsRef}>
         <button
           type="button"
@@ -291,22 +308,26 @@ export const AtomicDbEngine = ({
   onPlayLine,
   onHoverMove,
   disabled = false,
-  reserveLines = false,
   threatMode = false,
 }: AtomicDbEngineProps) => {
   const { enabled, lineCount, showFollowUpMoves } = settings;
   const { status, error } = analysis;
   const view = useRetainedAtomicDbView(analysis, fen);
-  const sourceLabel = analysisSourceLabel(analysis, threatMode);
+  const sourceLabel = analysisSourceLabel(analysis, view, threatMode, settings.lineCount);
   const isTerminal = analysis.source === "terminal";
   const { position } = view;
-  const visibleMoves = useMemo(
-    () => position?.moves.slice(0, lineCount) ?? [],
-    [lineCount, position],
-  );
-  const legalMoveCount = useMemo(() => atomicLegalMoveCount(view.fen), [view.fen]);
-  const targetLineCount = legalMoveCount > 0 ? Math.min(lineCount, legalMoveCount) : lineCount;
-  const missingLineCount = Math.max(0, targetLineCount - visibleMoves.length);
+  const visibleMoves =
+    isTerminal || status === "error" ? [] : (position?.moves.slice(0, lineCount) ?? []);
+  let stateMessage = "";
+  if (!isTerminal) {
+    if (status === "error") stateMessage = error;
+    else if (status === "loading" && !position) stateMessage = "Loading analysis…";
+    else if (status === "ready" && !position) {
+      stateMessage = `No ${sourceLabel} analysis for this position.`;
+    } else if (status === "ready" && visibleMoves.length === 0) {
+      stateMessage = "No engine moves for this position.";
+    }
+  }
   const showingPreviousPosition = status === "loading" && !view.isCurrent;
   const previewSourceKey = `${view.fen}:${visibleMoves.map((move) => move.uci).join(",")}`;
 
@@ -326,136 +347,122 @@ export const AtomicDbEngine = ({
       onPointerLeave={() => onHoverMove(null)}
     >
       <div className="atomicDbEngineBody" aria-live="polite" aria-busy={status === "loading"}>
-        {status === "loading" && !position ? (
-          <div className="atomicDbEngineState">Loading analysis…</div>
-        ) : null}
-        {status === "error" ? <div className="atomicDbEngineState error">{error}</div> : null}
-        {!isTerminal && status === "ready" && !position ? (
-          <div className="atomicDbEngineState">No {sourceLabel} analysis for this position.</div>
-        ) : null}
-        {!isTerminal && status === "ready" && position && visibleMoves.length === 0 ? (
-          <div className="atomicDbEngineState">No engine moves for this position.</div>
-        ) : null}
-        {isTerminal || (reserveLines && !position) ? (
-          <ol className="atomicDbEngineLines" aria-hidden="true">
-            {Array.from({ length: lineCount }, (_, index) => (
-              <li
-                className={isTerminal ? "atomicDbEngineLine" : "atomicDbEngineLineUnavailable"}
-                key={index}
-              />
-            ))}
-          </ol>
-        ) : null}
-        {!isTerminal && visibleMoves.length > 0 ? (
-          <ol className="atomicDbEngineLines">
-            {visibleMoves.map((move) => {
-              const principalVariation = analysis.principalVariations[move.uci];
-              const displayedUcis = showFollowUpMoves
-                ? (principalVariation ?? [move.uci])
-                : [move.uci];
-              const lineTokens = numberedSanLineFromUci(view.fen, displayedUcis);
-              if (lineTokens.length === 0) {
-                return (
-                  <li
-                    key={move.uci}
-                    className="atomicDbEngineLineUnavailable"
-                    aria-label="Updating move notation"
-                  >
-                    <span>—</span>
-                    <span>Updating…</span>
-                    <span />
-                  </li>
-                );
-              }
-              const moveEvaluation = getAtomicDbMoveEvaluation(move, view.fen);
-              const searchDepth = Math.max(0, Math.floor(move.searchDepth ?? 0));
-              const nodeBackedPlies = move.nodeBackedPlies;
-              const nodeBackingDepth = nodeBackedPlies === null ? null : `depth ${nodeBackedPlies}`;
-              const showNodeBacking = nodeBackingDepth !== null && move.origin !== "engine";
-              const showDepth =
-                searchDepth > 0 &&
-                !showNodeBacking &&
-                !(move.origin === "engine" && moveEvaluation.type === "mate");
-              const support = [
-                showNodeBacking ? `move position backing ${nodeBackingDepth}` : "",
-                searchDepth > 0 ? `search depth ${searchDepth}` : "",
-              ]
-                .filter(Boolean)
-                .map((label) => `, ${label}`)
-                .join("");
-              const depthTitle = [
-                showNodeBacking ? `AtomicDB move position backing ${nodeBackingDepth}` : "",
-                searchDepth > 0 ? `Search depth ${searchDepth}` : "",
-              ]
-                .filter(Boolean)
-                .join(" · ");
-              const depthLabel = showNodeBacking
-                ? nodeBackingDepth
-                : showDepth
-                  ? `depth ${searchDepth}`
-                  : "";
-              const evaluation = formatAtomicDbEvaluation(moveEvaluation);
-              const displayedLine = lineTokens.map((token) => token.value).join(" ");
+        <ol
+          className="atomicDbEngineLines"
+          aria-hidden={visibleMoves.length === 0 && !stateMessage ? true : undefined}
+        >
+          {Array.from({ length: lineCount }, (_, index) => {
+            const move = visibleMoves[index];
+            if (!move) {
+              const message = index === 0 ? stateMessage : "";
+              return (
+                <li
+                  key={`empty-${index}`}
+                  className="atomicDbEngineLine"
+                  aria-hidden={!message || undefined}
+                >
+                  {message ? (
+                    <span
+                      className={`atomicDbEngineState ${status === "error" ? "error" : ""}`}
+                      title={message}
+                    >
+                      {message}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            }
+            const principalVariation = analysis.principalVariations[move.uci];
+            const displayedUcis = showFollowUpMoves
+              ? (principalVariation ?? [move.uci])
+              : [move.uci];
+            const lineTokens = numberedSanLineFromUci(view.fen, displayedUcis);
+            if (lineTokens.length === 0) {
               return (
                 <li
                   key={move.uci}
                   className="atomicDbEngineLine"
-                  aria-label={`Evaluation ${evaluation}${support}, line ${displayedLine}`}
+                  aria-label="Updating move notation"
                 >
-                  <span
-                    className={`atomicDbEngineScore ${moveEvaluation.type === "mate" ? "mate" : ""}`}
-                  >
-                    {evaluation}
-                  </span>
-                  <span className="atomicDbEngineMove">
-                    {lineTokens.map((token, index) =>
-                      token.type === "moveNumber" ? (
-                        <span className="atomicDbEngineMoveNumber" key={`number-${index}`}>
-                          {token.value}
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          className={`atomicDbEngineMoveButton ${token.ply === 0 ? "first" : ""}`}
-                          disabled={showingPreviousPosition || disabled}
-                          aria-label={`Play variation through ${token.value}`}
-                          key={`move-${token.ply}`}
-                          onPointerEnter={() =>
-                            onHoverMove(token.ply === 0 ? (displayedUcis[0] ?? null) : null)
-                          }
-                          onPointerLeave={() => onHoverMove(null)}
-                          onFocus={() =>
-                            onHoverMove(token.ply === 0 ? (displayedUcis[0] ?? null) : null)
-                          }
-                          onBlur={() => onHoverMove(null)}
-                          onClick={() => onPlayLine(displayedUcis.slice(0, token.ply + 1))}
-                        >
-                          {token.value}
-                        </button>
-                      ),
-                    )}
-                  </span>
-                  <span className="atomicDbEngineDepth" title={depthTitle || undefined}>
-                    {depthLabel}
-                  </span>
+                  <span className="atomicDbEngineState">Updating…</span>
                 </li>
               );
-            })}
-            {position
-              ? Array.from({ length: missingLineCount }, (_, index) => (
-                  <li
-                    key={`unavailable-${index}`}
-                    className="atomicDbEngineLineUnavailable"
-                    aria-label="No additional analyzed move available"
-                  >
-                    <span>—</span>
-                    <span>No analyzed line</span>
-                    <span />
-                  </li>
-                ))
-              : null}
-          </ol>
-        ) : null}
+            }
+            const moveEvaluation = getAtomicDbMoveEvaluation(move, view.fen);
+            const searchDepth = Math.max(0, Math.floor(move.searchDepth ?? 0));
+            const nodeBackedPlies = move.nodeBackedPlies;
+            const nodeBackingDepth = nodeBackedPlies === null ? null : `depth ${nodeBackedPlies}`;
+            const showNodeBacking = nodeBackingDepth !== null && move.origin !== "engine";
+            const showDepth =
+              searchDepth > 0 &&
+              !showNodeBacking &&
+              !(move.origin === "engine" && moveEvaluation.type === "mate");
+            const support = [
+              showNodeBacking ? `move position backing ${nodeBackingDepth}` : "",
+              searchDepth > 0 ? `search depth ${searchDepth}` : "",
+            ]
+              .filter(Boolean)
+              .map((label) => `, ${label}`)
+              .join("");
+            const depthTitle = [
+              showNodeBacking ? `AtomicDB move position backing ${nodeBackingDepth}` : "",
+              searchDepth > 0 ? `Search depth ${searchDepth}` : "",
+            ]
+              .filter(Boolean)
+              .join(" · ");
+            const depthLabel = showNodeBacking
+              ? nodeBackingDepth
+              : showDepth
+                ? `depth ${searchDepth}`
+                : "";
+            const evaluation = formatAtomicDbEvaluation(moveEvaluation);
+            const displayedLine = lineTokens.map((token) => token.value).join(" ");
+            return (
+              <li
+                key={move.uci}
+                className="atomicDbEngineLine"
+                aria-label={`Evaluation ${evaluation}${support}, line ${displayedLine}`}
+              >
+                <span
+                  className={`atomicDbEngineScore ${moveEvaluation.type === "mate" ? "mate" : ""}`}
+                >
+                  {evaluation}
+                </span>
+                <span className="atomicDbEngineMove">
+                  {lineTokens.map((token, index) =>
+                    token.type === "moveNumber" ? (
+                      <span className="atomicDbEngineMoveNumber" key={`number-${index}`}>
+                        {token.value}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={`atomicDbEngineMoveButton ${token.ply === 0 ? "first" : ""}`}
+                        disabled={showingPreviousPosition || disabled}
+                        aria-label={`Play variation through ${token.value}`}
+                        key={`move-${token.ply}`}
+                        onPointerEnter={() =>
+                          onHoverMove(token.ply === 0 ? (displayedUcis[0] ?? null) : null)
+                        }
+                        onPointerLeave={() => onHoverMove(null)}
+                        onFocus={() =>
+                          onHoverMove(token.ply === 0 ? (displayedUcis[0] ?? null) : null)
+                        }
+                        onBlur={() => onHoverMove(null)}
+                        onClick={() => onPlayLine(displayedUcis.slice(0, token.ply + 1))}
+                      >
+                        {token.value}
+                      </button>
+                    ),
+                  )}
+                </span>
+                <span className="atomicDbEngineDepth" title={depthTitle || undefined}>
+                  {depthLabel}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
       </div>
     </section>
   );
@@ -479,7 +486,9 @@ export const AtomicDbEvalBar = ({
   const { status } = analysis;
   const view = useRetainedAtomicDbView(analysis, fen);
   const displayedStatus = neutral ? "ready" : status;
-  const sourceLabel = neutral ? "Wolfrandom opening" : analysisSourceLabel(analysis, threatMode);
+  const sourceLabel = neutral
+    ? "Wolfrandom opening"
+    : analysisSourceLabel(analysis, view, threatMode);
   const displayedEvaluation = neutral
     ? "0.0"
     : ((analysis.source === "terminal" ? resultLabel(view) : null) ?? view.evaluationLabel);
