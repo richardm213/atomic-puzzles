@@ -20,8 +20,9 @@
   width: min(
     100%,
     calc(
-      var(--puzzle-board-column) + var(--puzzle-details-width) + var(--board-layout-controls-width) +
-        2 * (var(--board-layout-gap) + var(--board-layout-gutter))
+      var(--puzzle-board-column) + var(--puzzle-details-width) +
+        var(--board-layout-controls-width) + 2 *
+        (var(--board-layout-gap) + var(--board-layout-gutter))
     )
   );
   max-width: none;
@@ -92,6 +93,14 @@
   overflow: auto;
   padding: 0;
   background: var(--color-panel-strong);
+}
+
+.puzzleAnalysisMoves .analysisTree:empty::before {
+  content: "";
+  display: inline-block;
+  height: var(--analysis-move-min-height);
+  margin: 1px 0 2px;
+  vertical-align: middle;
 }
 
 .puzzleMoveToolbar {

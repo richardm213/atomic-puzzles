@@ -101,6 +101,8 @@ button.analysisTreeMove:hover {
 }
 
 .analysisTree {
+  --analysis-move-min-height: 24px;
+
   padding: 5px 8px 10px;
   color: var(--color-muted);
   font-size: 12px;
@@ -110,7 +112,7 @@ button.analysisTreeMove:hover {
 .analysisTreeMove {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
+  min-height: var(--analysis-move-min-height);
   margin: 1px 1px 2px;
   padding: 1px 2px;
   font-weight: 550;
@@ -179,8 +181,8 @@ button.analysisTreeMove:hover {
     min-height: var(--control-height-touch);
   }
 
-  .analysisTreeMove {
-    min-height: calc(var(--control-height-touch) - var(--space-1));
+  .analysisTree {
+    --analysis-move-min-height: calc(var(--control-height-touch) - var(--space-1));
   }
 
   .analysisContinuationArrows button {
