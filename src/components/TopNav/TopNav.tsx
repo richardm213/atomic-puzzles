@@ -46,6 +46,7 @@ import {
   unreadNotificationCountQueryOptions,
 } from "../../lib/community/notificationQueries";
 import { markNotificationsRead, type UserNotification } from "../../lib/community/notifications";
+import { keyboardShortcutAria, keyboardShortcutHint } from "../../lib/keyboardShortcuts";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { getBrowserStorageItem, setBrowserStorageItem } from "../../utils/browserStorage";
 import { getErrorMessage } from "../../utils/errors";
@@ -140,6 +141,7 @@ export const TopNav = () => {
     ? getErrorMessage(notificationErrorValue, "Unable to update notifications.")
     : "";
   const {
+    keyboardShortcuts,
     theme,
     setTheme,
     colorMode,
@@ -192,15 +194,16 @@ export const TopNav = () => {
     setPuzzleAnalysisTarget,
     lichessLinkTarget,
     setLichessLinkTarget,
-    gameExplorerOnLeft,
-    setGameExplorerOnLeft,
     localAnalysisEngine,
     setLocalAnalysisEngine,
+    showBestMoveArrow,
+    setShowBestMoveArrow,
     showCoinBalance,
     setShowCoinBalance,
     showCoinChangePopups,
     setShowCoinChangePopups,
   } = useAppSettings();
+  const bestMoveArrowShortcut = keyboardShortcutHint(keyboardShortcuts, "toggleBestMoveArrow");
   const normalizedAuthUsername = normalizeUsername(user?.username);
   const themeAccess = useMutation({
     mutationFn: checkRedCharcoalAccess,
@@ -216,6 +219,7 @@ export const TopNav = () => {
     pathname === "/solve" ||
     /^\/solve\/[^/]+$/.test(pathname) ||
     /^\/solve\/(?:set|custom|dashboard)\/[^/]+\/[^/]+$/.test(pathname) ||
+    pathname.startsWith("/solve/guest/") ||
     pathname === "/analysis" ||
     pathname.startsWith("/analysis/") ||
     /^\/game\/[^/]+\/?$/.test(pathname) ||
@@ -442,7 +446,7 @@ export const TopNav = () => {
         aria-label="Go to Atomic Puzzles home page"
         aria-current={pathname === "/" ? "page" : undefined}
       >
-        <NavBrandMark />
+        <NavBrandMark originalMode={theme === "default" ? colorMode : undefined} />
         <span>Atomic Puzzles</span>
       </Link>
       <button
@@ -1002,19 +1006,19 @@ export const TopNav = () => {
                     <option value="fairy-stockfish-14">Fairy-Stockfish 14</option>
                   </select>
                 </div>
+                <label className="navSettingsCheckbox navBestMoveArrowSetting">
+                  <span>Best move arrow</span>
+                  {bestMoveArrowShortcut ? (
+                    <kbd aria-hidden="true">{bestMoveArrowShortcut}</kbd>
+                  ) : null}
+                  <input
+                    type="checkbox"
+                    aria-keyshortcuts={keyboardShortcutAria(keyboardShortcuts, "toggleBestMoveArrow")}
+                    checked={showBestMoveArrow}
+                    onChange={(event) => setShowBestMoveArrow(event.target.checked)}
+                  />
+                </label>
               </div>
-              {/^\/game\/[^/]+\/?$/.test(pathname) ? (
-                <div className="navSettingsSection">
-                  <label className="navSettingsCheckbox">
-                    <span>Opening explorer on left</span>
-                    <input
-                      type="checkbox"
-                      checked={gameExplorerOnLeft}
-                      onChange={(event) => setGameExplorerOnLeft(event.target.checked)}
-                    />
-                  </label>
-                </div>
-              ) : null}
               {pathname === "/rankings" || pathname === "/rankings/yearly" ? (
                 <div className="navSettingsSection navSettingsStack">
                   <span className="navSettingsGroupTitle">Rankings</span>

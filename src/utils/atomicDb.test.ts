@@ -76,18 +76,18 @@ describe("AtomicDB client", () => {
   it("converts side-to-move centipawns to White's perspective exactly once", () => {
     const position = parseAtomicDbResponse({
       status: "UNKNOWN",
-      score: -564,
+      score: -300,
       best_move: "e7e6",
-      moves: [{ uci: "e7e6", status: "UNKNOWN", score: -564 }],
+      moves: [{ uci: "e7e6", status: "UNKNOWN", score: -300 }],
     });
 
     const whiteTurnEvaluation = getAtomicDbPositionEvaluation(position, WHITE_TO_MOVE);
     const blackTurnEvaluation = getAtomicDbPositionEvaluation(position, BLACK_TO_MOVE);
 
-    expect(formatAtomicDbEvaluation(whiteTurnEvaluation)).toBe("-5.6");
-    expect(formatAtomicDbEvaluation(blackTurnEvaluation)).toBe("+5.6");
-    expect(atomicDbWhitePercent(whiteTurnEvaluation)).toBeLessThan(50);
-    expect(atomicDbWhitePercent(blackTurnEvaluation)).toBeGreaterThan(50);
+    expect(formatAtomicDbEvaluation(whiteTurnEvaluation)).toBe("-3.0");
+    expect(formatAtomicDbEvaluation(blackTurnEvaluation)).toBe("+3.0");
+    expect(atomicDbWhitePercent(whiteTurnEvaluation)).toBe(38);
+    expect(atomicDbWhitePercent(blackTurnEvaluation)).toBe(62);
   });
 
   it("uses the best move's real mate distance without inventing M1", () => {

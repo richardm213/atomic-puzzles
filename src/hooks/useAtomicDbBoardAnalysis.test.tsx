@@ -211,20 +211,27 @@ describe("useAtomicDbBoardAnalysis", () => {
       },
     ]);
 
-    const { result } = renderHook(() =>
+    const { result, rerender } = renderHook(({ currentFen, enabled }) =>
       useAtomicDbBoardAnalysis({
-        currentFen: TABLEBASE_FEN,
-        enabled: true,
+        currentFen,
+        enabled,
         navigation: null,
         lineCount: 1,
       }),
+      { initialProps: { currentFen: TABLEBASE_FEN, enabled: true } },
     );
 
     await waitFor(() => expect(result.current.analysis.status).toBe("ready"));
     expect(result.current.analysis.source).toBe("engine");
     expect(result.current.analysis.engine).toBe("atomic-stockfish");
     expect(result.current.analysis.result?.position?.key).toBeNull();
+    expect(result.current.engineMoves).toEqual(["g1f3"]);
     expect(analyzeWithEngineMock).toHaveBeenCalledOnce();
     expect(fetchMock).not.toHaveBeenCalled();
+
+    rerender({ currentFen: TABLEBASE_FEN, enabled: false });
+    expect(result.current.engineMoves).toBeNull();
+    rerender({ currentFen: FEN, enabled: true });
+    expect(result.current.engineMoves).toBeNull();
   });
 });

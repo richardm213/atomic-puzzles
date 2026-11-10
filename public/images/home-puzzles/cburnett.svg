@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 90">
   <!-- Cburnett chess pieces by Colin M. L. Burnett, GPL-2.0-or-later.
        Source: https://github.com/lichess-org/lila/tree/master/public/piece/cburnett
        Original paths grouped as symbols for the homepage diagrams. -->
@@ -14,4 +14,29 @@
   <symbol id="bR" viewBox="0 0 45 45"><g fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path stroke-linecap="butt" d="M9 39h27v-3H9zm3.5-7 1.5-2.5h17l1.5 2.5zm-.5 4v-4h21v4z"/><path stroke-linecap="butt" stroke-linejoin="miter" d="M14 29.5v-13h17v13z"/><path stroke-linecap="butt" d="M14 16.5 11 14h23l-3 2.5zM11 14V9h4v2h5V9h5v2h5V9h4v5z"/><path fill="none" stroke="#ececec" stroke-linejoin="miter" stroke-width="1" d="M12 35.5h21m-20-4h19m-18-2h17m-17-13h17M11 14h23"/></g></symbol>
   <symbol id="bQ" viewBox="0 0 45 45"><g fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><g stroke="none"><circle cx="6" cy="12" r="2.75"/><circle cx="14" cy="9" r="2.75"/><circle cx="22.5" cy="8" r="2.75"/><circle cx="31" cy="9" r="2.75"/><circle cx="39" cy="12" r="2.75"/></g><path stroke-linecap="butt" d="M9 26c8.5-1.5 21-1.5 27 0l2.5-12.5L31 25l-.3-14.1-5.2 13.6-3-14.5-3 14.5-5.2-13.6L14 25 6.5 13.5z"/><path stroke-linecap="butt" d="M9 26c0 2 1.5 2 2.5 4 1 1.5 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.5 6.5 1 16.5 1 23 0 0 0 1.5-1 0-2.5 0 0 .5-1.5-1-2.5-.5-2.5-.5-2 .5-3.5 1-2 2.5-2 2.5-4-8.5-1.5-18.5-1.5-27 0z"/><path fill="none" stroke-linecap="butt" d="M11 38.5a35 35 1 0 0 23 0"/><path fill="none" stroke="#ececec" d="M11 29a35 35 1 0 1 23 0m-21.5 2.5h20m-21 3a35 35 1 0 0 22 0m-23 3a35 35 1 0 0 24 0"/></g></symbol>
   <symbol id="bK" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path stroke-linejoin="miter" d="M22.5 11.6V6"/><path fill="#000" stroke-linecap="butt" stroke-linejoin="miter" d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5"/><path fill="#000" d="M11.5 37a22.3 22.3 0 0 0 21 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V27v-3.5c-3.5-7.5-13-10.5-16-4-3 6 5 10 5 10z"/><path stroke-linejoin="miter" d="M20 8h5"/><path stroke="#ececec" d="M32 29.5s8.5-4 6-9.7C34.1 14 25 18 22.5 24.6v2.1-2.1C20 18 9.9 14 7 19.9c-2.5 5.6 4.8 9 4.8 9"/><path stroke="#ececec" d="M11.5 30c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0"/></g></symbol>
+  <!-- The lesson board uses local CSS image views of these same pieces. -->
+  <view id="piece-wP" viewBox="0 0 45 45"/>
+  <use href="#wP" x="0" y="0" width="45" height="45"/>
+  <view id="piece-wN" viewBox="45 0 45 45"/>
+  <use href="#wN" x="45" y="0" width="45" height="45"/>
+  <view id="piece-wB" viewBox="90 0 45 45"/>
+  <use href="#wB" x="90" y="0" width="45" height="45"/>
+  <view id="piece-wR" viewBox="135 0 45 45"/>
+  <use href="#wR" x="135" y="0" width="45" height="45"/>
+  <view id="piece-wQ" viewBox="180 0 45 45"/>
+  <use href="#wQ" x="180" y="0" width="45" height="45"/>
+  <view id="piece-wK" viewBox="225 0 45 45"/>
+  <use href="#wK" x="225" y="0" width="45" height="45"/>
+  <view id="piece-bP" viewBox="0 45 45 45"/>
+  <use href="#bP" x="0" y="45" width="45" height="45"/>
+  <view id="piece-bN" viewBox="45 45 45 45"/>
+  <use href="#bN" x="45" y="45" width="45" height="45"/>
+  <view id="piece-bB" viewBox="90 45 45 45"/>
+  <use href="#bB" x="90" y="45" width="45" height="45"/>
+  <view id="piece-bR" viewBox="135 45 45 45"/>
+  <use href="#bR" x="135" y="45" width="45" height="45"/>
+  <view id="piece-bQ" viewBox="180 45 45 45"/>
+  <use href="#bQ" x="180" y="45" width="45" height="45"/>
+  <view id="piece-bK" viewBox="225 45 45 45"/>
+  <use href="#bK" x="225" y="45" width="45" height="45"/>
 </svg>

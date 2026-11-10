@@ -5,6 +5,7 @@ import {
   createRoute,
   createRouter,
   lazyRouteComponent,
+  Navigate,
   redirect,
   RouterProvider,
   useParams,
@@ -26,6 +27,14 @@ import { HomePage } from "./pages/Home/Home";
 const AtomicChessPage = lazyRouteComponent(
   () => import("./pages/AtomicChess/AtomicChess"),
   "AtomicChessPage",
+);
+const AtomicLessonPage = lazyRouteComponent(
+  () => import("./pages/AtomicLesson/AtomicLesson"),
+  "AtomicLessonPage",
+);
+const AtomicOpeningsPage = lazyRouteComponent(
+  () => import("./pages/AtomicOpenings/AtomicOpenings"),
+  "AtomicOpeningsPage",
 );
 const ArenasPage = lazyRouteComponent(() => import("./pages/Arenas/Arenas"), "ArenasPage");
 const CalendarPage = lazyRouteComponent(() => import("./pages/Calendar/Calendar"), "CalendarPage");
@@ -120,6 +129,10 @@ const PuzzleSetsPage = lazyRouteComponent(
 const PuzzleSolverPage = lazyRouteComponent(
   () => import("./pages/PuzzleSolver/PuzzleSolver"),
   "PuzzleSolverPage",
+);
+const GuestPuzzleTrial = lazyRouteComponent(
+  () => import("./pages/PuzzleSolver/GuestPuzzleTrial"),
+  "GuestPuzzleTrial",
 );
 const PuzzleSubmissionPage = lazyRouteComponent(
   () => import("./pages/PuzzleSubmission/PuzzleSubmission"),
@@ -228,6 +241,18 @@ const atomicChessRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/atomic-chess",
   component: AtomicChessPage,
+});
+
+const atomicLessonRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/atomic-chess/lesson",
+  component: AtomicLessonPage,
+});
+
+const atomicOpeningsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/atomic-chess/openings",
+  component: AtomicOpeningsPage,
 });
 
 const rankingsRoute = createRoute({
@@ -559,7 +584,28 @@ const legacyMatchRoute = createRoute({
 const solveRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/solve",
-  component: AuthenticatedPuzzleSolverPage,
+  component: function SolveRoute() {
+    return (
+      <RequireAuthentication signedOutFallback={<GuestPuzzleTrial />}>
+        <PuzzleSolverPage />
+      </RequireAuthentication>
+    );
+  },
+});
+
+const solveGuestRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/solve/guest/$guestNumber",
+  component: function SolveGuestRoute() {
+    const { guestNumber } = solveGuestRoute.useParams();
+    return (
+      <RequireAuthentication
+        signedOutFallback={<GuestPuzzleTrial key={guestNumber} guestNumber={guestNumber} />}
+      >
+        <Navigate to="/solve" replace />
+      </RequireAuthentication>
+    );
+  },
 });
 
 const dashboardRoute = createRoute({
@@ -854,6 +900,8 @@ const lichessAuthCallbackRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   atomicChessRoute,
+  atomicLessonRoute,
+  atomicOpeningsRoute,
   rankingsRoute,
   yearlyRankingsRoute,
   usersRoute,
@@ -891,6 +939,7 @@ const routeTree = rootRoute.addChildren([
   legacyMatchRoute,
   matchesAliasRoute,
   solveRoute,
+  solveGuestRoute,
   dashboardRoute,
   legacyPuzzleHistoryRoute,
   solveSetsRoute,

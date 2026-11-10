@@ -49,8 +49,8 @@ const STORAGE_KEYS = {
   showPuzzleTimer: "atomic-puzzles.puzzles.show-timer-v3",
   puzzleAnalysisTarget: "atomic-puzzles.puzzles.analysis-link-target",
   lichessLinkTarget: "atomic-puzzles.games.lichess-link-target",
-  gameExplorerOnLeft: "atomic-puzzles.games.explorer-on-left",
   localAnalysisEngine: LOCAL_ANALYSIS_ENGINE_STORAGE_KEY,
+  showBestMoveArrow: "atomic-puzzles.analysis.show-best-move-arrow",
   showRatingGraphLines: "profile.ratingGraph.showLines",
   hiddenRatingGraphModes: "profile.ratingGraph.hiddenModes",
 };
@@ -247,10 +247,10 @@ export type AppSettingsContextValue = {
   setPuzzleAnalysisTarget: Dispatch<SetStateAction<"atomic-puzzles" | "lichess">>;
   lichessLinkTarget: "atomic-puzzles" | "lichess";
   setLichessLinkTarget: Dispatch<SetStateAction<"atomic-puzzles" | "lichess">>;
-  gameExplorerOnLeft: boolean;
-  setGameExplorerOnLeft: Dispatch<SetStateAction<boolean>>;
   localAnalysisEngine: LocalAnalysisEngine;
   setLocalAnalysisEngine: Dispatch<SetStateAction<LocalAnalysisEngine>>;
+  showBestMoveArrow: boolean;
+  setShowBestMoveArrow: Dispatch<SetStateAction<boolean>>;
   showCoinBalance: boolean;
   setShowCoinBalance: Dispatch<SetStateAction<boolean>>;
   showCoinChangePopups: boolean;
@@ -527,17 +527,17 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.enum(["atomic-puzzles", "lichess"]),
     "lichess",
   );
-  const [gameExplorerOnLeft, setGameExplorerOnLeft] = usePersistedState(
-    STORAGE_KEYS.gameExplorerOnLeft,
-    z.boolean(),
-    false,
-  );
   const [localAnalysisEngine, setLocalAnalysisEngine] = usePersistedState<LocalAnalysisEngine>(
     STORAGE_KEYS.localAnalysisEngine,
     z.enum(["atomic-stockfish", "fairy-stockfish-14"]),
     DEFAULT_LOCAL_ANALYSIS_ENGINE,
   );
   const previousLocalAnalysisEngineRef = useRef(localAnalysisEngine);
+  const [showBestMoveArrow, setShowBestMoveArrow] = usePersistedState(
+    STORAGE_KEYS.showBestMoveArrow,
+    z.boolean(),
+    false,
+  );
   const [showCoinBalance, setShowCoinBalance] = usePersistedState(
     STORAGE_KEYS.showCoinBalance,
     z.boolean(),
@@ -650,10 +650,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setPuzzleAnalysisTarget,
       lichessLinkTarget,
       setLichessLinkTarget,
-      gameExplorerOnLeft,
-      setGameExplorerOnLeft,
       localAnalysisEngine,
       setLocalAnalysisEngine,
+      showBestMoveArrow,
+      setShowBestMoveArrow,
       showCoinBalance,
       setShowCoinBalance,
       showCoinChangePopups,
@@ -699,10 +699,10 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setPuzzleAnalysisTarget,
       lichessLinkTarget,
       setLichessLinkTarget,
-      gameExplorerOnLeft,
-      setGameExplorerOnLeft,
       localAnalysisEngine,
       setLocalAnalysisEngine,
+      showBestMoveArrow,
+      setShowBestMoveArrow,
       showCoinBalance,
       setShowCoinBalance,
       showCoinChangePopups,

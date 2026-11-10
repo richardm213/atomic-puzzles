@@ -54,7 +54,7 @@ const analysisSourceLabel = (analysis: AtomicDbAnalysisState, threatMode = false
   const engine = localAnalysisEngineLabel(analysis.engine ?? "atomic-stockfish");
   const source =
     analysis.source === "terminal"
-      ? "Final position"
+      ? "Game over"
       : analysis.source === "engine"
         ? engine
         : analysis.source === "mixed"
@@ -67,13 +67,6 @@ const resultLabel = (view: AtomicDbView): string | null => {
   if (view.position?.outcome === "WHITE_WIN") return "1–0";
   if (view.position?.outcome === "BLACK_WIN") return "0–1";
   if (view.position?.outcome === "DRAW") return "½–½";
-  return null;
-};
-
-const terminalMessage = (view: AtomicDbView): string | null => {
-  if (view.position?.outcome === "WHITE_WIN") return "Game over — White wins.";
-  if (view.position?.outcome === "BLACK_WIN") return "Game over — Black wins.";
-  if (view.position?.outcome === "DRAW") return "Game over — Draw.";
   return null;
 };
 
@@ -305,7 +298,7 @@ export const AtomicDbEngine = ({
   const { status, error } = analysis;
   const view = useRetainedAtomicDbView(analysis, fen);
   const sourceLabel = analysisSourceLabel(analysis, threatMode);
-  const finalMessage = analysis.source === "terminal" ? terminalMessage(view) : null;
+  const isTerminal = analysis.source === "terminal";
   const { position } = view;
   const visibleMoves = useMemo(
     () => position?.moves.slice(0, lineCount) ?? [],
@@ -337,26 +330,23 @@ export const AtomicDbEngine = ({
           <div className="atomicDbEngineState">Loading analysis…</div>
         ) : null}
         {status === "error" ? <div className="atomicDbEngineState error">{error}</div> : null}
-        {status === "ready" && !position ? (
+        {!isTerminal && status === "ready" && !position ? (
           <div className="atomicDbEngineState">No {sourceLabel} analysis for this position.</div>
         ) : null}
-        {status === "ready" && position && visibleMoves.length === 0 ? (
-          <div className="atomicDbEngineState">
-            {finalMessage ?? "No engine moves for this position."}
-          </div>
+        {!isTerminal && status === "ready" && position && visibleMoves.length === 0 ? (
+          <div className="atomicDbEngineState">No engine moves for this position.</div>
         ) : null}
-        {reserveLines && !position ? (
+        {isTerminal || (reserveLines && !position) ? (
           <ol className="atomicDbEngineLines" aria-hidden="true">
             {Array.from({ length: lineCount }, (_, index) => (
-              <li className="atomicDbEngineLineUnavailable" key={index}>
-                <span />
-                <span />
-                <span />
-              </li>
+              <li
+                className={isTerminal ? "atomicDbEngineLine" : "atomicDbEngineLineUnavailable"}
+                key={index}
+              />
             ))}
           </ol>
         ) : null}
-        {visibleMoves.length > 0 ? (
+        {!isTerminal && visibleMoves.length > 0 ? (
           <ol className="atomicDbEngineLines">
             {visibleMoves.map((move) => {
               const principalVariation = analysis.principalVariations[move.uci];

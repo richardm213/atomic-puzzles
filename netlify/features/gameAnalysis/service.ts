@@ -5,10 +5,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { INITIAL_FEN } from "chessops/fen";
 
 import {
+  applyGameAnalysisOpeningReview,
   buildGameAnalysisSummary,
   GAME_ANALYSIS_BUDGET_NODES,
-  GAME_ANALYSIS_INITIAL_REVIEW_PLIES,
-  ignoreInitialGameAnalysisPlies,
   parseStoredAtomicDbPosition,
   type StoredAtomicDbPosition,
   WOLFRANDOM_RANDOMIZED_PLIES,
@@ -333,11 +332,23 @@ const atomicDbQuery = async (fen: string): Promise<StoredAtomicDbPosition | null
   return parseStoredAtomicDbPosition(fen, body);
 };
 
-const isCompletedAtomicDbPosition = (position: StoredAtomicDbPosition | null): boolean =>
-  Boolean(
-    position &&
-    (position.status !== "UNKNOWN" || (position.budgetNodes ?? 0) >= GAME_ANALYSIS_BUDGET_NODES),
+export const isCompletedAtomicDbPosition = (position: StoredAtomicDbPosition | null): boolean => {
+  if (!position) return false;
+  if (position.status !== "UNKNOWN" || (position.budgetNodes ?? 0) >= GAME_ANALYSIS_BUDGET_NODES) {
+    return true;
+  }
+  // A solved mate can stop below the node budget while AtomicDB still reports UNKNOWN.
+  // Require the decisive score to agree with a mate line for the best move.
+  const { bestMove, lines, score } = position;
+  if ((score !== 10_000 && score !== -10_000) || !bestMove) return false;
+  return lines.some(
+    ({ move, mate, pv }) =>
+      (move ?? pv[0]) === bestMove &&
+      pv[0] === bestMove &&
+      mate !== null &&
+      Math.sign(mate) === Math.sign(score),
   );
+};
 
 export const parseAtomicDbQueueSize = (html: string): number | null => {
   const metric = (label: "waiting" | "running"): number | null => {
@@ -493,7 +504,6 @@ const processClaimedGameAnalysisJob = async (
   }
 
   const randomizedOpeningPlyCount = await randomizedOpeningPlies(data);
-  const ignoredInitialPlies = randomizedOpeningPlyCount || GAME_ANALYSIS_INITIAL_REVIEW_PLIES;
   // A move's graph value belongs to the position after that move. Skip the initial position and
   // all six randomized opening positions; the graph begins with White's fourth move.
   const skippedPositionCount = randomizedOpeningPlyCount ? randomizedOpeningPlyCount + 1 : 0;
@@ -551,10 +561,9 @@ const processClaimedGameAnalysisJob = async (
   const retryCount = options.poll === false ? data.retry_count : data.retry_count + 1;
   if (preflightCompletedPositions === states.length) {
     const positions = states.map((state) => state.data).filter(Boolean) as StoredAtomicDbPosition[];
-    const result = ignoreInitialGameAnalysisPlies(
-      buildGameAnalysisSummary(moves, positions),
-      ignoredInitialPlies,
-    );
+    const result = applyGameAnalysisOpeningReview(buildGameAnalysisSummary(moves, positions), {
+      wolfrandom: randomizedOpeningPlyCount > 0,
+    });
     await updateJob(supabase, data.game_id, {
       status: "ready",
       // The completed result contains the full position data. Dropping the progress copy avoids

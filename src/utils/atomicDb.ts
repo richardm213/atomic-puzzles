@@ -1,3 +1,4 @@
+import { atomicWinChance } from "../../shared/domain/atomicWinChance";
 import { ApiError, apiRequest, postApi } from "../lib/api/postApi";
 
 type AtomicDbTurn = "white" | "black";
@@ -85,7 +86,6 @@ type AtomicDbPrincipalVariationsResponse = {
 
 const UNKNOWN_EVALUATION: AtomicDbEvaluation = { type: "unknown" };
 const TERMINAL_SCORE = 10_000;
-const LICHESS_WINNING_CHANCES_COEFFICIENT = 0.00368208;
 
 export const ATOMIC_DB_HOME_URL = "https://belzedar.duckdns.org/atomicdb/";
 
@@ -443,8 +443,7 @@ export const atomicDbWhitePercent = (evaluation: AtomicDbEvaluation): number => 
     return 50;
   }
 
-  const proportion = 1 / (1 + Math.exp(-LICHESS_WINNING_CHANCES_COEFFICIENT * evaluation.value));
-  return Math.round(proportion * 100);
+  return Math.round(atomicWinChance(evaluation.value) * 100);
 };
 
 export const buildAtomicDbView = (

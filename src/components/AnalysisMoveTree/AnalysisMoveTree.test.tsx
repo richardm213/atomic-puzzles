@@ -1,35 +1,51 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 
-import { AnalysisMoveTree } from "./AnalysisMoveTree";
+import { AnalysisContinuationChoices, AnalysisMoveTree } from "./AnalysisMoveTree";
 
 const lines = [
   ["Nf3", "f6", "Bf4", "Bb4+", "c3"],
-  ["Nf3", "h6", "d4", "e6", "Bg5"],
+  ["Nf3", "h6", "d4", "e6", "Bg5", "Be7", "e3"],
   ["g3", "f6"],
 ];
 
 describe("AnalysisMoveTree", () => {
-  it("renders compact inline variations and dispatches branch navigation", () => {
+  it("keeps longer alternatives next to their fork and navigates to their moves", () => {
     const onSelect = vi.fn();
-    const onCycleOptions = vi.fn();
-    const { container } = render(
-      <AnalysisMoveTree
-        lines={lines}
-        moves={["Nf3"]}
-        currentPly={1}
-        pinnedLineIndex={0}
-        onSelect={onSelect}
-        onCycleOptions={onCycleOptions}
-      />,
+    render(
+      <>
+        <AnalysisMoveTree
+          lines={lines}
+          moves={["Nf3"]}
+          currentPly={1}
+          pinnedLineIndex={0}
+          onSelect={onSelect}
+        />
+        <AnalysisContinuationChoices
+          lines={lines}
+          moves={["Nf3"]}
+          currentPly={1}
+          pinnedLineIndex={0}
+          onSelect={onSelect}
+        />
+      </>,
     );
 
-    expect(container.querySelectorAll(".analysisTreeVariation")).not.toHaveLength(0);
+    const tree = within(screen.getByRole("list", { name: "Analysis variations" }));
+    const mainMove = tree.getByRole("button", { name: "1... f6" });
+    const alternative = tree.getByRole("button", { name: "4. e3" });
+    const resumedMainline = tree.getByRole("button", { name: "2. Bf4" });
+    expect(mainMove.compareDocumentPosition(alternative)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(alternative.compareDocumentPosition(resumedMainline)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    fireEvent.click(alternative);
+    expect(onSelect).toHaveBeenCalledWith(1, 6);
+
     const choices = screen.getByLabelText("Choose continuation");
     fireEvent.click(within(choices).getByRole("button", { name: "1... h6" }));
     expect(onSelect).toHaveBeenCalledWith(1, 1);
 
-    fireEvent.click(screen.getByRole("button", { name: "Next continuation" }));
-    expect(onCycleOptions).toHaveBeenCalledWith("nextOption");
+    expect(within(choices).getAllByRole("button")).toHaveLength(2);
   });
 
   it("can render variations in non-inline mode", () => {
@@ -123,7 +139,7 @@ describe("AnalysisMoveTree", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "f6mistake" })).toHaveClass("mistake");
+    expect(screen.getByRole("button", { name: "1... f6 mistake" })).toHaveClass("mistake");
     expect(screen.getByRole("button", { name: "1... h6" })).not.toHaveTextContent("?");
   });
 });

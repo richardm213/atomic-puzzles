@@ -1,0 +1,386 @@
+/* The board is the lesson. Keep the instruction and the result next to it, not over it. */
+.page.atomicLessonPage {
+  display: block;
+  width: min(100%, 1024px);
+  margin-inline: auto;
+  padding: var(--space-6) var(--page-gutter) var(--space-12);
+}
+
+.atomicLessonPage h1 {
+  margin: var(--space-1) 0 var(--space-6);
+  color: var(--color-heading);
+  font-size: clamp(30px, 4vw, 40px);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.atomicLessonWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.26fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.atomicLessonBoard {
+  width: 100%;
+  min-width: 0;
+}
+
+.atomicLessonMobilePrompt {
+  display: none;
+}
+
+.atomicLessonCoach {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-strong);
+  padding: var(--space-5);
+}
+
+@media (max-width: 720px) {
+  .atomicLessonWorkspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+}
+
+.atomicLessonBack {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height-touch);
+  color: var(--color-primary-pale);
+  text-underline-offset: 3px;
+  font-size: 14px;
+}
+
+.atomicLessonToolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.26fr) minmax(0, 1fr);
+  align-items: end;
+  gap: var(--space-6);
+  margin-bottom: var(--space-4);
+}
+
+.atomicLessonChapter,
+.atomicLessonProgress {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.atomicLessonChapter label,
+.atomicLessonProgress label,
+.atomicLessonEntryForm label {
+  color: var(--color-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.atomicLessonChapter select,
+.atomicLessonEntryForm input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--control-height-touch);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  padding-inline: var(--space-3);
+  background: var(--color-panel);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.atomicLessonProgress {
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+}
+
+.atomicLessonProgress progress {
+  width: 100%;
+  height: var(--space-2);
+  appearance: none;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-strong);
+  accent-color: var(--color-primary);
+}
+
+.atomicLessonProgress progress::-webkit-progress-bar {
+  background: var(--color-panel-strong);
+}
+
+.atomicLessonProgress progress::-webkit-progress-value {
+  background: var(--color-primary);
+}
+
+.atomicLessonProgress progress::-moz-progress-bar {
+  background: var(--color-primary);
+}
+
+.atomicLessonBoardShell,
+.atomicLessonBoardShell .cg-board {
+  width: 100%;
+}
+
+.atomicLessonBoardShell {
+  container-type: inline-size;
+}
+
+.atomicLessonBoardShell[data-local-pieces] {
+  --cg-piece-white-pawn: url("/images/home-puzzles/cburnett.svg#piece-wP");
+  --cg-piece-white-knight: url("/images/home-puzzles/cburnett.svg#piece-wN");
+  --cg-piece-white-bishop: url("/images/home-puzzles/cburnett.svg#piece-wB");
+  --cg-piece-white-rook: url("/images/home-puzzles/cburnett.svg#piece-wR");
+  --cg-piece-white-queen: url("/images/home-puzzles/cburnett.svg#piece-wQ");
+  --cg-piece-white-king: url("/images/home-puzzles/cburnett.svg#piece-wK");
+  --cg-piece-black-pawn: url("/images/home-puzzles/cburnett.svg#piece-bP");
+  --cg-piece-black-knight: url("/images/home-puzzles/cburnett.svg#piece-bN");
+  --cg-piece-black-bishop: url("/images/home-puzzles/cburnett.svg#piece-bB");
+  --cg-piece-black-rook: url("/images/home-puzzles/cburnett.svg#piece-bR");
+  --cg-piece-black-queen: url("/images/home-puzzles/cburnett.svg#piece-bQ");
+  --cg-piece-black-king: url("/images/home-puzzles/cburnett.svg#piece-bK");
+}
+
+.atomicLessonBoardShell square.exploding1 {
+  background: color-mix(in oklab, var(--color-danger) 46%, transparent);
+}
+
+.atomicLessonBoardShell square.exploding2 {
+  background: color-mix(in oklab, var(--color-danger) 22%, transparent);
+}
+
+.atomicLessonCoach {
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.atomicLessonCoach h2 {
+  margin: 0 0 var(--space-2);
+  color: var(--color-heading);
+  font-size: clamp(21px, 2.5vw, 26px);
+  line-height: 1.23;
+  letter-spacing: -0.015em;
+}
+
+.atomicLessonCoach p {
+  margin: 0;
+}
+
+.atomicLessonWaiting,
+.atomicLessonFinished {
+  color: var(--color-muted);
+}
+
+.atomicLessonTask,
+.atomicLessonFeedback:not(:empty),
+.atomicLessonActions:not(:empty) {
+  margin-top: var(--space-4);
+}
+
+.atomicLessonTask > p:first-child {
+  color: var(--color-heading);
+}
+
+.atomicLessonNote,
+.atomicLessonHint {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-soft);
+  padding: var(--space-3) var(--space-4);
+}
+
+.atomicLessonNote strong {
+  display: block;
+  color: var(--color-success);
+}
+
+.atomicLessonNote[data-tone="retry"] strong,
+.atomicLessonEntryForm [role="alert"] {
+  color: var(--color-danger);
+}
+
+.atomicLessonNote p + p,
+.atomicLessonCoach .atomicLessonWaiting,
+.atomicLessonCoach .atomicLessonHint,
+.atomicLessonCoach .atomicLessonFinished {
+  margin-top: var(--space-2);
+}
+
+.atomicLessonReply {
+  color: var(--color-muted);
+}
+
+.atomicLessonActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.atomicLessonChoices {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.atomicLessonButton,
+.atomicLessonTextButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-height-touch);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.3;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease;
+}
+
+.atomicLessonTextButton {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-muted);
+}
+
+.atomicLessonPrimary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.atomicLessonButton:not(:disabled):hover,
+.atomicLessonTextButton:hover {
+  border-color: var(--color-primary-soft);
+  background: var(--color-accent-soft-bg);
+}
+
+.atomicLessonPrimary:not(:disabled):hover {
+  background: color-mix(in oklab, var(--color-primary), var(--color-panel-deep) 14%);
+}
+
+.atomicLessonButton:not(:disabled):active,
+.atomicLessonTextButton:active {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.atomicLessonButton:disabled,
+.atomicLessonEntryForm input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.atomicLessonPage :is(a, button, input, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-primary-soft);
+  outline-offset: 2px;
+}
+
+.atomicLessonPage h1 {
+  scroll-margin-top: calc(var(--nav-height) + var(--space-2));
+}
+
+.atomicLessonMoveEntry {
+  margin-top: var(--space-2);
+  font-size: 14px;
+  color: var(--color-muted);
+}
+
+.atomicLessonMoveEntry summary {
+  display: list-item;
+  min-height: var(--control-height-touch);
+  padding: var(--space-3) 0;
+  width: fit-content;
+  cursor: pointer;
+  text-underline-offset: 3px;
+}
+
+.atomicLessonMoveEntry summary:hover {
+  color: var(--color-heading);
+  text-decoration: underline;
+}
+
+.atomicLessonMoveEntry p {
+  margin: 0 0 var(--space-2);
+  line-height: 1.5;
+}
+
+.atomicLessonEntryForm {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+}
+
+.atomicLessonEntryForm > div {
+  display: flex;
+  gap: var(--space-2);
+}
+
+@media (max-width: 720px) {
+  .page.atomicLessonPage {
+    padding-top: var(--space-3);
+  }
+
+  .atomicLessonPage h1 {
+    margin-bottom: var(--space-4);
+  }
+
+  .atomicLessonToolbar {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .atomicLessonProgress {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: var(--space-1);
+  }
+
+  .atomicLessonProgress progress {
+    width: min(37%, 128px);
+  }
+
+  .atomicLessonMobilePrompt {
+    display: block;
+    min-height: 3em;
+    margin: 0;
+    color: var(--color-heading);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .atomicLessonDesktopPrompt {
+    display: none;
+  }
+
+  .atomicLessonCoach {
+    padding: var(--space-4);
+  }
+
+  .atomicLessonBoard {
+    display: contents;
+  }
+
+  .atomicLessonMoveEntry {
+    order: 1;
+    margin-top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atomicLessonButton,
+  .atomicLessonTextButton {
+    transition: none;
+  }
+}

@@ -6,40 +6,42 @@
   );
   --analysis-mistake: var(--color-warning);
   --analysis-blunder: var(--color-rating-blitz);
+  /* The evaluation bar occupies the first 20px beside the board. */
+  --analysis-column-gap: max(var(--space-6), var(--board-layout-gap));
   --analysis-board-column-height: calc(var(--analysis-board-size, 516px) + 170px);
   --analysis-side-panel-max-height: calc(100dvh - clamp(72px, 10vh, 96px));
   --analysis-side-panel-height: min(
     max(440px, var(--analysis-board-column-height)),
     var(--analysis-side-panel-max-height)
   );
+  --analysis-default-explorer-split: minmax(0, 3fr) minmax(0, 2fr);
   min-height: var(--page-shell-min-height);
   min-height: var(--page-shell-min-height-dynamic);
-  width: min(100%, max(980px, calc(var(--analysis-board-size, 516px) + 392px)));
+  width: min(100%, max(1200px, calc(var(--analysis-board-size, 516px) + 426px)));
   margin: 0 auto;
-  padding: clamp(8px, 1.2vw, 14px) var(--page-gutter);
+  padding-block: clamp(8px, 1.2vw, 14px);
+  padding-inline: max(var(--board-layout-gutter), env(safe-area-inset-left))
+    max(var(--board-layout-gutter), env(safe-area-inset-right));
   display: grid;
   grid-template-columns:
     minmax(0, var(--analysis-board-size, 516px))
-    clamp(340px, 28vw, 400px);
+    minmax(var(--board-layout-controls-min), 1fr);
   align-items: start;
   justify-content: center;
-  column-gap: 26px;
+  column-gap: var(--analysis-column-gap);
   row-gap: clamp(8px, 1.2vw, 12px);
 }
 
-@media (min-width: 1600px) {
+@media (width > 560px) {
   .analysisPage:not(.gameAnalysisPage) {
-    width: min(100%, calc(var(--analysis-board-size, 640px) + 426px));
-    grid-template-columns: minmax(0, var(--analysis-board-size, 640px)) minmax(360px, 400px);
-    column-gap: 26px;
-  }
-}
-
-@media (min-width: 2400px) {
-  .analysisPage:not(.gameAnalysisPage) {
-    width: min(100%, calc(var(--analysis-board-size, 760px) + 446px));
-    grid-template-columns: minmax(0, var(--analysis-board-size, 760px)) minmax(380px, 420px);
-    column-gap: 26px;
+    /* Center the board and a readable control rail on desktop; stay fluid in narrow windows. */
+    width: min(
+      100%,
+      calc(
+        var(--analysis-board-size, 516px) + var(--board-layout-controls-width) +
+          var(--analysis-column-gap) + 2 * var(--board-layout-gutter)
+      )
+    );
   }
 }
 
@@ -203,7 +205,7 @@ body:has(.analysisPage),
   height: var(--analysis-side-panel-height);
   max-height: var(--analysis-side-panel-max-height);
   min-height: 0;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: var(--analysis-default-explorer-split) auto;
   overflow: hidden;
 }
 
@@ -220,21 +222,30 @@ body:has(.analysisPage),
   grid-template-rows: minmax(0, 1fr) auto;
 }
 
+.analysisRightPanel.explorerCollapsed:has(> .analysisContinuationChoices) {
+  grid-template-rows: minmax(0, 1fr) auto auto;
+}
+
 .analysisMovePanel {
+  --move-content-start-outset: calc(var(--space-1) / 2);
+  --move-content-end-outset: var(--space-1);
+
   min-width: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 2px;
   min-height: 0;
+  margin-inline: calc(-1 * var(--move-content-start-outset))
+    calc(-1 * var(--move-content-end-outset));
   overflow: hidden;
-}
-
-.analysisRightPanel:not(.customExplorerSplit):not(.explorerCollapsed) .analysisMovePanel {
-  grid-template-rows: auto 0;
 }
 
 .analysisEngineBlock {
   min-width: 0;
+}
+
+.analysisMovePanel > .analysisEngineBlock {
+  margin-inline: var(--move-content-start-outset) var(--move-content-end-outset);
 }
 
 .analysisMoveContent {
@@ -247,6 +258,11 @@ body:has(.analysisPage),
 
 .analysisMoveContent .analysisMoveList {
   overflow: visible;
+}
+
+.analysisMoveContent > .analysisTree {
+  padding-block: var(--space-1) var(--space-2);
+  padding-inline: var(--space-1);
 }
 
 .analysisMoveContent > .solutionOptions {
@@ -280,7 +296,7 @@ body:has(.analysisPage),
   display: grid;
   grid-template-columns: 38px repeat(2, minmax(0, 1fr));
   align-items: center;
-  min-height: 36px;
+  min-height: var(--space-8);
 }
 
 .analysisMoveList li:nth-child(odd) {
@@ -294,20 +310,20 @@ body:has(.analysisPage),
   justify-content: flex-end;
   padding-right: 9px;
   color: var(--color-subtle);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
 .analysisMoveList button {
-  min-height: 36px;
+  min-height: var(--space-8);
   align-self: stretch;
   padding: 0 10px;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: var(--color-text);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 650;
   text-align: left;
 }
@@ -316,7 +332,6 @@ body:has(.analysisPage),
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 1px;
 }
 
 .analysisMoveList button > b {
@@ -507,6 +522,17 @@ button.analysisLichessLink {
   color: var(--color-danger);
   font-size: 11px;
   line-height: 1.35;
+}
+
+.analysisExplorerStack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.analysisExplorerStack > .analysisOpeningExplorer {
+  flex: 1;
 }
 
 .analysisExplorerPanel {
@@ -1490,7 +1516,15 @@ button.analysisLichessLink {
   font-size: 12px;
 }
 
-@media (max-width: 799px) and (orientation: portrait) {
+@media (max-width: 680px) {
+  .analysisBoardPanel .atomicDbEvalBar {
+    /* Chessground rounds the playing surface to whole device pixels per square. */
+    max-height: var(---cg-height, 100%);
+  }
+}
+
+/* Keep the two-column shell fluid until the board needs its own row. */
+@media (max-width: 560px) {
   .analysisPage {
     --analysis-side-panel-height: min(
       max(520px, calc(var(--analysis-board-size, 516px) * 0.92)),
@@ -1519,9 +1553,10 @@ button.analysisLichessLink {
   }
 }
 
-@media (max-width: 799px) and (orientation: portrait) {
+@media (max-width: 560px) {
   .analysisPage {
     --analysis-side-panel-height: auto;
+    --analysis-default-explorer-split: clamp(180px, 36dvh, 280px) clamp(160px, 28dvh, 220px);
     padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right));
     padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
   }
@@ -1617,25 +1652,7 @@ button.analysisLichessLink {
   }
 }
 
-@media (max-width: 799px) and (orientation: landscape) {
-  .analysisPage {
-    --analysis-side-panel-height: min(78dvh, 620px);
-    width: 100%;
-    padding: 8px max(10px, env(safe-area-inset-right)) 12px max(10px, env(safe-area-inset-left));
-    grid-template-columns:
-      minmax(0, min(55vmin, var(--analysis-board-size, 516px)))
-      minmax(200px, 240px);
-    column-gap: 26px;
-    row-gap: 12px;
-  }
-
-  .analysisRightPanel,
-  .practicePanel {
-    height: var(--analysis-side-panel-height);
-    min-height: 0;
-    max-height: var(--analysis-side-panel-height);
-  }
-
+@media (pointer: coarse), (max-width: 560px) {
   .analysisBoardResizeHandle,
   .gameAnalysisPanelResizeHandle {
     display: none;

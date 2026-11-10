@@ -12,10 +12,13 @@ import { buildPgnHistory } from "../../components/Chessboard/pgnHistory";
 import type { SolutionNavigation } from "../../types/chessboard";
 import type { MotifExample } from "./motifExamples";
 
+export type ReplayFocusRequest = { tag?: string; pointer: boolean };
+
 type ReplayProps = {
   example: MotifExample;
   name: string;
-  focusRequest: { tag: string; pointer: boolean } | null;
+  focusRequest: ReplayFocusRequest | null;
+  startAtEnd?: boolean;
 };
 
 const focusReplay = (element: HTMLDivElement, pointer: boolean) => {
@@ -23,15 +26,21 @@ const focusReplay = (element: HTMLDivElement, pointer: boolean) => {
   element.focus({ preventScroll: true });
 };
 
-const Replay = ({ example, name, focusRequest }: ReplayProps) => {
-  const [ply, setPly] = useState(0);
+const Replay = ({ example, name, focusRequest, startAtEnd = false }: ReplayProps) => {
   const replayRef = useRef<HTMLDivElement>(null);
   const { fen, pgn, note } = example;
   const history = useMemo(() => buildPgnHistory(fen, pgn), [fen, pgn]);
+  const [ply, setPly] = useState(() =>
+    startAtEnd && history.ok ? history.history.plies.length - 1 : 0,
+  );
   const navigation = useMemo<SolutionNavigation>(() => ({ type: "solution", line: 0, ply }), [ply]);
   useLayoutEffect(() => {
     if (!focusRequest || !replayRef.current) return;
-    document.getElementById(focusRequest.tag)?.scrollIntoView({ block: "start" });
+    if (focusRequest.tag) {
+      document.getElementById(focusRequest.tag)?.scrollIntoView({ block: "start" });
+    } else {
+      replayRef.current.scrollIntoView({ block: "nearest" });
+    }
     focusReplay(replayRef.current, focusRequest.pointer);
   }, [focusRequest]);
   if (!history.ok || history.history.plies.length < 2) return null;

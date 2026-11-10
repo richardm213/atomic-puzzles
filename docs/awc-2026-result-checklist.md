@@ -21,14 +21,14 @@ Use this checklist whenever the user reports an AWC 2026 result.
 4. **Resolve every applicable market**
    - Settle the legacy fixed-price match market and the prediction order-book market, if both exist.
    - Resolve to the correct player/outcome and cancel remaining open orders safely.
-   - Pay every winning bettor across both systems. Preserve original/legacy bets and order-book
-     positions as separate legitimate bets, while combining them when presenting the bettor's total
-     payout or profit for the resolved matchup.
+   - Check `prediction_legacy_position_credits` before settlement. A converted legacy bet is
+     already represented by exchange contracts, even if they were later sold or netted. Never
+     credit it again through the legacy market. Only unconverted legacy bets can pay separately.
 
 5. **Send resolution notifications**
    - Notify every bettor, including losers.
    - Use the exact score with an en dash, for example `Jakestatefarm won 5.5–0.5.`
-   - Winners receive the total amount added across all applicable betting systems, rounded to the
+   - Winners receive the total non-duplicate amount added at settlement, rounded to the
      nearest hundredth of a coin. Losers receive `No payout`.
    - Verify the notification count, recipients, wording, links, and payout amounts after settlement.
 

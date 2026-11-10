@@ -49,9 +49,14 @@ it("normalizes captured modifiers and numpad bindings without capturing focus-na
 
 it("migrates partial saved settings without losing the remaining default actions", () => {
   const result = keyboardShortcutSettingsSchema.parse({
-    bindings: { nextItem: { enabled: true, keys: ["n"] } },
+    bindings: {
+      nextItem: { enabled: true, keys: ["n"] },
+      pausePractice: { enabled: true, keys: ["a"] },
+    },
   });
   expect(result.bindings.nextItem.keys).toEqual(["n"]);
   expect(result.bindings.previousItem.keys).toEqual(["Shift+ArrowLeft"]);
   expect(result.bindings.previousMove.keys).toContain("Backspace");
+  expect(keyboardShortcutAction({ key: "a" }, result)).toBe("toggleBestMoveArrow");
+  expect(keyboardShortcutAction({ key: "p" }, result)).toBe("pausePractice");
 });

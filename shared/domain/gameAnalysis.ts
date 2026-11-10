@@ -1,8 +1,12 @@
-import { fenAfterAtomicMove } from "./puzzles/solutionPgn";
+import { INITIAL_FEN } from "chessops/fen";
+
+import { atomicOpenings, getOpeningVariations } from "./atomicOpenings";
+import { atomicWinChance } from "./atomicWinChance";
+import { buildSolutionMoveTree, fenAfterAtomicMove, parseSolutionUciLines } from "./chess/pgn";
 
 export const GAME_ANALYSIS_COST = 1;
 export const GAME_ANALYSIS_BUDGET_NODES = 128_000_000;
-export const GAME_ANALYSIS_INITIAL_REVIEW_PLIES = 2;
+const GAME_ANALYSIS_INITIAL_ACCURACY_PLIES = 2;
 export const WOLFRANDOM_RANDOMIZED_PLIES = 6;
 
 export const GAME_ANALYSIS_STATUSES = ["queued", "processing", "ready", "failed"] as const;
@@ -211,14 +215,12 @@ export const evaluationsForPositions = (positions: readonly StoredAtomicDbPositi
       : positionCentipawns(position),
   );
 
+const CENTIPAWN_CEILING = 1_000;
 const ceiledCentipawns = (centipawns: number): number =>
-  Math.max(-1_000, Math.min(1_000, centipawns));
-
-const winningChances = (centipawns: number): number =>
-  2 / (1 + Math.exp(-0.00368208 * centipawns)) - 1;
+  Math.max(-CENTIPAWN_CEILING, Math.min(CENTIPAWN_CEILING, centipawns));
 
 const winPercent = (centipawns: number): number =>
-  50 + 50 * winningChances(ceiledCentipawns(centipawns));
+  100 * atomicWinChance(ceiledCentipawns(centipawns));
 
 type ReviewScore = { type: "cp"; value: number } | { type: "mate"; value: 1 | -1 };
 
@@ -247,35 +249,23 @@ const decisiveOutcome = (score: ReviewScore): -1 | 0 | 1 => {
   return 0;
 };
 
-const decisiveLossGrade = (advantage: number): MoveClassification => {
-  if (advantage > 1_500) return "inaccuracy";
-  if (advantage >= 700) return "mistake";
-  return "blunder";
-};
+// The score after a move is from the opponent's perspective.
+const newlyAllowsDecisiveLoss = (before: ReviewScore, after: ReviewScore): boolean =>
+  decisiveOutcome(before) !== -1 && decisiveOutcome(after) === 1;
 
-const classificationFor = (before: ReviewScore, after: ReviewScore): MoveClassification => {
-  // Both scores are from the side to move. After the move, that is the opponent.
-  const beforeOutcome = decisiveOutcome(before);
-  const afterOutcome = decisiveOutcome(after);
-  if (beforeOutcome !== -1 && afterOutcome === 1) {
-    return decisiveLossGrade(before.type === "cp" ? -before.value : 0);
-  }
-  if (beforeOutcome === 1 && afterOutcome !== -1) {
-    return decisiveLossGrade(after.type === "cp" ? -after.value : 0);
-  }
-
-  // Lichess grades CP swings on the unclipped [-1, 1] scale (0.1 = 5 percentage points).
-  if (before.type === "cp" && after.type === "cp") {
-    const loss = winningChances(before.value) + winningChances(after.value);
-    if (loss >= 0.3) return "blunder";
-    if (loss >= 0.2) return "mistake";
-    if (loss >= 0.1) return "inaccuracy";
-  }
+const classificationForLoss = (loss: number): MoveClassification => {
+  if (loss >= 15) return "blunder";
+  if (loss >= 10) return "mistake";
+  if (loss >= 5) return "inaccuracy";
   return "best";
 };
 
-const reviewWinPercent = (score: ReviewScore): number =>
-  score.type === "mate" ? winPercent(score.value * 1_000) : 50 + 50 * winningChances(score.value);
+const reviewWinPercent = (score: ReviewScore): number => {
+  const outcome = decisiveOutcome(score);
+  if (outcome === 1) return 100;
+  if (outcome === -1) return 0;
+  return 100 * atomicWinChance(score.value);
+};
 
 export const CLASSIFICATION_SYMBOLS: Record<MoveClassification, string> = {
   best: "✓",
@@ -332,6 +322,7 @@ const colorAccuracy = (
 
 export const gameAccuracyForEvaluations = (
   evaluations: readonly number[],
+  blackMovesFirst = false,
 ): { whiteAccuracy: number; blackAccuracy: number } => {
   if (evaluations.length <= 1) return { whiteAccuracy: 100, blackAccuracy: 100 };
   const winPercents = evaluations.map(winPercent);
@@ -346,7 +337,7 @@ export const gameAccuracyForEvaluations = (
     windows.push(winPercents.slice(index, index + windowSize));
   }
   const moves = Array.from({ length: moveCount }, (_, index) => {
-    const color: "white" | "black" = index % 2 === 0 ? "white" : "black";
+    const color: "white" | "black" = (index % 2 === 0) !== blackMovesFirst ? "white" : "black";
     const previous = winPercents[index]!;
     const next = winPercents[index + 1]!;
     return {
@@ -366,12 +357,28 @@ export const gameAccuracyForEvaluations = (
 
 export const averageCentipawnLossForEvaluations = (
   evaluations: readonly number[],
+  {
+    ignoredPlies,
+    allowedMatePlies,
+    blackMovesFirst = false,
+  }: {
+    ignoredPlies?: ReadonlySet<number>;
+    allowedMatePlies?: ReadonlySet<number>;
+    blackMovesFirst?: boolean;
+  } = {},
 ): { whiteAverageCentipawnLoss: number; blackAverageCentipawnLoss: number } => {
   const losses = { white: [] as number[], black: [] as number[] };
   for (let index = 0; index + 1 < evaluations.length; index += 1) {
+    const ply = index + 1;
+    if (ignoredPlies?.has(ply)) continue;
+    const color = (index % 2 === 0) !== blackMovesFirst ? "white" : "black";
     const before = ceiledCentipawns(evaluations[index]!);
-    const after = ceiledCentipawns(evaluations[index + 1]!);
-    const color = index % 2 === 0 ? "white" : "black";
+    // A mate in the engine's principal variation may have no matching centipawn score.
+    const after = allowedMatePlies?.has(ply)
+      ? color === "white"
+        ? -CENTIPAWN_CEILING
+        : CENTIPAWN_CEILING
+      : ceiledCentipawns(evaluations[ply]!);
     losses[color].push(Math.max(0, color === "white" ? before - after : after - before));
   }
   const mean = (values: number[]): number =>
@@ -382,15 +389,67 @@ export const averageCentipawnLossForEvaluations = (
   };
 };
 
-export const ignoreInitialGameAnalysisPlies = (
+const positionKey = (fen: string): string => fen.trim().split(/\s+/).slice(0, 4).join(" ");
+const standardStartKey = positionKey(INITIAL_FEN);
+let openingBook: ReturnType<typeof buildSolutionMoveTree> | undefined;
+
+export const catalogOpeningPlyCount = (initialFen: string, moves: Iterable<string>): number => {
+  if (positionKey(initialFen) !== standardStartKey) return 0;
+  openingBook ??= buildSolutionMoveTree(
+    atomicOpenings.flatMap((opening) =>
+      [opening.setup, ...getOpeningVariations(opening).map(({ pgn }) => pgn)].flatMap((pgn) =>
+        parseSolutionUciLines(INITIAL_FEN, pgn).map((line) => line.map(({ uci }) => uci)),
+      ),
+    ),
+  );
+  // A move is in the book only in a catalogued move order. Stop at the first deviation.
+  let node = openingBook;
+  let plies = 0;
+  for (const move of moves) {
+    const next = node.children.get(move.toLowerCase());
+    if (!next) break;
+    node = next;
+    plies += 1;
+  }
+  return plies;
+};
+
+export const applyGameAnalysisOpeningReview = (
   summary: GameAnalysisSummary,
-  ignoredPlies: number,
+  { wolfrandom }: { wolfrandom: boolean },
 ): GameAnalysisSummary => {
-  const count = Math.max(0, Math.floor(ignoredPlies));
-  if (count === 0) return summary;
+  const blackMovesFirst = !wolfrandom && summary.positions[0]?.fen.trim().split(/\s+/)[1] === "b";
+  const bookPlies = wolfrandom
+    ? 0
+    : catalogOpeningPlyCount(
+        summary.positions[0]?.fen ?? "",
+        summary.assessments.map(({ uci }) => uci),
+      );
+  const openingPlies = wolfrandom
+    ? Array.from({ length: WOLFRANDOM_RANDOMIZED_PLIES }, (_, index) => index + 1)
+    : blackMovesFirst
+      ? [1, 2, 4]
+      : [1, 2, 3];
+  const ignoredPlies = new Set<number>(Array.from({ length: bookPlies }, (_, index) => index + 1));
+  const allowedMatePlies = new Set<number>();
+  for (const ply of openingPlies) {
+    if (ignoredPlies.has(ply)) continue;
+    const before = summary.positions[ply - 1];
+    const after = summary.positions[ply];
+    if (
+      !wolfrandom &&
+      before &&
+      after &&
+      newlyAllowsDecisiveLoss(reviewScoreForPosition(before), reviewScoreForPosition(after))
+    ) {
+      allowedMatePlies.add(ply);
+    } else {
+      ignoredPlies.add(ply);
+    }
+  }
 
   const assessments = summary.assessments.map((assessment) =>
-    assessment.ply <= count
+    ignoredPlies.has(assessment.ply)
       ? {
           ...assessment,
           classification: "best" as const,
@@ -401,17 +460,27 @@ export const ignoreInitialGameAnalysisPlies = (
   const whiteCounts = emptyCounts();
   const blackCounts = emptyCounts();
   for (const assessment of assessments) {
-    (assessment.ply % 2 === 1 ? whiteCounts : blackCounts)[assessment.classification] += 1;
+    const counts = (assessment.ply % 2 === 1) !== blackMovesFirst ? whiteCounts : blackCounts;
+    counts[assessment.classification] += 1;
   }
-  const scoredEvaluations = summary.evaluations.slice(count);
+  const accuracyStart = wolfrandom
+    ? WOLFRANDOM_RANDOMIZED_PLIES
+    : Math.max(GAME_ANALYSIS_INITIAL_ACCURACY_PLIES, bookPlies);
 
   return {
     ...summary,
     assessments,
     whiteCounts,
     blackCounts,
-    ...gameAccuracyForEvaluations(scoredEvaluations),
-    ...averageCentipawnLossForEvaluations(scoredEvaluations),
+    ...gameAccuracyForEvaluations(
+      summary.evaluations.slice(accuracyStart),
+      blackMovesFirst !== (accuracyStart % 2 === 1),
+    ),
+    ...averageCentipawnLossForEvaluations(summary.evaluations, {
+      ignoredPlies,
+      allowedMatePlies,
+      blackMovesFirst,
+    }),
   };
 };
 
@@ -429,9 +498,10 @@ export const buildGameAnalysisSummary = (
     const beforeScore = reviewScores[index]!;
     const afterScore = reviewScores[index + 1]!;
     const beforeChance = reviewWinPercent(beforeScore);
+    // The next position's score is from the opponent's perspective.
     const afterChance = 100 - reviewWinPercent(afterScore);
     const loss = Math.max(0, beforeChance - afterChance);
-    const classification = classificationFor(beforeScore, afterScore);
+    const classification = classificationForLoss(loss);
     return {
       ply: index + 1,
       uci,

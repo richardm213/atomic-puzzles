@@ -12,7 +12,7 @@ import { makeFen } from "chessops/fen";
 import { makeSan } from "chessops/san";
 import { makeUci, parseSquare } from "chessops/util";
 import type { Atomic } from "chessops/variant";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAppSettings } from "../../context/AppSettings";
 import { playBoardMoveSound } from "../../lib/boardSounds/boardSounds";
@@ -28,6 +28,7 @@ import {
   type UciSolutionLine,
 } from "../../lib/chess/pgn";
 import { lichessAnalysisGlyphSvg } from "../../lib/gameAnalysis/lichessAnalysisGlyph";
+import { keyboardShortcutAction } from "../../lib/keyboardShortcuts";
 import type {
   AttemptResolved,
   BoardLineRef,
@@ -45,13 +46,13 @@ import {
   historyMoveKeys,
   historyMoveSans,
 } from "./boardHistory";
-import { useBoardShortcuts } from "./boardShortcuts";
+import { BoardPromotionPicker } from "./BoardPromotionPicker";
+import { isTextEntryTarget, useBoardShortcuts } from "./boardShortcuts";
 import { buildBoardStyle, buildPieceStyle } from "./boardStyle";
 import { buildPgnHistory } from "./pgnHistory";
 import {
   createPendingPromotion,
   getPromotionChoices,
-  getPromotionSquareStyle,
   type PendingPromotion,
   type PromotionRole,
 } from "./promotionHelpers";
@@ -91,7 +92,9 @@ export type ChessboardProps = {
   solutionNavigation?: SolutionNavigation | null | undefined;
   previewMove?: string | null | undefined;
   previewMoveBrush?: "paleBlue" | "red";
+  engineMoves?: readonly string[] | null | undefined;
   analysisMarker?: { uci: string; symbol: string; fill: string } | null | undefined;
+  dimensionsRef?: RefObject<HTMLElement>;
   captureNavigationShortcuts?: boolean;
   enableNavigationShortcuts?: boolean;
   preserveAnalysisHistoryOnSolutionChange?: boolean;
@@ -125,7 +128,7 @@ const keyPair = (a: string, b: string): [Key, Key] => [a as Key, b as Key];
 
 const previewMoveShape = (
   uci: string | null | undefined,
-  brush: "paleBlue" | "red" = "paleBlue",
+  brush: "paleBlue" | "red" | "bestMove" | "otherEngineMove",
 ): DrawShape[] => {
   const normalized = uci?.trim().toLowerCase() ?? "";
   if (!/^[a-h][1-8][a-h][1-8]/.test(normalized)) return [];
@@ -165,7 +168,9 @@ const ChessboardComponent = ({
   solutionNavigation,
   previewMove,
   previewMoveBrush = "paleBlue",
+  engineMoves,
   analysisMarker,
+  dimensionsRef,
   captureNavigationShortcuts = false,
   enableNavigationShortcuts = true,
   preserveAnalysisHistoryOnSolutionChange = false,
@@ -187,6 +192,9 @@ const ChessboardComponent = ({
     boardOverrideLightSquare,
     boardOverrideDarkSquare,
     showBoardCoordinates,
+    showBestMoveArrow,
+    setShowBestMoveArrow,
+    keyboardShortcuts,
     enableBoardPremoves,
     boardSoundsEnabled,
     boardSoundSet,
@@ -1246,6 +1254,7 @@ const ChessboardComponent = ({
 
   useChessground({
     elementRef,
+    dimensionsRef,
     apiRef: cgRef,
     fen,
     orientation,
@@ -1261,6 +1270,28 @@ const ChessboardComponent = ({
     cgRef.current?.set({ premovable: { enabled: effectivePremovesEnabled } });
   }, [disabled, effectivePremovesEnabled]);
 
+  const supportsEngineArrows = engineMoves !== undefined;
+  useEffect(() => {
+    if (!supportsEngineArrows) return;
+    const toggleEngineArrows = (event: KeyboardEvent): void => {
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.isComposing ||
+        isTextEntryTarget(event.target) ||
+        (event.target instanceof Element &&
+          event.target.closest("dialog, [role='dialog'], [role='textbox']")) ||
+        keyboardShortcutAction(event, keyboardShortcuts) !== "toggleBestMoveArrow"
+      ) {
+        return;
+      }
+      event.preventDefault();
+      setShowBestMoveArrow((current) => !current);
+    };
+    window.addEventListener("keydown", toggleEngineArrows);
+    return () => window.removeEventListener("keydown", toggleEngineArrows);
+  }, [keyboardShortcuts, setShowBestMoveArrow, supportsEngineArrows]);
+
   useEffect(() => {
     const markerUci = analysisMarker?.uci.trim().toLowerCase() ?? "";
     const markerSvg = analysisMarker
@@ -1275,8 +1306,16 @@ const ChessboardComponent = ({
             } satisfies DrawShape,
           ]
         : [];
-    cgRef.current?.setAutoShapes([...previewMoveShape(previewMove, previewMoveBrush), ...marker]);
-  }, [analysisMarker, previewMove, previewMoveBrush]);
+    const preview = previewMoveShape(previewMove, previewMoveBrush);
+    const engineArrows =
+      !preview.length && showBestMoveArrow && !disabled && engineMoves
+        ? [
+            ...engineMoves.slice(1).flatMap((move) => previewMoveShape(move, "otherEngineMove")),
+            ...previewMoveShape(engineMoves[0], "bestMove"),
+          ]
+        : [];
+    cgRef.current?.setAutoShapes([...engineArrows, ...preview, ...marker]);
+  }, [analysisMarker, disabled, engineMoves, previewMove, previewMoveBrush, showBestMoveArrow]);
 
   useEffect(() => {
     if (!showSolution) return;
@@ -1564,32 +1603,13 @@ const ChessboardComponent = ({
       style={{ ...pieceStyle, ...boardStyle }}
     >
       <div ref={elementRef} className="cg-board" />
-      {pendingPromotion ? (
-        <div
-          id="promotion-choice"
-          className={pendingPromotion.vertical}
-          aria-label="Select promotion piece"
-          onContextMenu={(event) => event.preventDefault()}
-        >
-          {pendingPromotion.choices.map((role, index) => (
-            <square
-              key={role}
-              role="button"
-              tabIndex={0}
-              style={getPromotionSquareStyle(pendingPromotion, index, orientationRef.current)}
-              aria-label={`Promote to ${role}`}
-              onClick={() => choosePromotion(role)}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                choosePromotion(role);
-              }}
-            >
-              <piece className={`${role} ${pendingPromotion.color}`} aria-hidden="true" />
-            </square>
-          ))}
-        </div>
-      ) : null}
+      {pendingPromotion && (
+        <BoardPromotionPicker
+          pending={pendingPromotion}
+          orientation={orientation}
+          onChoose={choosePromotion}
+        />
+      )}
     </div>
   );
 };

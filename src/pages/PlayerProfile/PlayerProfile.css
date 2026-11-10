@@ -143,6 +143,22 @@
   );
 }
 
+a.profileOpeningTag {
+  text-decoration: none;
+}
+
+a.profileOpeningTag:hover,
+a.profileOpeningTag:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (pointer: coarse) {
+  .profileOpeningTag {
+    min-height: var(--control-height-touch);
+  }
+}
+
 .profileTourRankLink {
   min-width: 40px;
   min-height: 40px;

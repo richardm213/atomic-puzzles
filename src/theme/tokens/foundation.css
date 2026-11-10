@@ -13,6 +13,10 @@
   --page-max-width: 1180px;
   --page-gutter: clamp(16px, 2.6vw, 36px);
   --page-section-gap: clamp(20px, 2.8vw, 32px);
+  --board-layout-gutter: clamp(var(--space-2), 1.3vw, var(--space-4));
+  --board-layout-gap: clamp(var(--space-3), 2vw, 26px);
+  --board-layout-controls-width: 400px;
+  --board-layout-controls-min: min(clamp(220px, 38vw, 340px), max(184px, calc(60vw - 150px)));
   --radius-sm: 6px;
   --radius-ui: 10px;
   --radius-lg: 16px;

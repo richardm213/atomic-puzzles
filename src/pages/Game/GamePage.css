@@ -1,7 +1,3 @@
-.gameAnalysisPage {
-  padding-inline: clamp(8px, 1vw, 14px);
-}
-
 .gameAnalysisSidebar {
   min-width: 0;
   padding: 0;
@@ -15,70 +11,6 @@
 .gameAnalysisSidebarRail {
   min-width: 0;
   align-self: start;
-}
-
-.gameAnalysisSidebar.withExplorer {
-  height: var(--game-analysis-panel-height, calc(var(--analysis-board-size, 516px) + 48px));
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-}
-
-.gameAnalysisSidebar.withExplorer .analysisExplorerPanel {
-  padding: 2px 8px 8px;
-}
-
-.gameAnalysisSidebar.withExplorer .analysisExplorerTabs button {
-  padding-inline: 6px;
-}
-
-.gameAnalysisSidebar.withExplorer .analysisExplorerPlayerLabel small {
-  display: none;
-}
-
-.gameAnalysisSidebar.withExplorer .analysisDateFilters {
-  grid-template-columns: 1fr;
-}
-
-.gameAnalysisSidebar.withExplorer
-  .analysisExplorerTable.withPerformance
-  .analysisExplorerMoveColumn {
-  width: 11%;
-}
-
-.gameAnalysisSidebar.withExplorer
-  .analysisExplorerTable.withPerformance
-  .analysisExplorerGamesColumn {
-  width: 11%;
-}
-
-.gameAnalysisSidebar.withExplorer .analysisExplorerPerformanceColumn,
-.gameAnalysisSidebar.withExplorer .analysisPerformanceCell,
-.gameAnalysisSidebar.withExplorer .analysisExplorerTable.withPerformance th:nth-child(3),
-.gameAnalysisSidebar.withExplorer
-  .analysisExplorerTable.withPerformance
-  .analysisExplorerSummaryRow
-  td:nth-child(3) {
-  display: none;
-}
-
-.gameAnalysisSidebar.withExplorer
-  .analysisExplorerTable.withPerformance
-  .analysisExplorerWinRateColumn {
-  width: 78%;
-}
-
-.gameAnalysisSidebar.withExplorer .analysisWinRateBar {
-  min-width: 0;
-}
-
-.gameAnalysisSidebar.withExplorer .analysisRecentGames a {
-  grid-template-columns: minmax(0, 1fr) 52px;
-}
-
-.gameAnalysisSidebar.withExplorer .analysisRecentRatings,
-.gameAnalysisSidebar.withExplorer .analysisRecentDate,
-.gameAnalysisSidebar.withExplorer .analysisRecentMove {
-  display: none;
 }
 
 .analysisPage.gameAnalysisPage {
@@ -204,15 +136,6 @@
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
-}
-
-.analysisRightPanel.gameAnalysisPanel:not(.customExplorerSplit):not(.explorerCollapsed) {
-  grid-template-rows: minmax(300px, 1.35fr) minmax(120px, 0.65fr) auto;
-}
-
-.analysisRightPanel.gameAnalysisPanel:not(.customExplorerSplit):not(.explorerCollapsed)
-  .analysisMovePanel {
-  grid-template-rows: auto minmax(110px, 1fr);
 }
 
 .analysisRightPanel.gameAnalysisPanel.computerAnalysisDisabled
@@ -379,6 +302,7 @@
 
 .gameMatchCrosstableStrip {
   --result-column-width: 20px;
+  --result-color-strength: 90%;
 
   width: 100%;
   min-width: calc(var(--game-count) * var(--result-column-width) + 194px);
@@ -390,8 +314,20 @@
   font-variant-numeric: tabular-nums;
 }
 
+:root[data-theme="light"] .gameMatchCrosstableStrip {
+  --result-color-strength: 80%;
+}
+
 .gameMatchCrosstableStrip.matches {
   --result-column-width: 34px;
+}
+
+.gameMatchCrosstableStrip.dense {
+  --result-column-width: 16px;
+}
+
+.gameMatchCrosstableStrip.matches.dense {
+  --result-column-width: 30px;
 }
 
 .gameMatchResults {
@@ -400,16 +336,16 @@
   grid-template-columns: repeat(var(--game-count), minmax(var(--result-column-width), 1fr));
   margin: 0;
   padding: 0;
+  background: var(--color-panel-strong);
   list-style: none;
 }
 
 .gameMatchResults li {
   min-width: var(--result-column-width);
-  background: var(--color-surface-inset);
 }
 
 .gameMatchResults li:nth-child(even) {
-  background: color-mix(in srgb, var(--color-surface-inset-strong) 72%, transparent);
+  background: color-mix(in srgb, var(--color-surface-inset) 48%, transparent);
 }
 
 .gameMatchResultLink {
@@ -426,18 +362,21 @@
   font-weight: 650;
 }
 
-.gameMatchResultLink .win {
-  color: var(--color-success);
+.gameMatchCrosstableStrip .score.win {
+  color: color-mix(in srgb, var(--color-success) var(--result-color-strength), var(--color-text));
   font-weight: 800;
 }
 
-.gameMatchResultLink .loss {
-  opacity: 0.38;
+.gameMatchCrosstableStrip .score.loss {
+  color: color-mix(in srgb, var(--color-danger) var(--result-color-strength), var(--color-text));
+}
+
+.gameMatchCrosstableStrip .score.draw {
+  color: var(--color-muted);
 }
 
 .gameMatchResultLink:hover .score {
   background: var(--color-table-hover);
-  opacity: 1;
 }
 
 .gameMatchResultLink:focus-visible {
@@ -461,52 +400,11 @@
 .gameMatchCrosstableStrip.dense .gameMatchResultLink,
 .gameMatchCrosstableStrip.dense .gameMatchPlayers,
 .gameMatchCrosstableStrip.dense .gameMatchTotals {
-  grid-template-rows: repeat(2, 30px);
+  grid-template-rows: repeat(2, 26px);
 }
 
-.gameMatchCrosstableStrip.dense .gameMatchResults {
-  background: color-mix(in srgb, var(--color-panel-strong) 88%, var(--color-surface-inset));
-}
-
-.gameMatchCrosstableStrip.dense .gameMatchResults li,
-.gameMatchCrosstableStrip.dense .gameMatchResults li:nth-child(even) {
-  background: transparent;
-}
-
-.gameMatchCrosstableStrip.dense .gameMatchResultLink .score {
-  font-weight: 600;
-}
-
-.gameMatchCrosstableStrip.dense .gameMatchResultLink .loss {
-  color: var(--color-danger);
-  opacity: 0.38;
-}
-
-.gameMatchCrosstableStrip.dense .gameMatchResultLink .draw {
-  color: var(--color-muted);
-}
-
-.gameMatchResults li.current,
-.gameMatchCrosstableStrip.dense .gameMatchResults li.current {
-  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-panel-strong));
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-primary-soft) 52%, transparent);
-}
-
-.gameMatchResults li.current .score,
-.gameMatchCrosstableStrip.dense .gameMatchResults li.current .score {
-  opacity: 1;
-}
-
-.gameMatchResults li.current .win,
-.gameMatchCrosstableStrip.dense .gameMatchResults li.current .win {
-  color: var(--color-success);
-}
-
-.gameMatchResults li.current .loss,
-.gameMatchResults li.current .draw,
-.gameMatchCrosstableStrip.dense .gameMatchResults li.current .loss,
-.gameMatchCrosstableStrip.dense .gameMatchResults li.current .draw {
-  color: var(--color-muted);
+.gameMatchResults li.current {
+  box-shadow: inset 0 0 0 2px var(--color-primary-ring);
 }
 
 .gameMatchCrosstableStrip.dense .gameMatchResultLink .score,
@@ -523,6 +421,7 @@
 }
 
 .gameUnderboard {
+  container: game-underboard / inline-size;
   min-width: 0;
   grid-column: 1 / -1;
   margin-top: 0;
@@ -530,21 +429,23 @@
 
 .gameUnderboardTabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(max-content, 1fr));
+  overflow-x: auto;
   border-bottom: 1px solid var(--color-border);
   background: transparent;
 }
 
 .gameUnderboardTabs button {
   min-height: 40px;
-  padding: 0 10px;
+  padding: 0 2px;
   border: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--color-muted);
   font: inherit;
-  font-size: 12.5px;
+  font-size: clamp(10px, 3.4cqi, 12px);
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     color 160ms ease,
@@ -589,7 +490,7 @@
   background: var(--color-panel);
 }
 
-.gameUnderboardPanel:has(.gameMoveTimesFigure) {
+.gameUnderboardPanel:has(.gameComputerGraph, .gameMoveTimesFigure) {
   padding: 0;
   overflow: hidden;
 }
@@ -1049,7 +950,6 @@
   position: sticky;
   z-index: 3;
   right: 0;
-  background: color-mix(in srgb, var(--color-primary) 20%, var(--color-panel-strong));
   box-shadow: -1px 0 0 var(--color-border);
 }
 
@@ -1061,7 +961,7 @@
   font-weight: 800;
 }
 
-@media (min-width: 800px), (orientation: landscape) {
+@media (width > 560px) {
   .gameAnalysisPage .analysisRightPanel {
     align-self: start;
     contain: size;
@@ -1112,19 +1012,33 @@
   user-select: none;
 }
 
-@media (min-width: 1260px) {
+@media (min-width: 980px) {
   .analysisPage.gameAnalysisPage {
-    width: 100%;
+    --game-details-width: clamp(
+      184px,
+      calc(22vw - 27px),
+      clamp(300px, calc(2.5vw + 270px), 330px)
+    );
+    --game-controls-min: clamp(244px, calc(36vw - 102px), var(--board-layout-controls-width));
+
+    width: min(
+      100%,
+      calc(
+        var(--analysis-board-size) + var(--game-details-width) + var(--board-layout-controls-width) +
+          2 * (var(--analysis-column-gap) + var(--board-layout-gutter))
+      )
+    );
     grid-template-columns:
-      clamp(250px, 18vw, 300px) minmax(0, var(--analysis-board-size))
-      clamp(340px, 28vw, 400px);
-    column-gap: 26px;
+      var(--game-details-width)
+      minmax(0, var(--analysis-board-size))
+      minmax(var(--game-controls-min), 1fr);
   }
 
   .gameAnalysisPage .gameAnalysisSidebarRail {
     grid-column: 1;
     grid-row: 1;
     align-self: start;
+    margin-inline-end: calc(-1 * var(--analysis-column-gap) / 2);
   }
 
   .gameAnalysisPage .analysisBoardColumn {
@@ -1143,35 +1057,9 @@
   }
 }
 
-@media (min-width: 1600px) {
+@media (560px < width < 980px) {
   .analysisPage.gameAnalysisPage {
     width: 100%;
-    grid-template-columns: minmax(280px, 310px) minmax(0, var(--analysis-board-size)) minmax(
-        360px,
-        400px
-      );
-    column-gap: 26px;
-  }
-}
-
-@media (min-width: 2400px) {
-  .analysisPage.gameAnalysisPage {
-    width: 100%;
-    grid-template-columns: minmax(300px, 330px) minmax(0, var(--analysis-board-size)) minmax(
-        360px,
-        400px
-      );
-    column-gap: 26px;
-  }
-}
-
-@media (min-width: 800px) and (max-width: 1259px), (max-width: 799px) and (orientation: landscape) {
-  .analysisPage.gameAnalysisPage {
-    width: 100%;
-    grid-template-columns:
-      minmax(0, var(--analysis-board-size))
-      clamp(340px, 28vw, 400px);
-    column-gap: 26px;
   }
 
   .gameAnalysisPage .analysisBoardColumn {
@@ -1181,30 +1069,21 @@
 
   .gameAnalysisPage .gameAnalysisRightRail {
     grid-column: 2;
-    grid-row: 1 / 4;
+    grid-row: 1 / 3;
   }
 
-  .gameAnalysisPage .gameAnalysisSidebarRail {
+  .gameAnalysisPage .gameUnderboard {
     grid-column: 1;
     grid-row: 2;
   }
 
-  .gameAnalysisPage .gameUnderboard {
+  .gameAnalysisPage .gameAnalysisSidebarRail {
     grid-column: 1;
     grid-row: 3;
   }
 }
 
-@media (max-width: 799px) and (orientation: landscape) {
-  .analysisPage.gameAnalysisPage {
-    grid-template-columns:
-      minmax(0, min(55vmin, var(--analysis-board-size)))
-      minmax(200px, 240px);
-    column-gap: 26px;
-  }
-}
-
-@media (max-width: 799px) and (orientation: portrait) {
+@media (max-width: 560px) {
   .gameAnalysisPanelResizeHandle {
     display: none;
   }
@@ -1213,51 +1092,62 @@
     order: -2;
   }
 
-  .gameAnalysisPage .gameAnalysisSidebarRail {
-    order: -1;
-  }
-}
-
-@media (max-width: 799px) and (orientation: portrait) {
   .analysisPage.gameAnalysisPage {
     width: 100%;
   }
 
-  .analysisRightPanel.gameAnalysisPanel:not(.customExplorerSplit):not(.explorerCollapsed) {
-    grid-template-rows: auto minmax(160px, 220px) auto;
+  .analysisRightPanel.gameAnalysisPanel {
+    padding-block-start: var(--space-1);
   }
 
   .gameAnalysisPlayer {
-    min-height: 44px;
+    min-height: var(--control-height-touch);
+    padding-block: 0;
   }
 
-  .gameAnalysisSidebarRail {
-    grid-column: 1;
-    grid-row: auto;
-    order: -2;
+  .gameAnalysisPlayerName {
+    line-height: var(--control-height-touch);
+  }
+
+  .gameAnalysisGameNavigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
   }
 
   .gameAnalysisGameNavigationButton {
-    width: 44px;
-    height: 44px;
+    width: var(--control-height-touch);
+    height: var(--control-height-touch);
   }
 
   .gameAnalysisPage .analysisBoardPanel {
     order: -3;
+    /* Align the board and evaluation bar as a unit within the page gutters. */
+    justify-self: start;
   }
 
-  .boardClockRow:first-child {
+  .gameAnalysisPage .boardClockRow {
     grid-column: 1;
+    justify-self: center;
+    width: min(100%, var(--analysis-board-size, 520px));
+    min-height: 0;
+    /* Tighten the space around each clock without changing other grid gaps. */
+    margin-block: calc(-1 * var(--space-1));
+  }
+
+  .gameAnalysisPage .boardClock {
+    padding-block: 1px;
+  }
+
+  .gameAnalysisPage .boardClockRow:first-child {
     order: -4;
-    justify-self: center;
-    width: min(100%, var(--analysis-board-size, 520px));
   }
 
-  .boardClockRow:nth-child(3) {
-    grid-column: 1;
+  .gameAnalysisPage .boardClockRow:nth-child(3) {
     order: -2;
-    justify-self: center;
-    width: min(100%, var(--analysis-board-size, 520px));
+    margin-block-end: 0;
   }
 
   .gameMatchCrosstable {
@@ -1269,10 +1159,6 @@
 
     min-width: calc(var(--game-count) * var(--result-column-width) + 144px);
     grid-template-columns: minmax(0, 1fr) fit-content(100px) 44px;
-  }
-
-  .gameMatchCrosstableStrip.matches {
-    --result-column-width: 34px;
   }
 
   .gameMatchResults {
@@ -1291,6 +1177,10 @@
 
   .gameUnderboard {
     order: 2;
+  }
+
+  .gameUnderboardTabs button {
+    min-height: var(--control-height-touch);
   }
 }
 
@@ -1504,8 +1394,6 @@
   min-height: 230px;
   margin: 0;
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
   background: color-mix(in srgb, var(--color-primary) 7%, var(--color-panel-strong));
 }
 
@@ -1732,10 +1620,6 @@
 }
 
 @media (max-width: 780px) {
-  .gameUnderboardTabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .gameComputerResult {
     grid-template-columns: 1fr;
   }

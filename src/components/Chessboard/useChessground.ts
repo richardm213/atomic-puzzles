@@ -5,6 +5,7 @@ import { type MutableRefObject, type RefObject, useEffect, useRef } from "react"
 
 export const useChessground = ({
   elementRef,
+  dimensionsRef,
   apiRef,
   fen,
   orientation,
@@ -15,6 +16,7 @@ export const useChessground = ({
   onCleanup,
 }: {
   elementRef: RefObject<HTMLDivElement>;
+  dimensionsRef: RefObject<HTMLElement> | undefined;
   apiRef: MutableRefObject<Api | null>;
   fen: string;
   orientation: Color;
@@ -31,11 +33,13 @@ export const useChessground = ({
   useEffect(() => {
     if (!elementRef.current) return;
     const initial = initialConfigRef.current;
-    apiRef.current = Chessground(elementRef.current, {
+    const dimensionsTarget = dimensionsRef?.current;
+    const api = Chessground(elementRef.current, {
       fen: initial.fen,
       orientation: initial.orientation,
       coordinates: initial.coordinates,
       coordinatesOnSquares: false,
+      ...(dimensionsTarget ? { addDimensionsCssVarsTo: dimensionsTarget } : {}),
       movable: {
         free: false,
         color: initial.movableColor ?? "white",
@@ -52,10 +56,25 @@ export const useChessground = ({
       selectable: { enabled: true },
       drawable: { visible: true },
     });
+    api.set({
+      drawable: {
+        brushes: {
+          ...api.state.drawable.brushes,
+          bestMove: { key: "best-move", color: "var(--color-primary)", opacity: 0.9, lineWidth: 12 },
+          otherEngineMove: {
+            key: "other-engine-move",
+            color: "var(--color-primary)",
+            opacity: 0.35,
+            lineWidth: 9,
+          },
+        },
+      },
+    });
+    apiRef.current = api;
 
     return () => {
       apiRef.current = null;
       onCleanup();
     };
-  }, [apiRef, elementRef, onCleanup]);
+  }, [apiRef, dimensionsRef, elementRef, onCleanup]);
 };

@@ -414,7 +414,7 @@ describe("AtomicDbEngine", () => {
     };
     const settings = { enabled: true, lineCount: 3, showFollowUpMoves: true };
 
-    render(
+    const { container } = render(
       <>
         <AtomicDbEngineControls
           fen={terminalFen}
@@ -440,8 +440,10 @@ describe("AtomicDbEngine", () => {
     );
 
     expect(screen.getByText("1–0")).toBeVisible();
-    expect(screen.getByText("Final position")).toBeVisible();
-    expect(screen.getByText("Game over — White wins.")).toBeVisible();
+    expect(screen.getByText("Game over")).toBeVisible();
+    const reservedRows = container.querySelectorAll(".atomicDbEngineLines > li");
+    expect(reservedRows).toHaveLength(settings.lineCount);
+    for (const row of reservedRows) expect(row).toBeEmptyDOMElement();
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
     expect(screen.getByRole("meter")).toHaveAttribute("aria-valuenow", "100");
   });

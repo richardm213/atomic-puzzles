@@ -2,20 +2,45 @@ import { readFileSync } from "node:fs";
 
 import { expect, test } from "./fixtures";
 
-test("practice plays a real engine move when the opening database is exhausted", async ({
+test("practice plays the engine fallback move when the databases have no move", async ({
   page,
 }) => {
-  test.setTimeout(45_000);
   await page.route("**/api/opening-explorer?**", (route) =>
+    route.fulfill({ json: { moves: [], recentGames: [] } }),
+  );
+  await page.route("**/api/atomicdb-analysis?**", (route) =>
+    route.fulfill({ status: 404, json: { code: "position_not_found" } }),
+  );
+  // Exercise the real browser worker connection and board playback without fetching the hosted NNUE.
+  await page.route("**/engines/atomic-stockfish/*/atomic-stockfish.worker.js", (route) =>
     route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify({ moves: [], recentGames: [] }),
+      contentType: "text/javascript",
+      headers: { "cross-origin-embedder-policy": "require-corp" },
+      body: `
+        const line = (line) => self.postMessage({ type: "line", line });
+        let fen = "";
+        self.onmessage = ({ data }) => {
+          if (data.type === "initialize") self.postMessage({ type: "ready" });
+          if (data.type !== "command") return;
+          const command = data.command;
+          if (command === "isready") line("readyok");
+          if (command.startsWith("position fen ")) fen = command.slice(13);
+          if (command.startsWith("go ")) {
+            if (!fen.startsWith("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w ")) {
+              line("bestmove (none)");
+              return;
+            }
+            line("info depth 15 multipv 1 score cp 20 pv e2e4");
+            line("bestmove e2e4");
+          }
+        };
+      `,
     }),
   );
   await page.addInitScript(() => {
     localStorage.setItem(
       "atomic-puzzles.practice.settings",
-      JSON.stringify({ side: "black", clockEnabled: false, playerContinuation: "stockfish" }),
+      JSON.stringify({ side: "black", clockEnabled: false }),
     );
   });
 
@@ -30,9 +55,8 @@ test("practice plays a real engine move when the opening database is exhausted",
   expect(await page.evaluate(() => typeof SharedArrayBuffer)).toBe("function");
 
   await page.getByRole("button", { name: "Start game", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Played moves", exact: true })).toContainText(
-    /1\.[a-zA-Z]/,
-    { timeout: 25_000 },
+  // The exported FEN proves the worker's move actually reached the board.
+  await expect(page.getByRole("textbox", { name: "FEN", exact: true })).toHaveValue(
+    /^rnbqkbnr\/pppppppp\/8\/8\/4P3\/8\/PPPP1PPP\/RNBQKBNR b /,
   );
-  await expect(page.getByText("Fairy-Stockfish requires cross-origin isolation")).toHaveCount(0);
 });

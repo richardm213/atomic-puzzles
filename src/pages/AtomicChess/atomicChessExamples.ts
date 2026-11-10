@@ -1,16 +1,16 @@
 import { TACTICAL_MOTIFS_PATH } from "../../../shared/seo";
+import { NF3_E3_D5_GUIDE_LINE, NH3_D4_E6_GUIDE_LINE } from "../../utils/openings";
 import type { MotifExample } from "../PuzzleMotifs/motifExamples";
 
 export type GuideExample = MotifExample & {
   name: string;
-  sourceUrl: string;
-  sourceName: string;
+  sourceUrl?: string;
+  sourceName?: string;
 };
 
 const start = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-// Public study positions and main lines; explanations below are our own.
-// Keep the chapter links so readers can explore the original annotations and variations.
+// Original drills and public study lines. Keep source links for the study positions.
 export const atomicChessExamples = {
   explosion: {
     name: "What disappears in an explosion",
@@ -19,6 +19,18 @@ export const atomicChessExamples = {
     note: "Play …axb6. The queen, the capturing pawn, and the knight on c6 disappear. The adjacent pawn on b7 survives, and the rook on a8 is outside the blast.",
     sourceUrl: "https://lichess.org/study/uf9GpQyI/kWUMaN4c",
     sourceName: "ijh — Atomic Rules",
+  },
+  winInCheck: {
+    name: "Explode the opposing king while in check",
+    fen: "5k2/4p3/8/8/8/8/r3R3/K7 w - - 0 1",
+    pgn: "1. Rxe7#",
+    note: "The black rook on a2 checks the white king on a1. White wins anyway: Rxe7 explodes the black king on f8, and the white king is outside the blast.",
+  },
+  quietMate: {
+    name: "Checkmate without an explosion",
+    fen: "k7/8/1Q6/8/4K3/8/8/8 w - - 0 1",
+    pgn: "1. Qb7#",
+    note: "Nothing explodes. The queen checks the king on a8 and covers a7 and b8. The king cannot capture the queen on b7 because the capture would destroy the king too.",
   },
   enPassant: {
     name: "En passant can explode the king",
@@ -52,6 +64,36 @@ export const atomicChessExamples = {
     sourceUrl: "https://lichess.org/study/12TFMoys/bJuPUem6",
     sourceName: "Illion — New to nuke: Opening knight tactics",
   },
+  knightDefense: {
+    name: "Stop the knight before it reaches e5",
+    fen: start,
+    pgn: "1. Nf3 f6 2. Ne5 fxe5",
+    note: "Compare this to the fork above. Black plays …f6 before the knight arrives, so …fxe5 can remove it. The blast on e5 is safely away from the black king on e8.",
+  },
+  twoKnightsOpening: {
+    name: "Two Knights against 2…Nh6",
+    fen: start,
+    pgn: "1. Nf3 f6 2. Nc3 Nh6 3. g4 c6 4. d4 e6 5. e4 f5 6. Nh4 Bd6 7. g5",
+    note: "Pause after 3. g4. If Black plays …Nxg4, the explosion removes both knights and the g-pawn. In the replay Black keeps the knight and plays …c6, covering b5 and d5 against White’s other knight.",
+    sourceUrl: "https://lichess.org/study/HVXNmBDj/IWNsDjc9",
+    sourceName: "Lichess study — Two Knights Attack",
+  },
+  nf3E3Opening: {
+    name: "Nf3 e3: from a knight sacrifice to a material edge",
+    fen: start,
+    pgn: NF3_E3_D5_GUIDE_LINE,
+    note: "Pause after 6. Qxc7. The explosion removes both queens and Black’s b8-knight. White is two pawns up, but Black still has both rooks and both bishops. The game is far from over.",
+    sourceUrl: "https://lichess.org/study/EIRATbRx/J7sp9wiF",
+    sourceName: "Lichess study — Nf3 e3 Megastudy",
+  },
+  nh3D4Opening: {
+    name: "Nh3 d4: the early bishop attack",
+    fen: start,
+    pgn: NH3_D4_E6_GUIDE_LINE,
+    note: "Pause after 4…e5. Black’s pawn attacks the bishop again, but this time White develops the other knight instead of retreating. The line stays sharp without a single capture.",
+    sourceUrl: "https://lichess.org/study/MbzU8mpy/W0MSLxia",
+    sourceName: "Wolfram_EP — 1. Nh3 h6 2. d4",
+  },
   sacrifice: {
     name: "A queen sacrifice opens the bishop’s attack",
     fen: "rnbqkb1r/p1p1p1pp/5n2/1p1p4/3P4/2NQ4/PPP1PPPP/R1B1KB1R w KQkq - 2 6",
@@ -60,6 +102,12 @@ export const atomicChessExamples = {
     sourceUrl: `${TACTICAL_MOTIFS_PATH}#sacrifice`,
     sourceName: "Atomic Puzzles — Sacrifice",
   },
+  blastDefense: {
+    name: "Defuse a queen and knight attack in one capture",
+    fen: "6k1/8/8/8/8/3nq3/8/4R1K1 w - - 0 1",
+    pgn: "1. Rxe3",
+    note: "The queen on e3 checks White along f2–g1. Rxe3 removes the queen and the neighboring knight on d3. White gives up a rook but eliminates both attackers.",
+  },
   connectedKings: {
     name: "The defending king seeks contact",
     fen: "Q7/4k3/8/8/4K3/8/8/8 b - - 0 1",
@@ -67,6 +115,12 @@ export const atomicChessExamples = {
     note: "Black follows the white king and keeps the kings connected. With only a queen to help, White cannot force them apart in this position.",
     sourceUrl: "https://lichess.org/study/ikJM4K3L/kzQcbhVZ",
     sourceName: "tipau — Atomic Endgames Level 1",
+  },
+  twoQueens: {
+    name: "KQQ vs K: force the kings apart, then mate",
+    fen: "8/8/7Q/8/8/8/6k1/6QK w - - 0 1",
+    pgn: "1. Qhh2 Kf3 2. Qgg2+ Ke3 3. Qe4#",
+    note: "Qhh2 is not check: the kings are still connected. It takes away h2 and covers the escape squares except f3. After the forced …Kf3, checks work again. Qgg2+ forces …Ke3, and Qe4# mates.",
   },
   pawnRace: {
     name: "Winning a pawn race without capturing a pawn",

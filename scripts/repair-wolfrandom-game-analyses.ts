@@ -1,9 +1,9 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 import {
+  applyGameAnalysisOpeningReview,
   buildGameAnalysisSummary,
   type GameAnalysisSummary,
-  ignoreInitialGameAnalysisPlies,
   type StoredAtomicDbPosition,
 } from "../shared/domain/gameAnalysis";
 
@@ -134,7 +134,9 @@ const repairedSummary = (row: AnalysisRow): GameAnalysisSummary | null => {
   const positions = result.positions.map((position, index) =>
     index < RANDOMIZED_PLIES ? skippedPosition(position.fen) : position,
   );
-  return ignoreInitialGameAnalysisPlies(buildGameAnalysisSummary(moves, positions), RANDOMIZED_PLIES);
+  return applyGameAnalysisOpeningReview(buildGameAnalysisSummary(moves, positions), {
+    wolfrandom: true,
+  });
 };
 
 const main = async (): Promise<void> => {

@@ -11,6 +11,9 @@ export const HOME_DESCRIPTION =
 
 export const canonicalUrlForPath = (path: string): string => {
   const pathname = new URL(path, SITE_URL).pathname.replace(/\/+$/, "");
+  if (pathname === "/index.html") return `${SITE_URL}/`;
+  // Shared board positions are states of the analysis tool, not separate landing pages.
+  if (pathname.startsWith("/analysis/")) return `${SITE_URL}/analysis`;
   // Netlify serves these pre-rendered pages from directories with a trailing slash.
   const directory = [ATOMIC_CHESS_PATH, TACTICAL_MOTIFS_PATH].find(
     (entry) => pathname === entry.slice(0, -1) || pathname === `${entry}index.html`,

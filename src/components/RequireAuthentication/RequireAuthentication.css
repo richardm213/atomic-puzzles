@@ -70,6 +70,24 @@
   outline-offset: 3px;
 }
 
+.authenticationGatePanel .authenticationGateSecondary {
+  margin-block-start: calc(-1 * var(--space-3));
+  border-color: var(--color-input-border);
+  background: transparent;
+  color: var(--color-text);
+}
+
+.authenticationGatePanel .authenticationGateSecondary:hover {
+  border-color: var(--color-subtle);
+  background: var(--color-surface-inset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .authenticationGatePanel button {
+    transition: none;
+  }
+}
+
 @media (max-width: 600px) {
   .authenticationGate {
     align-items: start;

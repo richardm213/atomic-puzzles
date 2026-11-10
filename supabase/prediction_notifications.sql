@@ -171,6 +171,10 @@ begin
             from public.tournament_bets bet
             where bet.market_id = p_market_id
               and bet.username = position_username
+              and not exists (
+                select 1 from public.prediction_legacy_position_credits credit
+                where credit.source_bet_id = bet.id
+              )
           )
         )
       );

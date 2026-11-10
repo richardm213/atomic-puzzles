@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   playPremove: vi.fn(),
   cancelPremove: vi.fn(),
   showBoardCoordinates: true,
+  showBestMoveArrow: false,
+  setShowBestMoveArrow: vi.fn(),
   enableBoardPremoves: true,
   boardSoundsEnabled: false,
   playBoardMoveSound: vi.fn(),
@@ -25,6 +27,7 @@ vi.mock("@lichess-org/chessground", () => ({
   Chessground: vi.fn((_element, config) => {
     mocks.config = config;
     return {
+      state: { drawable: { brushes: {} } },
       set: mocks.set,
       setAutoShapes: mocks.setAutoShapes,
       playPremove: mocks.playPremove,
@@ -46,6 +49,8 @@ vi.mock("../../context/AppSettings", async (importOriginal) => {
       boardOverrideLightSquare: "",
       boardOverrideDarkSquare: "",
       showBoardCoordinates: mocks.showBoardCoordinates,
+      showBestMoveArrow: mocks.showBestMoveArrow,
+      setShowBestMoveArrow: mocks.setShowBestMoveArrow,
       enableBoardPremoves: mocks.enableBoardPremoves,
       boardSoundsEnabled: mocks.boardSoundsEnabled,
       boardSoundSet: "standard",
@@ -90,6 +95,7 @@ describe("Chessboard orchestration", () => {
     mocks.playPremove.mockClear();
     mocks.cancelPremove.mockClear();
     mocks.showBoardCoordinates = true;
+    mocks.showBestMoveArrow = false;
     mocks.enableBoardPremoves = true;
     mocks.boardSoundsEnabled = false;
     mocks.playBoardMoveSound.mockClear();
@@ -141,6 +147,35 @@ describe("Chessboard orchestration", () => {
 
     expect(mocks.setAutoShapes).toHaveBeenLastCalledWith([
       expect.objectContaining({ orig: "e7", dest: "e5", brush: "red" }),
+    ]);
+  });
+
+  it("only draws ranked engine arrows when enabled and gives previews priority", () => {
+    const board = (engineMoves: string[], previewMove?: string) => (
+      <Chessboard
+        puzzleId="test"
+        fen={STARTING_FEN}
+        orientation="white"
+        coordinates
+        solution=""
+        showSolution={false}
+        engineMoves={engineMoves}
+        previewMove={previewMove}
+      />
+    );
+    const { rerender } = render(board(["g1f3"]));
+    expect(mocks.setAutoShapes).toHaveBeenLastCalledWith([]);
+
+    mocks.showBestMoveArrow = true;
+    rerender(board(["e2e4", "g1f3"]));
+    expect(mocks.setAutoShapes).toHaveBeenLastCalledWith([
+      expect.objectContaining({ orig: "g1", dest: "f3", brush: "otherEngineMove" }),
+      expect.objectContaining({ orig: "e2", dest: "e4", brush: "bestMove" }),
+    ]);
+
+    rerender(board(["e2e4", "g1f3"], "d2d4"));
+    expect(mocks.setAutoShapes).toHaveBeenLastCalledWith([
+      expect.objectContaining({ orig: "d2", dest: "d4", brush: "paleBlue" }),
     ]);
   });
 

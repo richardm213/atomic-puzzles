@@ -34,7 +34,6 @@ import {
   formatPuzzleSetDate,
   puzzleSetMetadataFromRow,
 } from "../../../shared/domain/puzzles/puzzleSetMetadata";
-import { buildPieceStyle } from "../../components/Chessboard/boardStyle";
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { PuzzleCommunity } from "../../components/PuzzleCommunity/PuzzleCommunity";
@@ -95,11 +94,10 @@ import { orientationFromFen } from "../../utils/chessNotation";
 import { getErrorMessage } from "../../utils/errors";
 import { formatElapsedDuration, formatSignedDecimal } from "../../utils/formatters";
 import { normalizeUsername } from "../../utils/playerNames";
-import { castlingRightsFromFen } from "./castlingRights";
-import { materialCountFromFen, type MaterialPieceRole } from "./materialCount";
 import { PuzzleAnalysisPanel } from "./PuzzleAnalysisPanel";
 import { PuzzleInfoSection, type PuzzleInfoTab } from "./PuzzleInfoSection";
 import { PuzzleIssueDialog, type PuzzleIssueStatus } from "./PuzzleIssueDialog";
+import { PuzzlePositionRows } from "./PuzzlePositionRows";
 import {
   addValueToSet,
   buildCompletionFeedback,
@@ -126,6 +124,10 @@ const MAX_PUZZLE_ATTEMPT_DURATION_MS = 60 * 60 * 1000;
 const PUZZLE_RATING_EDITOR = "seaside_tiramisu";
 const PUZZLE_EXPLANATION_LEGACY_AUTHOR = "admin";
 const PUZZLE_EXPLANATION_LEGACY_EDITOR = "seaside_tiramisu";
+
+// Keep in sync with the stacked layout in PuzzleSolver.css.
+const PUZZLE_STACKED_LAYOUT_QUERY =
+  "(max-width: 460px), (max-width: 600px) and (min-height: calc(min(100vw - 16px, 548px) + 184px))";
 
 const SOLUTION_UNLOCK_HINT = "Make at least one attempt before viewing the solution.";
 const SERVER_CUSTOM_SET_ID_PATTERN =
@@ -179,7 +181,7 @@ export const PuzzleSolverPage = () => {
     ...puzzleUserRatingQueryOptions(normalizedUsername),
     enabled: Boolean(normalizedUsername),
   });
-  const { pieceSet, showPuzzleTimer } = useAppSettings();
+  const { showPuzzleTimer } = useAppSettings();
   const { puzzles, setPuzzles, loadingError, setLoadingError, mergeLoadedPuzzles } =
     usePuzzleCatalog(routePuzzleId, routeSetKey || routeDashboardSetId);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
@@ -203,6 +205,7 @@ export const PuzzleSolverPage = () => {
   const [activePuzzleInfoTab, setActivePuzzleInfoTab] = useState<PuzzleInfoTab | null>(null);
   const [solutionNavigation, setSolutionNavigation] = useState<SolutionNavigation | null>(null);
   const [analysisPreviewMove, setAnalysisPreviewMove] = useState<string | null>(null);
+  const [analysisEngineMoves, setAnalysisEngineMoves] = useState<readonly string[] | null>(null);
   const [puzzleSession, dispatchPuzzleSession] = useReducer(
     puzzleSessionReducer,
     undefined,
@@ -375,9 +378,7 @@ export const PuzzleSolverPage = () => {
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
 
-    const mediaQuery = window.matchMedia(
-      "(max-width: 680px), (min-width: 681px) and (max-width: 799px) and (orientation: portrait), (max-width: 1024px) and (max-height: 500px) and (orientation: landscape)",
-    );
+    const mediaQuery = window.matchMedia(PUZZLE_STACKED_LAYOUT_QUERY);
     const updateLayout = () => setIsMobileLayout(mediaQuery.matches);
     updateLayout();
 
@@ -557,15 +558,6 @@ export const PuzzleSolverPage = () => {
   const hasExplanation = explanation.trim().length > 0;
   const orientation = orientationFromFen(fen);
   const currentFen = boardState.fen || fen;
-  const materialCount = useMemo(() => materialCountFromFen(currentFen), [currentFen]);
-  const materialPieceStyle = useMemo(() => buildPieceStyle(pieceSet || "cburnett"), [pieceSet]);
-  const castlingRights = castlingRightsFromFen(currentFen);
-  const hasMaterialDifference =
-    Boolean(currentFen) &&
-    (materialCount.difference > 0 ||
-      materialCount.whitePieces.length > 0 ||
-      materialCount.blackPieces.length > 0);
-  const hasAnyCastlingRights = castlingRights.white.length > 0 || castlingRights.black.length > 0;
   const activeSetPuzzlePosition = isSetSolveMode
     ? orderedSetPuzzleIndexes.indexOf(activePuzzleIndex)
     : -1;
@@ -1500,6 +1492,7 @@ export const PuzzleSolverPage = () => {
       onCycleOptions={(command) => setSolutionNavigation({ type: "command", command })}
       onPlayLine={(ucis) => setSolutionNavigation({ type: "line", ucis })}
       onHoverMove={setAnalysisPreviewMove}
+      onEngineMovesChange={setAnalysisEngineMoves}
       canGiveUp={puzzleSession.attempt === "wrong" && !isAnalysisMode}
       onGiveUp={handleGiveUp}
       canStepBack={canPlaybackPrevious}
@@ -1575,85 +1568,14 @@ export const PuzzleSolverPage = () => {
     }
   };
 
-  const renderPlayerRows = (mobile = false) => {
-    const hasPositionData = hasAnyCastlingRights || hasMaterialDifference;
-    const hasPlayerNames = Boolean(whitePlayer || blackPlayer);
-    if (!whitePlayer && !blackPlayer && !hasPositionData) return null;
-
-    return (
-      <section
-        className={`${mobile ? "mobilePuzzlePlayers" : "puzzlePlayers"} ${
-          hasAnyCastlingRights ? "hasCastlingData" : ""
-        } ${hasMaterialDifference ? "hasMaterialData" : ""} ${hasPlayerNames ? "hasPlayerNames" : ""}`}
-        aria-label="Game players"
-      >
-        {(["white", "black"] as const).map((side) => {
-          const label = side === "white" ? "White" : "Black";
-          const player = side === "white" ? whitePlayer : blackPlayer;
-          const playerLabel = side === "white" ? whitePlayerLabel : blackPlayerLabel;
-          const rights = castlingRights[side];
-          const pieces = side === "white" ? materialCount.whitePieces : materialCount.blackPieces;
-          const materialStatus = pieces.length ? pieces.join(", ") : "no extra material";
-
-          return (
-            <div
-              className={`puzzlePlayer ${hasAnyCastlingRights ? "hasCastlingData" : ""} ${
-                hasMaterialDifference ? "hasMaterialData" : ""
-              } ${player || (mobile && hasPlayerNames) ? "hasPlayerName" : ""}`}
-              aria-label={`${label}: ${playerLabel || "unknown"}${
-                hasMaterialDifference ? `, material difference: ${materialStatus}` : ""
-              }`}
-              key={side}
-            >
-              <span className={`playerColorMarker ${side}`} aria-hidden="true" />
-              {player ? (
-                <PlayerLink
-                  className="puzzlePlayerLink"
-                  username={normalizeUsername(player)}
-                  variant="puzzles"
-                  title={player}
-                >
-                  {playerLabel}
-                </PlayerLink>
-              ) : mobile && hasPlayerNames ? (
-                <span className="puzzlePlayerNameSpacer" aria-hidden="true" />
-              ) : null}
-              {hasPositionData ? (
-                <>
-                  {hasAnyCastlingRights ? (
-                    <strong
-                      className="puzzlePlayerCastling"
-                      aria-label={`Castling rights: ${rights.join(", ") || "none"}`}
-                    >
-                      {rights.join(" · ") || "—"}
-                    </strong>
-                  ) : null}
-                  {hasMaterialDifference ? (
-                    <span
-                      className={`materialDifferencePieces ${pieces.length ? "" : "isEmpty"}`.trim()}
-                      aria-label={`Material difference: ${materialStatus}`}
-                    >
-                      {pieces.map((role: MaterialPieceRole, index: number) => (
-                        <span
-                          className={`materialDifferencePiece ${role}`}
-                          style={{
-                            maskImage: `var(--cg-piece-white-${role})`,
-                            WebkitMaskImage: `var(--cg-piece-white-${role})`,
-                          }}
-                          aria-hidden="true"
-                          key={`${role}-${index}`}
-                        />
-                      ))}
-                    </span>
-                  ) : null}
-                </>
-              ) : null}
-            </div>
-          );
-        })}
-      </section>
-    );
-  };
+  const renderPlayerRows = (mobile = false) => (
+    <PuzzlePositionRows
+      fen={currentFen}
+      white={{ name: whitePlayer, label: whitePlayerLabel }}
+      black={{ name: blackPlayer, label: blackPlayerLabel }}
+      mobile={mobile}
+    />
+  );
 
   const renderPuzzleRating = (mobile = false) => {
     const levelLabel = puzzleLevelLabel(activePuzzleRating.level);
@@ -1785,7 +1707,7 @@ export const PuzzleSolverPage = () => {
     ) : null;
 
   return (
-    <div className="page puzzlePage" style={materialPieceStyle}>
+    <div className="page puzzlePage">
       <Seo
         title={activePuzzleId ? `Puzzle #${activePuzzleId}` : "Solve a Puzzle"}
         description={
@@ -2083,6 +2005,9 @@ export const PuzzleSolverPage = () => {
                 disabled={dailyLimitReached}
                 captureNavigationShortcuts
                 previewMove={analysisPreviewMove}
+                engineMoves={
+                  isAnalysisMode ? (solutionNavigation ? null : analysisEngineMoves) : undefined
+                }
                 solutionNavigation={solutionNavigation}
                 onNavigateHandled={() => setSolutionNavigation(null)}
                 onAttemptResolved={handleAttemptResolved}

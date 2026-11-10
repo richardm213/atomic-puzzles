@@ -38,10 +38,15 @@ export const keyboardShortcutDefinitions = {
   },
   toggleThreat: { label: "Toggle threat analysis", section: "Analysis and practice", keys: ["x"] },
   playBestMove: { label: "Play best move", section: "Analysis and practice", keys: ["Space"] },
+  toggleBestMoveArrow: {
+    label: "Toggle best move arrow",
+    section: "Analysis and practice",
+    keys: ["a"],
+  },
   pausePractice: {
     label: "Pause / resume practice",
     section: "Analysis and practice",
-    keys: ["a"],
+    keys: ["p"],
   },
   alternatePracticeMove: {
     label: "Alternate practice move",
@@ -93,10 +98,20 @@ export const keyboardShortcutSettingsSchema = z
       )
       .default({}),
   })
-  .transform((settings): KeyboardShortcutSettings => ({
-    enabled: settings.enabled,
-    bindings: { ...DEFAULT_KEYBOARD_SHORTCUTS.bindings, ...settings.bindings },
-  }));
+  .transform((settings): KeyboardShortcutSettings => {
+    const bindings = { ...DEFAULT_KEYBOARD_SHORTCUTS.bindings, ...settings.bindings };
+    const savedPause = settings.bindings.pausePractice;
+    if (!settings.bindings.toggleBestMoveArrow && savedPause?.keys.includes("a")) {
+      const remainingKeys = savedPause.keys.filter((key) => key !== "a");
+      bindings.pausePractice = {
+        ...savedPause,
+        keys: remainingKeys.length
+          ? remainingKeys
+          : [...keyboardShortcutDefinitions.pausePractice.keys],
+      };
+    }
+    return { enabled: settings.enabled, bindings };
+  });
 
 type ShortcutEvent = Pick<KeyboardEvent, "key"> &
   Partial<Pick<KeyboardEvent, "code" | "ctrlKey" | "altKey" | "shiftKey" | "metaKey">>;
