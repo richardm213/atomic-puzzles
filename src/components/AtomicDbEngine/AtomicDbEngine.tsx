@@ -72,7 +72,9 @@ const analysisSourceLabel = (
       source = `AtomicDB + ${engine}`;
     }
   } else if (analysis.source === "mixed") {
-    source = `AtomicDB + ${engine}`;
+    // The meter describes the position score, not the sources of its candidate lines.
+    const best = view.position?.moves.find((move) => move.uci === view.position?.bestMove);
+    if (best?.origin === "engine" && best.mate !== null) source = engine;
   }
   return threatMode ? `Threat · ${source}` : source;
 };
