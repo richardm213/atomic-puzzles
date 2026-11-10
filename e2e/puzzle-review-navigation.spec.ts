@@ -52,3 +52,90 @@ test("deleting a puzzle variation removes it from backward and forward navigatio
     await expect(moves.getByRole("button", { name: /e4/ })).toHaveAttribute("aria-current", "step");
   }
 });
+
+test("an active puzzle replays its intro and played moves without revealing future moves", async ({
+  page,
+}) => {
+  await page.route("**/api/puzzles/play", (route) =>
+    route.fulfill({
+      json: {
+        puzzles: [
+          {
+            ...queuePuzzle,
+            id: 102,
+            fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+            solution: "1... e5 (1... c5 2. Nf3) 2. Nf3 Nc6 3. Bc4 Nf6",
+            intro: { beforeFen: queuePuzzle.fen, san: "e4", uci: "e2e4" },
+          },
+        ],
+      },
+    }),
+  );
+  await page.goto("/solve/102");
+  const analysis = page.getByRole("region", { name: "Puzzle analysis" });
+  const intro = analysis.getByRole("button", { name: "1. e4", exact: true });
+  const next = analysis.getByRole("button", { name: "Next move", exact: true });
+  const latest = analysis.getByRole("button", { name: "Go to latest move" });
+  await expect(intro).toHaveAttribute("aria-current", "step");
+  await expect(next).toBeDisabled();
+  await expect(latest).toBeDisabled();
+
+  await analysis.getByRole("button", { name: "Previous move", exact: true }).click();
+  await expect(intro).not.toHaveAttribute("aria-current");
+  await next.click();
+  await expect(intro).toHaveAttribute("aria-current", "step");
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowDown");
+  await expect(analysis.getByRole("button", { name: /e5|Nf3|Nc6|c5/ })).toHaveCount(0);
+
+  // The solver plays Black; use real Chessground clicks throughout the attempt.
+  const playBlackMove = async (uci: string) => {
+    const bounds = await page.locator("cg-board").boundingBox();
+    if (!bounds) throw new Error("Puzzle board is missing");
+    for (const square of [uci.slice(0, 2), uci.slice(2, 4)]) {
+      const file = square.charCodeAt(0) - "a".charCodeAt(0);
+      const rank = Number(square[1]);
+      await page.mouse.click(
+        bounds.x + ((7.5 - file) * bounds.width) / 8,
+        bounds.y + ((rank - 0.5) * bounds.height) / 8,
+      );
+    }
+  };
+  await playBlackMove("e7e5");
+  const reply = analysis.getByRole("button", { name: /Nf3/ });
+  await expect(reply).toHaveAttribute("aria-current", "step");
+  await expect(next).toBeDisabled();
+  await expect(latest).toBeDisabled();
+  await analysis.getByRole("button", { name: "Previous move", exact: true }).click();
+  await expect(analysis.getByRole("button", { name: /e5/ })).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
+  await next.click();
+  await expect(reply).toHaveAttribute("aria-current", "step");
+  await intro.click();
+  await latest.click();
+  await expect(reply).toHaveAttribute("aria-current", "step");
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowDown");
+  await expect(analysis.getByRole("button", { name: /Nc6|Bc4|Nf6|c5/ })).toHaveCount(0);
+  await expect(reply).toHaveAttribute("aria-current", "step");
+
+  await playBlackMove("a7a6");
+  const giveUp = analysis.getByRole("button", { name: "Give up and reveal the solution" });
+  await expect(giveUp).toBeVisible();
+  await intro.click();
+  await expect(analysis.getByRole("button", { name: /Nc6|Bc4|Nf6|c5/ })).toHaveCount(0);
+  await latest.click();
+  await expect(reply).toHaveAttribute("aria-current", "step");
+  await expect(next).toBeDisabled();
+  await giveUp.click();
+  await expect(analysis.getByRole("button", { name: /Nc6/ })).toBeVisible();
+  await latest.click();
+  await expect(analysis.getByRole("button", { name: /Nf6/ })).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
+});

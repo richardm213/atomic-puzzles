@@ -1587,12 +1587,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       moves={boardState.lineMoves ?? []}
       currentPly={currentAnalysisMoves.length}
       activeLineIndex={activeVariationLineIndex}
-      onNavigate={(ply) => {
-        if (canViewPostAttemptDetails) {
-          dispatchPuzzleSession({ type: "enter-analysis", revealSolution: true });
-        }
-        setSolutionNavigation({ type: "history", ply });
-      }}
+      onNavigate={(ply) => setSolutionNavigation({ type: "history", ply })}
       onSelectVariation={(lineIndex, moveIndex) => {
         dispatchPuzzleSession({ type: "enter-analysis", revealSolution: true });
         handleVariationMoveClick(lineIndex, moveIndex);
