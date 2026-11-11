@@ -1529,14 +1529,6 @@ button.puzzleRatingBadge.editable:focus-visible {
   gap: 0;
 }
 
-.puzzleDetails .puzzleOtherAttemptsList:has(> :nth-child(11)) {
-  --attempt-row-height: calc(48px + 1.5em);
-
-  grid-auto-rows: var(--attempt-row-height);
-  max-block-size: calc(10 * var(--attempt-row-height));
-  overflow-y: auto;
-}
-
 .puzzleOtherAttemptRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
