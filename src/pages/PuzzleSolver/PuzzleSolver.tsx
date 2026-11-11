@@ -134,6 +134,8 @@ import { usePuzzleCatalog } from "./usePuzzleCatalog";
 
 const ATTEMPTED_PUZZLE_BADGE_LABEL = "You've already attempted this puzzle before";
 const SOLVED_BEFORE_BADGE_LABEL = "You've solved this puzzle before";
+const PUZZLE_GRADING_EXPLANATION =
+  "Graded attempts can earn or lose coins and update your Other Attempts color. Only your first graded attempt affects puzzle rating. During the cooldown, attempts are unrecorded practice.";
 const OPA_STYLE_BADGE_LABEL =
   "Only the best moves are accepted. Weaker alternatives are rejected even if they also lead to mate.";
 const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
@@ -2167,9 +2169,10 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
                   <span
                     className="puzzleUnratedBadge"
                     tabIndex={0}
-                    title={gradingLabel}
+                    title={PUZZLE_GRADING_EXPLANATION}
                     aria-label={gradingLabel}
-                    data-tooltip={gradingLabel}
+                    aria-description={PUZZLE_GRADING_EXPLANATION}
+                    data-tooltip={PUZZLE_GRADING_EXPLANATION}
                   >
                     {gradingLabel}
                   </span>
@@ -2455,9 +2458,10 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
                 <span
                   className="puzzleUnratedBadge"
                   tabIndex={0}
-                  title={gradingLabel}
+                  title={PUZZLE_GRADING_EXPLANATION}
                   aria-label={gradingLabel}
-                  data-tooltip={gradingLabel}
+                  aria-description={PUZZLE_GRADING_EXPLANATION}
+                  data-tooltip={PUZZLE_GRADING_EXPLANATION}
                 >
                   {gradingLabel}
                 </span>
