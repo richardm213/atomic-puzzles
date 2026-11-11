@@ -4,6 +4,7 @@
   --puzzle-details-width: clamp(184px, calc(36vw - 160px), 300px);
   --puzzle-moves-min: clamp(220px, calc(31.25vw - 80px), 320px);
   --puzzle-rail-min: clamp(192px, 36vw, 300px);
+  --puzzle-controls-width: var(--board-layout-controls-width);
 
   grid-template-columns:
     var(--puzzle-details-width)
@@ -20,8 +21,7 @@
   width: min(
     100%,
     calc(
-      var(--puzzle-board-column) + var(--puzzle-details-width) +
-        var(--board-layout-controls-width) + 2 *
+      var(--puzzle-board-column) + var(--puzzle-details-width) + var(--puzzle-controls-width) + 2 *
         (var(--board-layout-gap) + var(--board-layout-gutter))
     )
   );
@@ -1796,6 +1796,38 @@ button.puzzleRatingBadge.editable:focus-visible {
   border: 1px solid var(--color-border);
   color: var(--color-muted);
   background: var(--color-panel-strong);
+}
+
+@media (min-width: 1280px) {
+  .page.puzzlePage {
+    --puzzle-details-width: clamp(300px, calc(6.25vw + 220px), 380px);
+    --puzzle-controls-width: clamp(400px, calc(6.25vw + 320px), 480px);
+    --puzzle-moves-min: clamp(320px, calc(6.25vw + 240px), 400px);
+
+    --puzzle-board-column: min(
+      clamp(600px, calc(12.5vw + 440px), 820px),
+      max(200px, calc(100svh - var(--nav-height) - 48px)),
+      calc(
+        100vw - var(--puzzle-details-width) - var(--puzzle-moves-min) - 2 *
+          (var(--board-layout-gap) + var(--board-layout-gutter))
+      )
+    );
+  }
+
+  .puzzlePage .boardFrame {
+    max-width: var(--puzzle-board-column);
+  }
+
+  .puzzlePage .boardStage {
+    width: 100%;
+    max-width: none;
+  }
+
+  .puzzlePage .boardFrame .cg-boardShell,
+  .puzzlePage .boardFrame .cg-board,
+  .puzzlePage .boardFrame .emptyBoard {
+    max-width: none;
+  }
 }
 
 /* Keep the solve and review controls together beside the board on compact screens. */
