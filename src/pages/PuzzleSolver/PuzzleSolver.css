@@ -1896,6 +1896,14 @@ button.puzzleRatingBadge.editable:focus-visible {
   .puzzleHeaderBadges {
     justify-content: flex-start;
   }
+
+  .puzzleInfoTab {
+    min-height: var(--control-height-touch);
+  }
+
+  .puzzleInfoTabLabel {
+    display: none;
+  }
 }
 
 /* Allow a wider stack only when its board fits above the navigation and closed solution dock.
@@ -2030,6 +2038,10 @@ button.puzzleRatingBadge.editable:focus-visible {
     position: relative;
     z-index: 1;
     padding: 0 6px;
+  }
+
+  .mobileActionCard .puzzleInfoTabLabel {
+    display: none;
   }
 
   .puzzleInfoTab {

@@ -277,6 +277,7 @@ export const PuzzleInfoSection = ({
             className={`puzzleInfoTab ${showExplanation ? "active" : ""}`}
             onClick={explanation.onToggle}
             disabled={!explanation.canView}
+            aria-label={mobile ? "Explain" : "Explanation"}
             aria-expanded={showExplanation}
             aria-selected={showExplanation}
             title={
@@ -293,12 +294,7 @@ export const PuzzleInfoSection = ({
             }
           >
             <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
-            <span>{mobile ? "Explain" : "Explanation"}</span>
-            {mobile && showExplanation ? (
-              <span className="puzzleInfoTabToggle" aria-hidden="true">
-                ⌃
-              </span>
-            ) : null}
+            <span className="puzzleInfoTabLabel">{mobile ? "Explain" : "Explanation"}</span>
           </button>
         ) : null}
         <button
@@ -307,6 +303,7 @@ export const PuzzleInfoSection = ({
           className={`puzzleInfoTab ${showAttempts ? "active" : ""}`}
           onClick={attempts.onToggle}
           disabled={!attempts.canView || !attempts.puzzleKey || attempts.status === "loading"}
+          aria-label={mobile ? "Attempts" : "Other attempts"}
           aria-expanded={showAttempts}
           aria-selected={showAttempts}
           title={
@@ -320,12 +317,7 @@ export const PuzzleInfoSection = ({
           }
         >
           <FontAwesomeIcon icon={faUsers} aria-hidden="true" />
-          <span>{mobile ? "Attempts" : "Other attempts"}</span>
-          {mobile && showAttempts ? (
-            <span className="puzzleInfoTabToggle" aria-hidden="true">
-              ⌃
-            </span>
-          ) : null}
+          <span className="puzzleInfoTabLabel">{mobile ? "Attempts" : "Other attempts"}</span>
         </button>
         {comments ? (
           <CommunityCommentsLink
