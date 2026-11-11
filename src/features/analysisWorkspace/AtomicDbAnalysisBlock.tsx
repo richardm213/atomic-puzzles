@@ -10,6 +10,7 @@ import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettin
 type AtomicDbAnalysisBlockProps = {
   analysis: AtomicDbAnalysisState;
   beforeSettings?: ReactNode;
+  additionalSettings?: ReactNode;
   disabled?: boolean;
   fen: string;
   notationInline?: boolean;
@@ -28,6 +29,7 @@ type AtomicDbAnalysisBlockProps = {
 export const AtomicDbAnalysisBlock = ({
   analysis,
   beforeSettings,
+  additionalSettings,
   disabled,
   fen,
   notationInline,
@@ -49,6 +51,7 @@ export const AtomicDbAnalysisBlock = ({
   >
     <AtomicDbEngineControls
       beforeSettings={beforeSettings}
+      additionalSettings={additionalSettings}
       fen={fen}
       analysis={analysis}
       settings={settings}

@@ -3,6 +3,7 @@ import {
   convertUciLineToSan,
   parseSolutionUciLines,
   sameSolutionMove,
+  serializeSanLinesToPgn,
   serializeUciLinesToPgn,
 } from "../chess/pgn";
 
@@ -61,3 +62,32 @@ export const gamePlyFromHash = (hash: string, moveCount: number): number | null 
 
 export const gameHashForPly = (ply: number): string =>
   ply === 0 ? "" : ply % 2 === 0 ? `#${ply / 2}` : `#ply-${ply}`;
+
+// Game moves take priority over the edited PGN. A diverging analysis branch
+// has no continuation in the original game, so leave that draft empty.
+export const puzzlePrefillPgn = ({
+  rootFen,
+  fen,
+  gameMoves,
+  lineMoves,
+  currentMoves,
+  moveCount,
+}: {
+  rootFen: string;
+  fen: string;
+  gameMoves?: string[];
+  lineMoves: string[];
+  currentMoves: string[];
+  moveCount: number;
+}): string => {
+  const source = gameMoves?.length
+    ? convertUciLineToSan(
+        rootFen,
+        gameMoves.map((uci) => ({ uci, key: uci, annotation: "", retry: false })),
+      )
+    : lineMoves;
+  if (!currentMoves.every((move, index) => sameSolutionMove(move, source[index]))) return "";
+  return serializeSanLinesToPgn(fen, [
+    source.slice(currentMoves.length, currentMoves.length + moveCount * 2),
+  ]);
+};

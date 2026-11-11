@@ -65,6 +65,7 @@ import {
   gameHashForPly,
   gamePlyFromHash,
   pgnLineIndexForPrefix,
+  puzzlePrefillPgn,
 } from "../../lib/analysis/boardLoading";
 import {
   boardLineAnnotationNavigation,
@@ -436,6 +437,11 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     sourcePly: number;
     positionHistory: PuzzlePositionHistory;
   } | null>(null);
+  const [puzzlePrefill, setPuzzlePrefill] = usePersistedState(
+    "atomic-puzzles.analysis.puzzle-prefill",
+    z.object({ enabled: z.boolean(), moveCount: z.number().int().positive() }),
+    { enabled: false, moveCount: 10 },
+  );
   const [addedPuzzle, setAddedPuzzle] = useState<PuzzleCreationResult | null>(null);
   const puzzleLauncher = useRef<HTMLButtonElement | null>(null);
   const scrollBeforeDraft = useRef(0);
@@ -765,6 +771,22 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     setHoveredExplorerMoveUci(null);
     setPuzzleBoardState(null);
     setAddedPuzzle(null);
+    setNavigation(
+      buildBoardLoadNavigation({
+        fen: currentFen,
+        pgn: puzzlePrefill.enabled
+          ? puzzlePrefillPgn({
+              rootFen: gameRootFen,
+              fen: currentFen,
+              gameMoves: initialMoves ?? [],
+              lineMoves: moveList,
+              currentMoves,
+              moveCount: puzzlePrefill.moveCount,
+            })
+          : "",
+        ply: 0,
+      }),
+    );
     setPuzzleDraft({
       fen: currentFen,
       orientation: boardState?.turn || gameOrientation,
@@ -1555,6 +1577,41 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                       >
                         <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
                       </button>
+                    ) : null
+                  }
+                  additionalSettings={
+                    auth.isAuthenticated && (!game || game.external_match_id) ? (
+                      <div className="analysisPuzzlePrefillSettings">
+                        <label className="atomicDbSourceSetting">
+                          <span>Start puzzle with PGN moves</span>
+                          <input
+                            type="checkbox"
+                            checked={puzzlePrefill.enabled}
+                            onChange={(event) =>
+                              setPuzzlePrefill((current) => ({
+                                ...current,
+                                enabled: event.target.checked,
+                              }))
+                            }
+                          />
+                        </label>
+                        <label className="analysisPuzzlePrefillCount">
+                          <span>Moves per side</span>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={puzzlePrefill.moveCount}
+                            disabled={!puzzlePrefill.enabled}
+                            onChange={(event) => {
+                              const moveCount = event.target.valueAsNumber;
+                              if (Number.isSafeInteger(moveCount) && moveCount > 0) {
+                                setPuzzlePrefill((current) => ({ ...current, moveCount }));
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
                     ) : null
                   }
                   fen={displayedAnalysisFen}

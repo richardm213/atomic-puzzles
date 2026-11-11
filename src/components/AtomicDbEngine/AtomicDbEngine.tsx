@@ -36,6 +36,7 @@ type AtomicDbEngineProps = {
 
 type AtomicDbEngineControlsProps = {
   beforeSettings?: ReactNode;
+  additionalSettings?: ReactNode;
   fen: string;
   analysis: AtomicDbAnalysisState;
   settings: AtomicDbEngineSettings;
@@ -97,6 +98,7 @@ const useRetainedAtomicDbView = (analysis: AtomicDbAnalysisState, fen: string): 
 
 export const AtomicDbEngineControls = ({
   beforeSettings,
+  additionalSettings,
   fen,
   analysis,
   settings,
@@ -281,6 +283,7 @@ export const AtomicDbEngineControls = ({
                 </span>
               </button>
             ) : null}
+            {additionalSettings}
             {onFlipBoard ? (
               <button
                 type="button"
