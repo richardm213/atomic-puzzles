@@ -841,8 +841,8 @@ describe("PuzzleSolverPage solution options", () => {
   });
 
   it.each([
-    ["1. O-O", 0],
-    ["1. Rf8", 1],
+    ["12... O-O", 0],
+    ["12... Rf8", 1],
   ])("advances into the %s option line", async (optionName, lineIndex) => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
@@ -902,9 +902,9 @@ describe("PuzzleSolverPage solution options", () => {
     });
 
     const variations = await screen.findByRole("list", { name: "Analysis variations" });
-    expect(within(variations).getByRole("button", { name: "1. O-O" })).toBeVisible();
-    expect(within(variations).getByRole("button", { name: "1. Rf8" })).toBeVisible();
-    expect(within(variations).getByRole("button", { name: "1... Kd7" })).toBeVisible();
+    expect(within(variations).getByRole("button", { name: "12... O-O" })).toBeVisible();
+    expect(within(variations).getByRole("button", { name: "12... Rf8" })).toBeVisible();
+    expect(within(variations).getByRole("button", { name: "13. Kd7" })).toBeVisible();
   });
 
   it("uses the mouse wheel for moves only after a solution move is selected", async () => {
@@ -926,7 +926,7 @@ describe("PuzzleSolverPage solution options", () => {
       });
     });
     const analysis = await screen.findByLabelText("Puzzle analysis");
-    const optionButtons = await within(analysis).findAllByRole("button", { name: "1. O-O" });
+    const optionButtons = await within(analysis).findAllByRole("button", { name: "12... O-O" });
     await user.click(optionButtons.at(-1)!);
     fireEvent.wheel(boardFrame, { deltaY: 12 });
 
@@ -1231,29 +1231,22 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     await screen.findByTestId("mock-board");
-    expect(screen.queryByRole("tab", { name: "Explain" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Resign" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: "Explain" })).toBeDisabled();
+    expect(await screen.findByRole("tab", { name: "Resign" })).toBeEnabled();
     expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(false);
     expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
 
-    act(() =>
-      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
-        puzzleId: "1369",
-        puzzleCorrect: false,
-        incorrectMove: "12... Kd7",
-        correctMove: null,
-      }),
-    );
     await user.click(await screen.findByRole("tab", { name: "Resign" }));
     expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
+    expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
     await user.click(await screen.findByRole("tab", { name: "Confirm resignation" }));
 
     expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
-    await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledOnce());
     expect((await screen.findAllByLabelText(/Grading returns in/)).length).toBeGreaterThan(0);
     const explanationTab = await screen.findByRole("tab", { name: "Explain" });
     expect(explanationTab).toBeEnabled();
-    expect(screen.queryByRole("checkbox", { name: "Permanently unrated" })).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Permanently unrated" })).toBeDisabled();
     await user.click(explanationTab);
     await user.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByRole("textbox", { name: "Puzzle explanation" })).toHaveValue(
@@ -1612,9 +1605,15 @@ describe("PuzzleSolverPage solution options", () => {
         });
       render(<PuzzleSolverPage />);
       await waitFor(() => expect(mocks.chessboardProps.at(-1)?.disabled).toBe(false));
-      expect(
-        screen.queryByRole("button", { name: "Resign and reveal the solution" }),
-      ).not.toBeInTheDocument();
+      if (correctBefore) {
+        expect(
+          screen.getByRole("button", { name: "Resign and reveal the solution" }),
+        ).toBeEnabled();
+      } else {
+        expect(
+          screen.queryByRole("button", { name: "Resign and reveal the solution" }),
+        ).not.toBeInTheDocument();
+      }
       const otherAttempts = screen.getByRole("tab", { name: "Other attempts" });
       expect(otherAttempts).toBeDisabled();
       if (old) expect(screen.getByText("Graded", { exact: true })).toBeVisible();

@@ -200,3 +200,78 @@ test("solve-mode arrows replay only played moves until the solution is revealed"
   await expect(tagSearch).toHaveValue("fork");
   await expect(finalMove).toHaveAttribute("aria-current", "step");
 });
+
+test("a puzzle without an intro keeps its original move numbers through play and navigation", async ({
+  page,
+}) => {
+  await page.route("**/api/public-data?**", (route) => {
+    if (new URL(route.request().url()).searchParams.get("resource") === "puzzle-solver-index")
+      return route.fulfill({ json: { rows: [{ id: 2138 }] } });
+    return route.fallback();
+  });
+  await page.route("**/api/puzzles/play", (route) =>
+    route.fulfill({
+      json: {
+        puzzles: [
+          {
+            id: 2138,
+            fen: "5rk1/p1p1q3/8/6pp/1P1Pp3/5PnP/P5P1/R1BQK2R w KQ - 0 17",
+            solution: "17. Qb3+ Qe6 18. f4",
+            author: "atcly",
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/puzzles/progress", (route) => {
+    const status = route.request().postDataJSON().action === "gradingState";
+    const grading = {
+      runId: null,
+      graded: status,
+      availableAt: status ? null : "2099-01-01T00:00:00Z",
+      permanent: false,
+      hasAttempted: !status,
+      hasSolved: !status,
+      misses: 0,
+      color: status ? null : "green",
+    };
+    return route.fulfill({
+      json: status
+        ? grading
+        : {
+            coinDelta: 0,
+            rated: true,
+            graded: true,
+            ratingEvent: null,
+            unratedUntil: grading.availableAt,
+            grading,
+          },
+    });
+  });
+  await page.goto("/solve/2138");
+  const analysis = page.getByRole("region", { name: "Puzzle analysis" });
+  const playWhiteMove = async (uci: string) => {
+    const bounds = await page.locator("cg-board").boundingBox();
+    if (!bounds) throw new Error("Puzzle board is missing");
+    for (const square of [uci.slice(0, 2), uci.slice(2, 4)]) {
+      await page.mouse.click(
+        bounds.x + ((square.charCodeAt(0) - 97 + 0.5) * bounds.width) / 8,
+        bounds.y + ((8 - Number(square[1]) + 0.5) * bounds.height) / 8,
+      );
+    }
+  };
+  await expect(page.locator("cg-board")).toBeVisible();
+  await playWhiteMove("d1b3");
+  await expect(analysis.getByRole("button", { name: "17. Qb3+", exact: true })).toBeVisible();
+  await expect(analysis.getByRole("button", { name: "Qe6", exact: true })).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
+  await playWhiteMove("f3f4");
+  const finalMove = analysis.getByRole("button", { name: "18. f4", exact: true });
+  await expect(finalMove).toHaveAttribute("aria-current", "step");
+  await analysis.getByRole("button", { name: "17. Qb3+", exact: true }).click();
+  await expect(finalMove).toBeVisible();
+  await analysis.getByRole("button", { name: "Go to start" }).click();
+  await expect(analysis.getByRole("button", { name: "17. Qb3+", exact: true })).toBeVisible();
+});

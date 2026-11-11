@@ -242,3 +242,71 @@ test("solving after a mistake earns coins while the first move and time stay in 
   await expect(page.getByLabel("Attempt time 0:30")).toBeVisible();
   await expect(page.getByLabel("Solved on the second try", { exact: true })).toBeVisible();
 });
+
+test("a previously solved puzzle permits confirmed resignation before a move", async ({ page }) => {
+  const writes: Array<{ puzzleCorrect: boolean; attempt: { resigned?: boolean } }> = [];
+  let availableAt = "2099-01-01T00:00:00Z";
+  const state = () => ({
+    runId: null,
+    graded: false,
+    availableAt,
+    permanent: false,
+    hasAttempted: true,
+    hasSolved: true,
+    misses: 0,
+    color: "green",
+  });
+  await page.route("**/api/puzzles/progress", (route) => {
+    const body = route.request().postDataJSON();
+    if (body.action === "gradingState") return route.fulfill({ json: state() });
+    writes.push(body);
+    availableAt = "2099-02-01T00:00:00Z";
+    return route.fulfill({
+      json: {
+        coinDelta: 0,
+        rated: false,
+        graded: false,
+        ratingEvent: null,
+        unratedUntil: availableAt,
+        grading: state(),
+      },
+    });
+  });
+  await page.route("**/__e2e_supabase/rest/v1/puzzle_progress?**", (route) =>
+    route.fulfill({
+      json: [
+        {
+          username: "e2e-player",
+          puzzle_id: "102",
+          first_attempt_at: "2026-03-01T00:00:00Z",
+          first_attempt_duration_ms: 42000,
+          puzzle_correct: true,
+          has_solved: true,
+          rated: true,
+          correct_move: "1... e5",
+          incorrect_move: null,
+          attempt_color: "green",
+          grading_available_at: availableAt,
+        },
+      ],
+    }),
+  );
+  await page.goto("/solve/102");
+  const resign = page.getByRole("button", { name: "Resign and reveal the solution" });
+  await expect(resign).toBeEnabled();
+  await expect(page.getByRole("tab", { name: "Other attempts", exact: true })).toBeDisabled();
+  const eligibility = page.getByText(/^Grading returns in/);
+  const previousEligibility = await eligibility.innerText();
+  await resign.click();
+  expect(writes).toHaveLength(0);
+  await page.getByRole("button", { name: "Confirm resignation" }).click();
+  await expect.poll(() => writes.length).toBe(1);
+  expect(writes[0]?.attempt.resigned).toBe(true);
+  expect(writes[0]?.puzzleCorrect).toBe(false);
+  await expect(page.getByRole("tab", { name: "Other attempts", exact: true })).toBeEnabled();
+  await expect(eligibility).not.toHaveText(previousEligibility);
+  await expect(page.getByText(/^Grading returns in/)).toHaveAttribute(
+    "title",
+    /Grading returns in/,
+  );
+});

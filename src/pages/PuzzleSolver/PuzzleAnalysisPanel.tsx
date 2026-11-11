@@ -24,6 +24,7 @@ const initialEngineSettings = (): AtomicDbEngineSettings => ({
 export const PuzzleAnalysisPanel = ({
   fen,
   analysisActive,
+  initialPly,
   previousMove,
   beforePreviousMove,
   terminalOutcome,
@@ -45,6 +46,7 @@ export const PuzzleAnalysisPanel = ({
 }: {
   fen: string;
   analysisActive: boolean;
+  initialPly: number;
   previousMove?: PuzzleIntro | null | undefined;
   beforePreviousMove?: boolean | undefined;
   terminalOutcome: "white" | "black" | "draw" | null;
@@ -112,6 +114,7 @@ export const PuzzleAnalysisPanel = ({
       <div className="puzzleAnalysisMoves" aria-label="Played moves">
         <MoveNotation
           reserveFirstRow
+          initialPly={initialPly}
           lines={analysisActive ? lines : []}
           moves={moves}
           previousMove={

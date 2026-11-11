@@ -205,7 +205,9 @@ begin
     raise exception 'puzzle_run_finished';
   end if;
   if run.id is null then
-    if p_outcome = 'resigned' then raise exception 'puzzle_resignation_requires_move'; end if;
+    if p_outcome = 'resigned' and not coalesce(progress.has_solved,false) then
+      raise exception 'puzzle_resignation_requires_move';
+    end if;
     if first_result then
       perform pg_advisory_xact_lock(hashtextextended(solver || ':daily-puzzle-attempts', 0));
       if (select count(*) from public.puzzle_progress
@@ -272,7 +274,9 @@ begin
     update public.puzzle_progress set has_solved=true
     where username=solver and puzzle_id=puzzle_key::text;
   else
-    if run.misses = 0 then raise exception 'puzzle_resignation_requires_move'; end if;
+    if run.misses = 0 and not run.previously_solved then
+      raise exception 'puzzle_resignation_requires_move';
+    end if;
   end if;
 
   if p_outcome in ('correct','resigned') then

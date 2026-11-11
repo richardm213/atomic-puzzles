@@ -32,6 +32,7 @@ export const getPuzzleSessionAccess = (
   state: PuzzleSessionState,
   resumedMisses: number,
   retryMovePending: boolean,
+  previouslySolved = false,
 ) => {
   const analysis = isPuzzleSessionInAnalysis(state);
   const hasAttempted =
@@ -39,7 +40,9 @@ export const getPuzzleSessionAccess = (
   return {
     analysis,
     hasAttempted,
-    canGiveUp: !analysis && !retryMovePending && (state.attempt === "wrong" || resumedMisses > 0),
+    canGiveUp:
+      !analysis &&
+      (previouslySolved || (!retryMovePending && (state.attempt === "wrong" || resumedMisses > 0))),
     canViewSolution: hasAttempted && !retryMovePending,
   };
 };

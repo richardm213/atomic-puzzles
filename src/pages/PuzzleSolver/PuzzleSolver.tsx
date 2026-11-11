@@ -58,6 +58,7 @@ import { useBoardItemShortcuts } from "../../hooks/useBoardItemShortcuts";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { boardLineNavigation, getBoardLineState } from "../../lib/analysis/boardState";
 import { ApiError } from "../../lib/api/postApi";
+import { startingPlyFromFen } from "../../lib/chess/pgn";
 import {
   fetchCustomPuzzleSet,
   getOrderedPuzzleIndexesForCustomSet,
@@ -875,7 +876,12 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     boardState.view.line.source !== "solution" &&
     !boardState.solved,
   );
-  const sessionAccess = getPuzzleSessionAccess(puzzleSession, resumedMisses, isRetryFeedbackActive);
+  const sessionAccess = getPuzzleSessionAccess(
+    puzzleSession,
+    resumedMisses,
+    isRetryFeedbackActive,
+    hasSolvedPuzzle,
+  );
   const isAnalysisMode = sessionAccess.analysis;
   const blindPosition = isAnalysisMode ? null : blindLeadIn;
   const hasAttemptedActivePuzzle = sessionAccess.hasAttempted;
@@ -1731,6 +1737,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       key={activePuzzleId ?? "empty"}
       fen={currentFen}
       analysisActive={isAnalysisMode}
+      initialPly={startingPlyFromFen(fen)}
       previousMove={introPending ? undefined : activePuzzle?.intro}
       beforePreviousMove={baseLineState.beforeIntro}
       terminalOutcome={

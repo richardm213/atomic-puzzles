@@ -15,6 +15,11 @@ describe("puzzle session", () => {
       canGiveUp: false,
       canViewSolution: false,
     });
+    expect(getPuzzleSessionAccess(session, 0, false, true)).toMatchObject({
+      canGiveUp: true,
+      canViewSolution: false,
+      hasAttempted: false,
+    });
     expect(getPuzzleSessionAccess(session, 1, false)).toEqual({
       analysis: false,
       hasAttempted: true,

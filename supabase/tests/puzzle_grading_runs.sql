@@ -377,4 +377,92 @@ begin
     and not exists(select 1 from public.puzzle_attempt_move_logs where username=solver),
     'Rejected submission left partial state');
 end $$;
+-- A previously solved puzzle can be resigned before another move, with an idempotent cooldown reset.
+do $$
+declare
+  pid text := (select puzzle_id from grading_test_fixture);
+  solver text;
+  was_eligible boolean;
+  response jsonb;
+  before_result jsonb;
+  wallet numeric;
+  streak integer;
+  log_count integer;
+  next_expiry timestamptz;
+  attempt_id uuid;
+begin
+  update public.puzzle_ratings set human_level=3 where puzzle_id=pid::bigint;
+  foreach was_eligible in array array[false,true] loop
+    solver := 'grading_premove_resign_' || txid_current() || '_' || was_eligible;
+    insert into public.coin_accounts(username,balance) values(solver,100);
+    if was_eligible then
+      perform public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'correct',
+        '1. Nf3 *',null,1000,null,'1. Nf3');
+    else
+      response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'incorrect',
+        '1. e4 *',null,1000,'1. e4',null);
+      perform public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'correct',
+        '1. Nf3 *',(response->'grading'->>'runId')::uuid,1000,null,'1. Nf3');
+    end if;
+    if was_eligible then
+      update public.puzzle_solver_states set grading_available_at=now()-interval '1 second' where username=solver;
+      perform public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'correct',
+        '1. Nf3 *',null,1000,null,'1. Nf3');
+    end if;
+    update public.puzzle_solver_states
+      set grading_available_at=case when was_eligible then now()-interval '1 second' else now()+interval '1 month' end
+      where username=solver;
+    update public.puzzle_progress p set grading_available_at=s.grading_available_at
+      from public.puzzle_solver_states s where p.username=solver and s.username=solver and p.puzzle_catalog_id=s.puzzle_id;
+    select to_jsonb(p)-'grading_available_at' into before_result from public.puzzle_progress p where username=solver;
+    select balance into wallet from public.coin_accounts where username=solver;
+    select correct_streak into streak from public.puzzle_solver_states where username=solver;
+    select count(*) into log_count from public.puzzle_attempt_move_logs where username=solver;
+    attempt_id := gen_random_uuid();
+    response := public.submit_puzzle_run_attempt(attempt_id,solver,pid,'resigned','*',null,null,null,null);
+    next_expiry := (response->>'unratedUntil')::timestamptz;
+    perform pg_temp.assert_grading((response->>'coinDelta')::numeric=0
+      and not (response->>'rated')::boolean
+      and not (response->'grading'->>'graded')::boolean
+      and next_expiry>clock_timestamp()+interval '2 months'-interval '2 seconds'
+      and response->'grading'->>'runId' is null,
+      format('Pre-move resignation did not reset grading for %s',solver));
+    perform pg_temp.assert_grading(
+      (select to_jsonb(p)-'grading_available_at' from public.puzzle_progress p where username=solver)=before_result
+      and (select balance from public.coin_accounts where username=solver)=wallet
+      and (select correct_streak from public.puzzle_solver_states where username=solver)=streak
+      and (select count(*) from public.puzzle_rating_events where username=solver)=1
+      and (select count(*) from public.puzzle_attempt_move_logs where username=solver)=log_count+1
+      and exists(select 1 from public.puzzle_runs where username=solver
+        and outcome='resigned' and misses=0 and previously_solved and ended_at is not null),
+      format('Pre-move resignation changed the first result, rating, coins, or streak for %s',solver));
+    response := public.submit_puzzle_run_attempt(attempt_id,solver,pid,'resigned','*',null,null,null,null);
+    perform pg_temp.assert_grading((response->>'duplicate')::boolean
+      and (response->>'unratedUntil')::timestamptz=next_expiry
+      and (select count(*) from public.puzzle_attempt_move_logs where username=solver)=log_count+1,
+      'Retrying the same resignation extended the timer or duplicated the event');
+    response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'resigned','*',null,null,null,null);
+    perform pg_temp.assert_grading((response->>'unratedUntil')::timestamptz>next_expiry
+      and (response->>'coinDelta')::numeric=0,
+      'A new pre-move resignation did not restart the timer');
+  end loop;
+
+  solver := 'grading_unsolved_resign_' || txid_current();
+  insert into public.coin_accounts(username,balance) values(solver,100);
+  response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'incorrect',
+    '1. e4 *',null,1000,'1. e4',null);
+  response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'resigned','1. e4 *',
+    (response->'grading'->>'runId')::uuid,null,null,null);
+  next_expiry := (response->>'unratedUntil')::timestamptz;
+  begin
+    perform public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'resigned','*',null,null,null,null);
+    raise exception 'An unsolved puzzle accepted a pre-move resignation';
+  exception when others then
+    if sqlerrm <> 'puzzle_resignation_requires_move' then raise; end if;
+  end;
+  perform pg_temp.assert_grading(
+    (select grading_available_at from public.puzzle_solver_states where username=solver)=next_expiry
+    and (select count(*) from public.puzzle_attempt_move_logs where username=solver)=2,
+    'A rejected unsolved pre-move resignation changed the timer or history');
+end $$;
 rollback;

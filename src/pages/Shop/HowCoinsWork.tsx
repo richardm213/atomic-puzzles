@@ -215,9 +215,11 @@ export const HowCoinsWorkPage = () => (
               <h3 id="reveal-solution-heading">Keeping the solution hidden</h3>
               <p>
                 Explanations, comments, other players’ attempts, and source-match links stay locked
-                until you solve or confirm resignation. Resignation becomes available after a wrong
-                submission. Click once to highlight it and a second time to confirm and reveal the
-                solution. Confirming ends your current run and its remaining reward eligibility.
+                until you solve or confirm resignation. On a previously solved puzzle, resignation
+                is available before making another move. On a puzzle you have never solved,
+                resignation becomes available after a wrong submission. Click once to highlight it
+                and a second time to confirm and reveal the solution. Confirming ends your current
+                run and its remaining reward eligibility.
               </p>
               <p>
                 Before submitting a move, you can leave or skip freely. Each coin deduction during a
@@ -232,8 +234,8 @@ export const HowCoinsWorkPage = () => (
                 Completing a solve or confirming resignation starts a two-month grading cooldown.
                 Attempts during the cooldown are saved as practice. They carry no coin rewards, coin
                 penalties, or rating changes. Completing another correct solve during the cooldown
-                restarts the two-month timer. Resigning again after submitting a move also restarts
-                it.
+                restarts the two-month timer. Confirming resignation again also restarts it,
+                including before a move on a puzzle you have already solved.
               </p>
               <p>
                 When the cooldown expires, you can start a fresh graded run with its miss counter
