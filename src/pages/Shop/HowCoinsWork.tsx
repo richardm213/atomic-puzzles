@@ -90,11 +90,11 @@ export const HowCoinsWorkPage = () => (
         <dl className="coinGradingKey">
           <div>
             <dt>Rated</dt>
-            <dd>Your puzzle rating. First graded result only.</dd>
+            <dd>Affects your puzzle rating.</dd>
           </div>
           <div>
             <dt>Graded</dt>
-            <dd>Coins and your Other Attempts color.</dd>
+            <dd>Affects your coins and Other Attempts color.</dd>
           </div>
         </dl>
       </section>
