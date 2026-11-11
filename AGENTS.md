@@ -30,10 +30,15 @@ have all been handled and verified.
 
 - Place liquidity orders using `prediction_admin`, never `admin`.
 
-## Puzzle attempt archiving
+## Puzzle attempts and coin corrections
 
 When asked to archive puzzle attempts or remove previously archived attempts from active progress,
 follow [the puzzle attempt archiving protocol](docs/puzzle-attempt-archiving.md).
+
+For individual attempt or coin fixes, including promoting a correct retry to the first attempt,
+use its [fast correction workflow](docs/puzzle-attempt-archiving.md#fast-attempt-and-coin-corrections).
+Normally, use one scoped discovery query and one guarded transaction with committed readback.
+Avoid repeated schema discovery, unrelated history audits, and application test suites for data-only fixes.
 
 ## Testing protocol
 

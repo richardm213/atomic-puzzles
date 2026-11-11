@@ -2,6 +2,16 @@
 
 Archiving moves the selected attempts out of active progress and preserves them in `public.puzzle_attempt_reset_archives`. The Other Attempts tab reads `public.puzzle_progress`. If the user explicitly asks for a snapshot only, leave active progress intact. Preserve coins by default and make any requested coin adjustment a separately scoped ledger operation.
 
+## Fast attempt and coin corrections
+
+Routine corrections should follow this short path. Add investigation only when a specific fact is missing or a guard fails.
+
+1. **Read the relevant records together.** Use Firefox and the current Supabase database. Fetch the exact player's puzzle progress, move logs, runs, solver state, rating event, related coin receipts, wallet, and matching archive in one scoped query. Return one combined result: the SQL runner may return only the last result set. Resolve approximate usernames here; do not investigate unrelated players or puzzles.
+2. **Calculate the correction once.** Use the applicable run stakes, recorded duration, and reward rules. Subtract the existing net coin amount from the intended net amount. Reuse known project functions and table contracts; inspect definitions only to resolve an actual uncertainty. Do not replay schema migrations for a data fix.
+3. **Apply one guarded, idempotent transaction.** Lock the player and relevant rows, verify exact attempt IDs/moves/timestamps, and archive the original records and receipts as described below. For a coin-only fix, leave attempts and ratings alone. Post nonzero coin adjustments through `public.post_coin_transaction`, with supported reasons, unique correction source keys, and explanatory metadata. Preserve the original ledger entries.
+4. **When promoting a correct retry, preserve that real solve.** Remove the archived incorrect log and replace the immutable first-result row with the retained correct solve's actual timestamp, duration, and move. Update its run's miss count, first-solve color/streak, `solved_move`, and the retained log's rated flag and `progress_result` receipt. Preserve later valid practice cooldown resets. Rebuild ratings **once**, in the same transaction, if rated history changed. Mark mixed snapshots that retain active attempts as requiring manual restoration.
+5. **Verify and finish.** Assert affected row counts, the corrected first result and grading summary, removal of the incorrect log, archive contents, unchanged original receipts, and the exact wallet delta. Return a compact committed readback. Do not run frontend tests, builds, browser UI checks, or broad historical audits for a data-only correction. Report the corrected attempt and net coin adjustment, then stop.
+
 ## Identify the attempts
 
 1. Use Firefox for SQL against the current Supabase database. Read `public.puzzle_progress` and `public.puzzle_attempt_reset_archives` before making changes.
