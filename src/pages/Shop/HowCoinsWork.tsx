@@ -141,7 +141,7 @@ export const HowCoinsWorkPage = () => (
         <h2 id="grading-cooldown-heading">When does grading return?</h2>
         <figure
           className="coinGradingCycle"
-          aria-label="Grading cycle, clockwise: graded run, solve or resign, ungraded, grading returns, repeat"
+          aria-label="Grading cycle, clockwise: graded run, solve or resign, 2-month waiting period, grading returns, repeat"
         >
           <svg
             className="coinGradingCycleArrows"
@@ -178,19 +178,15 @@ export const HowCoinsWorkPage = () => (
           <ol>
             <li>
               <strong>Graded run</strong>
-              <span>Leaving saves your run.</span>
             </li>
             <li>
               <strong>Solve or resign</strong>
-              <span>The run ends.</span>
             </li>
             <li>
-              <strong>Ungraded</strong>
-              <span>No coins.</span>
+              <strong>2-month waiting period</strong>
             </li>
             <li>
               <strong>Grading returns</strong>
-              <span>After 2 months.</span>
             </li>
           </ol>
         </figure>
