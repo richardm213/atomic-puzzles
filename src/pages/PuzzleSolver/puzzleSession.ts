@@ -75,7 +75,7 @@ export const puzzleSessionReducer = (
       if (isPuzzleSessionInAnalysis(state)) return state;
       return {
         attempt: action.correct ? "solved" : "wrong",
-        solutionRevealed: action.entry === "replay",
+        solutionRevealed: action.correct || action.entry === "replay",
         feedback: null,
       };
     case "reveal-solution":

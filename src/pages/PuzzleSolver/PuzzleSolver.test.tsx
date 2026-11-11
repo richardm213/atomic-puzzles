@@ -833,6 +833,7 @@ describe("PuzzleSolverPage solution options", () => {
       });
     });
     const analysis = await screen.findByLabelText("Puzzle analysis");
+    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
     const optionButtons = await within(analysis).findAllByRole("button", { name: optionName });
     await user.click(optionButtons.at(-1)!);
 
@@ -970,49 +971,35 @@ describe("PuzzleSolverPage solution options", () => {
     expect(screen.queryByLabelText("Puzzle tags")).not.toBeInTheDocument();
   });
 
-  it("keeps tags in place and preserves focus when voting or undoing a vote", async () => {
+  it("shows specific positive tags and restores the parent when a child loses its positive score", async () => {
     const fork = { tag: "fork", up: 3, down: 0, vote: 0 };
     const epaulette = { tag: "epaulette_fork", up: 1, down: 0, vote: 0 };
-    mocks.loadPuzzleTagVotes.mockResolvedValue([fork, epaulette]);
+    const endgame = { tag: "endgame", up: 2, down: 0, vote: 0 };
+    mocks.loadPuzzleTagVotes.mockResolvedValue([fork, epaulette, endgame]);
     mocks.voteOnPuzzleTag
-      .mockResolvedValueOnce([{ ...fork, up: 4, vote: 1 }, epaulette])
-      .mockResolvedValueOnce([fork, epaulette])
       .mockResolvedValueOnce([fork, { ...epaulette, down: 1, vote: -1 }])
       .mockResolvedValueOnce([fork, epaulette]);
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
-    await user.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Give up and reveal the solution" }),
+    );
 
     const motifs = await screen.findByLabelText("Tags on this puzzle");
-    const forkButton = await within(motifs).findByRole("button", {
-      name: /^View definition for Fork\b/,
-    });
+    const forkButton = { name: /^View definition for Fork\b/ };
     const subtagButton = { name: /^View definition for Epaulette fork\b/ };
-    expect(within(motifs).queryByRole("button", subtagButton)).not.toBeInTheDocument();
-    await user.click(within(motifs).getByRole("button", { name: "Expand Fork tags" }));
-    const epauletteButton = await within(motifs).findByRole("button", subtagButton);
+    await within(motifs).findByRole("button", subtagButton);
+    expect(within(motifs).queryByRole("button", forkButton)).not.toBeInTheDocument();
+    expect(
+      within(motifs).getByRole("button", { name: /^View definition for Endgame\b/ }),
+    ).toBeVisible();
     const addTag = screen.getByRole("button", { name: "Add tag" });
-    const upvote = within(motifs).getByRole("button", { name: /^Upvote Fork\b/ });
-
-    for (const label of [/^Undo upvote for Fork\b/, /^Upvote Fork\b/]) {
-      await user.click(upvote);
-      await within(motifs).findByRole("button", { name: label });
-      expect(upvote).toHaveFocus();
-      expect(within(motifs).getByRole("button", { name: /^View definition for Fork\b/ })).toBe(
-        forkButton,
-      );
-      expect(
-        forkButton.compareDocumentPosition(epauletteButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
-      expect(
-        epauletteButton.compareDocumentPosition(addTag) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
-    }
 
     await user.click(within(motifs).getByRole("button", { name: /^Downvote Epaulette fork\b/ }));
     await waitFor(() =>
       expect(within(motifs).queryByRole("button", subtagButton)).not.toBeInTheDocument(),
     );
+    expect(within(motifs).getByRole("button", forkButton)).toBeVisible();
     expect(addTag).toHaveFocus();
 
     await user.click(addTag);

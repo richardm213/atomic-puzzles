@@ -80,7 +80,7 @@ describe("puzzle session", () => {
       canGiveUp: false,
       canViewSolution: true,
     });
-    expect(correct.solutionRevealed).toBe(false);
+    expect(correct.solutionRevealed).toBe(true);
   });
 
   it("keeps a replay revealed through board feedback, but hides it on the next visit", () => {

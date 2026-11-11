@@ -1108,10 +1108,10 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         correct: puzzleCorrect,
         entry,
       });
-      if (entry === "replay") {
+      if (puzzleCorrect || entry === "replay") {
         setActivePuzzleInfoTab("solution");
         setSolutionNavigation(null);
-        setPinnedSolutionLineIndex(0);
+        setPinnedSolutionLineIndex(puzzleCorrect ? null : 0);
       }
       setSubmittedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
       if (puzzleCorrect) {
