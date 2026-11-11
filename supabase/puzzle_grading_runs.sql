@@ -222,7 +222,7 @@ begin
         and (exclusion.category is distinct from 'creator' or exclusion.expires_at <= at_time),
       coalesce(progress.has_solved,false),
       factor * case puzzle_level when 1 then 1 when 2 then 2 when 4 then 5 when 5 then 10 else 3 end,
-      factor * case puzzle_level when 1 then 4 when 2 then 2 when 3 then 1 else 0 end)
+      factor * case puzzle_level when 1 then 4 when 2 then 2 when 3 then 1.5 when 4 then 0.5 else 0 end)
     returning * into run;
   end if;
 

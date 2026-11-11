@@ -89,7 +89,7 @@ test("solve-mode arrows replay only played moves until the solution is revealed"
       json: isStatus
         ? grading
         : {
-            coinDelta: resigned ? 0 : -1,
+            coinDelta: resigned ? 0 : -1.5,
             rated: !resigned,
             graded: true,
             unratedUntil: grading.availableAt,

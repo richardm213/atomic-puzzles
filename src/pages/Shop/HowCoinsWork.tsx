@@ -19,8 +19,8 @@ const creationRewards = [
 const solvingRewards = [
   ["V1", 1, -4],
   ["V2", 2, -2],
-  ["V3", 3, -1],
-  ["V4", 5, 0],
+  ["V3", 3, -1.5],
+  ["V4", 5, -0.5],
   ["V5", 10, 0],
 ] as const;
 
@@ -204,10 +204,10 @@ export const HowCoinsWorkPage = () => (
                 in your history.
               </p>
               <p>
-                For example, a V3 puzzle has a 3-coin base reward and a 1-coin first-miss penalty.
+                For example, a V3 puzzle has a 3-coin base reward and a 1.5-coin first-miss penalty.
                 Get it wrong once, keep the solution hidden, then solve it to earn 1.5 coins. The
-                earlier 1-coin deduction stays, giving you a net gain of 0.5 coins. After two
-                misses, the deductions total 1.5 coins and the solve pays 0.75 coins.
+                deduction and reward balance out. After two misses, the deductions total 2.25 coins
+                and the solve pays 0.75 coins, giving a net change of −1.5 coins.
               </p>
             </section>
 

@@ -30,13 +30,13 @@ begin
   insert into public.coin_accounts(username,balance) values(solver,100);
   response := public.submit_puzzle_run_attempt(first_id,solver,pid,'incorrect','1. e4 *',null,20000,'1. e4',null);
   active_run := (response->'grading'->>'runId')::uuid;
-  if (response->>'coinDelta')::numeric <> -1 or not (response->>'rated')::boolean then
+  if (response->>'coinDelta')::numeric <> -1.5 or not (response->>'rated')::boolean then
     raise exception 'Initial result must rate once and debit the base penalty: %',response;
   end if;
   response := public.submit_puzzle_run_attempt(first_id,solver,pid,'incorrect','1. e4 *',null,20000,'1. e4',null);
   if not (response->>'duplicate')::boolean then raise exception 'Duplicate was applied twice'; end if;
   perform pg_temp.assert_grading(
-    (select balance from public.coin_accounts where username=solver)=99
+    (select balance from public.coin_accounts where username=solver)=98.5
     and (select count(*) from public.puzzle_attempt_move_logs where username=solver)=1
     and (select count(*) from public.coin_transactions where username=solver)=1
     and (select count(*) from public.puzzle_rating_events where username=solver)=1,
@@ -54,7 +54,7 @@ begin
     'An old unfinished graded run lost its miss count or eligibility');
   for i in 2..4 loop
     response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'incorrect','1. d4 *',active_run,1000,'1. d4',null);
-    if (response->>'coinDelta')::numeric <> -power(0.5::numeric,i-1) or (response->>'rated')::boolean then
+    if (response->>'coinDelta')::numeric <> -1.5*power(0.5::numeric,i-1) or (response->>'rated')::boolean then
       raise exception 'Retry penalty or rating wrong: %',response;
     end if;
   end loop;
@@ -91,7 +91,7 @@ begin
   if response->'grading'->>'color' <> 'blue' then raise exception 'Clean graded streak did not become blue'; end if;
   update public.puzzle_solver_states set grading_available_at=now()-interval '1 second' where username=solver;
   response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'incorrect','1. d4 *',null,1000,'1. d4',null);
-  if (response->>'coinDelta')::numeric <> -0.25 or response->'grading'->>'color' <> 'red' then
+  if (response->>'coinDelta')::numeric <> -0.375 or response->'grading'->>'color' <> 'red' then
     raise exception 'Quarter penalty or blue reset wrong: %',response;
   end if;
   active_run := (response->'grading'->>'runId')::uuid;
@@ -153,9 +153,9 @@ begin
       response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'incorrect',
         '1. e4 *',active_run,30000,case when miss=1 then '1. e4' else '1. d4' end,null);
       active_run := (response->'grading'->>'runId')::uuid;
-      penalties := penalties + power(0.5::numeric,miss-1);
+      penalties := penalties + 1.5*power(0.5::numeric,miss-1);
       perform pg_temp.assert_grading(
-        (response->>'coinDelta')::numeric = -power(0.5::numeric,miss-1)
+        (response->>'coinDelta')::numeric = -1.5*power(0.5::numeric,miss-1)
         and (response->>'rated')::boolean = (miss=1),
         format('Wrong retry debit/rating for %s, miss %s',solver,miss));
       perform pg_temp.assert_grading(response->'grading'->>'color'=
@@ -188,7 +188,7 @@ begin
          and case when miss_count=0 then correct_move='1. Nf3' else incorrect_move='1. e4' end
        from public.puzzle_progress where username=solver),
       format('First attempt changed after retries for %s',solver));
-    perform pg_temp.assert_grading(penalties<2, 'Geometric penalties exceeded the 2x cap');
+    perform pg_temp.assert_grading(penalties<3, 'Geometric penalties exceeded the 2x cap');
   end loop;
 end $$;
 
@@ -234,7 +234,7 @@ begin
         '1. d4 *',null,1000,'1. d4',null);
       active_run := (response->'grading'->>'runId')::uuid;
       perform pg_temp.assert_grading(
-        (response->>'coinDelta')::numeric = case when is_recent then 0 else -factor end
+        (response->>'coinDelta')::numeric = case when is_recent then 0 else -1.5*factor end
         and not (response->>'rated')::boolean
         and (response->>'graded')::boolean = not is_recent
         and (response->>'unratedUntil')::timestamptz=available,
@@ -258,7 +258,7 @@ begin
         format('Historical recovery reward/color for %s',solver));
       perform pg_temp.assert_grading(
         (select balance from public.coin_accounts where username=solver)=
-          100+case when is_recent then 0 else 0.5*factor end
+          100
         and (select count(*) from public.puzzle_rating_events where username=solver)=1
         and (select to_jsonb(p)-'has_solved'-'attempt_color'-'grading_available_at'
              from public.puzzle_progress p where username=solver)=first_snapshot,
@@ -304,7 +304,7 @@ begin
   for level in 1..5 loop
     update public.puzzle_ratings set human_level=level where puzzle_id=pid::bigint;
     reward := case level when 1 then 1 when 2 then 2 when 3 then 3 when 4 then 5 else 10 end;
-    penalty := case level when 1 then 4 when 2 then 2 when 3 then 1 else 0 end;
+    penalty := case level when 1 then 4 when 2 then 2 when 3 then 1.5 when 4 then 0.5 else 0 end;
     solver := 'grading_level_correct_' || txid_current() || '_' || level;
     insert into public.coin_accounts(username,balance) values(solver,100);
     response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'correct','1. Nf3 *',

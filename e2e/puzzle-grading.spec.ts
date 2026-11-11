@@ -63,7 +63,7 @@ test("a graded run survives reload, retries a failed save, and requires confirme
     else misses += 1;
     return route.fulfill({
       json: {
-        coinDelta: ended ? 0 : -Math.pow(0.5, misses - 1),
+        coinDelta: ended ? 0 : -1.5 * Math.pow(0.5, misses - 1),
         rated: requests.length === 1,
         graded: true,
         unratedUntil: grading().availableAt,
@@ -191,7 +191,7 @@ test("solving after a mistake earns coins while the first move and time stay in 
     solved = body.puzzleCorrect;
     return route.fulfill({
       json: {
-        coinDelta: solved ? 1.5 : -1,
+        coinDelta: solved ? 1.5 : -1.5,
         rated: !solved,
         graded: true,
         ratingEvent: null,
@@ -221,7 +221,7 @@ test("solving after a mistake earns coins while the first move and time stay in 
   );
   await page.goto("/solve/102");
   await playBlackMove(page, "a7a6");
-  await expect(page.getByText("-1 coins", { exact: true })).toBeVisible();
+  await expect(page.getByText("-1.5 coins", { exact: true })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Explanation", exact: true })).toBeDisabled();
   await expect(page.getByRole("tab", { name: "Other attempts", exact: true })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Resign and reveal the solution" })).toBeEnabled();
