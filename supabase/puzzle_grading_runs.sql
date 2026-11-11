@@ -15,6 +15,10 @@ create table if not exists public.puzzle_solver_states (
   primary key (username, puzzle_id)
 );
 
+-- Technical receipt for cooldown retries; practice moves and results are never retained.
+alter table public.puzzle_solver_states
+  add column if not exists practice_resolution_id uuid;
+
 create table if not exists public.puzzle_runs (
   id uuid primary key default gen_random_uuid(),
   username text not null,
@@ -118,15 +122,15 @@ as $$
     'runId', r.id,
     'graded', coalesce(r.graded,
       not coalesce(e.permanent, false)
-      and coalesce(s.grading_available_at, '-infinity'::timestamptz) <= now()
-      and (e.category is distinct from 'abuse' or e.expires_at <= now())
-      and (e.category is distinct from 'creator' or e.expires_at <= now())),
+      and coalesce(greatest(s.grading_available_at,
+        case when e.category in ('creator','abuse') then e.expires_at end),
+        '-infinity'::timestamptz) <= now()),
     'availableAt', greatest(s.grading_available_at,
       case when e.expires_at > now() and e.category in ('creator', 'abuse') then e.expires_at end),
     'permanent', coalesce(e.permanent, false),
     'hasAttempted', p.username is not null,
     'hasSolved', coalesce(p.has_solved, false),
-    'misses', coalesce(r.misses, 0),
+    'misses', case when r.graded = false then 0 else coalesce(r.misses, 0) end,
     'color', p.attempt_color
   )
   from (select public.canonical_user_username(p_username) as username, p_puzzle_id::bigint as puzzle_id) q
@@ -201,6 +205,11 @@ begin
   first_result := not found;
   select * into run from public.puzzle_runs
   where username = solver and puzzle_id = puzzle_key and ended_at is null for update;
+  if state.practice_resolution_id = p_attempt_id then
+    return jsonb_build_object('coinDelta',0,'rated',false,'graded',false,'duplicate',true,
+      'unratedUntil',state.grading_available_at,'ratingEvent',null,
+      'grading',public.get_puzzle_grading_state(solver,puzzle_key::text));
+  end if;
   if p_run_id is not null and (run.id is null or run.id <> p_run_id) then
     raise exception 'puzzle_run_finished';
   end if;
@@ -208,29 +217,45 @@ begin
     if p_outcome = 'resigned' and not coalesce(progress.has_solved,false) then
       raise exception 'puzzle_resignation_requires_move';
     end if;
-    if first_result then
-      perform pg_advisory_xact_lock(hashtextextended(solver || ':daily-puzzle-attempts', 0));
-      if (select count(*) from public.puzzle_progress
-          where username = solver and first_attempt_at >= date_trunc('day', at_time at time zone 'UTC') at time zone 'UTC'
-            and first_attempt_at < (date_trunc('day', at_time at time zone 'UTC') + interval '1 day') at time zone 'UTC') >= 200 then
-        raise exception 'daily_puzzle_attempt_limit_reached';
-      end if;
-    end if;
     factor := case when coalesce(progress.has_solved, false) then 0.25 else 1 end;
     insert into public.puzzle_runs(username,puzzle_id,graded,previously_solved,base_reward,base_penalty)
     values(solver,puzzle_key,
-      not coalesce(exclusion.permanent,false)
-        and coalesce(state.grading_available_at,'-infinity'::timestamptz) <= at_time
-        and (exclusion.category is distinct from 'creator' or exclusion.expires_at <= at_time),
+      (public.get_puzzle_grading_state(solver,puzzle_key::text)->>'graded')::boolean,
       coalesce(progress.has_solved,false),
       factor * case puzzle_level when 1 then 1 when 2 then 2 when 4 then 5 when 5 then 10 else 3 end,
       factor * case puzzle_level when 1 then 5 when 2 then 3 when 3 then 1.5 when 4 then 0.5 else 0 end)
     returning * into run;
   end if;
 
+  -- Practice retains only an active session marker and cooldown retry receipt.
+  -- It cannot create history, miss counts, solved status, colors, coins, or ratings.
+  if not run.graded then
+    if p_outcome in ('correct','resigned') then
+      update public.puzzle_solver_states
+      set grading_available_at=at_time + interval '2 months',
+        practice_resolution_id=p_attempt_id
+      where username=solver and puzzle_id=puzzle_key
+      returning * into state;
+      update public.puzzle_progress set grading_available_at=state.grading_available_at
+      where username=solver and puzzle_id=puzzle_key::text;
+      -- Existing practice sessions may still have logs written by the old implementation.
+      update public.puzzle_runs set ended_at=at_time,outcome=p_outcome where id=run.id;
+      delete from public.puzzle_runs r where r.id=run.id
+        and not exists(select 1 from public.puzzle_attempt_move_logs l where l.run_id=r.id);
+    end if;
+    return jsonb_build_object('coinDelta',0,'rated',false,'graded',false,'duplicate',false,
+      'unratedUntil',state.grading_available_at,'ratingEvent',null,
+      'grading',public.get_puzzle_grading_state(solver,puzzle_key::text));
+  end if;
+
   if first_result then
-    result_rated := not coalesce(exclusion.permanent,false)
-      and (exclusion.expires_at is null or exclusion.expires_at <= at_time);
+    perform pg_advisory_xact_lock(hashtextextended(solver || ':daily-puzzle-attempts', 0));
+    if (select count(*) from public.puzzle_progress
+        where username = solver and first_attempt_at >= date_trunc('day', at_time at time zone 'UTC') at time zone 'UTC'
+          and first_attempt_at < (date_trunc('day', at_time at time zone 'UTC') + interval '1 day') at time zone 'UTC') >= 200 then
+      raise exception 'daily_puzzle_attempt_limit_reached';
+    end if;
+    result_rated := true;
     insert into public.puzzle_progress(username,puzzle_id,first_attempt_at,first_attempt_duration_ms,
       puzzle_correct,rated,incorrect_move,correct_move,has_solved,attempt_color)
     values(solver,puzzle_key::text,at_time,p_attempt_duration_ms,
@@ -248,29 +273,25 @@ begin
   end if;
 
   if p_outcome = 'incorrect' then
-    if run.graded then
-      -- Truncation keeps rounded microcoin debits below the geometric 2x cap.
-      coin_delta := -trunc(run.base_penalty * power(0.5::numeric,least(run.misses,64)),6);
-      state.correct_streak := 0;
-      color := coalesce(state.original_color,case when run.misses >= 2 then 'purple' else 'red' end);
-    end if;
+    -- Truncation keeps rounded microcoin debits below the geometric 2x cap.
+    coin_delta := -trunc(run.base_penalty * power(0.5::numeric,least(run.misses,64)),6);
+    state.correct_streak := 0;
+    color := coalesce(state.original_color,case when run.misses >= 2 then 'purple' else 'red' end);
     run.misses := run.misses + 1;
   elsif p_outcome = 'correct' then
-    if run.graded then
-      if run.misses < 4 then
-        coin_delta := round(run.base_reward * power(0.5::numeric,run.misses),6);
-      end if;
-      if first_result and result_rated and run.misses=0 and puzzle_level between 1 and 3
-        and p_attempt_duration_ms >= 0 and p_attempt_duration_ms < 30000 then
-        speed_bonus := case when p_attempt_duration_ms <= 5000 then 1
-          else round(power(5::numeric,-((p_attempt_duration_ms::numeric-5000)/25000)),6) end;
-        coin_delta := coin_delta + speed_bonus;
-      end if;
-      state.correct_streak := case when run.misses=0 then state.correct_streak+1 else 0 end;
-      state.original_color := coalesce(state.original_color,
-        case run.misses when 0 then 'green' when 1 then 'yellow' when 2 then 'orange' else 'red' end);
-      color := case when state.correct_streak >= 2 then 'blue' else state.original_color end;
+    if run.misses < 4 then
+      coin_delta := round(run.base_reward * power(0.5::numeric,run.misses),6);
     end if;
+    if first_result and result_rated and run.misses=0 and puzzle_level between 1 and 3
+      and p_attempt_duration_ms >= 0 and p_attempt_duration_ms < 30000 then
+      speed_bonus := case when p_attempt_duration_ms <= 5000 then 1
+        else round(power(5::numeric,-((p_attempt_duration_ms::numeric-5000)/25000)),6) end;
+      coin_delta := coin_delta + speed_bonus;
+    end if;
+    state.correct_streak := case when run.misses=0 then state.correct_streak+1 else 0 end;
+    state.original_color := coalesce(state.original_color,
+      case run.misses when 0 then 'green' when 1 then 'yellow' when 2 then 'orange' else 'red' end);
+    color := case when state.correct_streak >= 2 then 'blue' else state.original_color end;
     update public.puzzle_progress set has_solved=true
     where username=solver and puzzle_id=puzzle_key::text;
   else
@@ -290,7 +311,7 @@ begin
   end if;
   -- Keep the existing self-solve reward restriction.
   if puzzle_author=solver and solver<>'seaside_tiramisu' and coin_delta>0 then coin_delta:=0; end if;
-  if run.graded and p_outcome <> 'resigned' and coin_delta <> 0 then
+  if p_outcome <> 'resigned' and coin_delta <> 0 then
     coin_delta := public.post_coin_transaction(solver,coin_delta,
       case when p_outcome='correct' then 'puzzle_correct' else 'puzzle_attempted' end,
       'puzzle-run-attempt:' || p_attempt_id::text,

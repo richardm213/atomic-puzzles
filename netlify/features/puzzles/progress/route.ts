@@ -158,7 +158,7 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
   }
   const result = attemptResultSchema.parse(data);
   return identityResponse(identity, 200, {
-    recorded: true,
+    recorded: result.graded ?? true,
     ...result,
     // Keep older clients working while coinDelta is the authoritative value.
     coinAward: Math.max(0, result.coinDelta),

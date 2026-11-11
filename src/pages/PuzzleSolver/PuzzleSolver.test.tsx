@@ -1262,7 +1262,23 @@ describe("PuzzleSolverPage solution options", () => {
       mocks.fetchPuzzleRatingExclusions.mockResolvedValue([
         { puzzle_id: "1369", expires_at: "2020-01-01T00:00:00Z", permanent: true },
       ]);
-      mocks.recordPuzzleProgress.mockResolvedValue({ rated: false, ratingEvent: null });
+      const practice = {
+        runId: null,
+        graded: false,
+        availableAt: "2099-01-01T00:00:00Z",
+        permanent: true,
+        hasAttempted: false,
+        hasSolved: false,
+        misses: 0,
+        color: null,
+      };
+      mocks.fetchPuzzleGradingState.mockResolvedValue(practice);
+      mocks.recordPuzzleProgress.mockResolvedValue({
+        rated: false,
+        graded: false,
+        grading: practice,
+        ratingEvent: null,
+      });
       const user = userEvent.setup();
       const view = render(<PuzzleSolverPage />);
       const tab = await screen.findByRole("tab", { name: "Other attempts" });
@@ -1284,7 +1300,11 @@ describe("PuzzleSolverPage solution options", () => {
         await user.click(await screen.findByRole("button", { name: "Confirm resignation" }));
       }
       await waitFor(() => expect(tab).toBeEnabled());
-      expect(screen.getByRole("checkbox", { name: "Permanently unrated" })).toBeDisabled();
+      expect(screen.getByRole("checkbox", { name: "Permanently unrated" })).toBeEnabled();
+      expect(
+        screen.queryByRole("img", { name: "You've solved this puzzle before" }),
+      ).not.toBeInTheDocument();
+      expect(mocks.recordCustomPuzzleSetProgress).not.toHaveBeenCalled();
       await user.click(tab);
       expect(await screen.findByRole("list", { name: "Other puzzle attempts" })).toBeVisible();
       await waitFor(() =>
@@ -1292,14 +1312,7 @@ describe("PuzzleSolverPage solution options", () => {
       );
       view.unmount();
 
-      mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValue([
-        {
-          puzzle_id: "1369",
-          rated: false,
-          puzzle_correct: puzzleCorrect,
-          first_attempt_at: "2026-01-01T00:00:00Z",
-        },
-      ]);
+      mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValue([]);
       render(<PuzzleSolverPage />);
       const restored = await screen.findByRole("tab", { name: "Other attempts" });
       await screen.findByTestId("mock-board");

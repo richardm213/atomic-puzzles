@@ -52,7 +52,7 @@ const returningPuzzleRules = [
   [
     "Wrong before, run ended less than two months ago",
     "Practice",
-    "Wait for grading to return. Practice submissions are saved without coin changes.",
+    "Wait for grading to return. Practice submissions are not recorded.",
   ],
   [
     "Wrong before, cooldown expired, never solved",
@@ -232,10 +232,11 @@ export const HowCoinsWorkPage = () => (
               <h3 id="grading-cooldown-heading">Grading cooldown and repeat solves</h3>
               <p>
                 Completing a solve or confirming resignation starts a two-month grading cooldown.
-                Attempts during the cooldown are saved as practice. They carry no coin rewards, coin
-                penalties, or rating changes. Completing another correct solve during the cooldown
-                restarts the two-month timer. Confirming resignation again also restarts it,
-                including before a move on a puzzle you have already solved.
+                Attempts during the cooldown are practice and are not recorded. They do not affect
+                coins, ratings, solve history, statistics, or Other Attempts. Completing another
+                correct solve during the cooldown restarts the two-month timer. Confirming
+                resignation again also restarts it, including before a move on a puzzle you have
+                already solved.
               </p>
               <p>
                 When the cooldown expires, you can start a fresh graded run with its miss counter
@@ -251,9 +252,9 @@ export const HowCoinsWorkPage = () => (
                 while you are working on it.
               </p>
               <p>
-                A correct practice solve still marks the puzzle as solved. Future graded runs then
-                use quarter stakes. Practice results leave your Other Attempts color and blue streak
-                unchanged.
+                Practice on your own unrated puzzles follows the same rules. Only graded solves mark
+                a puzzle as solved, qualify it for quarter stakes, or affect its color and blue
+                streak.
               </p>
             </section>
 
@@ -284,9 +285,9 @@ export const HowCoinsWorkPage = () => (
             <section className="coinGradingRules" aria-labelledby="attempt-colors-heading">
               <h3 id="attempt-colors-heading">Other Attempts colors</h3>
               <p>
-                Every submission and resignation is saved. Other Attempts shows one row per player,
-                always using the move and time from their first attempt. The color updates with
-                graded results. Hover over its colored indicator for the explanation.
+                Every graded submission and resignation is saved. Other Attempts shows one row per
+                player, always using the move and time from their first attempt. The color updates
+                with graded results. Hover over its colored indicator for the explanation.
               </p>
               <div className="coinOutcomeTableWrap">
                 <table className="coinOutcomeTable">

@@ -47,6 +47,12 @@ begin
   exception when others then
     if sqlerrm <> 'puzzle_attempt_id_conflict' then raise; end if;
   end;
+  begin
+    update public.puzzle_progress set incorrect_move='tampered' where username=solver;
+    raise exception 'First result could be rewritten';
+  exception when others then
+    if sqlerrm <> 'puzzle_first_result_immutable' then raise; end if;
+  end;
   update public.puzzle_runs set started_at=now()-interval '3 months' where id=active_run;
   response := public.get_puzzle_grading_state(solver,pid);
   perform pg_temp.assert_grading((response->>'graded')::boolean
@@ -240,6 +246,12 @@ begin
         and (response->>'unratedUntil')::timestamptz=available,
         format('Historical miss stakes, rating, or cooldown for %s',solver));
       if is_recent then
+        perform public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'incorrect',
+          '1. c4 *',active_run,2000,'1. c4',null);
+        perform pg_temp.assert_grading(
+          (select misses from public.puzzle_runs where id=active_run)=0
+          and not exists(select 1 from public.puzzle_attempt_move_logs where username=solver),
+          'Practice retained a miss count or move log');
         update public.puzzle_solver_states set grading_available_at=now() where username=solver;
         update public.puzzle_progress set grading_available_at=now() where username=solver;
         response := public.get_puzzle_grading_state(solver,pid);
@@ -253,7 +265,7 @@ begin
       perform pg_temp.assert_grading(
         (response->>'coinDelta')::numeric = case when is_recent then 0 else 1.5*factor end
         and not (response->>'rated')::boolean
-        and (response->'grading'->>'hasSolved')::boolean
+        and (response->'grading'->>'hasSolved')::boolean = (was_correct or not is_recent)
         and response->'grading'->>'color'=expected_color,
         format('Historical recovery reward/color for %s',solver));
       perform pg_temp.assert_grading(
@@ -276,16 +288,24 @@ begin
       perform pg_temp.assert_grading((response->>'coinDelta')::numeric=0
         and (response->>'unratedUntil')::timestamptz>available,
         format('Practice resignation did not reset the cooldown for %s',solver));
+      if is_recent then
+        perform pg_temp.assert_grading(
+          not exists(select 1 from public.puzzle_attempt_move_logs where username=solver)
+          and not exists(select 1 from public.puzzle_runs where username=solver)
+          and (select correct_streak from public.puzzle_solver_states where username=solver)=
+            case when was_correct then 1 else 0 end,
+          'Practice retained attempts, completed runs, or streak changes');
+      end if;
       if is_recent and not was_correct then
         update public.puzzle_solver_states set grading_available_at=now() where username=solver;
         update public.puzzle_progress set grading_available_at=now() where username=solver;
         response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'correct',
           '1. Nf3 *',null,1000,null,'1. Nf3');
-        perform pg_temp.assert_grading((response->>'coinDelta')::numeric=0.75
+        perform pg_temp.assert_grading((response->>'coinDelta')::numeric=3
           and response->'grading'->>'color'='green'
           and (select to_jsonb(p)-'has_solved'-'attempt_color'-'grading_available_at'
                from public.puzzle_progress p where username=solver)=first_snapshot,
-          'A practice solve did not switch a previously incorrect puzzle to quarter stakes');
+          'Practice changed solve history or reduced future graded stakes');
       end if;
     end loop;
   end loop;
@@ -356,12 +376,25 @@ begin
     and (select balance from public.coin_accounts where username=solver)=100
     and (select count(*) from public.puzzle_rating_events where username=solver)=0,
     'Permanent practice changed wallet or rating');
-  begin
-    update public.puzzle_progress set incorrect_move='tampered' where username=solver;
-    raise exception 'First result could be rewritten';
-  exception when others then
-    if sqlerrm <> 'puzzle_first_result_immutable' then raise; end if;
-  end;
+  perform pg_temp.assert_grading(
+    not exists(select 1 from public.puzzle_progress where username=solver)
+    and not exists(select 1 from public.puzzle_attempt_move_logs where username=solver)
+    and not exists(select 1 from public.puzzle_runs where username=solver),
+    'Own unrated practice created progress, move history, or retained a completed run');
+  -- Expiring an author's cooldown leaves their first actual graded result available.
+  update public.puzzle_rating_exclusions set permanent=false,expires_at=now()-interval '1 second'
+    where username=solver;
+  update public.puzzle_solver_states set grading_available_at=now()-interval '1 second'
+    where username=solver;
+  update public.puzzle_ratings set human_level=3 where puzzle_id=pid::bigint;
+  response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'correct',
+    '1. Nf3 *',null,1000,null,'1. Nf3');
+  perform pg_temp.assert_grading((response->>'rated')::boolean
+    and (response->>'graded')::boolean and (response->>'coinDelta')::numeric=4
+    and response->'grading'->>'color'='green'
+    and (select count(*) from public.puzzle_attempt_move_logs where username=solver)=1
+    and (select count(*) from public.puzzle_rating_events where username=solver)=1,
+    'Unrated author practice consumed the first graded attempt, its speed bonus, or full stakes');
   solver := 'grading_blocked_' || txid_current();
   insert into public.puzzle_rating_exclusions(username,puzzle_id,category,expires_at,reason)
   values(solver,pid,'abuse',now()+interval '2 months','Rollback grading regression');
@@ -432,14 +465,14 @@ begin
       and (select balance from public.coin_accounts where username=solver)=wallet
       and (select correct_streak from public.puzzle_solver_states where username=solver)=streak
       and (select count(*) from public.puzzle_rating_events where username=solver)=1
-      and (select count(*) from public.puzzle_attempt_move_logs where username=solver)=log_count+1
-      and exists(select 1 from public.puzzle_runs where username=solver
-        and outcome='resigned' and misses=0 and previously_solved and ended_at is not null),
+      and (select count(*) from public.puzzle_attempt_move_logs where username=solver)=log_count+case when was_eligible then 1 else 0 end
+      and (not was_eligible or exists(select 1 from public.puzzle_runs where username=solver
+        and outcome='resigned' and misses=0 and previously_solved and ended_at is not null)),
       format('Pre-move resignation changed the first result, rating, coins, or streak for %s',solver));
     response := public.submit_puzzle_run_attempt(attempt_id,solver,pid,'resigned','*',null,null,null,null);
     perform pg_temp.assert_grading((response->>'duplicate')::boolean
       and (response->>'unratedUntil')::timestamptz=next_expiry
-      and (select count(*) from public.puzzle_attempt_move_logs where username=solver)=log_count+1,
+      and (select count(*) from public.puzzle_attempt_move_logs where username=solver)=log_count+case when was_eligible then 1 else 0 end,
       'Retrying the same resignation extended the timer or duplicated the event');
     response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'resigned','*',null,null,null,null);
     perform pg_temp.assert_grading((response->>'unratedUntil')::timestamptz>next_expiry

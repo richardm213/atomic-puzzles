@@ -304,8 +304,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const loadingPuzzleIdsRef = useRef<Set<string>>(new Set());
   const isMountedRef = useRef(true);
   const progressWriteQueueRef = useRef(Promise.resolve());
-  const attemptedPuzzleIdsRef = useRef<Set<string>>(new Set());
-  const unratedPuzzleIdsRef = useRef<Set<string>>(new Set());
   const countedTodayPuzzleIdsRef = useRef<Set<string>>(new Set());
   const activePuzzleKeyRef = useRef("");
   const elapsedTimeMsRef = useRef(0);
@@ -526,14 +524,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       isCurrent = false;
     };
   }, [attemptedPuzzleIdsUsername, isAuthLoading, setLoadingError, testMode]);
-
-  useEffect(() => {
-    attemptedPuzzleIdsRef.current = attemptedPuzzleIds;
-  }, [attemptedPuzzleIds]);
-
-  useEffect(() => {
-    unratedPuzzleIdsRef.current = unratedPuzzleIds;
-  }, [unratedPuzzleIds]);
 
   useEffect(() => {
     setBoardState((prev) => {
@@ -870,7 +860,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const gradingLabel = gradingState ? puzzleGradingLabel(gradingState) : "";
   const hasSubmittedAttempt = activePuzzleKey ? submittedPuzzleIds.has(activePuzzleKey) : false;
   // Replay history never reveals answers or ends a fresh run.
-  const resumedMisses = gradingState?.runId ? gradingState.misses : 0;
+  // Any open run has a submitted move; practice never stores a miss count.
+  const resumedMisses = gradingState?.runId ? Math.max(1, gradingState.misses) : 0;
   const isRetryFeedbackActive = Boolean(
     boardState.feedback === "retry" &&
     boardState.view.line.source !== "solution" &&
@@ -1022,10 +1013,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     }): void => {
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       if (!normalizedPuzzleId || !user?.username) return;
-      const isInitialResult =
-        !resigned &&
-        !attemptedPuzzleIdsRef.current.has(normalizedPuzzleId) &&
-        !unratedPuzzleIdsRef.current.has(normalizedPuzzleId);
+      const grading = gradingStatesRef.current.get(normalizedPuzzleId);
+      const isInitialResult = !resigned && !grading?.hasAttempted;
       setProgressSaveError("");
       setProgressSaving(true);
       const attempt = { id: crypto.randomUUID(), pgn: attemptPgn || '[Result "*"]\n\n*', resigned };
@@ -1044,10 +1033,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       const write = async (): Promise<void> => {
         setProgressSaveError("");
         setProgressSaving(true);
-        if (isFirstRecordedAttempt && !countedTodayPuzzleIdsRef.current.has(normalizedPuzzleId)) {
-          countedTodayPuzzleIdsRef.current.add(normalizedPuzzleId);
-          setDailyAttemptCount((current) => Math.min(DAILY_PUZZLE_ATTEMPT_LIMIT, current + 1));
-        }
         try {
           const result = await recordPuzzleProgress({
             ...input,
@@ -1057,6 +1042,30 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
             },
           });
           retryProgressWriteRef.current = null;
+          const recorded = result?.graded ?? grading?.graded;
+          if (recorded) {
+            if (
+              isFirstRecordedAttempt &&
+              !countedTodayPuzzleIdsRef.current.has(normalizedPuzzleId)
+            ) {
+              countedTodayPuzzleIdsRef.current.add(normalizedPuzzleId);
+              setDailyAttemptCount((current) => Math.min(DAILY_PUZZLE_ATTEMPT_LIMIT, current + 1));
+            }
+            if (!resigned) {
+              setSubmittedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
+              if (puzzleCorrect)
+                setSolvedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
+              if (SERVER_CUSTOM_SET_ID_PATTERN.test(routeCustomSetId)) {
+                void recordCustomPuzzleSetProgress(
+                  routeCustomSetId,
+                  normalizedPuzzleId,
+                  puzzleCorrect,
+                )
+                  .then(() => queryClient.invalidateQueries({ queryKey: ["custom-puzzle-sets"] }))
+                  .catch((error) => globalThis.console?.error(error));
+              }
+            }
+          }
           if (result?.grading) {
             await queryClient.cancelQueries({
               queryKey: ["puzzle-grading", normalizedUsername, normalizedPuzzleId],
@@ -1080,12 +1089,12 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
           if (result?.rated) {
             setAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
             setUnratedPuzzleIds((current) => removeValueFromSet(current, normalizedPuzzleId));
-          } else if (result && isInitialResult) {
-            setUnratedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
           }
-          void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.progress });
-          void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.userRating });
-          void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.ratingEvents });
+          if (recorded) void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.progress });
+          if (result?.rated) {
+            void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.userRating });
+            void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.ratingEvents });
+          }
           const ratingEvent = result?.ratingEvent ?? null;
           if (!ratingEvent || activePuzzleKeyRef.current !== normalizedPuzzleId) return;
           setAttemptRatingFeedback(ratingEvent);
@@ -1098,9 +1107,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         } catch (error) {
           if (error instanceof ApiError && error.code === "daily_puzzle_attempt_limit") {
             setDailyAttemptCount(DAILY_PUZZLE_ATTEMPT_LIMIT);
-          } else if (isFirstRecordedAttempt) {
-            countedTodayPuzzleIdsRef.current.delete(normalizedPuzzleId);
-            setDailyAttemptCount((current) => Math.max(0, current - 1));
           }
           retryProgressWriteRef.current = write;
           setProgressSaveError(
@@ -1113,7 +1119,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       };
       progressWriteQueueRef.current = progressWriteQueueRef.current.catch(() => {}).then(write);
     },
-    [queryClient, user?.username, normalizedUsername],
+    [queryClient, user?.username, normalizedUsername, routeCustomSetId],
   );
 
   const handleAttemptResolved = useCallback(
@@ -1155,11 +1161,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         setSolutionNavigation(null);
         setPinnedSolutionLineIndex(puzzleCorrect ? null : 0);
       }
-      setSubmittedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
-      if (puzzleCorrect) {
-        setSolvedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
-      }
-
       // Test attempts drive the same board and analysis states, but never reach either write path.
       if (testMode) return;
 
@@ -1171,17 +1172,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         correctMove,
         ...(attemptPgn ? { attemptPgn } : {}),
       });
-      if (SERVER_CUSTOM_SET_ID_PATTERN.test(routeCustomSetId)) {
-        void recordCustomPuzzleSetProgress(routeCustomSetId, normalizedPuzzleId, puzzleCorrect)
-          .then(() =>
-            queryClient.invalidateQueries({
-              queryKey: ["custom-puzzle-sets"],
-            }),
-          )
-          .catch((error) => globalThis.console?.error(error));
-      }
     },
-    [activePuzzleKey, enqueuePuzzleProgressWrite, queryClient, routeCustomSetId, testMode],
+    [activePuzzleKey, enqueuePuzzleProgressWrite, testMode],
   );
 
   const resetPuzzleUiState = useCallback(() => {
@@ -2027,7 +2019,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     (!hasSubmittedAttempt || permanentUnratedIds.has(activePuzzleKey)) ? (
       <label
         className="puzzleUnratedOption"
-        title="Mark unrated if you remember this puzzle and don’t want it to affect your rating. You can change this before attempting the puzzle. After a correct or incorrect attempt, it is permanent for your account."
+        title="Mark unrated if you remember this puzzle and don’t want it to affect your rating. You can change this before your first graded attempt. Practice attempts are not recorded."
       >
         <input
           type="checkbox"

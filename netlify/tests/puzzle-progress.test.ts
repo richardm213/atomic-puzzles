@@ -85,8 +85,11 @@ describe("puzzle-progress function", () => {
     expect(JSON.parse(response.body)).toMatchObject({ coinAward: 0, coinDelta: 0 });
   });
 
-  it("saves a resignation PGN under the authenticated identity", async () => {
-    const rpc = vi.fn(async () => ({ data: { ...savedAttempt, rated: false }, error: null }));
+  it("submits a practice resignation under the authenticated identity without reporting a recorded attempt", async () => {
+    const rpc = vi.fn(async () => ({
+      data: { ...savedAttempt, rated: false, graded: false },
+      error: null,
+    }));
     mocks.createClient.mockReturnValue({ rpc });
     const id = "8b298685-4ce8-4d69-9654-2dd18ea6864a";
     const pgn = '[Variant "Atomic"]\n\n7... e5 *';
@@ -104,6 +107,7 @@ describe("puzzle-progress function", () => {
     });
 
     expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body)).toMatchObject({ recorded: false, graded: false });
     expect(rpc).toHaveBeenCalledExactlyOnceWith("submit_puzzle_run_attempt", {
       p_username: "solver",
       p_puzzle_id: "42",

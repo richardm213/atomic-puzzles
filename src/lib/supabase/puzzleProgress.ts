@@ -281,6 +281,7 @@ export type FetchPuzzleAttemptsForPuzzleOptions = {
 };
 
 export type RecordPuzzleProgressResult = {
+  graded?: boolean;
   grading?: PuzzleGradingState;
   rated: boolean;
   unratedUntil?: string | null;
@@ -353,6 +354,7 @@ export const recordPuzzleProgress = async ({
     }
     return {
       rated: result.rated,
+      ...(result.graded === undefined ? {} : { graded: result.graded }),
       ...(result.grading ? { grading: result.grading } : {}),
       unratedUntil: result.unratedUntil ?? null,
       ratingEvent: result.ratingEvent
