@@ -188,21 +188,12 @@ export const PuzzleInfoSection = ({
     panel = (
       <div className="puzzleInfoPanel">
         <section className="puzzleExplanation" aria-live="polite">
-          <div className="puzzleExplanationHeader">
-            <strong>Explanation</strong>
-            {explanation.canManage && !explanation.editorOpen ? (
-              <button
-                type="button"
-                className="puzzleExplanationEditButton"
-                onClick={explanation.onOpenEditor}
-              >
-                {explanation.hasContent ? "Edit" : "Add explanation"}
-              </button>
-            ) : null}
-          </div>
           {explanation.editorOpen ? (
             <form className="puzzleExplanationForm" onSubmit={explanation.onSave}>
-              <label htmlFor={`puzzle-explanation-${explanation.puzzleId}`}>
+              <label
+                className="visuallyHidden"
+                htmlFor={`puzzle-explanation-${explanation.puzzleId}`}
+              >
                 Puzzle explanation
               </label>
               <textarea
@@ -231,6 +222,15 @@ export const PuzzleInfoSection = ({
           ) : (
             <p className="puzzleExplanationEmpty">No explanation has been added yet.</p>
           )}
+          {explanation.canManage && !explanation.editorOpen ? (
+            <button
+              type="button"
+              className="puzzleExplanationEditButton"
+              onClick={explanation.onOpenEditor}
+            >
+              {explanation.hasContent ? "Edit" : "Add explanation"}
+            </button>
+          ) : null}
           {explanation.saveStatus.state === "saved" ? (
             <span className="puzzleExplanationMessage success">Explanation saved.</span>
           ) : null}

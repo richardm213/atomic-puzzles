@@ -1334,31 +1334,26 @@ button.puzzleRatingBadge.editable:focus-visible {
 
 .puzzleExplanation {
   display: grid;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 34%, var(--color-border));
+  min-width: 0;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-inline-start: 3px solid var(--color-primary-soft);
   border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-panel-strong));
-}
-
-.puzzleExplanationHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.puzzleExplanationHeader strong {
-  color: var(--color-heading);
-  font-size: 13px;
+  background: var(--color-surface-soft);
 }
 
 .puzzleExplanation p {
   margin: 0;
   color: var(--color-text);
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
   white-space: pre-line;
+}
+
+.puzzleExplanationEditButton {
+  justify-self: end;
 }
 
 .puzzleExplanation .puzzleExplanationEmpty {
@@ -1399,12 +1394,6 @@ button.puzzleRatingBadge.editable:focus-visible {
 .puzzleExplanationForm {
   display: grid;
   gap: 8px;
-}
-
-.puzzleExplanationForm label {
-  color: var(--color-muted);
-  font-size: 12px;
-  font-weight: 650;
 }
 
 .puzzleExplanationForm textarea {
@@ -2081,6 +2070,16 @@ button.puzzleRatingBadge.editable:focus-visible {
     gap: 0;
     padding: 0 10px 10px;
     scrollbar-width: thin;
+  }
+
+  .mobileActionCard .puzzleExplanation p,
+  .mobileActionCard .puzzleExplanationForm textarea {
+    font-size: 16px;
+  }
+
+  .mobileActionCard .puzzleExplanationEditButton,
+  .mobileActionCard .puzzleExplanationFormActions button {
+    min-height: var(--control-height-touch);
   }
 
   .mobileActionCard .puzzleOtherAttemptRow {
