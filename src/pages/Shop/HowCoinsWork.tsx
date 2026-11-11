@@ -29,17 +29,16 @@ const solvingRewards = [
 
 const attemptExamples: {
   color: PuzzleAttemptColor;
-  label: string;
   result: string;
   correct: boolean;
 }[] = [
-  { color: "green", label: "Green", result: "Solved on try 1", correct: true },
-  { color: "yellow", label: "Yellow", result: "Solved on try 2", correct: false },
-  { color: "orange", label: "Orange", result: "Solved on try 3", correct: false },
-  { color: "red", label: "Red", result: "Solved on try 4+", correct: false },
-  { color: "red", label: "Incorrect", result: "Not solved · 1–2 misses", correct: false },
-  { color: "purple", label: "Purple", result: "3+ misses without a solve", correct: false },
-  { color: "blue", label: "Blue", result: "2 clean graded runs in a row", correct: true },
+  { color: "green", result: "Solved on try 1", correct: true },
+  { color: "yellow", result: "Solved on try 2", correct: false },
+  { color: "orange", result: "Solved on try 3", correct: false },
+  { color: "red", result: "Solved on try 4+", correct: false },
+  { color: "red", result: "Not solved · 1–2 misses", correct: false },
+  { color: "purple", result: "3+ misses without a solve", correct: false },
+  { color: "blue", result: "2 clean graded runs in a row", correct: true },
 ];
 
 const CoinAmount = ({ amount }: { amount: number }) => (
@@ -170,9 +169,10 @@ export const HowCoinsWorkPage = () => (
       <section className="coinGuideSection" aria-labelledby="attempt-colors-heading">
         <h2 id="attempt-colors-heading">Other Attempts colors</h2>
         <div className="coinAttemptExamples">
-          {attemptExamples.map(({ color, label, result, correct }) => (
-            <figure key={label}>
-              <div className="coinAttemptSample" aria-label={`${label} example attempt`}>
+          {attemptExamples.map(({ color, result, correct }) => (
+            <figure key={result}>
+              <figcaption>{result}</figcaption>
+              <div className="coinAttemptSample" aria-label={`${result}: example attempt`}>
                 <PuzzleAttemptResult
                   color={color}
                   correct={correct}
@@ -182,10 +182,6 @@ export const HowCoinsWorkPage = () => (
                   <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" /> 0:18
                 </span>
               </div>
-              <figcaption>
-                <strong>{label}</strong>
-                <span>{result}</span>
-              </figcaption>
             </figure>
           ))}
         </div>

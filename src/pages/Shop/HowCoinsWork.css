@@ -316,10 +316,9 @@
 }
 
 .coinAttemptExamples figcaption {
-  display: grid;
-  gap: var(--space-1);
-  color: var(--color-muted);
+  color: var(--color-heading);
   font-size: 0.875rem;
+  font-weight: 650;
   line-height: 1.4;
 }
 
