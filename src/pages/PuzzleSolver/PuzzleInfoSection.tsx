@@ -1,18 +1,16 @@
 import {
-  faCheck,
   faCircleInfo,
   faClockRotateLeft,
   faFlag,
   faMagnifyingGlassChart,
   faUsers,
-  faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { type FormEvent, type ReactNode, useState } from "react";
 
-import { puzzleAttemptColorExplanation } from "../../../shared/domain/puzzles/puzzleGrading";
 import { CommunityCommentsLink } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
+import { PuzzleAttemptResult } from "../../components/PuzzleAttemptResult/PuzzleAttemptResult";
 import type { PuzzleProgressWithUsernameRow } from "../../lib/supabase/puzzleProgress";
 import type { AsyncActionStatus } from "../../types/async";
 import { formatElapsedDuration, formatLocalDateTime } from "../../utils/formatters";
@@ -105,40 +103,12 @@ const AttemptsPanel = ({
                 >
                   {attempt.username}
                 </Link>
-                <span
-                  className={`puzzleOtherAttemptResult ${attempt.attempt_color ?? (attempt.puzzle_correct ? "green" : "red")}`}
-                  tabIndex={0}
-                  title={puzzleAttemptColorExplanation(
-                    attempt.attempt_color ?? (attempt.puzzle_correct ? "green" : "red"),
-                  )}
-                  aria-label={puzzleAttemptColorExplanation(
-                    attempt.attempt_color ?? (attempt.puzzle_correct ? "green" : "red"),
-                  )}
-                >
-                  <FontAwesomeIcon
-                    icon={attempt.puzzle_correct ? faCheck : faXmark}
-                    aria-hidden={hideAnswers}
-                    aria-label={
-                      hideAnswers ? undefined : attempt.puzzle_correct ? "Correct" : "Incorrect"
-                    }
-                  />
-                  {!hideAnswers && attempt.puzzle_correct && attempt.correct_move ? (
-                    <span
-                      className="puzzleOtherAttemptMove"
-                      aria-label={`Played ${attempt.correct_move}`}
-                    >
-                      {attempt.correct_move}
-                    </span>
-                  ) : null}
-                  {!hideAnswers && !attempt.puzzle_correct && attempt.incorrect_move ? (
-                    <span
-                      className="puzzleOtherAttemptMove"
-                      aria-label={`Played ${attempt.incorrect_move}`}
-                    >
-                      {attempt.incorrect_move}
-                    </span>
-                  ) : null}
-                </span>
+                <PuzzleAttemptResult
+                  color={attempt.attempt_color ?? (attempt.puzzle_correct ? "green" : "red")}
+                  correct={attempt.puzzle_correct}
+                  move={attempt.puzzle_correct ? attempt.correct_move : attempt.incorrect_move}
+                  hideAnswers={hideAnswers}
+                />
                 <time className="puzzleOtherAttemptTime" dateTime={attempt.first_attempt_at}>
                   {formatLocalDateTime(attempt.first_attempt_at)}
                 </time>

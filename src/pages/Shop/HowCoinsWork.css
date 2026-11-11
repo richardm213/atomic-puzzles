@@ -5,20 +5,30 @@
 
 .coinGuidePanel {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-8);
   width: 100%;
   padding: clamp(var(--space-5), 5vw, var(--space-8));
 }
 
-.coinGuideHeader {
+.coinGuideHeader,
+.coinGuideSection {
   display: grid;
-  justify-items: start;
   gap: var(--space-3);
+  min-width: 0;
+}
+
+.coinGuideHeader {
+  justify-items: start;
 }
 
 .coinGuideHeader h1,
 .coinGuideSection h2 {
   margin: 0;
+}
+
+.coinGuideSection h2 {
+  color: var(--color-heading);
+  font-size: 1.125rem;
 }
 
 .coinGuideBackLink {
@@ -33,75 +43,23 @@
   text-decoration: underline;
 }
 
-.coinGuideBackLink:focus-visible {
+.coinGuideBackLink:focus-visible,
+.coinGuideDetails summary:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 3px;
 }
 
-.coinGuideSection {
-  display: grid;
-  gap: var(--space-4);
-}
-
 .coinGuideSection p,
-.coinGuideSection ul {
+.coinGuideDetails p {
   margin: 0;
   color: var(--color-muted);
-  line-height: 1.65;
+  font-size: 0.9375rem;
+  line-height: 1.55;
 }
 
-.coinGuideSection ul {
-  display: grid;
-  gap: var(--space-2);
-  padding-left: var(--space-5);
-}
-
-.coinGuideDisclaimer {
-  display: inline-flex;
-  align-items: baseline;
-  justify-self: start;
-  gap: var(--space-2);
-  margin: 0;
-  color: var(--color-muted);
-  font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-.coinGuideDisclaimer svg {
-  flex: 0 0 auto;
-  color: var(--color-warning);
-}
-
-.coinRewardGroups {
-  display: grid;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
-.coinRewardGroup {
-  display: grid;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.coinRewardGroupHeader {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.coinRewardGroupHeader h2 {
-  margin: 0;
+.coinGuideSection strong,
+.coinGuideDetails strong {
   color: var(--color-heading);
-  font-size: 1rem;
-}
-
-.coinRewardGroupHeader > span {
-  color: var(--color-muted);
-  font-size: 0.875rem;
-  font-weight: 650;
 }
 
 .coinRuleList {
@@ -116,7 +74,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: var(--space-5);
+  gap: var(--space-4);
   padding: var(--space-3) var(--space-4);
   background: var(--color-panel-soft);
 }
@@ -128,19 +86,10 @@
 .coinRuleList dt {
   min-width: 0;
   color: var(--color-heading);
-  font-weight: 650;
 }
 
 .coinRuleList dd {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
   margin: 0;
-  color: var(--color-heading);
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  justify-self: end;
-  white-space: nowrap;
 }
 
 .coinAmount {
@@ -158,8 +107,8 @@
 }
 
 .coinAmount img {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
 }
 
@@ -177,53 +126,221 @@
 
 .coinOutcomeTable th,
 .coinOutcomeTable td {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-4);
   text-align: left;
 }
 
 .coinOutcomeTable thead th {
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 650;
 }
 
 .coinOutcomeTable tbody th {
   color: var(--color-heading);
-  white-space: nowrap;
 }
 
 .coinOutcomeTable tbody tr {
   border-top: 1px solid var(--color-border);
 }
 
-.coinGradingRules {
+.coinGradingKey {
   display: grid;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.coinGradingRules h3 {
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
   margin: 0;
+}
+
+.coinGradingKey dt {
+  margin-bottom: var(--space-1);
   color: var(--color-heading);
-  font-size: 0.9375rem;
+  font-weight: 650;
 }
 
-.coinReturningTable tbody th {
-  white-space: normal;
-}
-
-.coinSpeedAdjustmentCaption {
+.coinGradingKey dd {
   margin: 0;
   color: var(--color-muted);
   font-size: 0.875rem;
   line-height: 1.5;
 }
 
-.coinNoPenalty {
+.coinRetryChart,
+.coinRetryExample {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-soft);
+}
+
+.coinRetryChart figcaption,
+.coinRetryExample figcaption {
   color: var(--color-muted);
   font-size: 0.875rem;
-  font-weight: 600;
+}
+
+.coinRetryChart ol {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.coinRetryChart li {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.coinRetryChart li strong {
+  color: var(--color-heading);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.coinRetryTrack {
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  width: 100%;
+  height: 80px;
+  border-bottom: 2px solid var(--color-border-strong);
+}
+
+.coinRetryTrack span {
+  width: 100%;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--color-success);
+}
+
+.coinRetryExample > div,
+.coinRetryExample > div > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.coinRetryExample > div {
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.coinRetryExample > div > span:first-child > svg {
+  color: var(--color-danger);
+}
+
+.coinRetryExample > div > span:nth-child(3) > svg {
+  color: var(--color-success);
+}
+
+.coinGradingFlow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.coinGradingFlow li {
+  position: relative;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-2);
+  text-align: center;
+}
+
+.coinGradingFlow li + li::before {
+  position: absolute;
+  top: var(--space-4);
+  left: calc(-1 * var(--space-4));
+  color: var(--color-muted);
+  content: "→";
+}
+
+.coinGradingFlow li > svg {
+  height: 24px;
+  margin-bottom: var(--space-1);
+  color: var(--color-primary-soft);
+}
+
+.coinGradingFlow li > span {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.coinAttemptExamples {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5) var(--space-4);
+}
+
+.coinAttemptExamples figure {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+}
+
+.coinAttemptExamples figure:last-child {
+  grid-column: 1 / -1;
+}
+
+.coinAttemptSample {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 52px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-soft);
+}
+
+.coinAttemptSample > span:last-child {
+  color: var(--color-subtle);
+  font-size: 0.75rem;
   white-space: nowrap;
+}
+
+.coinAttemptExamples figcaption {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.coinGuideDetails {
+  padding-block: var(--space-3);
+  border-block: 1px solid var(--color-border);
+}
+
+.coinGuideDetails summary {
+  display: list-item;
+  padding-block: var(--space-2);
+  color: var(--color-primary-soft);
+  font-weight: 600;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.coinGuideDetails > div {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
 }
 
 .coinDailyReward {
@@ -239,22 +356,68 @@
   font-weight: 650;
 }
 
+.coinGuideDisclaimer {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.coinGuideDisclaimer svg {
+  flex: 0 0 auto;
+  color: var(--color-warning);
+}
+
 @media (max-width: 520px) {
   .coinGuidePanel {
     padding: var(--space-5);
   }
 
-  .coinRuleList > div {
-    column-gap: var(--space-3);
+  .coinGuideSection p,
+  .coinGuideDetails p,
+  .coinRuleList dt,
+  .coinGradingKey dd,
+  .coinGradingFlow li > span {
+    font-size: 1rem;
   }
 
   .coinOutcomeTable th,
   .coinOutcomeTable td {
-    padding-right: var(--space-3);
-    padding-left: var(--space-3);
+    padding-inline: var(--space-3);
   }
 
-  .coinOutcomeTable thead th {
-    line-height: 1.3;
+  .coinGradingKey,
+  .coinGradingFlow {
+    grid-template-columns: 1fr;
+  }
+
+  .coinGradingFlow li {
+    grid-template-columns: 28px 1fr;
+    justify-items: start;
+    padding-block: var(--space-3);
+    text-align: left;
+  }
+
+  .coinGradingFlow li > svg {
+    grid-row: span 2;
+    align-self: center;
+    margin: 0;
+  }
+
+  .coinGradingFlow li + li::before {
+    top: calc(-1 * var(--space-4));
+    left: var(--space-2);
+    content: "↓";
+  }
+
+  .coinAttemptSample {
+    flex-wrap: wrap;
+  }
+
+  .coinRetryExample > div {
+    gap: var(--space-2);
   }
 }
