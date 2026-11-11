@@ -178,6 +178,12 @@ vi.mock("../../components/Chessboard/Chessboard", async () => {
         const lineMoves = solutionLines[lineIndex] ?? solutionLines[0] ?? [];
 
         onStateChange?.({
+          playback: {
+            start: lineIndexPly > 0,
+            previous: lineIndexPly > 0,
+            next: Boolean(showSolution && lineIndexPly < lineMoves.length),
+            end: Boolean(showSolution && lineIndexPly < lineMoves.length),
+          },
           fen,
           turn: "black",
           status: "black to move",

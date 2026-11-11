@@ -37,7 +37,11 @@ export type MoveResultState = {
   solved: boolean;
 };
 
-export type ChessboardState = PositionState & VariationState & MoveResultState;
+export type PlaybackAvailability = Record<"start" | "previous" | "next" | "end", boolean>;
+
+export type ChessboardState = PositionState &
+  VariationState &
+  MoveResultState & { playback?: PlaybackAvailability };
 
 export type PlaybackCommand =
   "start" | "previous" | "next" | "end" | "previousOption" | "nextOption";

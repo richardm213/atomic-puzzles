@@ -49,6 +49,7 @@ import {
   historyMoveKeys,
   historyMoveSans,
 } from "./boardHistory";
+import { resolvePlayback } from "./boardPlayback";
 import { BoardPromotionPicker } from "./BoardPromotionPicker";
 import { isTextEntryTarget, useBoardShortcuts } from "./boardShortcuts";
 import { buildBoardStyle, buildPieceStyle } from "./boardStyle";
@@ -72,7 +73,6 @@ import {
   createVariationHistory,
   saveVariation,
   variationHistoryAt,
-  variationMoveKeys,
   variationMoveSans,
 } from "./variationHistory";
 
@@ -244,6 +244,7 @@ const ChessboardComponent = ({
   const initialIntroRef = useRef(intro);
   const initialAutoplayIntroRef = useRef(autoplayIntro);
   const introPlayingRef = useRef(false);
+  const analysisPlaybackRunningRef = useRef(false);
   const introPlayedRef = useRef(false);
   const onIntroEndRef = useLatestRef(onIntroEnd);
   const premoveColorRef = useLatestRef(premoveColor);
@@ -323,14 +324,57 @@ const ChessboardComponent = ({
     [analysisModeRef, solutionEditor, showSolutionRef],
   );
 
+  const isTraining = useCallback(
+    (): boolean =>
+      solutionEntriesRef.current.length > 0 && !analysisModeRef.current && !showSolutionRef.current,
+    [analysisModeRef, showSolutionRef],
+  );
+
+  const canNavigateBoard = useCallback(
+    (): boolean =>
+      Boolean(positionRef.current) &&
+      !disabledRef.current &&
+      !blindFenRef.current &&
+      !introPlayingRef.current &&
+      !analysisPlaybackRunningRef.current &&
+      !pendingPromotionRef.current &&
+      evaluationTimerRef.current === null,
+    [blindFenRef, disabledRef, evaluationTimerRef],
+  );
+
+  const getPlaybackContext = useCallback((): Parameters<typeof resolvePlayback>[0] => {
+    const lines: Parameters<typeof resolvePlayback>[0]["lines"] = [];
+    if (canBrowseSolution()) {
+      solutionEntriesRef.current.forEach(({ history }, index) => {
+        lines.push({ line: { source: "solution", index }, history });
+      });
+    }
+    if (analysisModeRef.current) {
+      const variations = customVariationsRef.current;
+      variations.leaves.forEach((_, index) => {
+        const history = variationHistoryAt(variations, index);
+        if (history) lines.push({ line: { source: "custom", index }, history });
+      });
+    }
+    return {
+      history: historyRef.current,
+      view: viewRef.current,
+      canBrowseIntro: Boolean(initialIntroRef.current),
+      keepContinuation: alternativeContinuationSelectedRef.current,
+      lines,
+    };
+  }, [analysisModeRef, canBrowseSolution]);
+
   const isMoveInputBlocked = useCallback(
     (): boolean =>
       disabledRef.current ||
       introPlayingRef.current ||
       viewRef.current.position === "beforeIntro" ||
       interactionLockedRef.current ||
+      // A training review can move the cursor, but only the live position accepts moves.
+      (isTraining() && historyRef.current.index !== historyRef.current.plies.length - 1) ||
       isSolutionPlaybackLocked(),
-    [disabledRef, interactionLockedRef, isSolutionPlaybackLocked],
+    [disabledRef, interactionLockedRef, isSolutionPlaybackLocked, isTraining],
   );
 
   const getCorrectLineMove = useCallback((): string | null => {
@@ -378,7 +422,17 @@ const ChessboardComponent = ({
     (position: Atomic, next?: BoardFeedback | undefined): ChessboardState => {
       const history = historyRef.current;
       const displayTurn = getDisplayTurn(position, next);
+      const playbackContext = getPlaybackContext();
+      // Temporary page-level locks (blind mode, save in progress) are applied
+      // by the caller; publish availability for the board's current cursor.
+      const canNavigate = !pendingPromotionRef.current && evaluationTimerRef.current === null;
       const state: ChessboardState = {
+        playback: {
+          start: canNavigate && Boolean(resolvePlayback(playbackContext, "start")),
+          previous: canNavigate && Boolean(resolvePlayback(playbackContext, "previous")),
+          next: canNavigate && Boolean(resolvePlayback(playbackContext, "next")),
+          end: canNavigate && Boolean(resolvePlayback(playbackContext, "end")),
+        },
         fen: makeFen(position.toSetup()),
         turn: displayTurn,
         status:
@@ -399,7 +453,14 @@ const ChessboardComponent = ({
       onStateChangeRef.current?.(state);
       return state;
     },
-    [attemptRef, canBrowseSolution, getDisplayTurn, onStateChangeRef],
+    [
+      attemptRef,
+      canBrowseSolution,
+      evaluationTimerRef,
+      getDisplayTurn,
+      getPlaybackContext,
+      onStateChangeRef,
+    ],
   );
 
   const resetSession = useCallback(
@@ -609,14 +670,14 @@ const ChessboardComponent = ({
   );
 
   const navigateTo = useCallback(
-    (target: number | "beforeIntro"): boolean => {
+    (target: number | "beforeIntro", keepContinuation = false): boolean => {
       const history = historyRef.current;
-      if (!history.plies.length) return false;
+      if (!canNavigateBoard() || !history.plies.length) return false;
       assertBoardHistory(history);
       const beforeIntro = target === "beforeIntro";
       const targetIndex = beforeIntro ? 0 : target;
-      if (targetIndex < 0 || targetIndex >= history.plies.length) return false;
-      if (beforeIntro && (blindFenRef.current || introPlayingRef.current)) return false;
+      if (!Number.isInteger(targetIndex) || !history.plies[targetIndex]) return false;
+      if (target === viewRef.current.position) return false;
 
       const targetFen = beforeIntro
         ? initialIntroRef.current?.beforeFen
@@ -625,7 +686,8 @@ const ChessboardComponent = ({
       const { position } = tryCreateAtomicPosition(targetFen);
       if (!position) return false;
 
-      clearMoveEvaluationTimer();
+      cgRef.current?.cancelPremove?.();
+      alternativeContinuationSelectedRef.current = keepContinuation;
       history.index = targetIndex;
       // The opponent's move precedes puzzle ply zero; inspecting its starting
       // position must not add a training ply or briefly activate the puzzle root.
@@ -635,13 +697,7 @@ const ChessboardComponent = ({
       syncBoard(position, history.plies[targetIndex]?.lastMove);
       return true;
     },
-    [
-      blindFenRef,
-      interactionLockedRef,
-      clearMoveEvaluationTimer,
-      isSolutionPlaybackLocked,
-      syncBoard,
-    ],
+    [canNavigateBoard, interactionLockedRef, isSolutionPlaybackLocked, syncBoard],
   );
 
   const activateHistory = useCallback(
@@ -650,11 +706,13 @@ const ChessboardComponent = ({
       ply,
       activeLine,
       locked,
+      keepContinuation = false,
     }: {
       history: BoardHistory;
       ply?: number | undefined;
       activeLine: BoardLineRef;
       locked: boolean;
+      keepContinuation?: boolean;
     }): void => {
       history.index = Math.max(
         0,
@@ -667,6 +725,7 @@ const ChessboardComponent = ({
       if (!position) return;
 
       clearMoveEvaluationTimer();
+      alternativeContinuationSelectedRef.current = keepContinuation;
       viewRef.current.position = history.index;
       historyRef.current = history;
       viewRef.current.line = activeLine;
@@ -694,7 +753,7 @@ const ChessboardComponent = ({
   const showCustomLine = useCallback(
     (lineIndex: number, targetPly?: number): void => {
       const storedHistory = variationHistoryAt(customVariationsRef.current, lineIndex);
-      if (!storedHistory) return;
+      if (isTraining() || !storedHistory?.plies[targetPly ?? storedHistory.index]) return;
 
       activateHistory({
         history: cloneBoardHistory(storedHistory),
@@ -703,166 +762,33 @@ const ChessboardComponent = ({
         locked: false,
       });
     },
-    [activateHistory],
-  );
-
-  const resumeDefaultMainLine = useCallback(
-    (history: BoardHistory, matchingPly: number, targetPly: number): boolean => {
-      const currentStep = history.plies[matchingPly];
-      if (!currentStep) return false;
-
-      const mainSolution = solutionEntriesRef.current[0]?.history;
-      if (
-        canBrowseSolution() &&
-        mainSolution?.plies[matchingPly]?.fen === currentStep.fen &&
-        mainSolution.plies[targetPly]
-      ) {
-        showSolutionLine(0, targetPly);
-        return true;
-      }
-
-      const mainAnalysisLine = variationHistoryAt(customVariationsRef.current, 0);
-      if (
-        mainAnalysisLine?.plies[matchingPly]?.fen === currentStep.fen &&
-        mainAnalysisLine.plies[targetPly]
-      ) {
-        showCustomLine(0, targetPly);
-        return true;
-      }
-
-      return false;
-    },
-    [canBrowseSolution, showCustomLine, showSolutionLine],
+    [activateHistory, isTraining],
   );
 
   const navigatePlayback = useCallback(
-    (command: PlaybackCommand): void => {
-      if (introPlayingRef.current) return;
-      const history = historyRef.current;
-      if (viewRef.current.position === "beforeIntro") {
-        if (command === "previous" || command === "previousOption") return;
-        if (command === "next" || command === "nextOption") {
-          navigateTo(0);
-          return;
-        }
-      }
-      let resolvedCommand = command;
+    (command: PlaybackCommand): boolean => {
+      if (!canNavigateBoard()) return false;
+      const target = resolvePlayback(getPlaybackContext(), command);
+      if (!target) return false;
 
-      if (command === "previousOption" || command === "nextOption") {
-        const playedMoveKeys = historyMoveKeys(history);
-        const options: Array<{ source: "solution" | "custom"; lineIndex: number; key: string }> =
-          [];
-        const seenMoves = new Set<string>();
-        const addOption = (
-          source: "solution" | "custom",
-          lineIndex: number,
-          moveKeys: string[],
-        ): void => {
-          const matches = playedMoveKeys.every((key, index) => moveKeys[index] === key);
-          const nextKey = moveKeys[history.index];
-          if (!matches || !nextKey || seenMoves.has(nextKey)) return;
-          seenMoves.add(nextKey);
-          options.push({ source, lineIndex, key: nextKey });
-        };
-
-        if (canBrowseSolution()) {
-          solutionEntriesRef.current.forEach((entry, lineIndex) =>
-            addOption(
-              "solution",
-              lineIndex,
-              entry.moveEntries.map((move) => move.key),
-            ),
-          );
-        }
-        variationMoveKeys(customVariationsRef.current).forEach((moveKeys, lineIndex) =>
-          addOption("custom", lineIndex, moveKeys),
-        );
-        if (options.length >= 2) {
-          const activeLine = viewRef.current.line;
-          const currentIndex =
-            activeLine.source === "history"
-              ? -1
-              : options.findIndex(
-                  (option) =>
-                    option.source === activeLine.source && option.lineIndex === activeLine.index,
-                );
-          const delta = command === "nextOption" ? 1 : -1;
-          const nextIndex =
-            ((currentIndex < 0 ? 0 : currentIndex) + delta + options.length) % options.length;
-          const nextOption = options[nextIndex]!;
-          if (nextOption.source === "solution") {
-            showSolutionLine(nextOption.lineIndex, history.index);
-          } else {
-            showCustomLine(nextOption.lineIndex, history.index);
-          }
-          alternativeContinuationSelectedRef.current = true;
-          return;
-        }
-
-        resolvedCommand = command === "previousOption" ? "start" : "end";
+      if (target.line && typeof target.position === "number") {
+        cgRef.current?.cancelPremove?.();
+        activateHistory({
+          history: cloneBoardHistory(target.line.history),
+          ply: target.position,
+          activeLine: target.line.line,
+          locked: isSolutionPlaybackLocked(),
+          keepContinuation: Boolean(target.selectsContinuation),
+        });
+        return true;
       }
 
-      if (
-        (resolvedCommand === "start" || (resolvedCommand === "previous" && history.index === 0)) &&
-        navigateTo("beforeIntro")
-      )
-        return;
-
-      if (resolvedCommand === "previous") {
-        alternativeContinuationSelectedRef.current = false;
-        const targetPly = history.index - 1;
-        if (resumeDefaultMainLine(history, targetPly, targetPly)) return;
-      }
-
-      if (resolvedCommand === "next" && !alternativeContinuationSelectedRef.current) {
-        if (resumeDefaultMainLine(history, history.index, history.index + 1)) return;
-      }
-
-      if (showSolutionRef.current && viewRef.current.line.source === "solution") {
-        const activeLineIndex = viewRef.current.line.index;
-
-        const mainLineIndex = 0;
-        const targetLineIndex = resolvedCommand === "end" ? mainLineIndex : activeLineIndex;
-        const targetLine =
-          solutionEntriesRef.current[targetLineIndex]?.moveEntries ??
-          solutionEntriesRef.current[activeLineIndex]?.moveEntries;
-        const targetLineLength = targetLine?.length ?? 0;
-
-        if (resolvedCommand === "start") {
-          showSolutionLine(targetLineIndex, 0);
-          return;
-        }
-
-        if (resolvedCommand === "end") {
-          showSolutionLine(targetLineIndex, targetLineLength);
-          return;
-        }
-
-        const delta = resolvedCommand === "next" ? 1 : -1;
-        showSolutionLine(activeLineIndex, history.index + delta);
-        return;
-      }
-
-      if (resolvedCommand === "start") {
-        navigateTo(0);
-        return;
-      }
-
-      if (resolvedCommand === "end") {
-        navigateTo(history.plies.length - 1);
-        return;
-      }
-
-      navigateTo(history.index + (resolvedCommand === "next" ? 1 : -1));
+      return navigateTo(
+        target.position,
+        command === "next" && alternativeContinuationSelectedRef.current,
+      );
     },
-    [
-      canBrowseSolution,
-      navigateTo,
-      resumeDefaultMainLine,
-      showCustomLine,
-      showSolutionLine,
-      showSolutionRef,
-    ],
+    [activateHistory, canNavigateBoard, getPlaybackContext, isSolutionPlaybackLocked, navigateTo],
   );
 
   const autoplayOpponentMove = useCallback(
@@ -1088,6 +1014,7 @@ const ChessboardComponent = ({
           },
         );
       }, MOVE_EVALUATION_DELAY_MS);
+      emitState(position);
     },
     [
       autoplayOpponentMove,
@@ -1100,6 +1027,7 @@ const ChessboardComponent = ({
       fenRef,
       analysisModeRef,
       evaluationTimerRef,
+      emitState,
       getCorrectLineMove,
       onAttemptResolvedRef,
       playMoveSound,
@@ -1353,9 +1281,20 @@ const ChessboardComponent = ({
   useEffect(() => {
     if (!solutionNavigation || introPlayingRef.current) return;
 
-    if (solutionNavigation.type !== "play") cgRef.current?.cancelPremove?.();
-    if (solutionNavigation.type !== "command") {
-      alternativeContinuationSelectedRef.current = false;
+    if (
+      (solutionNavigation.type === "custom" || solutionNavigation.type === "solution") &&
+      positionRef.current &&
+      !canNavigateBoard()
+    ) {
+      onNavigateHandledRef.current?.();
+      return;
+    }
+    if (
+      solutionNavigation.type !== "play" &&
+      solutionNavigation.type !== "command" &&
+      solutionNavigation.type !== "history"
+    ) {
+      cgRef.current?.cancelPremove?.();
     }
 
     switch (solutionNavigation.type) {
@@ -1374,6 +1313,7 @@ const ChessboardComponent = ({
         playUciMove(solutionNavigation.uci);
         break;
       case "line": {
+        analysisPlaybackRunningRef.current = true;
         let cancelled = false;
         let timeoutId: number | null = null;
         const stepDelay = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
@@ -1381,7 +1321,9 @@ const ChessboardComponent = ({
           : ANALYSIS_LINE_PLAYBACK_DELAY_MS;
 
         const finish = (): void => {
-          if (!cancelled) onNavigateHandledRef.current?.();
+          if (cancelled) return;
+          analysisPlaybackRunningRef.current = false;
+          onNavigateHandledRef.current?.();
         };
         const playNext = (index: number): void => {
           if (cancelled) return;
@@ -1407,6 +1349,7 @@ const ChessboardComponent = ({
         playNext(0);
         return () => {
           cancelled = true;
+          analysisPlaybackRunningRef.current = false;
           if (timeoutId !== null) window.clearTimeout(timeoutId);
         };
       }
@@ -1417,7 +1360,11 @@ const ChessboardComponent = ({
         showCustomLine(solutionNavigation.line, solutionNavigation.ply);
         break;
       case "solution":
-        showSolutionLine(solutionNavigation.line, solutionNavigation.ply);
+        if (
+          solutionEntriesRef.current[solutionNavigation.line]?.history.plies[solutionNavigation.ply]
+        ) {
+          showSolutionLine(solutionNavigation.line, solutionNavigation.ply);
+        }
         break;
       case "history":
         navigateTo(solutionNavigation.ply);
@@ -1471,6 +1418,7 @@ const ChessboardComponent = ({
     solutionNavigation,
     fenRef,
     onNavigateHandledRef,
+    canNavigateBoard,
     navigatePlayback,
     navigateTo,
     loadPgnMainline,
@@ -1502,11 +1450,7 @@ const ChessboardComponent = ({
     syncBoard,
   ]);
 
-  useBoardShortcuts(
-    navigatePlayback,
-    !enableNavigationShortcuts || Boolean(blindFen) || pendingPromotion !== null,
-    captureNavigationShortcuts,
-  );
+  useBoardShortcuts(navigatePlayback, !enableNavigationShortcuts, captureNavigationShortcuts);
 
   useEffect(() => {
     if (showSolution && solutionEntriesRef.current.length > 0) return;

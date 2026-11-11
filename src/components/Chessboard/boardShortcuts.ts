@@ -18,7 +18,7 @@ const commandByAction: Partial<Record<string, BoardShortcutCommand>> = {
 };
 
 const interactiveSelector =
-  "a, button, input, textarea, select, summary, [contenteditable='true'], [role='button'], [role='menuitem'], [role='option'], [role='slider'], [role='tab']";
+  "a, button, summary, [role='button'], [role='menuitem'], [role='option'], [role='tab']";
 
 export const shortcutIndexFromKeyboardEvent = (
   event: Pick<KeyboardEvent, "key" | "code"> &
@@ -50,18 +50,19 @@ export const boardShortcutCommand = (
   const action = keyboardShortcutAction(event, settings);
   const command = action ? (commandByAction[action] ?? null) : null;
   if (!(event.target instanceof Element)) return command;
-  if (!captureInteractive && event.target.closest(interactiveSelector)) return null;
   if (
-    captureInteractive &&
-    event.target.closest("input, textarea, select, [contenteditable='true'], [role='slider']")
-  ) {
+    isTextEntryTarget(event.target) ||
+    event.target.closest(
+      "input, textarea, select, [contenteditable]:not([contenteditable='false']), [role='textbox'], [role='slider'], [role='dialog'], dialog",
+    )
+  )
     return null;
-  }
+  if (!captureInteractive && event.target.closest(interactiveSelector)) return null;
   return command;
 };
 
 export const useBoardShortcuts = (
-  onCommand: (command: BoardShortcutCommand) => void,
+  onCommand: (command: BoardShortcutCommand) => boolean,
   disabled = false,
   captureInteractive = false,
 ): void => {
@@ -70,11 +71,11 @@ export const useBoardShortcuts = (
     if (disabled) return;
 
     const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.defaultPrevented || event.isComposing) return;
       const command = boardShortcutCommand(event, captureInteractive, settings);
       if (!command) return;
 
-      event.preventDefault();
-      onCommand(command);
+      if (onCommand(command)) event.preventDefault();
     };
 
     window.addEventListener("keydown", onKeyDown);

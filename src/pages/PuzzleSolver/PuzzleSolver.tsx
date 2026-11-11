@@ -93,7 +93,6 @@ import type { PuzzleRatingEvent } from "../../lib/supabase/puzzleUserRatings";
 import type { AsyncActionStatus } from "../../types/async";
 import {
   type AttemptResolved,
-  boardPly,
   type ChessboardState,
   type PlaybackCommand,
   type SolutionNavigation,
@@ -1654,21 +1653,19 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     }
   };
 
-  const currentLineLength =
-    boardShowsSolution && canRevealSolution
-      ? activeSolutionLine.length
-      : (boardState.lineMoves?.length ?? 0);
-  const currentPly = boardPly(boardState);
-  const canNavigateIntro = Boolean(
-    activePuzzle?.intro && !introPending && !blindPosition && !dailyLimitReached,
-  );
-  const canPlaybackPrevious = !baseLineState.beforeIntro && (currentPly > 0 || canNavigateIntro);
-  const canPlaybackNext = baseLineState.beforeIntro || currentPly < currentLineLength;
+  const playback =
+    introPending ||
+    blindPosition ||
+    dailyLimitReached ||
+    unratedMarkStatus.state === "saving" ||
+    solutionNavigation?.type === "line"
+      ? undefined
+      : boardState.playback;
 
   useBoardWheelNavigation({
     boardPanelRef,
-    canStepBack: boardShowsSolution && canRevealSolution && canPlaybackPrevious,
-    canStepForward: boardShowsSolution && canRevealSolution && canPlaybackNext,
+    canStepBack: boardShowsSolution && canRevealSolution && Boolean(playback?.previous),
+    canStepForward: boardShowsSolution && canRevealSolution && Boolean(playback?.next),
     onNavigate: handlePlaybackCommand,
   });
 
@@ -1684,7 +1681,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       }
       lines={isAnalysisMode ? allVariationLines : []}
       moves={boardState.lineMoves ?? []}
-      currentPly={currentAnalysisMoves.length}
+      currentPly={baseLineState.currentPly}
       activeLineIndex={activeVariationLineIndex}
       onNavigate={(ply) => setSolutionNavigation({ type: "history", ply })}
       onSelectVariation={(lineIndex, moveIndex) => {
@@ -1697,8 +1694,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       onEngineMovesChange={setAnalysisEngineMoves}
       canGiveUp={puzzleSession.attempt === "wrong" && !isAnalysisMode && !introPending}
       onGiveUp={handleGiveUp}
-      canStepBack={canPlaybackPrevious}
-      canStepForward={canPlaybackNext}
+      playback={playback}
       onNavigateMoves={handlePlaybackCommand}
     />
   );

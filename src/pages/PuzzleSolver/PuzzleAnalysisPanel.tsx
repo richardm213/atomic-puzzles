@@ -11,7 +11,7 @@ import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDb
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { startingPlyFromFen } from "../../lib/chess/pgn";
-import type { PlaybackCommand } from "../../types/chessboard";
+import type { PlaybackAvailability, PlaybackCommand } from "../../types/chessboard";
 
 const initialEngineSettings = (): AtomicDbEngineSettings => ({
   enabled: false,
@@ -39,8 +39,7 @@ export const PuzzleAnalysisPanel = ({
   onEngineMovesChange,
   canGiveUp,
   onGiveUp,
-  canStepBack,
-  canStepForward,
+  playback,
   onNavigateMoves,
 }: {
   fen: string;
@@ -60,8 +59,7 @@ export const PuzzleAnalysisPanel = ({
   onEngineMovesChange: (moves: readonly string[] | null) => void;
   canGiveUp: boolean;
   onGiveUp: () => void;
-  canStepBack: boolean;
-  canStepForward: boolean;
+  playback: PlaybackAvailability | undefined;
   onNavigateMoves: (
     command: Extract<PlaybackCommand, "start" | "previous" | "next" | "end">,
   ) => void;
@@ -144,10 +142,10 @@ export const PuzzleAnalysisPanel = ({
           ) : null}
           <PlaybackButtons
             buttonClassName="analysisToolbarButton"
-            canStart={canStepBack}
-            canPrevious={canStepBack}
-            canNext={canStepForward}
-            canEnd={canStepForward}
+            canStart={Boolean(playback?.start)}
+            canPrevious={Boolean(playback?.previous)}
+            canNext={Boolean(playback?.next)}
+            canEnd={Boolean(playback?.end)}
             onNavigate={onNavigateMoves}
           />
         </div>

@@ -42,21 +42,20 @@ describe("boardShortcutCommand", () => {
     }
   });
 
-  it("captures focused solution buttons when requested", () => {
+  it("captures focused solution buttons but not controls inside a dialog", () => {
     const button = document.createElement("button");
-    expect(
-      boardShortcutCommand(
-        {
-          key: "ArrowRight",
-          target: button,
-          metaKey: false,
-          ctrlKey: false,
-          altKey: false,
-          shiftKey: false,
-        },
-        true,
-      ),
-    ).toBe("next");
+    const event = {
+      key: "ArrowRight",
+      target: button,
+      metaKey: false,
+      ctrlKey: false,
+      altKey: false,
+      shiftKey: false,
+    };
+    expect(boardShortcutCommand(event, true)).toBe("next");
+
+    document.createElement("dialog").append(button);
+    expect(boardShortcutCommand(event, true)).toBeNull();
   });
 });
 

@@ -826,7 +826,9 @@ describe("Chessboard orchestration", () => {
   it("replays only played moves while the solution is hidden", () => {
     vi.useFakeTimers();
     try {
+      const onAttemptResolved = vi.fn();
       const states = renderBoard({
+        onAttemptResolved,
         solution: "1. e4 (1. d4) e5 2. Nf3",
         analysisMode: false,
         showSolution: false,
@@ -836,6 +838,7 @@ describe("Chessboard orchestration", () => {
       expect(states.at(-1)).toMatchObject({
         view: { position: 0 },
         lineMoves: [],
+        playback: { next: false, end: false },
       });
 
       play("e2", "e4");
@@ -844,14 +847,31 @@ describe("Chessboard orchestration", () => {
       });
       expect(states.at(-1)?.view?.position).toBe(2);
       fireEvent.keyDown(window, { key: "ArrowLeft" });
-      expect(states.at(-1)?.view?.position).toBe(1);
+      expect(states.at(-1)).toMatchObject({
+        view: { position: 1 },
+        playback: { next: true, end: true },
+      });
+      play("c7", "c5"); // Reviewing the opponent's turn must not submit a move.
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(onAttemptResolved).not.toHaveBeenCalled();
       fireEvent.keyDown(window, { key: "ArrowRight" });
       fireEvent.keyDown(window, { key: "ArrowRight" });
       fireEvent.keyDown(window, { key: "ArrowDown" });
       expect(states.at(-1)).toMatchObject({
         view: { position: 2 },
         lineMoves: ["e4", "e5"],
+        playback: { next: false, end: false },
       });
+      play("g1", "f3");
+      fireEvent.keyDown(window, { key: "ArrowLeft" }); // Must not cancel a pending evaluation.
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(onAttemptResolved).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ puzzleCorrect: true }),
+      );
       expect(states.every((state) => state.view?.line.source !== "solution")).toBe(true);
     } finally {
       vi.useRealTimers();
