@@ -7,6 +7,8 @@ import {
   isPendingPredictionOrder,
   netPredictionPositions,
   predictionBuyOrderCost,
+  predictionMarketCatalogRowSchema,
+  predictionMarketGroupsFromRows,
   type PredictionMarketState,
   predictionMarketStateResultSchema,
   predictionMarketVolume,
@@ -215,4 +217,29 @@ describe("prediction market source URLs", () => {
       }).success,
     ).toBe(false);
   });
+});
+
+it("keeps markets without a display order in the catalog instead of rejecting the whole catalog", () => {
+  const rows = [1, null].map((displayOrder, index) =>
+    predictionMarketCatalogRowSchema.parse({
+      id: `market-${index}`,
+      group_id: "champion",
+      group_path: "/betting/champion",
+      group_title: "Champion",
+      group_description: "",
+      group_order: 1,
+      display_name: `Player${index}`,
+      country_code: "US",
+      starting_chance: null,
+      display_order: displayOrder,
+      outcome_yes_label: null,
+      outcome_no_label: null,
+      outcome_yes_country_code: null,
+      outcome_no_country_code: null,
+    }),
+  );
+  expect(predictionMarketGroupsFromRows(rows)[0]?.markets.map((market) => market.id)).toEqual([
+    "market-0",
+    "market-1",
+  ]);
 });

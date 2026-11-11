@@ -42,7 +42,7 @@ export const predictionMarketCatalogRowSchema = z.object({
   display_name: z.string(),
   country_code: z.string(),
   starting_chance: z.number().nullable(),
-  display_order: z.number(),
+  display_order: z.number().nullable(),
   outcome_yes_label: z.string().nullable(),
   outcome_no_label: z.string().nullable(),
   outcome_yes_country_code: z.string().nullable(),
