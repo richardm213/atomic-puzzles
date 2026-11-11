@@ -873,20 +873,18 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const blindPosition = isAnalysisMode ? null : blindLeadIn;
   const hasAttemptedActivePuzzle = sessionAccess.hasAttempted;
   const boardShowsSolution = puzzleSession.solutionRevealed;
-  const canViewPostAttemptDetails = boardShowsSolution || puzzleSession.attempt === "solved";
   const sourceMatchId = activePuzzle
     ? getPuzzleSetSourceId(activePuzzle, Number.parseInt(routeSetKey, 10))
     : "";
   const canLinkSourceMatch = Boolean(
-    canViewPostAttemptDetails && !routeSetKey && !routeCustomSetId && sourceMatchId,
+    isAnalysisMode && !routeSetKey && !routeCustomSetId && sourceMatchId,
   );
   const attemptedPuzzleBadgeLabel =
     hasSolvedPuzzle || isCustomSetRoute || isDashboardSetSolveMode
       ? SOLVED_BEFORE_BADGE_LABEL
       : ATTEMPTED_PUZZLE_BADGE_LABEL;
   const canManagePuzzleExplanation = isPuzzleExplanationEditor && isAnalysisMode;
-  const canViewExplanation =
-    (hasExplanation || isPuzzleExplanationEditor) && canViewPostAttemptDetails;
+  const canViewExplanation = (hasExplanation || isPuzzleExplanationEditor) && isAnalysisMode;
   const showSolution = activePuzzleInfoTab === "solution";
   const showExplanation = activePuzzleInfoTab === "explanation";
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
@@ -897,7 +895,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         limit: OTHER_PUZZLE_ATTEMPTS_LIMIT,
         correctOnly: correctAttemptsOnly,
       }),
-    enabled: canViewPostAttemptDetails && otherPuzzleAttemptsOpen,
+    enabled: isAnalysisMode && otherPuzzleAttemptsOpen,
     retry: 1,
     retryDelay: 350,
     staleTime: 30_000,
@@ -1169,9 +1167,11 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
           : Math.round(elapsedAtAttempt);
       elapsedTimeMsRef.current = Math.min(elapsedAtAttempt, MAX_PUZZLE_ATTEMPT_DURATION_MS);
       elapsedTimerExpiredRef.current = attemptDurationMs === null;
-      elapsedTimerStartedAtRef.current = null;
+      if (puzzleCorrect || attemptDurationMs === null) {
+        elapsedTimerStartedAtRef.current = null;
+        setElapsedTimerRunning(false);
+      }
       setElapsedTimeMs(elapsedTimeMsRef.current);
-      setElapsedTimerRunning(false);
       dispatchPuzzleSession({
         type: "attempt-resolved",
         correct: puzzleCorrect,
@@ -1305,14 +1305,10 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       ? "View the solution"
       : SOLUTION_UNLOCK_HINT;
   const feedback = puzzleSession.feedback;
-  const visibleRatingFeedback =
-    attemptRatingFeedback?.puzzleId === activePuzzleKey &&
-    feedback &&
-    (feedback.type === "correct" || feedback.type === "wrong")
-      ? attemptRatingFeedback
-      : null;
-  const displayedUserPuzzleRating = visibleRatingFeedback
-    ? visibleRatingFeedback.userRatingAfter
+  const currentRatingFeedback =
+    attemptRatingFeedback?.puzzleId === activePuzzleKey ? attemptRatingFeedback : null;
+  const displayedUserPuzzleRating = currentRatingFeedback
+    ? currentRatingFeedback.userRatingAfter
     : userPuzzleRatingQuery.isPending || userPuzzleRatingQuery.isError
       ? null
       : (userPuzzleRatingQuery.data?.rating ?? 2000);
@@ -1409,7 +1405,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       enqueuePuzzleProgressWrite({
         puzzleId: activePuzzleKey,
         puzzleCorrect: false,
-        attemptDurationMs: null,
+        attemptDurationMs: elapsedTimerExpiredRef.current ? null : Math.round(elapsedAtGiveUp),
         incorrectMove: null,
         correctMove: null,
         attemptPgn: boardState.attemptPgn || '[Result "*"]\n\n*',
@@ -1420,7 +1416,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   };
 
   const handleSelectOtherPuzzleAttemptsTab = () => {
-    if (!canViewPostAttemptDetails) return;
+    if (!isAnalysisMode) return;
 
     if (otherPuzzleAttemptsOpen) {
       if (otherPuzzleAttemptsStatus === "error") {
@@ -1505,7 +1501,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   };
 
   const handleSelectCommentsTab = () => {
-    if (!canViewPostAttemptDetails) return;
+    if (!isAnalysisMode) return;
 
     setActivePuzzleInfoTab("comments");
     setSolutionNavigation(null);
@@ -1781,7 +1777,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         onSave: (event) => void handleSaveExplanation(event),
       }}
       attempts={{
-        canView: canViewPostAttemptDetails,
+        canView: isAnalysisMode,
         puzzleKey: activePuzzleKey,
         status: otherPuzzleAttemptsStatus,
         rows: otherAttemptsQuery.data ?? [],
@@ -1796,7 +1792,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         testMode
           ? null
           : {
-              canView: canViewPostAttemptDetails,
+              canView: isAnalysisMode,
               puzzleId: activePuzzleId,
               onSelect: handleSelectCommentsTab,
             }
@@ -1847,7 +1843,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
 
   const renderPuzzleRating = (mobile = false) => {
     const levelLabel = puzzleLevelLabel(activePuzzleRating.level);
-    const ratingChange = visibleRatingFeedback?.puzzleRatingChange;
+    const ratingChange = currentRatingFeedback?.puzzleRatingChange;
     const changeDirection =
       ratingChange === undefined ? "" : ratingChange >= 0 ? "positive" : "negative";
     const changeDescription =
@@ -1936,7 +1932,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const renderUserPuzzleRating = (mobile = false) => {
     if (!normalizedUsername) return null;
 
-    const ratingChange = visibleRatingFeedback?.userRatingChange;
+    const ratingChange = currentRatingFeedback?.userRatingChange;
     const changeDirection =
       ratingChange === undefined ? "" : ratingChange >= 0 ? "positive" : "negative";
     const changeDescription =
@@ -1965,8 +1961,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   };
 
   const puzzleTagVoting =
-    activePuzzleId &&
-    (testMode ? normalizedUsername === PUZZLE_ADMIN_USERNAME : canViewPostAttemptDetails) ? (
+    activePuzzleId && (testMode ? normalizedUsername === PUZZLE_ADMIN_USERNAME : isAnalysisMode) ? (
       <PuzzleTagVotingPanel
         key={`${activePuzzleId}:${normalizedUsername}`}
         puzzleId={activePuzzleId}
@@ -2156,14 +2151,13 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
                 </span>
               ) : null}
             </div>
-            {hasAttemptedActivePuzzle || showGradingEligibility || opaStyle ? (
+            {isAnalysisMode || showGradingEligibility || opaStyle ? (
               <div className="puzzleHeaderBadges">
-                {hasAttemptedActivePuzzle ? renderPuzzleRating() : null}
+                {isAnalysisMode ? renderPuzzleRating() : null}
                 {showGradingEligibility ? (
                   <span
                     className="puzzleUnratedBadge"
                     tabIndex={0}
-                    title={PUZZLE_GRADING_EXPLANATION}
                     aria-label={gradingLabel}
                     aria-description={PUZZLE_GRADING_EXPLANATION}
                     data-tooltip={PUZZLE_GRADING_EXPLANATION}
@@ -2434,7 +2428,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
               ) : null}
               <div className="puzzleHeaderRatings mobile">
                 {renderUserPuzzleRating(true)}
-                {hasAttemptedActivePuzzle ? renderPuzzleRating(true) : null}
+                {isAnalysisMode ? renderPuzzleRating(true) : null}
               </div>
               {hasPersistedAttempt ? (
                 <span
@@ -2452,7 +2446,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
                 <span
                   className="puzzleUnratedBadge"
                   tabIndex={0}
-                  title={PUZZLE_GRADING_EXPLANATION}
                   aria-label={gradingLabel}
                   aria-description={PUZZLE_GRADING_EXPLANATION}
                   data-tooltip={PUZZLE_GRADING_EXPLANATION}
@@ -2559,7 +2552,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         </p>
       ) : null}
 
-      {!testMode && canViewPostAttemptDetails ? (
+      {!testMode && isAnalysisMode ? (
         <PuzzleCommunity
           puzzleId={activePuzzleId}
           voteTargetId={isMobileLayout ? "mobile-puzzle-vote-slot" : "desktop-puzzle-vote-slot"}

@@ -306,7 +306,7 @@ test("a previously solved puzzle permits confirmed resignation before a move", a
   await expect(page.getByRole("tab", { name: "Other attempts", exact: true })).toBeEnabled();
   await expect(eligibility).not.toHaveText(previousEligibility);
   await expect(page.getByText(/^Grading returns in/)).toHaveAttribute(
-    "title",
-    /Grading returns in/,
+    "aria-description",
+    /Graded attempts/,
   );
 });

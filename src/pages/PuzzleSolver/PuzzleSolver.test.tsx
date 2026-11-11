@@ -1243,7 +1243,9 @@ describe("PuzzleSolverPage solution options", () => {
 
     expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
     await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledOnce());
-    expect((await screen.findAllByLabelText(/Grading returns in/)).length).toBeGreaterThan(0);
+    const gradingBadges = await screen.findAllByLabelText(/Grading returns in/);
+    expect(gradingBadges.length).toBeGreaterThan(0);
+    gradingBadges.forEach((badge) => expect(badge).not.toHaveAttribute("title"));
     const explanationTab = await screen.findByRole("tab", { name: "Explain" });
     expect(explanationTab).toBeEnabled();
     expect(screen.getByRole("checkbox", { name: "Permanently unrated" })).toBeDisabled();
@@ -1530,7 +1532,8 @@ describe("PuzzleSolverPage solution options", () => {
     expect(mocks.recordPuzzleProgress).toHaveBeenCalledOnce();
   });
 
-  it("records both progress sources when a custom-set solve is the first attempt", async () => {
+  it("shows your rating change after a miss but hides puzzle rating details until analysis", async () => {
+    const user = userEvent.setup();
     mocks.attemptedPuzzleIds = new Set();
     mocks.recordPuzzleProgress.mockResolvedValueOnce({
       rated: true,
@@ -1557,6 +1560,7 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     await screen.findByTestId("mock-board");
+    act(() => mocks.chessboardProps.at(-1)?.onIntroEnd?.(0, true));
     expect(await screen.findByLabelText("Your puzzle rating is 2000")).toBeVisible();
     expect(screen.queryByLabelText(/V3, 2100 Elo/)).not.toBeInTheDocument();
     expect(
@@ -1600,6 +1604,13 @@ describe("PuzzleSolverPage solution options", () => {
       "1369",
       false,
     );
+    expect(
+      await screen.findByLabelText("Your puzzle rating is 1978, decreased by 22"),
+    ).toBeVisible();
+    expect(screen.queryByLabelText(/V3, 2100 Elo/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Resign and reveal the solution" }));
+    expect(screen.queryByLabelText(/V3, 2100 Elo/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirm resignation" }));
     const updatedPuzzleRating = await screen.findByLabelText(/V3, 2100 Elo, increased by 17/);
     expect(updatedPuzzleRating).toHaveClass("positive");
     expect(updatedPuzzleRating).toHaveTextContent("V32100+17");
@@ -1875,6 +1886,45 @@ describe("PuzzleSolverPage solution options", () => {
 
     expect(await screen.findByLabelText("Elapsed time 0:00")).toBeInTheDocument();
     dateNow.mockRestore();
+  });
+
+  it("keeps timing after misses and saves cumulative time for each retry", async () => {
+    mocks.attemptedPuzzleIds = new Set();
+    let now = 0;
+    const ticks: Array<() => void> = [];
+    const clock = vi.spyOn(window.performance, "now").mockImplementation(() => now);
+    const interval = vi.spyOn(window, "setInterval").mockImplementation((callback) => {
+      ticks.push(callback as () => void);
+      return 1 as unknown as ReturnType<typeof window.setInterval>;
+    });
+    render(<PuzzleSolverPage />);
+    await screen.findByTestId("mock-board");
+    act(() => mocks.chessboardProps.at(-1)?.onIntroEnd?.(0, true));
+    const resolve = (correct: boolean) =>
+      act(() =>
+        mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+          puzzleId: "1369",
+          puzzleCorrect: correct,
+          incorrectMove: correct ? null : "12... Kd7",
+          correctMove: correct ? "12... O-O" : null,
+        }),
+      );
+    now = 1000;
+    resolve(false);
+    await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledTimes(1));
+    now = 5000;
+    act(() => ticks.forEach((tick) => tick()));
+    expect(screen.getByLabelText("Elapsed time 0:05")).toBeInTheDocument();
+    resolve(false);
+    await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledTimes(2));
+    now = 9000;
+    resolve(true);
+    await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledTimes(3));
+    expect(mocks.recordPuzzleProgress.mock.calls.map(([input]) => input.attemptDurationMs)).toEqual(
+      [1000, 5000, 9000],
+    );
+    interval.mockRestore();
+    clock.mockRestore();
   });
 
   it("updates the elapsed timer without rerendering the chessboard", async () => {
