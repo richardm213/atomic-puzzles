@@ -842,9 +842,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     [blindPlies, dailyLimitReached, leadIn, blindEntry?.eligible, blindEntryReady],
   );
   const blindMode = Boolean(blindLeadIn);
-  const autoplayIntro = Boolean(
-    activePuzzle?.intro && !blindMode && !dailyLimitReached && !hasSolvedPuzzle,
-  );
+  const autoplayIntro = Boolean(activePuzzle?.intro && !blindMode && !dailyLimitReached);
   const introPending = autoplayIntro && finishedIntroKey !== activePuzzleKey;
   const handleIntroEnd = useCallback(
     (durationMs: number, completed: boolean) => {

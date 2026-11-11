@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   chessboardProps: [] as Array<{
     disabled?: boolean;
     blindFen?: string;
+    autoplayIntro?: boolean;
     onIntroEnd?: (durationMs: number, completed: boolean) => void;
     analysisMode?: boolean;
     showSolution?: boolean;
@@ -1528,8 +1529,8 @@ describe("PuzzleSolverPage solution options", () => {
     expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
   });
 
-  it("shows the opening move only after replay and excludes it from the attempt duration", async () => {
-    mocks.attemptedPuzzleIds = new Set();
+  it.each(["fresh", "replay"])("plays the opening move on a %s visit", async (visit) => {
+    if (visit === "fresh") mocks.attemptedPuzzleIds = new Set();
     const loadDetails = mocks.loadPuzzlesById.getMockImplementation()!;
     mocks.loadPuzzlesById.mockImplementation(async (puzzleIds: number[]) =>
       (await loadDetails(puzzleIds)).map((puzzle: object) => ({
@@ -1547,6 +1548,7 @@ describe("PuzzleSolverPage solution options", () => {
     try {
       render(<PuzzleSolverPage />);
       await screen.findByTestId("mock-board");
+      expect(mocks.chessboardProps.at(-1)?.autoplayIntro).toBe(true);
       const analysis = within(screen.getByRole("region", { name: "Puzzle analysis" }));
       expect(analysis.queryByText("Opponent’s previous move:")).not.toBeInTheDocument();
       now += 1_250;
@@ -1556,7 +1558,10 @@ describe("PuzzleSolverPage solution options", () => {
       const previousMoveButton = analysis.getByRole("button", { name: "1. e4" });
       expect(previousMoveButton).toHaveAttribute("aria-current", "step");
       fireEvent.click(previousMoveButton);
-      expect(mocks.chessboardProps.at(-1)?.solutionNavigation).toEqual({ type: "history", ply: 0 });
+      expect(mocks.chessboardProps.at(-1)?.solutionNavigation).toEqual({
+        type: "history",
+        ply: 0,
+      });
       now += 2_000;
       act(() =>
         mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
@@ -1566,11 +1571,15 @@ describe("PuzzleSolverPage solution options", () => {
           correctMove: null,
         }),
       );
-      await waitFor(() =>
-        expect(mocks.recordPuzzleProgress).toHaveBeenCalledWith(
-          expect.objectContaining({ attemptDurationMs: 2_000 }),
-        ),
-      );
+      if (visit === "fresh") {
+        await waitFor(() =>
+          expect(mocks.recordPuzzleProgress).toHaveBeenCalledWith(
+            expect.objectContaining({ attemptDurationMs: 2_000 }),
+          ),
+        );
+      } else {
+        expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
+      }
     } finally {
       dateNow.mockRestore();
       performanceNow.mockRestore();
