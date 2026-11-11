@@ -30,6 +30,11 @@ have all been handled and verified.
 
 - Place liquidity orders using `prediction_admin`, never `admin`.
 
+## Puzzle attempt archiving
+
+When asked to archive puzzle attempts or remove previously archived attempts from active progress,
+follow [the puzzle attempt archiving protocol](docs/puzzle-attempt-archiving.md).
+
 ## Testing protocol
 
 - Default to the smallest relevant test scope. Do not run full-project tests, lint, type checks,
