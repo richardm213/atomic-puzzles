@@ -17,28 +17,33 @@ type NotificationCommentPreview = {
 type NotificationPuzzleAttempt = {
   puzzle_id: string | number;
   first_attempt_at: string;
+  grading_available_at: string | null;
 };
 
 export const attachAttemptedPuzzleCommentBodies = <T extends NotificationWithCommentId>(
   notifications: T[],
   comments: NotificationCommentPreview[],
   attempts: NotificationPuzzleAttempt[],
+  activePuzzleIds: Set<string> = new Set(),
 ): Array<T & { comment_body: string | null }> => {
   const commentsById = new Map(comments.map((comment) => [Number(comment.id), comment]));
   const firstAttemptByPuzzleId = new Map(
-    attempts.map((attempt) => [String(attempt.puzzle_id), new Date(attempt.first_attempt_at)]),
+    attempts.map((attempt) => [String(attempt.puzzle_id), attempt]),
   );
 
+  const now = Date.now();
   return notifications.map((notification) => {
     const comment = commentsById.get(Number(notification.comment_id));
     const firstAttempt = comment
       ? firstAttemptByPuzzleId.get(String(comment.target_id))
       : undefined;
+    const attemptedAt = Date.parse(firstAttempt?.first_attempt_at ?? "");
+    const gradingAvailableAt = Date.parse(firstAttempt?.grading_available_at ?? "");
     const canShowBody =
       comment?.target_type === "puzzle" &&
-      firstAttempt &&
-      !Number.isNaN(firstAttempt.getTime()) &&
-      firstAttempt.getTime() <= new Date(comment.created_at).getTime();
+      !activePuzzleIds.has(String(comment.target_id)) &&
+      gradingAvailableAt > now &&
+      attemptedAt <= Date.parse(comment.created_at);
     return {
       ...notification,
       comment_body: canShowBody ? String(comment.body ?? "") : null,
@@ -117,12 +122,26 @@ export class NotificationRepository {
       return attachAttemptedPuzzleCommentBodies(notifications, comments, []);
     }
 
-    const attemptsResult = await this.supabase
-      .from("puzzle_progress")
-      .select("puzzle_id, first_attempt_at")
-      .eq("username", username)
-      .in("puzzle_id", puzzleIds);
+    const [attemptsResult, runsResult] = await Promise.all([
+      this.supabase
+        .from("puzzle_progress")
+        .select("puzzle_id, first_attempt_at, grading_available_at")
+        .eq("username", username)
+        .in("puzzle_id", puzzleIds),
+      this.supabase
+        .from("puzzle_runs")
+        .select("puzzle_id")
+        .eq("username", username)
+        .in("puzzle_id", puzzleIds.map(Number))
+        .is("ended_at", null),
+    ]);
     const attempts = requireSupabaseRows(attemptsResult, "Unable to check puzzle attempts");
-    return attachAttemptedPuzzleCommentBodies(notifications, comments, attempts);
+    const activeRuns = requireSupabaseRows(runsResult, "Unable to check active puzzle runs");
+    return attachAttemptedPuzzleCommentBodies(
+      notifications,
+      comments,
+      attempts,
+      new Set(activeRuns.map((run) => String(run.puzzle_id))),
+    );
   }
 }

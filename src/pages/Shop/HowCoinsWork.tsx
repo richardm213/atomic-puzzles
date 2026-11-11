@@ -43,6 +43,34 @@ const attemptColors = [
   ["Blue", "Two consecutive correct graded runs, with no mistakes in either run"],
 ] as const;
 
+const returningPuzzleRules = [
+  [
+    "Wrong during a graded run that is still open",
+    "Graded",
+    "Continue with the same miss count and remaining reward, even after leaving the page.",
+  ],
+  [
+    "Wrong before, run ended less than two months ago",
+    "Practice",
+    "Wait for grading to return. Practice submissions are saved without coin changes.",
+  ],
+  [
+    "Wrong before, cooldown expired, never solved",
+    "Graded",
+    "Start a fresh run at full base stakes. The rating result from your first attempt stays recorded.",
+  ],
+  [
+    "Solved before, still on cooldown",
+    "Practice",
+    "A correct practice solve restarts the two-month timer.",
+  ],
+  [
+    "Solved before, cooldown expired",
+    "Graded",
+    "Start a fresh run at one quarter of the base reward and penalty.",
+  ],
+] as const;
+
 const CoinAmount = ({ amount }: { amount: number }) => (
   <span className={amount < 0 ? "coinAmount coinAmountPenalty" : "coinAmount"}>
     <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
@@ -95,6 +123,12 @@ export const HowCoinsWorkPage = () => (
               <h2 id="solve-puzzle-rewards">Solve puzzles</h2>
             </div>
             <p>
+              <strong>You can earn coins after getting a puzzle wrong.</strong> Keep the solution
+              hidden and continue your graded run. A correct retry after one, two, or three misses
+              earns a reduced reward. Your earlier deductions remain, and your first rating result
+              stays recorded.
+            </p>
+            <p>
               Your first-ever submitted result on a puzzle is rated and graded. Rated results affect
               your puzzle rating. Graded results determine coin rewards, penalties, and your color
               in Other Attempts. Later submissions affect coins only when grading is available. A
@@ -136,8 +170,10 @@ export const HowCoinsWorkPage = () => (
             <section className="coinGradingRules" aria-labelledby="retry-rewards-heading">
               <h3 id="retry-rewards-heading">Keep trying within a run</h3>
               <p>
-                You can still earn coins after a mistake. Each wrong submission halves the reward
-                available for solving, until four misses end reward eligibility for that run.
+                Continue working on the puzzle after a wrong submission to keep your remaining
+                reward available. Each miss halves that reward. A solve after one miss earns 50%,
+                after two earns 25%, and after three earns 12.5%. Four misses end reward eligibility
+                for that run. Refreshing or leaving the page preserves your run and miss count.
               </p>
               <div className="coinOutcomeTableWrap">
                 <table className="coinOutcomeTable">
@@ -160,16 +196,33 @@ export const HowCoinsWorkPage = () => (
                 </table>
               </div>
               <p>
-                Each graded mistake posts its own permanent debit and sends a notification. The
-                first costs the full penalty, the second half, the third a quarter, and so on. The
-                total approaches twice the first-miss penalty. Further graded mistakes still incur
-                these decreasing penalties after four misses. Solving pays a separate reward and
-                keeps the earlier deductions in your history.
+                Each graded mistake is saved. Each coin deduction is permanent and sends its own
+                notification. The first costs the full penalty, the second half, the third a
+                quarter, and so on. With enough coins in your wallet, the total approaches twice the
+                first-miss penalty. Further graded mistakes still incur these decreasing penalties
+                after four misses. Solving pays a separate reward and keeps the earlier deductions
+                in your history.
               </p>
               <p>
-                For example, with a 10-coin base reward and a 2-coin first-miss penalty, two misses
-                followed by a solve produce deductions of 2 and 1 coins, then a reward of 2.5 coins.
-                Your net change is −0.5 coins.
+                For example, a V3 puzzle has a 3-coin base reward and a 1-coin first-miss penalty.
+                Get it wrong once, keep the solution hidden, then solve it to earn 1.5 coins. The
+                earlier 1-coin deduction stays, giving you a net gain of 0.5 coins. After two
+                misses, the deductions total 1.5 coins and the solve pays 0.75 coins.
+              </p>
+            </section>
+
+            <section className="coinGradingRules" aria-labelledby="reveal-solution-heading">
+              <h3 id="reveal-solution-heading">Keeping the solution hidden</h3>
+              <p>
+                Explanations, comments, other players’ attempts, and source-match links stay locked
+                until you solve or confirm resignation. Resignation becomes available after a wrong
+                submission. Click once to highlight it and a second time to confirm and reveal the
+                solution. Confirming ends your current run and its remaining reward eligibility.
+              </p>
+              <p>
+                Before submitting a move, you can leave or skip freely. Each coin deduction during a
+                graded run sends its own notification. A later correct solve sends a separate reward
+                notification. Retries have no speed bonus or penalty.
               </p>
             </section>
 
@@ -189,13 +242,41 @@ export const HowCoinsWorkPage = () => (
                 apply to those reduced amounts. Returning graded runs have no speed adjustment.
               </p>
               <p>
-                Before submitting a move, you can leave or skip freely. Resignation becomes
-                available after a wrong submission. Click once to highlight it and again to confirm.
-                Resigning ends the run without adding another miss, debit, or rating change. On
-                later visits, your eligibility shows whether grading is available or how long
-                remains, such as “Grading returns in 1.8 months.” This status stays hidden
-                throughout your initial run, including retries.
+                Resignation adds no extra miss, debit, or rating change. On later visits, your
+                eligibility shows “Graded” or a countdown such as “Grading returns in 1.8 months.”
+                This status stays hidden throughout your initial run, including retries. An open
+                practice run stays practice until it ends, even if its original cooldown expires
+                while you are working on it.
               </p>
+              <p>
+                A correct practice solve still marks the puzzle as solved. Future graded runs then
+                use quarter stakes. Practice results leave your Other Attempts color and blue streak
+                unchanged.
+              </p>
+            </section>
+
+            <section className="coinGradingRules" aria-labelledby="returning-puzzle-heading">
+              <h3 id="returning-puzzle-heading">Returning to a puzzle you already tried</h3>
+              <div className="coinOutcomeTableWrap">
+                <table className="coinOutcomeTable coinReturningTable">
+                  <thead>
+                    <tr>
+                      <th scope="col">Your history</th>
+                      <th scope="col">Eligibility</th>
+                      <th scope="col">What happens next</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {returningPuzzleRules.map(([history, eligibility, next]) => (
+                      <tr key={history}>
+                        <th scope="row">{history}</th>
+                        <td>{eligibility}</td>
+                        <td>{next}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
 
             <section className="coinGradingRules" aria-labelledby="attempt-colors-heading">

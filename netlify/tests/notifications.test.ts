@@ -20,6 +20,8 @@ describe("notifications function", () => {
           { id: 1, comment_id: 10, notification_type: "puzzle_attempt_comment" },
           { id: 2, comment_id: 20, notification_type: "puzzle_author_comment" },
           { id: 3, comment_id: 30, notification_type: "puzzle_author_comment" },
+          { id: 4, comment_id: 40, notification_type: "comment_mention" },
+          { id: 5, comment_id: 50, notification_type: "puzzle_attempt_comment" },
         ],
         [
           {
@@ -43,16 +45,51 @@ describe("notifications function", () => {
             body: "Attempt happened too late",
             created_at: "2026-10-27T12:00:00.000Z",
           },
+          {
+            id: 50,
+            target_type: "puzzle",
+            target_id: "500",
+            body: "Hidden before a newly eligible run",
+            created_at: "2026-10-27T12:00:00.000Z",
+          },
+          {
+            id: 40,
+            target_type: "puzzle",
+            target_id: "400",
+            body: "Solution hidden during retry",
+            created_at: "2026-10-27T12:00:00.000Z",
+          },
         ],
         [
-          { puzzle_id: "100", first_attempt_at: "2026-10-26T12:00:00.000Z" },
-          { puzzle_id: "300", first_attempt_at: "2026-10-27T13:00:00.000Z" },
+          {
+            puzzle_id: "500",
+            first_attempt_at: "2026-01-01T12:00:00Z",
+            grading_available_at: "2026-03-01T12:00:00Z",
+          },
+          {
+            puzzle_id: "400",
+            first_attempt_at: "2026-10-26T12:00:00.000Z",
+            grading_available_at: "2099-01-01T00:00:00Z",
+          },
+          {
+            puzzle_id: "100",
+            first_attempt_at: "2026-10-26T12:00:00.000Z",
+            grading_available_at: "2099-01-01T00:00:00Z",
+          },
+          {
+            puzzle_id: "300",
+            first_attempt_at: "2026-10-27T13:00:00.000Z",
+            grading_available_at: "2099-01-01T00:00:00Z",
+          },
         ],
+        new Set(["400"]),
       ),
     ).toEqual([
       expect.objectContaining({ id: 1, comment_body: "Visible attempt comment" }),
       expect.objectContaining({ id: 2, comment_body: null }),
       expect.objectContaining({ id: 3, comment_body: null }),
+      expect.objectContaining({ id: 4, comment_body: null }),
+      expect.objectContaining({ id: 5, comment_body: null }),
     ]);
   });
 

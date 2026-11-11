@@ -1560,6 +1560,95 @@ describe("PuzzleSolverPage solution options", () => {
     performanceNow.mockRestore();
   });
 
+  it.each([
+    { correctBefore: false, old: false },
+    { correctBefore: false, old: true },
+    { correctBefore: true, old: false },
+    { correctBefore: true, old: true },
+  ])(
+    "keeps a returning run interactive and saves each result ($correctBefore, $old)",
+    async ({ correctBefore, old }) => {
+      const runId = "bf6cd63f-c399-4d3c-905c-04ab563e8949";
+      const availableAt = old ? "2020-01-01T00:00:00Z" : "2099-01-01T00:00:00Z";
+      const state = {
+        runId: null,
+        graded: old,
+        availableAt,
+        permanent: false,
+        hasAttempted: true,
+        hasSolved: correctBefore,
+        misses: 0,
+        color: correctBefore ? "green" : "red",
+      };
+      mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValue([
+        {
+          puzzle_id: "1369",
+          first_attempt_at: old ? "2020-01-01T00:00:00Z" : new Date().toISOString(),
+          puzzle_correct: correctBefore,
+          rated: true,
+          has_solved: correctBefore,
+          incorrect_move: correctBefore ? null : "12... Kd7",
+          correct_move: correctBefore ? "12... O-O" : null,
+          grading_available_at: availableAt,
+        },
+      ]);
+      mocks.fetchPuzzleGradingState.mockResolvedValue(state);
+      mocks.recordPuzzleProgress
+        .mockResolvedValueOnce({
+          rated: false,
+          ratingEvent: null,
+          grading: { ...state, runId, misses: 1 },
+        })
+        .mockResolvedValueOnce({
+          rated: false,
+          ratingEvent: null,
+          grading: {
+            ...state,
+            runId: null,
+            graded: false,
+            hasSolved: true,
+            availableAt: "2099-01-01T00:00:00Z",
+          },
+        });
+      render(<PuzzleSolverPage />);
+      await waitFor(() => expect(mocks.chessboardProps.at(-1)?.disabled).toBe(false));
+      expect(
+        screen.queryByRole("button", { name: "Resign and reveal the solution" }),
+      ).not.toBeInTheDocument();
+      const otherAttempts = screen.getByRole("tab", { name: "Other attempts" });
+      expect(otherAttempts).toBeDisabled();
+      if (old) expect(screen.getByText("Graded", { exact: true })).toBeVisible();
+      else expect(screen.getByText(/^Grading returns in/)).toBeVisible();
+      act(() =>
+        mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+          puzzleId: "1369",
+          puzzleCorrect: false,
+          incorrectMove: "12... Kd7",
+          correctMove: null,
+          attemptPgn: "12... Kd7 *",
+        }),
+      );
+      await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledOnce());
+      expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(false);
+      expect(otherAttempts).toBeDisabled();
+      expect(screen.getByRole("tab", { name: "Explanation" })).toBeDisabled();
+      await waitFor(() => expect(mocks.chessboardProps.at(-1)?.disabled).toBe(false));
+      act(() =>
+        mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+          puzzleId: "1369",
+          puzzleCorrect: true,
+          incorrectMove: null,
+          correctMove: "12... O-O",
+          attemptPgn: "12... O-O *",
+        }),
+      );
+      await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledTimes(2));
+      expect(mocks.recordPuzzleProgress.mock.calls[1]?.[0].attempt.runId).toBe(runId);
+      expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true);
+      expect(otherAttempts).toBeEnabled();
+    },
+  );
+
   it("logs a replayed attempt without replacing the saved solve", async () => {
     render(<PuzzleSolverPage />);
 

@@ -99,6 +99,58 @@ describe("fetchPuzzleProgressPage", () => {
     window.removeEventListener("atomic-puzzles:coins-earned", coinChangeListener);
   });
 
+  it("coalesces concurrent submissions and announces a replayed debit only once", async () => {
+    const listener = vi.fn();
+    window.addEventListener("atomic-puzzles:coins-earned", listener);
+    let resolveFetch!: (response: Response) => void;
+    const pending = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+    const fetchMock = vi
+      .spyOn(window, "fetch")
+      .mockReturnValueOnce(pending)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ coinDelta: -0.5, graded: true, duplicate: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const input = {
+      username: "solver",
+      puzzleId: "42",
+      puzzleCorrect: false,
+      attemptDurationMs: 1000,
+      incorrectMove: "1. e4",
+      correctMove: null,
+      attempt: {
+        id: "6de4a619-bcee-4d9a-8af8-e9c736e17eae",
+        pgn: "1. e4 *",
+        runId: "bf6cd63f-c399-4d3c-905c-04ab563e8949",
+      },
+    };
+    try {
+      const first = recordPuzzleProgress(input);
+      const second = recordPuzzleProgress(input);
+      expect(fetchMock).toHaveBeenCalledOnce();
+      resolveFetch(
+        new Response(JSON.stringify({ coinDelta: -0.5, graded: true, rated: false }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      await Promise.all([first, second]);
+      await recordPuzzleProgress(input);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(listener).toHaveBeenCalledOnce();
+      expect(listener.mock.calls[0]?.[0].detail).toMatchObject({ amount: -0.5, precise: true });
+      const payloads = fetchMock.mock.calls.map(([, options]) => JSON.parse(String(options?.body)));
+      expect(payloads[0].attempt).toEqual(input.attempt);
+      expect(payloads[1].attempt).toEqual(input.attempt);
+    } finally {
+      window.removeEventListener("atomic-puzzles:coins-earned", listener);
+    }
+  });
+
   it("uses Supabase as the sole source of attempted puzzle ids", async () => {
     window.localStorage.setItem(
       "atomic-puzzles.puzzle-progress.whooooami",

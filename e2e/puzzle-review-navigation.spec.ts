@@ -71,6 +71,33 @@ test("solve-mode arrows replay only played moves until the solution is revealed"
       },
     }),
   );
+  await page.route("**/api/puzzles/progress", (route) => {
+    const body = route.request().postDataJSON();
+    const isStatus = body.action === "gradingState";
+    const resigned = Boolean(body.attempt?.resigned);
+    const grading = {
+      runId: isStatus || resigned ? null : "bf6cd63f-c399-4d3c-905c-04ab563e8949",
+      graded: !resigned,
+      availableAt: resigned ? "2099-01-01T00:00:00Z" : null,
+      permanent: false,
+      hasAttempted: !isStatus,
+      hasSolved: false,
+      misses: isStatus || resigned ? 0 : 1,
+      color: isStatus ? null : "red",
+    };
+    return route.fulfill({
+      json: isStatus
+        ? grading
+        : {
+            coinDelta: resigned ? 0 : -1,
+            rated: !resigned,
+            graded: true,
+            unratedUntil: grading.availableAt,
+            ratingEvent: null,
+            grading,
+          },
+    });
+  });
   await page.goto("/solve/102");
   const analysis = page.getByRole("region", { name: "Puzzle analysis" });
   const intro = analysis.getByRole("button", { name: "1. e4", exact: true });
@@ -125,7 +152,7 @@ test("solve-mode arrows replay only played moves until the solution is revealed"
   await expect(reply).toHaveAttribute("aria-current", "step");
 
   await playBlackMove("a7a6");
-  const giveUp = analysis.getByRole("button", { name: "Give up and reveal the solution" });
+  const giveUp = analysis.getByRole("button", { name: "Resign and reveal the solution" });
   await expect(giveUp).toBeVisible();
   // After a wrong move, arrows from inside the move box can replay the
   // played line, but cannot cross into the unrevealed solution.
@@ -134,7 +161,10 @@ test("solve-mode arrows replay only played moves until the solution is revealed"
   await expect(intro).toBeFocused();
   await expect(futureMoves).toHaveCount(0);
   await page.keyboard.press("ArrowRight");
-  await expect(analysis.getByRole("button", { name: /e5/ })).toHaveAttribute("aria-current", "step");
+  await expect(analysis.getByRole("button", { name: /e5/ })).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
   await expect(futureMoves).toHaveCount(0);
   await page.keyboard.press("ArrowRight");
   await expect(reply).toHaveAttribute("aria-current", "step");
@@ -144,6 +174,7 @@ test("solve-mode arrows replay only played moves until the solution is revealed"
   await expect(next).toBeDisabled();
   await expect(futureMoves).toHaveCount(0);
   await giveUp.click();
+  await analysis.getByRole("button", { name: "Confirm resignation" }).click();
   await expect(analysis.getByRole("button", { name: /Nc6/ })).toBeVisible();
   await latest.click();
   const finalMove = analysis.getByRole("button", { name: /Nf6/ });

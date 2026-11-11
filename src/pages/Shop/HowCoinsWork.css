@@ -208,6 +208,10 @@
   font-size: 0.9375rem;
 }
 
+.coinReturningTable tbody th {
+  white-space: normal;
+}
+
 .coinSpeedAdjustmentCaption {
   margin: 0;
   color: var(--color-muted);

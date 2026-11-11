@@ -1,4 +1,21 @@
+import type { Page } from "@playwright/test";
+
 import { expect, test } from "./fixtures";
+
+const playBlackMove = async (page: Page, uci: string) => {
+  const board = page.locator("cg-board");
+  await expect(board).toBeVisible();
+  const bounds = await board.boundingBox();
+  if (!bounds) throw new Error("Puzzle board missing");
+  for (const square of [uci.slice(0, 2), uci.slice(2, 4)]) {
+    const file = square.charCodeAt(0) - 97;
+    const rank = Number(square[1]);
+    await page.mouse.click(
+      bounds.x + ((7.5 - file) * bounds.width) / 8,
+      bounds.y + ((rank - 0.5) * bounds.height) / 8,
+    );
+  }
+};
 
 test("a graded run survives reload, retries a failed save, and requires confirmed resignation", async ({
   page,
@@ -70,29 +87,27 @@ test("a graded run survives reload, retries a failed save, and requires confirme
               has_solved: false,
               attempt_color: "red",
             },
+            {
+              username: "recovered-player",
+              puzzle_id: "102",
+              first_attempt_at: "2026-03-01T12:00:00Z",
+              first_attempt_duration_ms: 42000,
+              puzzle_correct: false,
+              rated: true,
+              incorrect_move: "1... h6",
+              has_solved: true,
+              attempt_color: "yellow",
+            },
           ]
         : [],
     }),
   );
-  const playBlackMove = async (uci: string) => {
-    const board = page.locator("cg-board");
-    await expect(board).toBeVisible();
-    const bounds = await board.boundingBox();
-    if (!bounds) throw new Error("Puzzle board missing");
-    for (const square of [uci.slice(0, 2), uci.slice(2, 4)]) {
-      const file = square.charCodeAt(0) - 97;
-      const rank = Number(square[1]);
-      await page.mouse.click(
-        bounds.x + ((7.5 - file) * bounds.width) / 8,
-        bounds.y + ((rank - 0.5) * bounds.height) / 8,
-      );
-    }
-  };
+
   await page.goto("/solve/102");
   await expect(page.locator("cg-board")).toBeVisible();
   await expect(page.getByRole("button", { name: "Resign and reveal the solution" })).toHaveCount(0);
   await expect(page.getByText("Graded", { exact: true })).toHaveCount(0);
-  await playBlackMove("a7a6");
+  await playBlackMove(page, "a7a6");
   await expect.poll(() => requests.length).toBe(1);
   await expect(page.getByRole("button", { name: "Resign and reveal the solution" })).toBeEnabled();
   await expect(page.getByText("Graded", { exact: true })).toHaveCount(0);
@@ -101,7 +116,7 @@ test("a graded run survives reload, retries a failed save, and requires confirme
   await page.reload();
   await expect(page.getByText("Graded", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Resign and reveal the solution" })).toBeEnabled();
-  await playBlackMove("b7b6");
+  await playBlackMove(page, "b7b6");
   await expect.poll(() => requests.length).toBe(3);
   expect(requests[1]?.attempt.id).toBe(requests[2]?.attempt.id);
   expect(requests[2]?.attempt.runId).toBe(runId);
@@ -117,4 +132,113 @@ test("a graded run survives reload, retries a failed save, and requires confirme
   await page.getByRole("tab", { name: "Other attempts", exact: true }).click();
   await expect(page.getByLabel("Played 1... a6")).toBeVisible();
   await expect(page.getByLabel("Attempt time 1:05")).toBeVisible();
+  const recovered = page.getByRole("listitem").filter({
+    has: page.getByRole("link", { name: "recovered-player", exact: true }),
+  });
+  await expect(recovered.getByLabel("Played 1... h6")).toBeVisible();
+  await expect(recovered.getByLabel("Attempt time 0:42")).toBeVisible();
+  const indicator = recovered.getByLabel("Solved on the second try", { exact: true });
+  await expect(indicator).toHaveAttribute("title", "Solved on the second try");
+  const colors = await indicator.evaluate((element) => {
+    const sample = document.createElement("span");
+    sample.style.color = "var(--color-warning)";
+    document.body.append(sample);
+    const expected = getComputedStyle(sample).color;
+    sample.remove();
+    return { actual: getComputedStyle(element).color, expected };
+  });
+  expect(colors.actual).toBe(colors.expected);
+});
+
+test("solving after a mistake earns coins while the first move and time stay in Other Attempts", async ({
+  page,
+}) => {
+  const runId = "bf6cd63f-c399-4d3c-905c-04ab563e8949";
+  const requests: Array<{
+    puzzleCorrect: boolean;
+    attempt: { runId: string | null; pgn: string };
+  }> = [];
+  let solved = false;
+  const grading = () => ({
+    runId: requests.length && !solved ? runId : null,
+    graded: !solved,
+    availableAt: solved ? "2099-01-01T00:00:00Z" : null,
+    permanent: false,
+    hasAttempted: requests.length > 0,
+    hasSolved: solved,
+    misses: requests.length && !solved ? 1 : 0,
+    color: requests.length ? (solved ? "yellow" : "red") : null,
+  });
+  await page.route("**/api/puzzles/play", (route) =>
+    route.fulfill({
+      json: {
+        puzzles: [
+          {
+            id: 102,
+            author: "another-player",
+            fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+            solution: "1... e5 2. Nf3 Nc6",
+            explanation: "Play e5 followed by Nc6.",
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/puzzles/progress", (route) => {
+    const body = route.request().postDataJSON();
+    if (body.action === "gradingState") return route.fulfill({ json: grading() });
+    requests.push(body);
+    solved = body.puzzleCorrect;
+    return route.fulfill({
+      json: {
+        coinDelta: solved ? 1.5 : -1,
+        rated: !solved,
+        graded: true,
+        ratingEvent: null,
+        unratedUntil: grading().availableAt,
+        grading: grading(),
+      },
+    });
+  });
+  await page.route("**/__e2e_supabase/rest/v1/puzzle_progress?**", (route) =>
+    route.fulfill({
+      json: requests.length
+        ? [
+            {
+              username: "e2e-player",
+              puzzle_id: "102",
+              first_attempt_at: "2026-07-09T09:55:47Z",
+              first_attempt_duration_ms: 30000,
+              puzzle_correct: false,
+              rated: true,
+              incorrect_move: "1... a6",
+              has_solved: solved,
+              attempt_color: solved ? "yellow" : "red",
+            },
+          ]
+        : [],
+    }),
+  );
+  await page.goto("/solve/102");
+  await playBlackMove(page, "a7a6");
+  await expect(page.getByText("-1 coins", { exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Explanation", exact: true })).toBeDisabled();
+  await expect(page.getByRole("tab", { name: "Other attempts", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Resign and reveal the solution" })).toBeEnabled();
+  await playBlackMove(page, "e7e5");
+  await expect(
+    page.getByRole("region", { name: "Puzzle analysis" }).getByRole("button", { name: /Nf3/ }),
+  ).toHaveAttribute("aria-current", "step");
+  await playBlackMove(page, "b8c6");
+  await expect(page.getByText("+1.5 coins", { exact: true })).toBeVisible();
+  expect(requests).toHaveLength(2);
+  expect(requests[0]?.puzzleCorrect).toBe(false);
+  expect(requests[1]?.puzzleCorrect).toBe(true);
+  expect(requests[1]?.attempt.runId).toBe(runId);
+  expect(requests[1]?.attempt.pgn).toContain("Nc6");
+  await expect(page.getByRole("tab", { name: "Explanation", exact: true })).toBeEnabled();
+  await page.getByRole("tab", { name: "Other attempts", exact: true }).click();
+  await expect(page.getByLabel("Played 1... a6")).toBeVisible();
+  await expect(page.getByLabel("Attempt time 0:30")).toBeVisible();
+  await expect(page.getByLabel("Solved on the second try", { exact: true })).toBeVisible();
 });
