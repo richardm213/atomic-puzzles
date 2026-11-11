@@ -210,6 +210,8 @@ declare
   first_snapshot jsonb;
   response jsonb;
   active_run uuid;
+  practice_id uuid;
+  practice_expiry timestamptz;
   factor numeric;
   expected_color text;
 begin
@@ -243,11 +245,25 @@ begin
         (response->>'coinDelta')::numeric = case when is_recent then 0 else -1.5*factor end
         and not (response->>'rated')::boolean
         and (response->>'graded')::boolean = not is_recent
-        and (response->>'unratedUntil')::timestamptz=available,
+        and case when is_recent then
+          (response->>'unratedUntil')::timestamptz>clock_timestamp()+interval '2 months'-interval '2 seconds'
+          else (response->>'unratedUntil')::timestamptz=available end,
         format('Historical miss stakes, rating, or cooldown for %s',solver));
       if is_recent then
-        perform public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'incorrect',
+        available := (response->>'unratedUntil')::timestamptz;
+        practice_id := gen_random_uuid();
+        response := public.submit_puzzle_run_attempt(practice_id,solver,pid,'incorrect',
           '1. c4 *',active_run,2000,'1. c4',null);
+        practice_expiry := (response->>'unratedUntil')::timestamptz;
+        perform pg_temp.assert_grading(practice_expiry>available
+          and (select grading_available_at from public.puzzle_progress where username=solver)=practice_expiry
+          and (response->'grading'->>'availableAt')::timestamptz=practice_expiry,
+          'An incorrect practice attempt did not reset the persisted and displayed cooldown');
+        response := public.submit_puzzle_run_attempt(practice_id,solver,pid,'incorrect',
+          '1. c4 *',active_run,2000,'1. c4',null);
+        perform pg_temp.assert_grading((response->>'duplicate')::boolean
+          and (response->>'unratedUntil')::timestamptz=practice_expiry,
+          'Retrying the same practice miss reset the timer twice');
         perform pg_temp.assert_grading(
           (select misses from public.puzzle_runs where id=active_run)=0
           and not exists(select 1 from public.puzzle_attempt_move_logs where username=solver),
@@ -369,7 +385,10 @@ begin
   values(solver,pid,'creator',now()+interval '2 months','Rollback grading regression',true);
   response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'incorrect','1. e4 *',null,1000,'1. e4',null);
   perform pg_temp.assert_grading(not (response->>'rated')::boolean and not (response->>'graded')::boolean
-    and (response->>'coinDelta')::numeric=0, 'Permanent practice was graded or rated');
+    and (response->>'coinDelta')::numeric=0
+    and (response->>'unratedUntil')::timestamptz>clock_timestamp()+interval '2 months'-interval '2 seconds'
+    and not (response->'grading'->>'hasAttempted')::boolean,
+    'Own unrated practice failed to reset its timer or created a graded/rated attempt');
   response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'correct','1. Nf3 *',
     (response->'grading'->>'runId')::uuid,1000,null,'1. Nf3');
   perform pg_temp.assert_grading((response->>'coinDelta')::numeric=0

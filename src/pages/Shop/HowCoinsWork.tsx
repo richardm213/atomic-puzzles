@@ -155,14 +155,16 @@ export const HowCoinsWorkPage = () => (
           </li>
           <li>
             <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-            <strong>2 months of practice</strong>
+            <strong>Ungraded for 2 months</strong>
             <span>No coins. Attempts aren’t recorded.</span>
           </li>
         </ol>
         <p>
           After 2 months, grading returns. Already solved it? Rewards and penalties are ¼ as much.
         </p>
-        <p>A correct practice solve or confirmed resignation restarts the two-month wait.</p>
+        <p>
+          Any practice attempt—right or wrong—or confirmed resignation restarts the two-month timer.
+        </p>
       </section>
 
       <section className="coinGuideSection" aria-labelledby="attempt-colors-heading">

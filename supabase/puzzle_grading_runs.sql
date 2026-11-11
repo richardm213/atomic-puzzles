@@ -230,14 +230,15 @@ begin
   -- Practice retains only an active session marker and cooldown retry receipt.
   -- It cannot create history, miss counts, solved status, colors, coins, or ratings.
   if not run.graded then
+    -- Every new practice submission restarts the cooldown, even an incorrect one.
+    update public.puzzle_solver_states
+    set grading_available_at=at_time + interval '2 months',
+      practice_resolution_id=p_attempt_id
+    where username=solver and puzzle_id=puzzle_key
+    returning * into state;
+    update public.puzzle_progress set grading_available_at=state.grading_available_at
+    where username=solver and puzzle_id=puzzle_key::text;
     if p_outcome in ('correct','resigned') then
-      update public.puzzle_solver_states
-      set grading_available_at=at_time + interval '2 months',
-        practice_resolution_id=p_attempt_id
-      where username=solver and puzzle_id=puzzle_key
-      returning * into state;
-      update public.puzzle_progress set grading_available_at=state.grading_available_at
-      where username=solver and puzzle_id=puzzle_key::text;
       -- Existing practice sessions may still have logs written by the old implementation.
       update public.puzzle_runs set ended_at=at_time,outcome=p_outcome where id=run.id;
       delete from public.puzzle_runs r where r.id=run.id
