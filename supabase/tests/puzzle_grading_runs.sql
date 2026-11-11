@@ -304,7 +304,7 @@ begin
   for level in 1..5 loop
     update public.puzzle_ratings set human_level=level where puzzle_id=pid::bigint;
     reward := case level when 1 then 1 when 2 then 2 when 3 then 3 when 4 then 5 else 10 end;
-    penalty := case level when 1 then 4 when 2 then 2 when 3 then 1.5 when 4 then 0.5 else 0 end;
+    penalty := case level when 1 then 5 when 2 then 3 when 3 then 1.5 when 4 then 0.5 else 0 end;
     solver := 'grading_level_correct_' || txid_current() || '_' || level;
     insert into public.coin_accounts(username,balance) values(solver,100);
     response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'correct','1. Nf3 *',

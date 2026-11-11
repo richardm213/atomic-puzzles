@@ -17,8 +17,8 @@ const creationRewards = [
 ] as const;
 
 const solvingRewards = [
-  ["V1", 1, -4],
-  ["V2", 2, -2],
+  ["V1", 1, -5],
+  ["V2", 2, -3],
   ["V3", 3, -1.5],
   ["V4", 5, -0.5],
   ["V5", 10, 0],
