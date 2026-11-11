@@ -107,16 +107,21 @@ import { PuzzleInfoSection, type PuzzleInfoTab } from "./PuzzleInfoSection";
 import { PuzzleIssueDialog, type PuzzleIssueStatus } from "./PuzzleIssueDialog";
 import { PuzzlePositionRows } from "./PuzzlePositionRows";
 import {
-  addValueToSet,
   buildCompletionFeedback,
   type CompletionFeedback,
+  createInitialPuzzleSession,
+  getPuzzleEntry,
+  getPuzzleSessionAccess,
+  isPuzzleSessionInAnalysis,
+  puzzleSessionReducer,
+} from "./puzzleSession";
+import {
+  addValueToSet,
   createInitialBoardSnapshot,
   createInitialBoardState,
-  createInitialPuzzleSession,
   excludePuzzleIntroTime,
   getPuzzleAttemptStartedAt,
   puzzleIndexFromParam,
-  puzzleSessionReducer,
   removeValueFromSet,
   shuffleIndexes,
   toPuzzleKey,
@@ -221,13 +226,11 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const [ratingExclusions, setRatingExclusions] = useState<Map<string, string>>(() => new Map());
   const [dailyAttemptCount, setDailyAttemptCount] = useState(0);
   const [attemptedPuzzleIdsOwner, setAttemptedPuzzleIdsOwner] = useState<string | null>(null);
-  const [resolvedAttemptedPuzzleIds, setResolvedAttemptedPuzzleIds] = useState<Set<string>>(
-    () => new Set(),
-  );
+  // Keep the unrated setting locked while an attempt is being saved.
+  const [submittedPuzzleIds, setSubmittedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [blindEntry, setBlindEntry] = useState<{
     key: string;
     eligible: boolean;
-    resolved: boolean;
   } | null>(null);
   const [{ history, historyIndex }, setPuzzleHistory] = useState<{
     history: number[];
@@ -736,7 +739,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     puzzleSetParticipants.length === 2
       ? `${puzzleSetParticipants[0]} vs ${puzzleSetParticipants[1]}`
       : puzzleSetParticipants.join(" · ");
-  const isAnalysisMode = puzzleSession.mode === "analysis";
   const hasPersistedAttempt = activePuzzleKey ? attemptedPuzzleIds.has(activePuzzleKey) : false;
   const hasUnratedAttempt = activePuzzleKey ? unratedPuzzleIds.has(activePuzzleKey) : false;
   const unratedReason = testMode
@@ -783,7 +785,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     authorDashboardUsername,
   ]);
 
-  // An expired unrated solve is eligible for a fresh rated attempt, not analysis hydration.
+  // An expired unrated solve is eligible for a fresh rated attempt, not a replay.
   const hasSolvedPuzzle = Boolean(
     activePuzzleKey &&
     solvedPuzzleIds.has(activePuzzleKey) &&
@@ -791,14 +793,14 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   );
   const isPuzzleLocked =
     !testMode && unratedReason !== null && normalizeUsername(author) !== normalizedUsername;
-  const blindEntryKey = JSON.stringify([
+  const puzzleVisitKey = JSON.stringify([
     attemptedPuzzleIdsUsername,
     routeSetKey,
     routeCustomSetId,
     routeDashboardSetId,
     activePuzzleKey,
   ]);
-  const blindEntryReady = attemptedPuzzleIdsReady && blindEntry?.key === blindEntryKey;
+  const blindEntryReady = attemptedPuzzleIdsReady && blindEntry?.key === puzzleVisitKey;
   const blindPlies = blindPuzzles?.enabled ? blindPuzzles.plies : 0;
   useLayoutEffect(() => {
     if (!blindPlies) {
@@ -808,23 +810,22 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     if (!activePuzzleKey || !attemptedPuzzleIdsReady) return;
     // Decide once the puzzle details are loaded; a first attempt must not rewind mid-visit.
     setBlindEntry((entry) => {
-      if (entry?.key === blindEntryKey) return entry;
+      if (entry?.key === puzzleVisitKey) return entry;
       if (!fen) return null;
       return {
-        key: blindEntryKey,
+        key: puzzleVisitKey,
         eligible:
           testMode ||
           unratedReason !== null ||
           hasPersistedAttempt ||
           hasSolvedPuzzle ||
           countedTodayPuzzleIdsRef.current.has(activePuzzleKey),
-        resolved: false,
       };
     });
   }, [
     activePuzzleKey,
     attemptedPuzzleIdsReady,
-    blindEntryKey,
+    puzzleVisitKey,
     blindPlies,
     fen,
     hasPersistedAttempt,
@@ -841,12 +842,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     [blindPlies, dailyLimitReached, leadIn, blindEntry?.eligible, blindEntryReady],
   );
   const blindMode = Boolean(blindLeadIn);
-  const blindPosition = !isAnalysisMode ? blindLeadIn : null;
   const autoplayIntro = Boolean(
-    activePuzzle?.intro &&
-    !blindMode &&
-    !dailyLimitReached &&
-    (!hasSolvedPuzzle || isCustomSetRoute || isDashboardSetSolveMode),
+    activePuzzle?.intro && !blindMode && !dailyLimitReached && !hasSolvedPuzzle,
   );
   const introPending = autoplayIntro && finishedIntroKey !== activePuzzleKey;
   const handleIntroEnd = useCallback(
@@ -865,22 +862,29 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         : unratedReason === "existing-unrated"
           ? "Your latest attempt is unrated. Wait one month after that attempt for a rated try."
           : "Your attempts are unrated for 45 days after this puzzle was published.";
-  const hasResolvedAttempt = activePuzzleKey
-    ? resolvedAttemptedPuzzleIds.has(activePuzzleKey)
-    : false;
-  // A custom or dashboard set is a fresh solving pass. A historical attempt may still be
-  // acknowledged by the badge, but it must not reveal post-attempt UI before
-  // the solver finishes this pass through the puzzle.
-  const hasAttemptedActivePuzzle = blindMode
-    ? Boolean(blindEntry?.resolved)
-    : hasResolvedAttempt || (!isCustomSetRoute && !isDashboardSetSolveMode && hasPersistedAttempt);
-  const boardShowsSolution = isAnalysisMode && puzzleSession.solutionRevealed;
+  const hasSubmittedAttempt = activePuzzleKey ? submittedPuzzleIds.has(activePuzzleKey) : false;
+  const entry = getPuzzleEntry({
+    previouslySolved: hasSolvedPuzzle,
+    hasRatedAttempt: hasPersistedAttempt,
+    requiresFreshAttempt: blindMode || isCustomSetRoute || isDashboardSetSolveMode,
+  });
+  const isRetryFeedbackActive = Boolean(
+    boardState.feedback === "retry" &&
+    boardState.view.line.source !== "solution" &&
+    !boardState.solved,
+  );
+  const sessionAccess = getPuzzleSessionAccess(puzzleSession, entry, isRetryFeedbackActive);
+  const isAnalysisMode = sessionAccess.analysis;
+  const blindPosition = isAnalysisMode ? null : blindLeadIn;
+  const hasAttemptedActivePuzzle = sessionAccess.hasAttempted;
+  const boardShowsSolution = puzzleSession.solutionRevealed;
   const canViewPostAttemptDetails = testMode
     ? puzzleSession.attempt === "solved" || boardShowsSolution
     : hasAttemptedActivePuzzle;
   const canViewOtherAttempts =
     canViewPostAttemptDetails ||
     (!testMode &&
+      !hasSolvedPuzzle &&
       !blindMode &&
       !isCustomSetRoute &&
       !isDashboardSetSolveMode &&
@@ -893,18 +897,14 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     hasAttemptedActivePuzzle && !routeSetKey && !routeCustomSetId && sourceMatchId,
   );
   const attemptedPuzzleBadgeLabel =
-    isCustomSetRoute || isDashboardSetSolveMode
+    hasSolvedPuzzle || isCustomSetRoute || isDashboardSetSolveMode
       ? SOLVED_BEFORE_BADGE_LABEL
       : ATTEMPTED_PUZZLE_BADGE_LABEL;
   // A creator's unrated solve still unlocks editing in analysis, including on revisit.
-  const canManagePuzzleExplanation =
-    isPuzzleExplanationEditor &&
-    isAnalysisMode &&
-    (hasAttemptedActivePuzzle || (hasUnratedAttempt && puzzleSession.attempt === "solved"));
+  const canManagePuzzleExplanation = isPuzzleExplanationEditor && isAnalysisMode;
   const canViewExplanation =
     canManagePuzzleExplanation ||
-    ((hasExplanation || isPuzzleExplanationEditor) &&
-      (canViewPostAttemptDetails || (!testMode && puzzleSession.attempt === "wrong")));
+    ((hasExplanation || isPuzzleExplanationEditor) && canViewPostAttemptDetails);
   const showSolution = activePuzzleInfoTab === "solution";
   const showExplanation = activePuzzleInfoTab === "explanation";
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
@@ -1083,6 +1083,13 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
 
   const handleAttemptResolved = useCallback(
     ({ puzzleId, puzzleCorrect, incorrectMove, correctMove }: AttemptResolved): void => {
+      const normalizedPuzzleId = toPuzzleKey(puzzleId);
+      if (
+        normalizedPuzzleId !== activePuzzleKey ||
+        isPuzzleSessionInAnalysis(puzzleSessionRef.current)
+      )
+        return;
+
       const elapsedAtAttempt = Math.max(
         0,
         elapsedTimerStartedAtRef.current === null
@@ -1098,12 +1105,17 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       elapsedTimerStartedAtRef.current = null;
       setElapsedTimeMs(elapsedTimeMsRef.current);
       setElapsedTimerRunning(false);
-      const normalizedPuzzleId = toPuzzleKey(puzzleId);
-      dispatchPuzzleSession({ type: "attempt-resolved", correct: puzzleCorrect });
-      setBlindEntry((entry) =>
-        entry?.key === blindEntryKey ? { ...entry, resolved: true } : entry,
-      );
-      setResolvedAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
+      dispatchPuzzleSession({
+        type: "attempt-resolved",
+        correct: puzzleCorrect,
+        entry,
+      });
+      if (entry === "replay") {
+        setActivePuzzleInfoTab("solution");
+        setSolutionNavigation(null);
+        setPinnedSolutionLineIndex(0);
+      }
+      setSubmittedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
       if (puzzleCorrect) {
         setSolvedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
       }
@@ -1111,13 +1123,15 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       // Test attempts drive the same board and analysis states, but never reach either write path.
       if (testMode) return;
 
-      enqueuePuzzleProgressWrite({
-        puzzleId: normalizedPuzzleId,
-        puzzleCorrect,
-        attemptDurationMs,
-        incorrectMove,
-        correctMove,
-      });
+      if (entry !== "replay") {
+        enqueuePuzzleProgressWrite({
+          puzzleId: normalizedPuzzleId,
+          puzzleCorrect,
+          attemptDurationMs,
+          incorrectMove,
+          correctMove,
+        });
+      }
       if (SERVER_CUSTOM_SET_ID_PATTERN.test(routeCustomSetId)) {
         void recordCustomPuzzleSetProgress(routeCustomSetId, normalizedPuzzleId, puzzleCorrect)
           .then(() =>
@@ -1128,7 +1142,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
           .catch((error) => globalThis.console?.error(error));
       }
     },
-    [enqueuePuzzleProgressWrite, queryClient, blindEntryKey, routeCustomSetId, testMode],
+    [activePuzzleKey, enqueuePuzzleProgressWrite, queryClient, entry, routeCustomSetId, testMode],
   );
 
   const resetPuzzleUiState = useCallback(() => {
@@ -1151,26 +1165,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     setOtherPuzzleAttemptsStatus("idle");
     setOtherPuzzleAttempts([]);
     previousBoardSnapshotRef.current = createInitialBoardSnapshot();
-  }, [activePuzzleKey, blindMode, fen, resetPuzzleUiState]);
-
-  useLayoutEffect(() => {
-    if (!activePuzzleKey || !attemptedPuzzleIdsReady || hasResolvedAttempt) return;
-    if (blindMode || isCustomSetRoute || isDashboardSetSolveMode) return;
-
-    dispatchPuzzleSession({
-      type: "hydrate",
-      attempt: hasSolvedPuzzle ? "solved" : hasPersistedAttempt ? "wrong" : "unresolved",
-    });
-  }, [
-    activePuzzleKey,
-    attemptedPuzzleIdsReady,
-    blindMode,
-    hasPersistedAttempt,
-    hasResolvedAttempt,
-    hasSolvedPuzzle,
-    isCustomSetRoute,
-    isDashboardSetSolveMode,
-  ]);
+  }, [puzzleVisitKey, blindMode, fen, resetPuzzleUiState]);
 
   useLayoutEffect(() => {
     const shouldStartTimer = Boolean(
@@ -1189,7 +1184,15 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       shouldStartTimer && !timerExpired ? window.performance.now() - initialElapsedTime : null;
     setElapsedTimeMs(initialElapsedTime);
     setElapsedTimerRunning(shouldStartTimer && !timerExpired);
-  }, [activePuzzleKey, attemptedPuzzleIdsReady, fen, hasSolvedPuzzle, introPending, testMode]);
+  }, [
+    activePuzzleKey,
+    attemptedPuzzleIdsReady,
+    fen,
+    hasSolvedPuzzle,
+    introPending,
+    puzzleVisitKey,
+    testMode,
+  ]);
 
   useEffect(() => {
     if (!elapsedTimerRunning || elapsedTimerStartedAtRef.current === null) return undefined;
@@ -1240,16 +1243,9 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     };
   }, [mobileFeedback]);
 
-  const isRetryFeedbackActive = Boolean(
-    boardState.feedback === "retry" &&
-    boardState.view.line.source !== "solution" &&
-    !boardState.solved,
-  );
-  const canRevealSolution =
-    Boolean(fen) &&
-    (hasAttemptedActivePuzzle || puzzleSession.attempt === "wrong") &&
-    !isRetryFeedbackActive &&
-    !introPending;
+  const controlsReady = Boolean(fen) && !introPending;
+  const canGiveUp = controlsReady && sessionAccess.canGiveUp;
+  const canRevealSolution = controlsReady && sessionAccess.canViewSolution;
   const solutionButtonTitle = isRetryFeedbackActive
     ? "Find the better move before viewing the solution."
     : hasAttemptedActivePuzzle
@@ -1310,16 +1306,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     onNext: canGoToNextPuzzle ? handleNextPuzzle : undefined,
   });
 
-  const handleSelectSolutionTab = () => {
-    if (!canRevealSolution) return;
-
-    if (showSolution) {
-      setActivePuzzleInfoTab(null);
-      setSolutionNavigation(null);
-      return;
-    }
-
-    dispatchPuzzleSession({ type: "enter-analysis", revealSolution: true });
+  const revealSolution = () => {
+    dispatchPuzzleSession({ type: "reveal-solution" });
     setActivePuzzleInfoTab("solution");
     setSolutionNavigation(null);
     if (isMobileLayout) {
@@ -1329,8 +1317,18 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     }
   };
 
+  const handleSelectSolutionTab = () => {
+    if (!canRevealSolution) return;
+    if (showSolution) {
+      setActivePuzzleInfoTab(null);
+      setSolutionNavigation(null);
+    } else {
+      revealSolution();
+    }
+  };
+
   const handleGiveUp = () => {
-    if (puzzleSession.attempt !== "wrong" || isAnalysisMode || introPending) return;
+    if (!canGiveUp) return;
 
     const elapsedAtGiveUp =
       elapsedTimerStartedAtRef.current === null
@@ -1340,10 +1338,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     elapsedTimerStartedAtRef.current = null;
     setElapsedTimeMs(elapsedTimeMsRef.current);
     setElapsedTimerRunning(false);
-    dispatchPuzzleSession({ type: "enter-analysis", revealSolution: true });
-    setActivePuzzleInfoTab("solution");
-    setSolutionNavigation(null);
     setPinnedSolutionLineIndex(0);
+    revealSolution();
   };
 
   const loadOtherPuzzleAttempts = () => {
@@ -1495,22 +1491,24 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
           previousLine.index !== nextLine.index);
       const nextCompletionFeedback = buildCompletionFeedback(
         nextBoardState,
-        currentSession.attempt === "wrong",
+        currentSession.attempt === "wrong" || entry === "retry",
       );
       const shouldShowTransientFeedback =
         nextCompletionFeedback !== null && nextLine.source !== "solution";
 
       setBoardState(nextBoardState);
-      if (nextCompletionFeedback) {
-        dispatchPuzzleSession({ type: "board-feedback", feedback: nextCompletionFeedback });
-      } else {
-        dispatchPuzzleSession({ type: "board-idle", positionChanged: boardPositionChanged });
+      const inAnalysis = isPuzzleSessionInAnalysis(currentSession);
+      if (shouldShowTransientFeedback || (!inAnalysis && boardPositionChanged)) {
+        dispatchPuzzleSession({
+          type: "board-feedback",
+          feedback: shouldShowTransientFeedback ? nextCompletionFeedback : null,
+        });
       }
 
       if (isMobileLayout) {
         if (shouldShowTransientFeedback) {
           showMobileFeedback(nextCompletionFeedback);
-        } else if (currentSession.mode === "play" && boardPositionChanged) {
+        } else if (!inAnalysis && boardPositionChanged) {
           setMobileFeedback(null);
         }
       }
@@ -1520,7 +1518,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       }
 
       if (
-        currentSession.mode === "analysis" &&
         currentSession.solutionRevealed &&
         previousLine.source === "solution" &&
         nextLine.source === "solution" &&
@@ -1538,7 +1535,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         setSolutionNavigation(null);
       }
     },
-    [isMobileLayout, showMobileFeedback],
+    [entry, isMobileLayout, showMobileFeedback],
   );
 
   const handlePlaybackCommand = useCallback((command: PlaybackCommand): void => {
@@ -1685,14 +1682,14 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       activeLineIndex={activeVariationLineIndex}
       onNavigate={(ply) => setSolutionNavigation({ type: "history", ply })}
       onSelectVariation={(lineIndex, moveIndex) => {
-        dispatchPuzzleSession({ type: "enter-analysis", revealSolution: true });
+        dispatchPuzzleSession({ type: "reveal-solution" });
         handleVariationMoveClick(lineIndex, moveIndex);
       }}
       onCycleOptions={(command) => setSolutionNavigation({ type: "command", command })}
       onPlayLine={(ucis) => setSolutionNavigation({ type: "line", ucis })}
       onHoverMove={setAnalysisPreviewMove}
       onEngineMovesChange={setAnalysisEngineMoves}
-      canGiveUp={puzzleSession.attempt === "wrong" && !isAnalysisMode && !introPending}
+      canGiveUp={canGiveUp}
       onGiveUp={handleGiveUp}
       playback={playback}
       onNavigateMoves={handlePlaybackCommand}
@@ -1705,11 +1702,11 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       {...(testMode ? { lockedDetailsHint: "Solve the puzzle or give up first." } : {})}
       activeTab={activePuzzleInfoTab}
       solution={{
-        canReveal: canRevealSolution,
-        canGiveUp: puzzleSession.attempt === "wrong" && !isAnalysisMode,
-        buttonTitle: solutionButtonTitle,
+        canReveal: canGiveUp || canRevealSolution,
+        canGiveUp,
+        buttonTitle: canGiveUp ? "Give up and reveal the solution" : solutionButtonTitle,
         mobileAnalysis: mobile ? puzzleAnalysisPanel : undefined,
-        onToggle: handleSelectSolutionTab,
+        onToggle: canGiveUp ? handleGiveUp : handleSelectSolutionTab,
       }}
       explanation={{
         available: hasExplanation || isPuzzleExplanationEditor,
@@ -1943,7 +1940,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       leadIn={blindPosition}
       played={currentAnalysisMoves}
       error={boardState.error}
-      canGiveUp={!isMobileLayout && puzzleSession.attempt === "wrong" && !isRetryFeedbackActive}
+      canGiveUp={!isMobileLayout && canGiveUp}
       onGiveUp={handleGiveUp}
     />
   ) : null;
@@ -1953,7 +1950,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     attemptedPuzzleIdsReady &&
     normalizedUsername === normalizedAuthor &&
     !hasPersistedAttempt &&
-    (!hasResolvedAttempt || permanentUnratedIds.has(activePuzzleKey)) ? (
+    (!hasSubmittedAttempt || permanentUnratedIds.has(activePuzzleKey)) ? (
       <label
         className="puzzleUnratedOption"
         title="Mark unrated if you remember this puzzle and don’t want it to affect your rating. You can change this before attempting the puzzle. After a correct or incorrect attempt, it is permanent for your account."
@@ -1961,7 +1958,9 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         <input
           type="checkbox"
           checked={permanentUnratedIds.has(activePuzzleKey)}
-          disabled={hasResolvedAttempt || hasUnratedAttempt || unratedMarkStatus.state === "saving"}
+          disabled={
+            hasSubmittedAttempt || hasUnratedAttempt || unratedMarkStatus.state === "saving"
+          }
           onChange={(event) => void markPuzzleUnrated(event.target.checked)}
         />
         <span>Permanently unrated</span>
@@ -2296,7 +2295,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
             (!autoplayIntro || attemptedPuzzleIdsReady) &&
             (!blindPlies || blindEntryReady) ? (
               <Chessboard
-                key={`${activePuzzleId}:${blindMode}`}
+                key={`${puzzleVisitKey}:${blindMode}`}
                 intro={activePuzzle?.intro}
                 autoplayIntro={autoplayIntro}
                 blindFen={blindPosition?.beforeFen}
@@ -2443,7 +2442,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         </>
       ) : null}
 
-      {isMobileLayout && hasAttemptedActivePuzzle ? (
+      {isMobileLayout && (hasAttemptedActivePuzzle || canGiveUp) ? (
         <div className="mobileWorkflowPanel">
           <div className="mobileActionCard">{renderPuzzleInfoSection(true)}</div>
         </div>

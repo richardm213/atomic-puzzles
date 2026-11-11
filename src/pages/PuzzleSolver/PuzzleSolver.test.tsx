@@ -914,6 +914,7 @@ describe("PuzzleSolverPage solution options", () => {
 
   it("shows puzzle motifs after the puzzle has been attempted", async () => {
     render(<PuzzleSolverPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
 
     const motifList = await screen.findByLabelText("Tags on this puzzle");
     expect(within(motifList).getByText("Fork")).toBeInTheDocument();
@@ -939,6 +940,7 @@ describe("PuzzleSolverPage solution options", () => {
   it("shows the issue report only after an attempt and submits the selected category", async () => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
+    await user.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
 
     await user.click(await screen.findByRole("button", { name: "Report issue" }));
     const dialog = screen.getByRole("dialog", { name: "Report puzzle issue" });
@@ -978,6 +980,7 @@ describe("PuzzleSolverPage solution options", () => {
       .mockResolvedValueOnce([fork, epaulette]);
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
+    await user.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
 
     const motifs = await screen.findByLabelText("Tags on this puzzle");
     const forkButton = await within(motifs).findByRole("button", {
@@ -1032,6 +1035,7 @@ describe("PuzzleSolverPage solution options", () => {
       .mockResolvedValueOnce([{ ...fork, up: 4, vote: 1 }]);
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
+    await user.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
 
     const motifs = await screen.findByLabelText("Tags on this puzzle");
     const upvote = await within(motifs).findByRole("button", { name: /^Upvote Fork\b/ });
@@ -1081,6 +1085,12 @@ describe("PuzzleSolverPage solution options", () => {
 
     await waitFor(() => expect(mocks.chessboardProps.at(-1)?.onStateChange).toBeTypeOf("function"));
     act(() => {
+      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+        puzzleId: 1369,
+        puzzleCorrect: false,
+        incorrectMove: "1... Kd7",
+        correctMove: null,
+      });
       mocks.chessboardProps.at(-1)?.onStateChange?.({
         fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
         turn: "black",
@@ -1169,7 +1179,7 @@ describe("PuzzleSolverPage solution options", () => {
     },
   );
 
-  it("lets an author edit an explanation when revisiting an unrated solve in analysis", async () => {
+  it("lets an author edit an explanation after resigning a replay on mobile", async () => {
     mocks.username = "puzzle_author";
     mocks.puzzleAuthor = "puzzle_author";
     mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValue([
@@ -1182,11 +1192,25 @@ describe("PuzzleSolverPage solution options", () => {
     ]);
     const refreshedUntil = "2099-01-01T00:00:00Z";
     mocks.refreshOwnPuzzleCooldown.mockResolvedValue({ unratedUntil: refreshedUntil });
+    vi.mocked(window.matchMedia).mockImplementation((media) => ({
+      media,
+      matches: media.startsWith("(max-width: 460px)"),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }) as unknown as MediaQueryList);
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
 
-    const explanationTab = await screen.findByRole("tab", { name: "Explanation" });
-    await waitFor(() => expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true));
+    const explanationTab = await screen.findByRole("tab", { name: "Explain" });
+    const giveUp = await screen.findByRole("tab", { name: "Give up" });
+    expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(false);
+    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
+    expect(explanationTab).toBeDisabled();
+
+    await user.click(giveUp);
+
+    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
+    expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
     expect(mocks.refreshOwnPuzzleCooldown).toHaveBeenCalledWith("1369");
     expect(
       (
@@ -1243,6 +1267,10 @@ describe("PuzzleSolverPage solution options", () => {
       ]);
       render(<PuzzleSolverPage />);
       const restored = await screen.findByRole("tab", { name: "Other attempts" });
+      if (puzzleCorrect) {
+        expect(restored).toBeDisabled();
+        await user.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
+      }
       await waitFor(() => expect(restored).toBeEnabled());
       await user.click(restored);
       expect(await screen.findByRole("list", { name: "Other puzzle attempts" })).toBeVisible();
@@ -1261,6 +1289,7 @@ describe("PuzzleSolverPage solution options", () => {
   it("shows an attempt time when one was recorded", async () => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
+    await user.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
 
     await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
 
@@ -1270,6 +1299,7 @@ describe("PuzzleSolverPage solution options", () => {
   it("can hide attempt answers for sharing", async () => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
+    await user.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
 
     await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
     expect(await screen.findByLabelText("Played 1. Rf8")).toBeInTheDocument();
@@ -1295,6 +1325,7 @@ describe("PuzzleSolverPage solution options", () => {
       .mockRejectedValueOnce(new Error("Network unavailable"));
 
     render(<PuzzleSolverPage />);
+    await user.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
 
     await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
     expect(await screen.findByText("Could not load attempts.")).toBeInTheDocument();
@@ -1337,6 +1368,7 @@ describe("PuzzleSolverPage solution options", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Toggle position analysis" })).toBeInTheDocument(),
     );
+    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
     expect(screen.getByRole("tab", { name: "Explanation" })).toBeEnabled();
     expect(screen.getByRole("tab", { name: "Other attempts" })).toBeEnabled();
     expect(screen.getByLabelText("Puzzle tags")).toBeInTheDocument();
@@ -1462,11 +1494,38 @@ describe("PuzzleSolverPage solution options", () => {
     performanceNow.mockRestore();
   });
 
-  it("does not track elapsed time for a previously solved puzzle", async () => {
+  it("reveals the solution after a replayed attempt without changing the saved solve", async () => {
     render(<PuzzleSolverPage />);
 
-    await screen.findByRole("button", { name: "Toggle position analysis" });
+    await screen.findByRole("button", { name: "Give up and reveal the solution" });
+    const board = mocks.chessboardProps.at(-1);
+    expect(board?.analysisMode).toBe(false);
+    expect(board?.showSolution).toBe(false);
     expect(screen.queryByLabelText(/^Elapsed time/)).not.toBeInTheDocument();
+
+    act(() => {
+      board?.onAttemptResolved?.({
+        puzzleId: 1369,
+        puzzleCorrect: false,
+        incorrectMove: "1... Kd7",
+        correctMove: null,
+      });
+      board?.onStateChange?.({
+        fen: "rn2k2r/pp5p/1qpp2p1/2Q5/1b2P3/2N5/PPP3PP/R3KB1R b KQkq - 1 12",
+        turn: "black",
+        status: "Incorrect",
+        error: "",
+        lineMoves: ["Kd7"],
+        solutionLines: [["O-O"]],
+        view: { line: { source: "history" }, position: 1 },
+        feedback: "wrong",
+        solved: false,
+      });
+    });
+
+    expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true);
+    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
+    expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
   });
 
   it("shows the opening move only after replay and excludes it from the attempt duration", async () => {
