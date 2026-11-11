@@ -48,7 +48,7 @@ export const CoinEarnedToast = () => {
                 <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
               </span>
               <span className="coinEarnedCopy">
-                <strong>{formatCoinAmount(reward.amount)} coins</strong>
+                <strong>{formatCoinAmount(reward.amount, reward.precise)} coins</strong>
                 <span>{reward.label}</span>
               </span>
             </div>

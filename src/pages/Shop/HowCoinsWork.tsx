@@ -8,7 +8,6 @@ import { Seo } from "../../components/Seo/Seo";
 import { formatCoinAmount } from "../../lib/coins/coinDisplay";
 import { DAILY_COIN_BONUS } from "../../lib/coins/coins";
 import { calculateCorrectAttemptSpeedBonus } from "../../lib/coins/speedBonus";
-import { calculateIncorrectAttemptSpeedPenalty } from "../../lib/coins/speedPenalty";
 import { appAssetPath } from "../../utils/appAssetPath";
 
 const creationRewards = [
@@ -27,6 +26,23 @@ const solvingRewards = [
 
 const speedAdjustmentSeconds = [3, 5, 10, 15, 20, 25, 30] as const;
 
+const retryRewards = [
+  ["0", "100%", "Speed bonus on your first-ever, first-try solve"],
+  ["1", "50%", "No speed adjustment"],
+  ["2", "25%", "No speed adjustment"],
+  ["3", "12.5%", "No speed adjustment"],
+  ["4 or more", "No reward", "Further graded mistakes still cost coins"],
+] as const;
+
+const attemptColors = [
+  ["Green", "Solved on try 1"],
+  ["Yellow", "Solved on try 2"],
+  ["Orange", "Solved on try 3"],
+  ["Red", "Solved on try 4 or later, or unsolved after 1–2 misses"],
+  ["Purple", "Unsolved after 3 or more misses"],
+  ["Blue", "Two consecutive correct graded runs, with no mistakes in either run"],
+] as const;
+
 const CoinAmount = ({ amount }: { amount: number }) => (
   <span className={amount < 0 ? "coinAmount coinAmountPenalty" : "coinAmount"}>
     <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
@@ -38,7 +54,7 @@ export const HowCoinsWorkPage = () => (
   <div className="page coinGuidePage">
     <Seo
       title="How to Earn Coins"
-      description="Learn how to earn Atomic Coins by creating, solving, and tagging puzzles."
+      description="Learn how to earn Atomic Coins through puzzle creation, rated attempts, grading, repeat solves, and tagging."
       path="/shop/how-coins-work"
     />
 
@@ -78,13 +94,24 @@ export const HowCoinsWorkPage = () => (
             <div className="coinRewardGroupHeader">
               <h2 id="solve-puzzle-rewards">Solve puzzles</h2>
             </div>
+            <p>
+              Your first-ever submitted result on a puzzle is rated and graded. Rated results affect
+              your puzzle rating. Graded results determine coin rewards, penalties, and your color
+              in Other Attempts. Later submissions affect coins only when grading is available. A
+              first-result rating loss stays even if you later solve the puzzle.
+            </p>
+            <p>
+              The amounts below are the base reward and first-miss penalty for a graded run. A run
+              starts when you submit your first move and ends when you solve or confirm resignation.
+              Refreshing, closing the tab, or returning later resumes an unfinished run.
+            </p>
             <div className="coinOutcomeTableWrap">
               <table className="coinOutcomeTable">
                 <thead>
                   <tr>
                     <th scope="col">Level</th>
-                    <th scope="col">First-try solve</th>
-                    <th scope="col">First-try miss</th>
+                    <th scope="col">Base reward</th>
+                    <th scope="col">First-miss penalty</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -106,11 +133,111 @@ export const HowCoinsWorkPage = () => (
                 </tbody>
               </table>
             </div>
-            <section className="coinSpeedAdjustment" aria-labelledby="speed-adjustment-heading">
-              <h3 id="speed-adjustment-heading">Speed bonus/penalty</h3>
+            <section className="coinGradingRules" aria-labelledby="retry-rewards-heading">
+              <h3 id="retry-rewards-heading">Keep trying within a run</h3>
+              <p>
+                You can still earn coins after a mistake. Each wrong submission halves the reward
+                available for solving, until four misses end reward eligibility for that run.
+              </p>
+              <div className="coinOutcomeTableWrap">
+                <table className="coinOutcomeTable">
+                  <thead>
+                    <tr>
+                      <th scope="col">Misses before solving</th>
+                      <th scope="col">Share of base reward</th>
+                      <th scope="col">Adjustment</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {retryRewards.map(([misses, reward, adjustment]) => (
+                      <tr key={misses}>
+                        <th scope="row">{misses}</th>
+                        <td>{reward}</td>
+                        <td>{adjustment}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p>
+                Each graded mistake posts its own permanent debit and sends a notification. The
+                first costs the full penalty, the second half, the third a quarter, and so on. The
+                total approaches twice the first-miss penalty. Further graded mistakes still incur
+                these decreasing penalties after four misses. Solving pays a separate reward and
+                keeps the earlier deductions in your history.
+              </p>
+              <p>
+                For example, with a 10-coin base reward and a 2-coin first-miss penalty, two misses
+                followed by a solve produce deductions of 2 and 1 coins, then a reward of 2.5 coins.
+                Your net change is −0.5 coins.
+              </p>
+            </section>
+
+            <section className="coinGradingRules" aria-labelledby="grading-cooldown-heading">
+              <h3 id="grading-cooldown-heading">Grading cooldown and repeat solves</h3>
+              <p>
+                Completing a solve or confirming resignation starts a two-month grading cooldown.
+                Attempts during the cooldown are saved as practice. They carry no coin rewards, coin
+                penalties, or rating changes. Completing another correct solve during the cooldown
+                restarts the two-month timer. Resigning again after submitting a move also restarts
+                it.
+              </p>
+              <p>
+                When the cooldown expires, you can start a fresh graded run with its miss counter
+                reset. Previously solved puzzles earn one quarter of the base reward and charge one
+                quarter of the base penalty. The same retry reductions and four-miss reward cutoff
+                apply to those reduced amounts. Returning graded runs have no speed adjustment.
+              </p>
+              <p>
+                Before submitting a move, you can leave or skip freely. Resignation becomes
+                available after a wrong submission. Click once to highlight it and again to confirm.
+                Resigning ends the run without adding another miss, debit, or rating change. On
+                later visits, your eligibility shows whether grading is available or how long
+                remains, such as “Grading returns in 1.8 months.” This status stays hidden
+                throughout your initial run, including retries.
+              </p>
+            </section>
+
+            <section className="coinGradingRules" aria-labelledby="attempt-colors-heading">
+              <h3 id="attempt-colors-heading">Other Attempts colors</h3>
+              <p>
+                Every submission and resignation is saved. Other Attempts shows one row per player,
+                always using the move and time from their first attempt. The color updates with
+                graded results. Hover over its colored indicator for the explanation.
+              </p>
+              <div className="coinOutcomeTableWrap">
+                <table className="coinOutcomeTable">
+                  <thead>
+                    <tr>
+                      <th scope="col">Color</th>
+                      <th scope="col">Graded result</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attemptColors.map(([color, result]) => (
+                      <tr key={color}>
+                        <th scope="row">{color}</th>
+                        <td>{result}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p>
+                Try counts belong to the run that produced the solve. Blue counts only graded runs,
+                with the repeat solve occurring after the grading cooldown. A practice solve during
+                cooldown cannot earn blue. A graded mistake resets the blue streak and restores your
+                original solve color. If your first attempt was correct, a later incorrect attempt
+                leaves you green.
+              </p>
+            </section>
+
+            <section className="coinGradingRules" aria-labelledby="speed-adjustment-heading">
+              <h3 id="speed-adjustment-heading">First-try speed bonus</h3>
               <p className="coinSpeedAdjustmentCaption">
-                Rated first attempts under 30 seconds get a time adjustment. Correct V1–V3 solves
-                earn a small bonus; incorrect attempts get an added deduction.
+                A correct first-ever, first-try solve on a V1–V3 puzzle earns a small speed bonus
+                when completed in under 30 seconds. Retries and returning graded runs have no speed
+                bonus or penalty.
               </p>
               <div className="coinOutcomeTableWrap">
                 <table className="coinOutcomeTable">
@@ -118,13 +245,11 @@ export const HowCoinsWorkPage = () => (
                     <tr>
                       <th scope="col">Attempt time</th>
                       <th scope="col">V1–V3 solve bonus</th>
-                      <th scope="col">Incorrect deduction</th>
                     </tr>
                   </thead>
                   <tbody>
                     {speedAdjustmentSeconds.map((seconds) => {
                       const bonus = calculateCorrectAttemptSpeedBonus(3, seconds * 1_000);
-                      const penalty = calculateIncorrectAttemptSpeedPenalty(seconds * 1_000);
                       return (
                         <tr key={seconds}>
                           <th scope="row">{seconds} sec</th>
@@ -133,13 +258,6 @@ export const HowCoinsWorkPage = () => (
                               <span className="coinNoPenalty">No bonus</span>
                             ) : (
                               <CoinAmount amount={bonus} />
-                            )}
-                          </td>
-                          <td>
-                            {penalty === 0 ? (
-                              <span className="coinNoPenalty">No deduction</span>
-                            ) : (
-                              <CoinAmount amount={-penalty} />
                             )}
                           </td>
                         </tr>

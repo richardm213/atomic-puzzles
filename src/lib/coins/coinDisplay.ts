@@ -14,8 +14,11 @@ export const formatCoinBalance = (value: number): string =>
 export const formatCoinValue = (value: number): string =>
   normalizedCoinValue(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
-export const formatCoinAmount = (value: number): string => {
+export const formatCoinAmount = (value: number, precise = false): string => {
   const normalized = normalizedCoinValue(value);
+  if (precise) {
+    return `${normalized > 0 ? "+" : ""}${normalized.toLocaleString(undefined, { maximumFractionDigits: 6 })}`;
+  }
   if (normalized < 0) {
     return displayedCoinDeduction(normalized).toLocaleString(undefined, {
       maximumFractionDigits: 1,

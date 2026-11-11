@@ -51,6 +51,21 @@ const installApiMocks = async (page: Page) => {
     }
     return jsonResponse(route, { rows: [] });
   });
+  await page.route("**/api/puzzles/progress", (route) => {
+    const body = route.request().postDataJSON();
+    if (body.action === "gradingState")
+      return jsonResponse(route, {
+        runId: null,
+        graded: true,
+        availableAt: null,
+        permanent: false,
+        hasAttempted: false,
+        hasSolved: false,
+        misses: 0,
+        color: null,
+      });
+    return jsonResponse(route, { error: "No browser-test fixture for this progress write." }, 404);
+  });
   await page.route("**/api/puzzles/play", async (route) => {
     const body = route.request().postDataJSON() as { puzzleIds?: Array<number | string> };
     const requestedIds = new Set((body.puzzleIds ?? []).map(String));

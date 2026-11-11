@@ -11,6 +11,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { type FormEvent, type ReactNode, useState } from "react";
 
+import { puzzleAttemptColorExplanation } from "../../../shared/domain/puzzles/puzzleGrading";
 import { CommunityCommentsLink } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
 import type { PuzzleProgressWithUsernameRow } from "../../lib/supabase/puzzleProgress";
 import type { AsyncActionStatus } from "../../types/async";
@@ -26,6 +27,7 @@ type PuzzleInfoSectionProps = {
   solution: {
     canReveal: boolean;
     canGiveUp: boolean;
+    resignArmed?: boolean;
     buttonTitle: string;
     mobileAnalysis?: ReactNode;
     onToggle: () => void;
@@ -104,9 +106,14 @@ const AttemptsPanel = ({
                   {attempt.username}
                 </Link>
                 <span
-                  className={`puzzleOtherAttemptResult ${
-                    attempt.puzzle_correct ? "correct" : "incorrect"
-                  }`}
+                  className={`puzzleOtherAttemptResult ${attempt.attempt_color ?? (attempt.puzzle_correct ? "green" : "red")}`}
+                  tabIndex={0}
+                  title={puzzleAttemptColorExplanation(
+                    attempt.attempt_color ?? (attempt.puzzle_correct ? "green" : "red"),
+                  )}
+                  aria-label={puzzleAttemptColorExplanation(
+                    attempt.attempt_color ?? (attempt.puzzle_correct ? "green" : "red"),
+                  )}
                 >
                   <FontAwesomeIcon
                     icon={attempt.puzzle_correct ? faCheck : faXmark}
@@ -115,12 +122,6 @@ const AttemptsPanel = ({
                       hideAnswers ? undefined : attempt.puzzle_correct ? "Correct" : "Incorrect"
                     }
                   />
-                  {hideAnswers ? (
-                    <span>{attempt.puzzle_correct ? "Correct" : "Incorrect"}</span>
-                  ) : null}
-                  {attempt.rated === false ? (
-                    <span className="puzzleOtherAttemptRated">Unrated</span>
-                  ) : null}
                   {!hideAnswers && attempt.puzzle_correct && attempt.correct_move ? (
                     <span
                       className="puzzleOtherAttemptMove"
@@ -251,7 +252,7 @@ export const PuzzleInfoSection = ({
           <button
             type="button"
             role="tab"
-            className={`puzzleInfoTab ${showSolution ? "active" : ""}`}
+            className={`puzzleInfoTab ${showSolution ? "active" : ""} ${solution.resignArmed ? "isArmed" : ""}`}
             onClick={solution.onToggle}
             disabled={!solution.canReveal}
             aria-selected={showSolution}
@@ -262,7 +263,13 @@ export const PuzzleInfoSection = ({
               icon={solution.canGiveUp ? faFlag : faMagnifyingGlassChart}
               aria-hidden="true"
             />
-            <span>{solution.canGiveUp ? "Give up" : "Solution"}</span>
+            <span>
+              {solution.canGiveUp
+                ? solution.resignArmed
+                  ? "Confirm resignation"
+                  : "Resign"
+                : "Solution"}
+            </span>
             {showSolution ? (
               <span className="puzzleInfoTabToggle" aria-hidden="true">
                 ⌃
@@ -285,7 +292,7 @@ export const PuzzleInfoSection = ({
                 ? "Hide the puzzle explanation"
                 : !explanation.canView
                   ? (lockedDetailsHint ??
-                    "Attempt this puzzle before viewing or editing the explanation.")
+                    "Solve the puzzle or confirm resignation before viewing the explanation.")
                   : explanation.canManage
                     ? explanation.hasContent
                       ? "View or edit the puzzle explanation"
@@ -313,7 +320,8 @@ export const PuzzleInfoSection = ({
                 : "Hide other attempts"
               : attempts.canView
                 ? "View other attempts for this puzzle"
-                : (lockedDetailsHint ?? "Attempt this puzzle before viewing other attempts.")
+                : (lockedDetailsHint ??
+                  "Solve the puzzle or confirm resignation before viewing other attempts.")
           }
         >
           <FontAwesomeIcon icon={faUsers} aria-hidden="true" />
@@ -338,7 +346,7 @@ export const PuzzleInfoSection = ({
             title={
               comments.canView
                 ? "Jump to the puzzle discussion"
-                : "Attempt this puzzle before viewing comments."
+                : "Solve the puzzle or confirm resignation before viewing comments."
             }
           />
         ) : null}

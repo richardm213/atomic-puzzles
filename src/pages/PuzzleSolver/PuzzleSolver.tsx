@@ -29,6 +29,10 @@ import {
 import { rewindPuzzleLeadIn } from "../../../shared/domain/puzzles/gameHistory";
 import { PUZZLE_ADMIN_USERNAME } from "../../../shared/domain/puzzles/puzzleAdmin";
 import {
+  puzzleGradingLabel,
+  type PuzzleGradingState,
+} from "../../../shared/domain/puzzles/puzzleGrading";
+import {
   normalizePuzzleLevel,
   type PuzzleLevel,
   puzzleLevelLabel,
@@ -82,11 +86,11 @@ import {
 } from "../../lib/puzzles/puzzleSets";
 import {
   fetchPuzzleAttemptsForPuzzle,
+  fetchPuzzleGradingState,
   fetchPuzzleProgressRowsForUsername,
   fetchPuzzleRatingExclusions,
   type PuzzleProgressWithUsernameRow,
   recordPuzzleProgress,
-  refreshOwnPuzzleCooldown,
   setOwnPuzzlePermanentlyUnrated,
 } from "../../lib/supabase/puzzleProgress";
 import type { PuzzleRatingEvent } from "../../lib/supabase/puzzleUserRatings";
@@ -110,7 +114,6 @@ import {
   buildCompletionFeedback,
   type CompletionFeedback,
   createInitialPuzzleSession,
-  getPuzzleEntry,
   getPuzzleSessionAccess,
   isPuzzleSessionInAnalysis,
   puzzleSessionReducer,
@@ -218,11 +221,20 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const loadDetails = testMode ? loadTestPuzzlesById : loadPuzzlesById;
   const { puzzles, setPuzzles, loadingError, setLoadingError, mergeLoadedPuzzles } =
     usePuzzleCatalog(routePuzzleId, routeSetKey || routeDashboardSetId, loadDetails);
+  const gradingStatesRef = useRef(new Map<string, PuzzleGradingState>());
+  const [gradingAtEntry, setGradingAtEntry] = useState<{ key: string; attempted: boolean } | null>(
+    null,
+  );
+  const [resignArmed, setResignArmed] = useState(false);
+  const retryProgressWriteRef = useRef<(() => Promise<void>) | null>(null);
+  const [progressSaveError, setProgressSaveError] = useState("");
+  const [progressSaving, setProgressSaving] = useState(false);
   const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [solvedPuzzleIds, setSolvedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [unratedPuzzleIds, setUnratedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [permanentUnratedIds, setPermanentUnratedIds] = useState<Set<string>>(() => new Set());
   const [unratedMarkStatus, setUnratedMarkStatus] = useState<AsyncActionStatus>({ state: "idle" });
+  const [gradingAvailability, setGradingAvailability] = useState(new Map<string, string | null>());
   const [ratingExclusions, setRatingExclusions] = useState<Map<string, string>>(() => new Map());
   const [dailyAttemptCount, setDailyAttemptCount] = useState(0);
   const [attemptedPuzzleIdsOwner, setAttemptedPuzzleIdsOwner] = useState<string | null>(null);
@@ -444,6 +456,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       return undefined;
     }
 
+    gradingStatesRef.current.clear();
+    setGradingAvailability(new Map());
     setAttemptedPuzzleIds(new Set());
     setRatingExclusions(new Map());
     setPermanentUnratedIds(new Set());
@@ -466,6 +480,11 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
           setRatingExclusions(
             new Map(exclusions.map((row) => [String(row.puzzle_id), row.expires_at])),
           );
+          setGradingAvailability(
+            new Map(
+              progressRows.map((row) => [String(row.puzzle_id), row.grading_available_at ?? null]),
+            ),
+          );
           const todayRows = progressRows.filter((row) => isTimestampInUtcDay(row.first_attempt_at));
           setAttemptedPuzzleIds(
             new Set(
@@ -474,7 +493,9 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
           );
           setSolvedPuzzleIds(
             new Set(
-              progressRows.filter((row) => row.puzzle_correct).map((row) => String(row.puzzle_id)),
+              progressRows
+                .filter((row) => row.has_solved ?? row.puzzle_correct)
+                .map((row) => String(row.puzzle_id)),
             ),
           );
           setUnratedPuzzleIds(
@@ -572,7 +593,17 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       const puzzle = puzzles[index];
       if (!puzzle || index === activePuzzleIndex) return false;
       const key = String(puzzle.puzzleId);
-      if (visitedPuzzleIds.has(key) || attemptedPuzzleIds.has(key)) return false;
+      if (visitedPuzzleIds.has(key)) return false;
+      if (gradingAvailability.has(key)) {
+        const availableAt = gradingAvailability.get(key);
+        const excludedUntil = ratingExclusions.get(key);
+        return (
+          !permanentUnratedIds.has(key) &&
+          !(excludedUntil && Date.parse(excludedUntil) > now.getTime()) &&
+          Boolean(availableAt && Date.parse(availableAt) <= now.getTime()) &&
+          !(excludeOwnPuzzles && normalizeUsername(puzzle.author) === normalizedUsername)
+        );
+      }
       if (
         excludeOwnPuzzles &&
         normalizedUsername &&
@@ -602,7 +633,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     return upcoming;
   }, [
     activePuzzleIndex,
-    attemptedPuzzleIds,
     attemptedPuzzleIdsReady,
     excludeOwnPuzzles,
     normalizedUsername,
@@ -610,6 +640,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     puzzles,
     ratingExclusions,
     shuffledPuzzleIndexes,
+    gradingAvailability,
     unratedPuzzleIds,
     visitedPuzzleIds,
   ]);
@@ -751,48 +782,26 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         excludedUntil: ratingExclusions.get(activePuzzleKey),
         permanentlyUnrated: permanentUnratedIds.has(activePuzzleKey),
       });
-  // Track the active puzzle, not the batched detail requests used to prefetch it.
+  const gradingQuery = useQuery({
+    queryKey: ["puzzle-grading", normalizedUsername, activePuzzleKey],
+    queryFn: () => fetchPuzzleGradingState(activePuzzleKey),
+    enabled: !testMode && Boolean(normalizedUsername && activePuzzleKey) && attemptedPuzzleIdsReady,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
+  const gradingState = gradingQuery.data;
+  const gradingReady = testMode || Boolean(gradingState);
   useEffect(() => {
-    if (
-      !attemptedPuzzleIdsReady ||
-      !activePuzzleKey ||
-      !attemptedPuzzleIdsUsername ||
-      authorDashboardUsername !== attemptedPuzzleIdsUsername
-    ) {
-      return;
-    }
-
-    let isCurrent = true;
-    void refreshOwnPuzzleCooldown(activePuzzleKey)
-      .then(({ unratedUntil }) => {
-        if (!isCurrent || !unratedUntil) return;
-        setRatingExclusions((current) => {
-          const previous = current.get(activePuzzleKey);
-          if (previous && Date.parse(previous) >= Date.parse(unratedUntil)) return current;
-          return new Map(current).set(activePuzzleKey, unratedUntil);
-        });
-      })
-      .catch((error: unknown) => {
-        console.error("Unable to refresh puzzle cooldown", error);
-      });
-    return () => {
-      isCurrent = false;
-    };
-  }, [
-    activePuzzleKey,
-    attemptedPuzzleIdsReady,
-    attemptedPuzzleIdsUsername,
-    authorDashboardUsername,
-  ]);
-
-  // An expired unrated solve is eligible for a fresh rated attempt, not a replay.
+    if (!gradingState) return;
+    gradingStatesRef.current.set(activePuzzleKey, gradingState);
+    const key = normalizedUsername + ":" + activePuzzleKey;
+    setGradingAtEntry((current) =>
+      current?.key === key ? current : { key, attempted: gradingState.hasAttempted },
+    );
+  }, [activePuzzleKey, normalizedUsername, gradingState]);
   const hasSolvedPuzzle = Boolean(
-    activePuzzleKey &&
-    solvedPuzzleIds.has(activePuzzleKey) &&
-    (hasPersistedAttempt || unratedReason !== null),
+    gradingState?.hasSolved || (activePuzzleKey && solvedPuzzleIds.has(activePuzzleKey)),
   );
-  const isPuzzleLocked =
-    !testMode && unratedReason !== null && normalizeUsername(author) !== normalizedUsername;
   const puzzleVisitKey = JSON.stringify([
     attemptedPuzzleIdsUsername,
     routeSetKey,
@@ -852,39 +861,31 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     [activePuzzleKey, hasSolvedPuzzle, testMode],
   );
   const shouldShowPuzzleTimer = showPuzzleTimer && attemptedPuzzleIdsReady && !hasSolvedPuzzle;
-  const unratedLabel =
-    unratedReason === "permanent"
-      ? "This puzzle is permanently unrated for your account."
-      : unratedReason === "rating-exclusion"
-        ? `Your attempts on this puzzle are unrated until ${new Date(ratingExclusions.get(activePuzzleKey)!).toLocaleString()}.`
-        : unratedReason === "existing-unrated"
-          ? "Your latest attempt is unrated. Wait one month after that attempt for a rated try."
-          : "Your attempts are unrated for 45 days after this puzzle was published.";
+  const showGradingEligibility =
+    !testMode &&
+    gradingState &&
+    gradingAtEntry?.key === normalizedUsername + ":" + activePuzzleKey &&
+    gradingAtEntry.attempted;
+  const gradingLabel = gradingState ? puzzleGradingLabel(gradingState) : "";
   const hasSubmittedAttempt = activePuzzleKey ? submittedPuzzleIds.has(activePuzzleKey) : false;
-  const entry = getPuzzleEntry({
-    previouslySolved: hasSolvedPuzzle,
-    hasRatedAttempt: hasPersistedAttempt,
-    requiresFreshAttempt: blindMode || isCustomSetRoute || isDashboardSetSolveMode,
-  });
+  // Replay history never reveals answers or ends a fresh run.
+  const resumedMisses = gradingState?.runId ? gradingState.misses : 0;
   const isRetryFeedbackActive = Boolean(
     boardState.feedback === "retry" &&
     boardState.view.line.source !== "solution" &&
     !boardState.solved,
   );
-  const sessionAccess = getPuzzleSessionAccess(puzzleSession, entry, isRetryFeedbackActive);
+  const sessionAccess = getPuzzleSessionAccess(puzzleSession, resumedMisses, isRetryFeedbackActive);
   const isAnalysisMode = sessionAccess.analysis;
   const blindPosition = isAnalysisMode ? null : blindLeadIn;
   const hasAttemptedActivePuzzle = sessionAccess.hasAttempted;
   const boardShowsSolution = puzzleSession.solutionRevealed;
-  const canViewPostAttemptDetails =
-    boardShowsSolution ||
-    puzzleSession.attempt === "solved" ||
-    (!testMode && puzzleSession.attempt === "wrong");
+  const canViewPostAttemptDetails = boardShowsSolution || puzzleSession.attempt === "solved";
   const sourceMatchId = activePuzzle
     ? getPuzzleSetSourceId(activePuzzle, Number.parseInt(routeSetKey, 10))
     : "";
   const canLinkSourceMatch = Boolean(
-    hasAttemptedActivePuzzle && !routeSetKey && !routeCustomSetId && sourceMatchId,
+    canViewPostAttemptDetails && !routeSetKey && !routeCustomSetId && sourceMatchId,
   );
   const attemptedPuzzleBadgeLabel =
     hasSolvedPuzzle || isCustomSetRoute || isDashboardSetSolveMode
@@ -1003,7 +1004,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       correctMove,
       attemptDurationMs,
       attemptPgn,
-      replay,
       resigned = false,
     }: {
       puzzleId: string | number | null | undefined;
@@ -1012,75 +1012,102 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       correctMove: string | null;
       attemptDurationMs: number | null;
       attemptPgn?: string;
-      replay: boolean;
       resigned?: boolean;
     }): void => {
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       if (!normalizedPuzzleId || !user?.username) return;
-      const recordProgress =
-        !resigned && !replay && !attemptedPuzzleIdsRef.current.has(normalizedPuzzleId);
-      if (!recordProgress && !attemptPgn) return;
-      const attempt = attemptPgn
-        ? { id: crypto.randomUUID(), pgn: attemptPgn, recordProgress, resigned }
-        : undefined;
+      const isInitialResult =
+        !resigned &&
+        !attemptedPuzzleIdsRef.current.has(normalizedPuzzleId) &&
+        !unratedPuzzleIdsRef.current.has(normalizedPuzzleId);
+      setProgressSaveError("");
+      setProgressSaving(true);
+      const attempt = { id: crypto.randomUUID(), pgn: attemptPgn || '[Result "*"]\n\n*', resigned };
       const isFirstRecordedAttempt =
-        recordProgress &&
-        !unratedPuzzleIdsRef.current.has(normalizedPuzzleId) &&
-        !countedTodayPuzzleIdsRef.current.has(normalizedPuzzleId);
-      if (isFirstRecordedAttempt) {
-        countedTodayPuzzleIdsRef.current.add(normalizedPuzzleId);
-        setDailyAttemptCount((current) => Math.min(DAILY_PUZZLE_ATTEMPT_LIMIT, current + 1));
-      }
+        isInitialResult && !countedTodayPuzzleIdsRef.current.has(normalizedPuzzleId);
 
-      progressWriteQueueRef.current = progressWriteQueueRef.current
-        .catch(() => {})
-        .then(() =>
-          recordPuzzleProgress({
-            username: user.username,
-            puzzleId: normalizedPuzzleId,
-            puzzleCorrect,
-            attemptDurationMs,
-            incorrectMove,
-            correctMove,
-            ...(attempt ? { attempt } : {}),
-          }).then((result) => {
-            if (!recordProgress) return;
-            if (result?.unratedUntil) {
-              setRatingExclusions((current) =>
-                new Map(current).set(normalizedPuzzleId, result.unratedUntil!),
-              );
-            }
-            if (result?.rated) {
-              setAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
-              setUnratedPuzzleIds((current) => removeValueFromSet(current, normalizedPuzzleId));
-            } else if (result) {
-              setUnratedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
-            }
-            void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.progress });
-            void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.userRating });
-            void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.ratingEvents });
-            const ratingEvent = result?.ratingEvent ?? null;
-            if (!ratingEvent || activePuzzleKeyRef.current !== normalizedPuzzleId) return;
-            setAttemptRatingFeedback(ratingEvent);
-            setFeedbackBadgeId((current) => current + 1);
-            setMobileFeedback((current) => {
-              if (!current) return current;
-              mobileFeedbackIdRef.current += 1;
-              return { ...current, id: mobileFeedbackIdRef.current, fading: false };
+      const input = {
+        username: user.username,
+        puzzleId: normalizedPuzzleId,
+        puzzleCorrect,
+        attemptDurationMs,
+        incorrectMove,
+        correctMove,
+        attempt,
+      };
+      const write = async (): Promise<void> => {
+        setProgressSaveError("");
+        setProgressSaving(true);
+        if (isFirstRecordedAttempt && !countedTodayPuzzleIdsRef.current.has(normalizedPuzzleId)) {
+          countedTodayPuzzleIdsRef.current.add(normalizedPuzzleId);
+          setDailyAttemptCount((current) => Math.min(DAILY_PUZZLE_ATTEMPT_LIMIT, current + 1));
+        }
+        try {
+          const result = await recordPuzzleProgress({
+            ...input,
+            attempt: {
+              ...attempt,
+              runId: gradingStatesRef.current.get(normalizedPuzzleId)?.runId ?? null,
+            },
+          });
+          retryProgressWriteRef.current = null;
+          if (result?.grading) {
+            await queryClient.cancelQueries({
+              queryKey: ["puzzle-grading", normalizedUsername, normalizedPuzzleId],
             });
-          }),
-        )
-        .catch((error) => {
+            setGradingAvailability((current) =>
+              new Map(current).set(normalizedPuzzleId, result.grading!.availableAt),
+            );
+            gradingStatesRef.current.set(normalizedPuzzleId, result.grading);
+            queryClient.setQueryData(
+              ["puzzle-grading", normalizedUsername, normalizedPuzzleId],
+              result.grading,
+            );
+            if (activePuzzleKeyRef.current === normalizedPuzzleId)
+              setOtherPuzzleAttemptsStatus("idle");
+          }
+          if (result?.unratedUntil) {
+            setRatingExclusions((current) =>
+              new Map(current).set(normalizedPuzzleId, result.unratedUntil!),
+            );
+          }
+          if (result?.rated) {
+            setAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
+            setUnratedPuzzleIds((current) => removeValueFromSet(current, normalizedPuzzleId));
+          } else if (result && isInitialResult) {
+            setUnratedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
+          }
+          void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.progress });
+          void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.userRating });
+          void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.ratingEvents });
+          const ratingEvent = result?.ratingEvent ?? null;
+          if (!ratingEvent || activePuzzleKeyRef.current !== normalizedPuzzleId) return;
+          setAttemptRatingFeedback(ratingEvent);
+          setFeedbackBadgeId((current) => current + 1);
+          setMobileFeedback((current) => {
+            if (!current) return current;
+            mobileFeedbackIdRef.current += 1;
+            return { ...current, id: mobileFeedbackIdRef.current, fading: false };
+          });
+        } catch (error) {
           if (error instanceof ApiError && error.code === "daily_puzzle_attempt_limit") {
             setDailyAttemptCount(DAILY_PUZZLE_ATTEMPT_LIMIT);
           } else if (isFirstRecordedAttempt) {
             countedTodayPuzzleIdsRef.current.delete(normalizedPuzzleId);
             setDailyAttemptCount((current) => Math.max(0, current - 1));
           }
+          retryProgressWriteRef.current = write;
+          setProgressSaveError(
+            getErrorMessage(error, "Unable to save this attempt. Please retry."),
+          );
           globalThis.console?.error(error);
-        });
+        } finally {
+          setProgressSaving(false);
+        }
+      };
+      progressWriteQueueRef.current = progressWriteQueueRef.current.catch(() => {}).then(write);
     },
-    [queryClient, user?.username],
+    [queryClient, user?.username, normalizedUsername],
   );
 
   const handleAttemptResolved = useCallback(
@@ -1116,9 +1143,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       dispatchPuzzleSession({
         type: "attempt-resolved",
         correct: puzzleCorrect,
-        entry,
       });
-      if (puzzleCorrect || entry === "replay") {
+      if (puzzleCorrect) {
         setActivePuzzleInfoTab("solution");
         setSolutionNavigation(null);
         setPinnedSolutionLineIndex(puzzleCorrect ? null : 0);
@@ -1138,7 +1164,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         incorrectMove,
         correctMove,
         ...(attemptPgn ? { attemptPgn } : {}),
-        replay: entry === "replay",
       });
       if (SERVER_CUSTOM_SET_ID_PATTERN.test(routeCustomSetId)) {
         void recordCustomPuzzleSetProgress(routeCustomSetId, normalizedPuzzleId, puzzleCorrect)
@@ -1150,10 +1175,12 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
           .catch((error) => globalThis.console?.error(error));
       }
     },
-    [activePuzzleKey, enqueuePuzzleProgressWrite, queryClient, entry, routeCustomSetId, testMode],
+    [activePuzzleKey, enqueuePuzzleProgressWrite, queryClient, routeCustomSetId, testMode],
   );
 
   const resetPuzzleUiState = useCallback(() => {
+    setResignArmed(false);
+    if (!retryProgressWriteRef.current) setProgressSaveError("");
     setActivePuzzleInfoTab(null);
     setSolutionNavigation(null);
     setAnalysisPreviewMove(null);
@@ -1251,7 +1278,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     };
   }, [mobileFeedback]);
 
-  const controlsReady = Boolean(fen) && !introPending;
+  const controlsReady =
+    Boolean(fen) && !introPending && gradingReady && !progressSaving && !progressSaveError;
   const canGiveUp = controlsReady && sessionAccess.canGiveUp;
   const canRevealSolution = controlsReady && sessionAccess.canViewSolution;
   const solutionButtonTitle = isRetryFeedbackActive
@@ -1330,13 +1358,26 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     if (showSolution) {
       setActivePuzzleInfoTab(null);
       setSolutionNavigation(null);
+    } else if (canGiveUp) {
+      handleGiveUp();
     } else {
       revealSolution();
     }
   };
 
+  useEffect(() => {
+    if (!resignArmed) return;
+    const timer = window.setTimeout(() => setResignArmed(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, [resignArmed]);
+
   const handleGiveUp = () => {
     if (!canGiveUp) return;
+    if (!resignArmed) {
+      setResignArmed(true);
+      return;
+    }
+    setResignArmed(false);
 
     const elapsedAtGiveUp =
       elapsedTimerStartedAtRef.current === null
@@ -1347,15 +1388,14 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     setElapsedTimeMs(elapsedTimeMsRef.current);
     setElapsedTimerRunning(false);
     setPinnedSolutionLineIndex(0);
-    if (!testMode && boardState.attemptPgn) {
+    if (!testMode) {
       enqueuePuzzleProgressWrite({
         puzzleId: activePuzzleKey,
         puzzleCorrect: false,
         attemptDurationMs: null,
         incorrectMove: null,
         correctMove: null,
-        attemptPgn: boardState.attemptPgn,
-        replay: entry === "replay",
+        attemptPgn: boardState.attemptPgn || '[Result "*"]\n\n*',
         resigned: true,
       });
     }
@@ -1476,7 +1516,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   };
 
   const handleSelectCommentsTab = () => {
-    if (!hasAttemptedActivePuzzle) return;
+    if (!canViewPostAttemptDetails) return;
 
     setActivePuzzleInfoTab("comments");
     setSolutionNavigation(null);
@@ -1511,7 +1551,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
           previousLine.index !== nextLine.index);
       const nextCompletionFeedback = buildCompletionFeedback(
         nextBoardState,
-        currentSession.attempt === "wrong" || entry === "retry",
+        currentSession.attempt === "wrong" || resumedMisses > 0,
       );
       const shouldShowTransientFeedback =
         nextCompletionFeedback !== null && nextLine.source !== "solution";
@@ -1555,7 +1595,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         setSolutionNavigation(null);
       }
     },
-    [entry, isMobileLayout, showMobileFeedback],
+    [resumedMisses, isMobileLayout, showMobileFeedback],
   );
 
   const handlePlaybackCommand = useCallback((command: PlaybackCommand): void => {
@@ -1710,6 +1750,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       onHoverMove={setAnalysisPreviewMove}
       onEngineMovesChange={setAnalysisEngineMoves}
       canGiveUp={canGiveUp}
+      resignArmed={resignArmed}
       onGiveUp={handleGiveUp}
       playback={playback}
       onNavigateMoves={handlePlaybackCommand}
@@ -1719,12 +1760,17 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const renderPuzzleInfoSection = (mobile = false) => (
     <PuzzleInfoSection
       mobile={mobile}
-      {...(testMode ? { lockedDetailsHint: "Solve the puzzle or give up first." } : {})}
+      lockedDetailsHint="Solve the puzzle or confirm resignation to view details."
       activeTab={activePuzzleInfoTab}
       solution={{
         canReveal: canGiveUp || canRevealSolution,
         canGiveUp,
-        buttonTitle: canGiveUp ? "Give up and reveal the solution" : solutionButtonTitle,
+        resignArmed,
+        buttonTitle: canGiveUp
+          ? resignArmed
+            ? "Confirm resignation"
+            : "Resign and reveal the solution"
+          : solutionButtonTitle,
         mobileAnalysis: mobile ? puzzleAnalysisPanel : undefined,
         onToggle: canGiveUp ? handleGiveUp : handleSelectSolutionTab,
       }}
@@ -1755,7 +1801,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         testMode
           ? null
           : {
-              canView: hasAttemptedActivePuzzle,
+              canView: canViewPostAttemptDetails,
               puzzleId: activePuzzleId,
               onSelect: handleSelectCommentsTab,
             }
@@ -1961,6 +2007,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       played={currentAnalysisMoves}
       error={boardState.error}
       canGiveUp={!isMobileLayout && canGiveUp}
+      resignArmed={resignArmed}
       onGiveUp={handleGiveUp}
     />
   ) : null;
@@ -2001,24 +2048,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       : !blindPosition
         ? boardState.error
         : "");
-
-  if (isPuzzleLocked) {
-    const expiresAt = ratingExclusions.get(activePuzzleKey);
-    return (
-      <div className="page puzzlePage">
-        <div className="panel puzzlePanel">
-          <h1>Puzzle locked</h1>
-          <p className="errorText" role="alert">
-            This puzzle is locked for your account
-            {expiresAt
-              ? ` until ${new Date(expiresAt).toLocaleString()}.`
-              : " until its unrated period ends."}
-          </p>
-          <Link to="/solve">Find another puzzle</Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="page puzzlePage">
@@ -2132,18 +2161,18 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
                 </span>
               ) : null}
             </div>
-            {hasAttemptedActivePuzzle || unratedReason || opaStyle ? (
+            {hasAttemptedActivePuzzle || showGradingEligibility || opaStyle ? (
               <div className="puzzleHeaderBadges">
                 {hasAttemptedActivePuzzle ? renderPuzzleRating() : null}
-                {unratedReason ? (
+                {showGradingEligibility ? (
                   <span
                     className="puzzleUnratedBadge"
                     tabIndex={0}
-                    title={unratedLabel}
-                    aria-label={unratedLabel}
-                    data-tooltip={unratedLabel}
+                    title={gradingLabel}
+                    aria-label={gradingLabel}
+                    data-tooltip={gradingLabel}
                   >
-                    Unrated
+                    {gradingLabel}
                   </span>
                 ) : null}
                 {opaStyle ? (
@@ -2327,7 +2356,13 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
                 solution={activePuzzle?.solution ?? ""}
                 showSolution={boardShowsSolution}
                 analysisMode={isAnalysisMode}
-                disabled={dailyLimitReached || unratedMarkStatus.state === "saving"}
+                disabled={
+                  dailyLimitReached ||
+                  unratedMarkStatus.state === "saving" ||
+                  !gradingReady ||
+                  progressSaving ||
+                  Boolean(progressSaveError)
+                }
                 captureNavigationShortcuts
                 previewMove={analysisPreviewMove}
                 engineMoves={
@@ -2366,6 +2401,20 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         <div className="puzzleSolveRail">
           {blindPuzzlePanel ?? puzzleAnalysisPanel}
           {permanentUnratedControl}
+          {progressSaveError || gradingQuery.error ? (
+            <p className="errorText" role="alert">
+              {progressSaveError || "Unable to check grading eligibility. Please reload."}
+              {progressSaveError && retryProgressWriteRef.current ? (
+                <button
+                  type="button"
+                  disabled={progressSaving}
+                  onClick={() => void retryProgressWriteRef.current?.()}
+                >
+                  Retry saving
+                </button>
+              ) : null}
+            </p>
+          ) : null}
           {unratedMarkStatus.state === "error" ? (
             <p className="errorText" role="alert">
               {unratedMarkStatus.message}
@@ -2403,15 +2452,15 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
                   <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
                 </span>
               ) : null}
-              {unratedReason ? (
+              {showGradingEligibility ? (
                 <span
                   className="puzzleUnratedBadge"
                   tabIndex={0}
-                  title={unratedLabel}
-                  aria-label={unratedLabel}
-                  data-tooltip={unratedLabel}
+                  title={gradingLabel}
+                  aria-label={gradingLabel}
+                  data-tooltip={gradingLabel}
                 >
-                  Unrated
+                  {gradingLabel}
                 </span>
               ) : null}
               {opaStyle ? (
@@ -2449,6 +2498,20 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
             </div>
             {renderPlayerRows(true)}
             {permanentUnratedControl}
+            {progressSaveError || gradingQuery.error ? (
+              <p className="errorText" role="alert">
+                {progressSaveError || "Unable to check grading eligibility. Please reload."}
+                {progressSaveError && retryProgressWriteRef.current ? (
+                  <button
+                    type="button"
+                    disabled={progressSaving}
+                    onClick={() => void retryProgressWriteRef.current?.()}
+                  >
+                    Retry saving
+                  </button>
+                ) : null}
+              </p>
+            ) : null}
             {unratedMarkStatus.state === "error" ? (
               <p className="errorText" role="alert">
                 {unratedMarkStatus.message}
@@ -2499,7 +2562,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         </p>
       ) : null}
 
-      {!testMode && hasAttemptedActivePuzzle ? (
+      {!testMode && canViewPostAttemptDetails ? (
         <PuzzleCommunity
           puzzleId={activePuzzleId}
           voteTargetId={isMobileLayout ? "mobile-puzzle-vote-slot" : "desktop-puzzle-vote-slot"}

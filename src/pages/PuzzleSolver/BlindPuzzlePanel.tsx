@@ -9,12 +9,14 @@ export const BlindPuzzlePanel = ({
   error,
   canGiveUp,
   onGiveUp,
+  resignArmed,
 }: {
   leadIn: PuzzleLeadIn;
   played: string[];
   error: string;
   canGiveUp: boolean;
   onGiveUp: () => void;
+  resignArmed?: boolean;
 }) => {
   const listRef = useRef<HTMLOListElement>(null);
   const firstPly = startingPlyFromFen(leadIn.beforeFen);
@@ -52,8 +54,13 @@ export const BlindPuzzlePanel = ({
       </div>
       {canGiveUp ? (
         <div className="puzzleBlindActions">
-          <button type="button" className="analysisToolbarButton" onClick={onGiveUp}>
-            Reveal solution
+          <button
+            type="button"
+            className={`analysisToolbarButton puzzleGiveUpButton${resignArmed ? " isArmed" : ""}`}
+            aria-pressed={Boolean(resignArmed)}
+            onClick={onGiveUp}
+          >
+            {resignArmed ? "Confirm resignation" : "Resign"}
           </button>
         </div>
       ) : null}

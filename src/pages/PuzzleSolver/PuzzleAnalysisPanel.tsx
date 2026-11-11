@@ -39,6 +39,7 @@ export const PuzzleAnalysisPanel = ({
   onEngineMovesChange,
   canGiveUp,
   onGiveUp,
+  resignArmed,
   playback,
   onNavigateMoves,
 }: {
@@ -59,6 +60,7 @@ export const PuzzleAnalysisPanel = ({
   onEngineMovesChange: (moves: readonly string[] | null) => void;
   canGiveUp: boolean;
   onGiveUp: () => void;
+  resignArmed?: boolean;
   playback: PlaybackAvailability | undefined;
   onNavigateMoves: (
     command: Extract<PlaybackCommand, "start" | "previous" | "next" | "end">,
@@ -132,9 +134,10 @@ export const PuzzleAnalysisPanel = ({
           {canGiveUp ? (
             <button
               type="button"
-              className="analysisToolbarButton puzzleGiveUpButton"
-              aria-label="Give up and reveal the solution"
-              title="Give up and reveal the solution"
+              className={`analysisToolbarButton puzzleGiveUpButton${resignArmed ? " isArmed" : ""}`}
+              aria-label={resignArmed ? "Confirm resignation" : "Resign and reveal the solution"}
+              title={resignArmed ? "Confirm resignation" : "Resign and reveal the solution"}
+              aria-pressed={Boolean(resignArmed)}
               onClick={onGiveUp}
             >
               <FontAwesomeIcon icon={faFlag} aria-hidden="true" />

@@ -37,6 +37,9 @@
   --color-rating-graph-rapid: #f0a33a;
   --color-rating-graph-atomic960: #22cda2;
   --color-calendar-monthly: #aa8cff;
+  --color-grading-orange: var(--color-rating-graph-rapid);
+  --color-grading-purple: var(--color-calendar-monthly);
+  --color-grading-blue: var(--color-rating-graph-hyper);
   --color-player-white: #f4f6f8;
   --color-player-black: #171c25;
   --color-gold: #f5c26b;

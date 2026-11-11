@@ -4,6 +4,7 @@ import {
   DAILY_PUZZLE_ATTEMPT_LIMIT_CODE,
   DAILY_PUZZLE_ATTEMPT_LIMIT_MESSAGE,
 } from "../../../../shared/domain/puzzles/dailyAttemptLimit";
+import { puzzleGradingStateSchema } from "../../../../shared/domain/puzzles/puzzleGrading";
 import { puzzleRatingEventResponseSchema } from "../../../../shared/domain/puzzles/puzzleRating";
 import {
   authenticateRequest,
@@ -29,13 +30,15 @@ const attemptBodySchema = z.object({
     .object({
       id: z.uuid(),
       pgn: z.string().trim().min(1).max(16000),
-      recordProgress: z.boolean(),
+      recordProgress: z.boolean().optional(),
+      runId: z.uuid().nullable().optional(),
       resigned: z.boolean().optional(),
     })
     .optional(),
 });
 
 const progressBodySchema = z.union([
+  z.object({ action: z.literal("gradingState"), puzzleId: attemptBodySchema.shape.puzzleId }),
   z.object({
     action: z.literal("markUnrated"),
     puzzleId: attemptBodySchema.shape.puzzleId,
@@ -50,6 +53,9 @@ const progressBodySchema = z.union([
 
 const attemptResultSchema = z.object({
   coinDelta: z.number(),
+  duplicate: z.boolean().optional(),
+  graded: z.boolean().optional(),
+  grading: puzzleGradingStateSchema.optional(),
   rated: z.boolean(),
   unratedUntil: z.string().nullable(),
   ratingEvent: puzzleRatingEventResponseSchema.nullable(),
@@ -61,6 +67,14 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
   const identity = await authenticateRequest(event.headers);
   const username = requireUsername(identity, "Your Lichess login is no longer valid.");
   const supabase = createServerSupabase("Puzzle progress service");
+  if ("action" in input && input.action === "gradingState") {
+    const { data, error } = await supabase.rpc("get_puzzle_grading_state", {
+      p_username: username,
+      p_puzzle_id: input.puzzleId,
+    });
+    if (error) throw new Error(`Unable to check grading eligibility: ${error.message}`);
+    return identityResponse(identity, 200, puzzleGradingStateSchema.parse(data));
+  }
   if ("action" in input && input.action === "revisitOwnPuzzle") {
     const { data, error } = await supabase.rpc("refresh_own_puzzle_cooldown", {
       p_username: username,
@@ -94,11 +108,11 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
     p_correct_move: input.puzzleCorrect ? input.correctMove || null : null,
   };
   const { data, error } = input.attempt
-    ? await supabase.rpc("record_puzzle_attempt_with_pgn", {
+    ? await supabase.rpc("submit_puzzle_run_attempt", {
         ...progressArgs,
         p_attempt_id: input.attempt.id,
         p_attempt_pgn: input.attempt.pgn,
-        p_record_progress: input.attempt.recordProgress,
+        p_run_id: input.attempt.runId ?? null,
         p_outcome: input.attempt.resigned
           ? "resigned"
           : input.puzzleCorrect
@@ -110,6 +124,20 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
         p_puzzle_correct: input.puzzleCorrect,
       });
   if (error) {
+    if (error.message.includes("puzzle_run_finished")) {
+      throw new HttpError(
+        409,
+        "This run has ended. Reload the puzzle to start another.",
+        {},
+        "puzzle_run_finished",
+      );
+    }
+    if (error.message.includes("puzzle_resignation_requires_move")) {
+      throw new HttpError(409, "Submit a move before resigning.");
+    }
+    if (error.message.includes("puzzle_attempt_id_conflict")) {
+      throw new HttpError(409, "This attempt identifier was already used.");
+    }
     if (error.message.includes("puzzle_rating_exclusion_active")) {
       throw new HttpError(
         403,

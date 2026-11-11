@@ -6,22 +6,6 @@ export type CompletionFeedback = {
   title: string;
 };
 
-export type PuzzleEntry = "fresh" | "retry" | "replay";
-
-export const getPuzzleEntry = ({
-  previouslySolved,
-  hasRatedAttempt,
-  requiresFreshAttempt,
-}: {
-  previouslySolved: boolean;
-  hasRatedAttempt: boolean;
-  requiresFreshAttempt: boolean;
-}): PuzzleEntry => {
-  if (previouslySolved) return "replay";
-  if (hasRatedAttempt && !requiresFreshAttempt) return "retry";
-  return "fresh";
-};
-
 // Saved history is an input, never the result of the current visit.
 export type PuzzleSessionState = {
   attempt: "unresolved" | "wrong" | "solved";
@@ -31,7 +15,7 @@ export type PuzzleSessionState = {
 
 export type PuzzleSessionAction =
   | { type: "reset" }
-  | { type: "attempt-resolved"; correct: boolean; entry: PuzzleEntry }
+  | { type: "attempt-resolved"; correct: boolean }
   | { type: "reveal-solution" }
   | { type: "board-feedback"; feedback: CompletionFeedback | null };
 
@@ -46,19 +30,16 @@ export const isPuzzleSessionInAnalysis = (state: PuzzleSessionState): boolean =>
 
 export const getPuzzleSessionAccess = (
   state: PuzzleSessionState,
-  entry: PuzzleEntry,
+  resumedMisses: number,
   retryMovePending: boolean,
 ) => {
   const analysis = isPuzzleSessionInAnalysis(state);
   const hasAttempted =
-    state.attempt !== "unresolved" || state.solutionRevealed || entry === "retry";
+    state.attempt !== "unresolved" || state.solutionRevealed || resumedMisses > 0;
   return {
     analysis,
     hasAttempted,
-    canGiveUp:
-      !analysis &&
-      (entry === "replay" ||
-        (!retryMovePending && (state.attempt === "wrong" || entry === "retry"))),
+    canGiveUp: !analysis && !retryMovePending && (state.attempt === "wrong" || resumedMisses > 0),
     canViewSolution: hasAttempted && !retryMovePending,
   };
 };
@@ -75,7 +56,7 @@ export const puzzleSessionReducer = (
       if (isPuzzleSessionInAnalysis(state)) return state;
       return {
         attempt: action.correct ? "solved" : "wrong",
-        solutionRevealed: action.correct || action.entry === "replay",
+        solutionRevealed: action.correct,
         feedback: null,
       };
     case "reveal-solution":

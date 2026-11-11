@@ -1,7 +1,11 @@
 import { z } from "zod";
 
+import {
+  type PuzzleGradingState,
+  puzzleGradingStateSchema,
+} from "../../../shared/domain/puzzles/puzzleGrading";
 import { normalizeUsername } from "../../utils/playerNames";
-import { postApi } from "../api/postApi";
+import { ApiError, postApi } from "../api/postApi";
 import { getSupabaseClient } from "./client";
 import { type PuzzleRatingEvent, puzzleRatingEventResponseSchema } from "./puzzleUserRatings";
 import { fetchAllSupabaseRows, loadSupabasePage, loadSupabaseRows } from "./rows";
@@ -21,6 +25,16 @@ export const fetchPuzzleRatingExclusions = (username: string) =>
     getSupabaseClient()
       .rpc("get_puzzle_rating_exclusions_v2", { p_username: normalizeUsername(username) })
       .order("puzzle_id"),
+  );
+
+export const fetchPuzzleGradingState = (puzzleId: string) =>
+  postApi(
+    "/api/puzzles/progress",
+    { action: "gradingState", puzzleId },
+    {
+      schema: puzzleGradingStateSchema,
+      errorMessage: "Unable to check grading eligibility.",
+    },
   );
 
 export const refreshOwnPuzzleCooldown = (puzzleId: string) =>
@@ -55,10 +69,14 @@ const PUZZLE_PROGRESS_PAGE_RPC = (import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_
   "get_puzzle_progress_page_v3") as keyof Database["public"]["Functions"];
 const ATTEMPTED_PUZZLE_IDS_RPC = (import.meta.env.VITE_SUPABASE_ATTEMPTED_PUZZLE_IDS_RPC?.trim() ??
   "get_rated_puzzle_ids") as keyof Database["public"]["Functions"];
+const announcedAttempts = new Set<string>();
 const puzzleProgressWriteRequests = new Map<string, Promise<RecordPuzzleProgressResult>>();
 const puzzleProgressResponseSchema = z.object({
   coinAward: z.number().nonnegative().optional().default(0),
   coinDelta: z.number().optional(),
+  duplicate: z.boolean().optional(),
+  graded: z.boolean().optional(),
+  grading: puzzleGradingStateSchema.optional(),
   rated: z.boolean().optional().default(true),
   unratedUntil: z.string().nullable().optional(),
   ratingEvent: puzzleRatingEventResponseSchema.nullable().optional(),
@@ -87,6 +105,9 @@ const normalizePuzzleProgressRows = (rows: PuzzleProgressRow[]): PuzzleProgressR
           : null,
       puzzle_correct: Boolean(row?.puzzle_correct),
       rated: row?.rated !== false,
+      has_solved: row?.has_solved ?? row?.puzzle_correct,
+      grading_available_at: row?.grading_available_at ?? null,
+      attempt_color: row?.attempt_color ?? null,
       incorrect_move:
         typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
           ? row.incorrect_move.trim()
@@ -245,7 +266,13 @@ export type RecordPuzzleProgressInput = {
   attemptDurationMs: number | null;
   incorrectMove: string | null;
   correctMove: string | null;
-  attempt?: { id: string; pgn: string; recordProgress: boolean; resigned?: boolean };
+  attempt?: {
+    id: string;
+    pgn: string;
+    recordProgress?: boolean;
+    runId?: string | null;
+    resigned?: boolean;
+  };
 };
 
 export type FetchPuzzleAttemptsForPuzzleOptions = {
@@ -254,6 +281,7 @@ export type FetchPuzzleAttemptsForPuzzleOptions = {
 };
 
 export type RecordPuzzleProgressResult = {
+  grading?: PuzzleGradingState;
   rated: boolean;
   unratedUntil?: string | null;
   ratingEvent: PuzzleRatingEvent | null;
@@ -286,33 +314,46 @@ export const recordPuzzleProgress = async ({
   }
 
   const request = (async (): Promise<RecordPuzzleProgressResult> => {
-    const result = await postApi(
-      "/api/puzzles/progress",
-      {
-        puzzleId: normalizedPuzzleId,
-        puzzleCorrect: Boolean(puzzleCorrect),
-        attemptDurationMs: normalizedAttemptDurationMs,
-        incorrectMove: normalizedIncorrectMove,
-        correctMove: normalizedCorrectMove,
-        ...(attempt ? { attempt } : {}),
-      },
-      {
-        schema: puzzleProgressResponseSchema,
-        errorMessage: "Unable to record puzzle progress.",
-        invalidMessage: "Unable to record puzzle progress: the server returned invalid data.",
-      },
-    );
+    const write = () =>
+      postApi(
+        "/api/puzzles/progress",
+        {
+          puzzleId: normalizedPuzzleId,
+          puzzleCorrect: Boolean(puzzleCorrect),
+          attemptDurationMs: normalizedAttemptDurationMs,
+          incorrectMove: normalizedIncorrectMove,
+          correctMove: normalizedCorrectMove,
+          ...(attempt ? { attempt } : {}),
+        },
+        {
+          schema: puzzleProgressResponseSchema,
+          errorMessage: "Unable to record puzzle progress.",
+          invalidMessage: "Unable to record puzzle progress: the server returned invalid data.",
+        },
+      );
+    let result;
+    try {
+      result = await write();
+    } catch (error) {
+      if (!attempt || !(error instanceof ApiError) || (error.status !== 0 && error.status < 500))
+        throw error;
+      // Reuse the attempt UUID if the first response was lost after the transaction committed.
+      result = await write();
+    }
     const coinDelta = result.coinDelta ?? result.coinAward;
-    if (coinDelta !== 0) {
+    if (coinDelta !== 0 && !announcedAttempts.has(requestKey)) {
+      announcedAttempts.add(requestKey);
       const { announceCoinChange } = await import("../coins/coinEvents");
       announceCoinChange(
         coinDelta,
         puzzleCorrect ? "Puzzle solved" : "Incorrect attempt",
         username,
+        result.graded ?? false,
       );
     }
     return {
       rated: result.rated,
+      ...(result.grading ? { grading: result.grading } : {}),
       unratedUntil: result.unratedUntil ?? null,
       ratingEvent: result.ratingEvent
         ? {
@@ -427,19 +468,15 @@ export const fetchPuzzleProgressRowsForUsername = async (
 
   try {
     const supabase = getSupabaseClient();
-    try {
-      serverRows = await loadAllPuzzleProgressRowsFromRpc(supabase, normalizedUsername);
-    } catch {
-      serverRows = await fetchAllSupabaseRows<PuzzleProgressRow>(PUZZLE_PROGRESS_TABLE, () =>
-        supabase
-          .from(PUZZLE_PROGRESS_TABLE)
-          .select(
-            "puzzle_id,first_attempt_at,first_attempt_duration_ms,puzzle_correct,rated,incorrect_move,correct_move",
-          )
-          .eq("username", normalizedUsername)
-          .order("first_attempt_at", { ascending: false }),
-      );
-    }
+    serverRows = await fetchAllSupabaseRows<PuzzleProgressRow>(PUZZLE_PROGRESS_TABLE, () =>
+      supabase
+        .from(PUZZLE_PROGRESS_TABLE)
+        .select(
+          "puzzle_id,first_attempt_at,first_attempt_duration_ms,puzzle_correct,rated,incorrect_move,correct_move,has_solved,attempt_color,grading_available_at",
+        )
+        .eq("username", normalizedUsername)
+        .order("first_attempt_at", { ascending: false }),
+    );
   } catch {
     serverRows = [];
   }
@@ -460,7 +497,7 @@ export const fetchPuzzleAttemptsForPuzzle = async (
   let query = supabase
     .from(PUZZLE_PROGRESS_TABLE)
     .select(
-      "username,puzzle_id,first_attempt_at,first_attempt_duration_ms,puzzle_correct,rated,incorrect_move,correct_move",
+      "username,puzzle_id,first_attempt_at,first_attempt_duration_ms,puzzle_correct,rated,incorrect_move,correct_move,has_solved,attempt_color,grading_available_at",
     )
     .eq("puzzle_id", normalizedPuzzleId)
     .order("first_attempt_at", { ascending: false })
@@ -484,6 +521,9 @@ export const fetchPuzzleAttemptsForPuzzle = async (
           : null,
       puzzle_correct: Boolean(row?.puzzle_correct),
       rated: row?.rated !== false,
+      has_solved: row?.has_solved ?? row?.puzzle_correct,
+      grading_available_at: row?.grading_available_at ?? null,
+      attempt_color: row?.attempt_color ?? null,
       incorrect_move:
         typeof row?.incorrect_move === "string" && row.incorrect_move.trim()
           ? row.incorrect_move.trim()

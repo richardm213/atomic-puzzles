@@ -99,22 +99,48 @@ describe("puzzle-progress function", () => {
         puzzleId: "42",
         puzzleCorrect: false,
         attemptDurationMs: null,
-        attempt: { id, pgn, recordProgress: false, resigned: true },
+        attempt: { id, pgn, runId: "bf6cd63f-c399-4d3c-905c-04ab563e8949", resigned: true },
       }),
     });
 
     expect(response.statusCode).toBe(200);
-    expect(rpc).toHaveBeenCalledExactlyOnceWith("record_puzzle_attempt_with_pgn", {
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("submit_puzzle_run_attempt", {
       p_username: "solver",
       p_puzzle_id: "42",
       p_attempt_id: id,
       p_attempt_pgn: pgn,
       p_outcome: "resigned",
-      p_record_progress: false,
+      p_run_id: "bf6cd63f-c399-4d3c-905c-04ab563e8949",
       p_attempt_duration_ms: null,
       p_correct_move: null,
       p_incorrect_move: null,
     });
+  });
+
+  it("returns grading eligibility for the authenticated player", async () => {
+    const grading = {
+      runId: null,
+      graded: false,
+      availableAt: "2027-01-10T12:00:00Z",
+      permanent: false,
+      hasAttempted: true,
+      hasSolved: true,
+      misses: 0,
+      color: "green",
+    };
+    const rpc = vi.fn(async () => ({ data: grading, error: null }));
+    mocks.createClient.mockReturnValue({ rpc });
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { cookie: createSiteSessionCookie("Solver", {}).split(";")[0] },
+      body: JSON.stringify({ action: "gradingState", puzzleId: "42", username: "victim" }),
+    });
+    expect(response.statusCode).toBe(200);
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("get_puzzle_grading_state", {
+      p_username: "solver",
+      p_puzzle_id: "42",
+    });
+    expect(JSON.parse(response.body)).toEqual(grading);
   });
 
   it.each([true, false])(
@@ -187,6 +213,7 @@ describe("puzzle-progress function", () => {
       code: "daily_puzzle_attempt_limit",
     },
     { message: "puzzle_rating_exclusion_active", status: 403, code: "puzzle_rating_excluded" },
+    { message: "puzzle_run_finished", status: 409, code: "puzzle_run_finished" },
   ])("returns $code when the database rejects an attempt", async ({ message, status, code }) => {
     const rpc = vi.fn(async () => ({
       data: null,

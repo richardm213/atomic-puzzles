@@ -31,7 +31,7 @@ const mocks = vi.hoisted(() => ({
   fetchPuzzleProgressRowsForUsername: vi.fn(),
   fetchPuzzleRatingExclusions: vi.fn(),
   setOwnPuzzlePermanentlyUnrated: vi.fn(),
-  refreshOwnPuzzleCooldown: vi.fn(),
+  fetchPuzzleGradingState: vi.fn(),
   fetchCustomPuzzleSet: vi.fn(),
   fetchPuzzleAttemptsForPuzzle: vi.fn(),
   loadPuzzleCatalog: vi.fn(),
@@ -136,7 +136,7 @@ vi.mock("../../lib/supabase/puzzleProgress", () => ({
   fetchPuzzleProgressRowsForUsername: mocks.fetchPuzzleProgressRowsForUsername,
   fetchPuzzleRatingExclusions: mocks.fetchPuzzleRatingExclusions,
   setOwnPuzzlePermanentlyUnrated: mocks.setOwnPuzzlePermanentlyUnrated,
-  refreshOwnPuzzleCooldown: mocks.refreshOwnPuzzleCooldown,
+  fetchPuzzleGradingState: mocks.fetchPuzzleGradingState,
   fetchPuzzleAttemptsForPuzzle: mocks.fetchPuzzleAttemptsForPuzzle,
   recordPuzzleProgress: mocks.recordPuzzleProgress,
 }));
@@ -336,7 +336,16 @@ describe("PuzzleSolverPage solution options", () => {
     mocks.username = "solver";
     mocks.excludeOwnPuzzles = false;
     mocks.setOwnPuzzlePermanentlyUnrated.mockReset().mockResolvedValue(undefined);
-    mocks.refreshOwnPuzzleCooldown.mockReset().mockResolvedValue({ unratedUntil: null });
+    mocks.fetchPuzzleGradingState.mockReset().mockImplementation(async (puzzleId: string) => ({
+      runId: mocks.attemptedPuzzleIds.has(puzzleId) ? "bf6cd63f-c399-4d3c-905c-04ab563e8949" : null,
+      graded: true,
+      availableAt: null,
+      permanent: false,
+      hasAttempted: mocks.attemptedPuzzleIds.has(puzzleId),
+      hasSolved: false,
+      misses: mocks.attemptedPuzzleIds.has(puzzleId) ? 1 : 0,
+      color: "red",
+    }));
     mocks.loadPuzzleTagVotes
       .mockReset()
       .mockResolvedValue([{ tag: "fork", up: 3, down: 0, vote: 0 }]);
@@ -446,7 +455,10 @@ describe("PuzzleSolverPage solution options", () => {
         expect(explanationTab).toBeDisabled();
         expect(attemptsTab).toBeDisabled();
         expect(mocks.fetchPuzzleAttemptsForPuzzle).not.toHaveBeenCalled();
-        await user.click(screen.getByRole("button", { name: "Give up and reveal the solution" }));
+        await user.click(
+          await screen.findByRole("button", { name: "Resign and reveal the solution" }),
+        );
+        fireEvent.click(await screen.findByRole("button", { name: "Confirm resignation" }));
       }
 
       await user.click(explanationTab);
@@ -535,7 +547,7 @@ describe("PuzzleSolverPage solution options", () => {
     if (blind) {
       const panel = screen.getByRole("region", { name: "Blind mode" });
       expect(within(panel).getByRole("list")).toHaveTextContent("1... c5");
-      expect(screen.getAllByText("Unrated").length).toBeGreaterThan(0);
+      expect(screen.queryByText("Unrated")).not.toBeInTheDocument();
     } else {
       expect(screen.queryByRole("region", { name: "Blind mode" })).not.toBeInTheDocument();
     }
@@ -607,8 +619,9 @@ describe("PuzzleSolverPage solution options", () => {
       { puzzle_id: "6", expires_at: "2020-01-01T00:00:00Z", permanent: true },
     ]);
 
-    let resolveProgress: (rows: Array<{ puzzle_id: string; rated: boolean }>) => void = () =>
-      undefined;
+    let resolveProgress: (
+      rows: Array<{ puzzle_id: string; rated: boolean; grading_available_at?: string }>,
+    ) => void = () => undefined;
     mocks.fetchPuzzleProgressRowsForUsername.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveProgress = resolve;
@@ -623,7 +636,7 @@ describe("PuzzleSolverPage solution options", () => {
     resolveProgress([
       { puzzle_id: "1", rated: true },
       { puzzle_id: "2", rated: false },
-      { puzzle_id: "5", rated: false },
+      { puzzle_id: "5", rated: false, grading_available_at: "2020-01-01T00:00:00Z" },
     ]);
 
     await waitFor(() =>
@@ -689,14 +702,25 @@ describe("PuzzleSolverPage solution options", () => {
     });
   });
 
-  it("does not render a cached board for a locked puzzle by another author", async () => {
+  it("allows practice while grading is on cooldown", async () => {
     mocks.blindPuzzles = { enabled: true, plies: 1 };
     mocks.fetchPuzzleRatingExclusions.mockResolvedValueOnce([
       { puzzle_id: "1369", expires_at: "2099-01-01T00:00:00Z" },
     ]);
+    mocks.fetchPuzzleGradingState.mockResolvedValue({
+      runId: null,
+      graded: false,
+      availableAt: "2099-01-01T00:00:00Z",
+      permanent: false,
+      hasAttempted: true,
+      hasSolved: false,
+      misses: 0,
+      color: "red",
+    });
     render(<PuzzleSolverPage />);
-    expect(await screen.findByRole("alert")).toHaveTextContent("This puzzle is locked");
-    expect(screen.queryByTestId("mock-board")).not.toBeInTheDocument();
+    await waitFor(() => expect(mocks.chessboardProps.at(-1)?.disabled).toBe(false));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByTestId("mock-board")).toBeInTheDocument();
   });
 
   it("starts a fresh solve after an earlier unrated solve expires", async () => {
@@ -916,7 +940,8 @@ describe("PuzzleSolverPage solution options", () => {
 
   it("shows puzzle motifs after the puzzle has been attempted", async () => {
     render(<PuzzleSolverPage />);
-    fireEvent.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Resign and reveal the solution" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm resignation" }));
 
     const motifList = await screen.findByLabelText("Tags on this puzzle");
     expect(within(motifList).getByText("Fork")).toBeInTheDocument();
@@ -942,7 +967,8 @@ describe("PuzzleSolverPage solution options", () => {
   it("shows the issue report only after an attempt and submits the selected category", async () => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
-    await user.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
+    await user.click(await screen.findByRole("button", { name: "Resign and reveal the solution" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm resignation" }));
 
     await user.click(await screen.findByRole("button", { name: "Report issue" }));
     const dialog = screen.getByRole("dialog", { name: "Report puzzle issue" });
@@ -981,9 +1007,8 @@ describe("PuzzleSolverPage solution options", () => {
       .mockResolvedValueOnce([fork, epaulette]);
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
-    await user.click(
-      await screen.findByRole("button", { name: "Give up and reveal the solution" }),
-    );
+    await user.click(await screen.findByRole("button", { name: "Resign and reveal the solution" }));
+    await user.click(await screen.findByRole("button", { name: "Confirm resignation" }));
 
     const motifs = await screen.findByLabelText("Tags on this puzzle");
     const forkButton = { name: /^View definition for Fork\b/ };
@@ -1023,7 +1048,8 @@ describe("PuzzleSolverPage solution options", () => {
       .mockResolvedValueOnce([{ ...fork, up: 4, vote: 1 }]);
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
-    await user.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
+    await user.click(await screen.findByRole("button", { name: "Resign and reveal the solution" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm resignation" }));
 
     const motifs = await screen.findByLabelText("Tags on this puzzle");
     const upvote = await within(motifs).findByRole("button", { name: /^Upvote Fork\b/ });
@@ -1092,7 +1118,7 @@ describe("PuzzleSolverPage solution options", () => {
       });
     });
 
-    expect(explanationTab).toBeEnabled();
+    expect(explanationTab).toBeDisabled();
     expect(explanationTab).toHaveAttribute("aria-selected", "false");
     expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
     const moveNavigation = screen.getByLabelText("Move navigation");
@@ -1100,14 +1126,15 @@ describe("PuzzleSolverPage solution options", () => {
     expect(within(moveNavigation).getByRole("button", { name: "Next move" })).toBeVisible();
     expect(within(moveNavigation).queryByTitle("Opening explorer")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Give up and reveal the solution" }));
+    await user.click(await screen.findByRole("button", { name: "Resign and reveal the solution" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm resignation" }));
 
     await waitFor(() => {
       expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
       expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true);
     });
     expect(
-      screen.queryByRole("button", { name: "Give up and reveal the solution" }),
+      screen.queryByRole("button", { name: "Resign and reveal the solution" }),
     ).not.toBeInTheDocument();
     expect(activeIntervals.size).toBe(0);
 
@@ -1141,11 +1168,13 @@ describe("PuzzleSolverPage solution options", () => {
         });
       });
 
-      await waitFor(() => expect(explanationTab).toBeEnabled());
       if (!puzzleCorrect) {
-        await user.click(explanationTab);
+        expect(explanationTab).toBeDisabled();
         expect(screen.queryByRole("button", { name: "Add explanation" })).not.toBeInTheDocument();
-        await user.click(screen.getByRole("button", { name: "Give up and reveal the solution" }));
+        await user.click(
+          await screen.findByRole("button", { name: "Resign and reveal the solution" }),
+        );
+        fireEvent.click(await screen.findByRole("button", { name: "Confirm resignation" }));
       }
       await waitFor(() => expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true));
       await user.click(explanationTab);
@@ -1179,36 +1208,52 @@ describe("PuzzleSolverPage solution options", () => {
       },
     ]);
     const refreshedUntil = "2099-01-01T00:00:00Z";
-    mocks.refreshOwnPuzzleCooldown.mockResolvedValue({ unratedUntil: refreshedUntil });
-    vi.mocked(window.matchMedia).mockImplementation((media) => ({
-      media,
-      matches: media.startsWith("(max-width: 460px)"),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }) as unknown as MediaQueryList);
+    mocks.fetchPuzzleGradingState.mockResolvedValue({
+      runId: null,
+      graded: false,
+      availableAt: refreshedUntil,
+      permanent: false,
+      hasAttempted: true,
+      hasSolved: true,
+      misses: 0,
+      color: "green",
+    });
+    vi.mocked(window.matchMedia).mockImplementation(
+      (media) =>
+        ({
+          media,
+          matches: media.includes("max-width"),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }) as unknown as MediaQueryList,
+    );
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
 
-    const explanationTab = await screen.findByRole("tab", { name: "Explain" });
-    const giveUp = await screen.findByRole("tab", { name: "Give up" });
+    await screen.findByTestId("mock-board");
+    expect(screen.queryByRole("tab", { name: "Explain" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Resign" })).not.toBeInTheDocument();
     expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(false);
     expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
-    expect(explanationTab).toBeDisabled();
 
-    await user.click(giveUp);
+    act(() =>
+      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+        puzzleId: "1369",
+        puzzleCorrect: false,
+        incorrectMove: "12... Kd7",
+        correctMove: null,
+      }),
+    );
+    await user.click(await screen.findByRole("tab", { name: "Resign" }));
+    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
+    await user.click(await screen.findByRole("tab", { name: "Confirm resignation" }));
 
     expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
-    expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
-    expect(mocks.refreshOwnPuzzleCooldown).toHaveBeenCalledWith("1369");
-    expect(
-      (
-        await screen.findAllByLabelText(
-          `Your attempts on this puzzle are unrated until ${new Date(refreshedUntil).toLocaleString()}.`,
-        )
-      ).length,
-    ).toBeGreaterThan(0);
+    await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledTimes(2));
+    expect((await screen.findAllByLabelText(/Grading returns in/)).length).toBeGreaterThan(0);
+    const explanationTab = await screen.findByRole("tab", { name: "Explain" });
     expect(explanationTab).toBeEnabled();
-    expect(screen.getByRole("checkbox", { name: "Permanently unrated" })).toBeDisabled();
+    expect(screen.queryByRole("checkbox", { name: "Permanently unrated" })).not.toBeInTheDocument();
     await user.click(explanationTab);
     await user.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByRole("textbox", { name: "Puzzle explanation" })).toHaveValue(
@@ -1238,11 +1283,20 @@ describe("PuzzleSolverPage solution options", () => {
           correctMove: puzzleCorrect ? "12... O-O" : null,
         }),
       );
+      if (!puzzleCorrect) {
+        expect(tab).toBeDisabled();
+        await user.click(
+          await screen.findByRole("button", { name: "Resign and reveal the solution" }),
+        );
+        await user.click(await screen.findByRole("button", { name: "Confirm resignation" }));
+      }
       await waitFor(() => expect(tab).toBeEnabled());
       expect(screen.getByRole("checkbox", { name: "Permanently unrated" })).toBeDisabled();
       await user.click(tab);
       expect(await screen.findByRole("list", { name: "Other puzzle attempts" })).toBeVisible();
-      await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledOnce());
+      await waitFor(() =>
+        expect(mocks.recordPuzzleProgress).toHaveBeenCalledTimes(puzzleCorrect ? 1 : 2),
+      );
       view.unmount();
 
       mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValue([
@@ -1260,19 +1314,20 @@ describe("PuzzleSolverPage solution options", () => {
       expect(screen.getByRole("tab", { name: "Explanation" })).toBeDisabled();
       expect(screen.queryByRole("region", { name: "Puzzle tags" })).not.toBeInTheDocument();
 
-      if (puzzleCorrect) {
+      act(() =>
+        mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+          puzzleId: "1369",
+          puzzleCorrect,
+          incorrectMove: puzzleCorrect ? null : "12... Rf8",
+          correctMove: puzzleCorrect ? "12... O-O" : null,
+        }),
+      );
+      if (!puzzleCorrect) {
+        expect(restored).toBeDisabled();
         await user.click(
-          await screen.findByRole("button", { name: "Give up and reveal the solution" }),
+          await screen.findByRole("button", { name: "Resign and reveal the solution" }),
         );
-      } else {
-        act(() =>
-          mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
-            puzzleId: "1369",
-            puzzleCorrect: false,
-            incorrectMove: "12... Rf8",
-            correctMove: null,
-          }),
-        );
+        await user.click(await screen.findByRole("button", { name: "Confirm resignation" }));
       }
       await waitFor(() => expect(restored).toBeEnabled());
       await user.click(restored);
@@ -1292,7 +1347,8 @@ describe("PuzzleSolverPage solution options", () => {
   it("shows an attempt time when one was recorded", async () => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
-    await user.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
+    await user.click(await screen.findByRole("button", { name: "Resign and reveal the solution" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm resignation" }));
 
     await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
 
@@ -1302,7 +1358,8 @@ describe("PuzzleSolverPage solution options", () => {
   it("can hide attempt answers for sharing", async () => {
     const user = userEvent.setup();
     render(<PuzzleSolverPage />);
-    await user.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
+    await user.click(await screen.findByRole("button", { name: "Resign and reveal the solution" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm resignation" }));
 
     await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
     expect(await screen.findByLabelText("Played 1. Rf8")).toBeInTheDocument();
@@ -1317,8 +1374,9 @@ describe("PuzzleSolverPage solution options", () => {
 
     expect(screen.queryByLabelText("Played 1. Rf8")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Played 2. Nf3+")).not.toBeInTheDocument();
-    expect(attempts.getAllByText("Correct")[0]).toBeVisible();
-    expect(attempts.getByText("Incorrect")).toBeVisible();
+    expect(attempts.queryByText("Correct")).not.toBeInTheDocument();
+    expect(attempts.queryByText("Incorrect")).not.toBeInTheDocument();
+    expect(attempts.getAllByLabelText("Solved on the first try").length).toBe(2);
   });
 
   it("retries loading other attempts after a request fails", async () => {
@@ -1328,7 +1386,8 @@ describe("PuzzleSolverPage solution options", () => {
       .mockRejectedValueOnce(new Error("Network unavailable"));
 
     render(<PuzzleSolverPage />);
-    await user.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
+    await user.click(await screen.findByRole("button", { name: "Resign and reveal the solution" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm resignation" }));
 
     await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
     expect(await screen.findByText("Could not load attempts.")).toBeInTheDocument();
@@ -1382,7 +1441,7 @@ describe("PuzzleSolverPage solution options", () => {
         true,
       ),
     );
-    expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
+    expect(mocks.recordPuzzleProgress).toHaveBeenCalledOnce();
   });
 
   it("records both progress sources when a custom-set solve is the first attempt", async () => {
@@ -1439,14 +1498,16 @@ describe("PuzzleSolverPage solution options", () => {
     });
 
     await waitFor(() =>
-      expect(mocks.recordPuzzleProgress).toHaveBeenCalledWith({
-        username: "solver",
-        puzzleId: "1369",
-        puzzleCorrect: false,
-        attemptDurationMs: expect.any(Number),
-        incorrectMove: "1... Kd7",
-        correctMove: null,
-      }),
+      expect(mocks.recordPuzzleProgress).toHaveBeenCalledWith(
+        expect.objectContaining({
+          username: "solver",
+          puzzleId: "1369",
+          puzzleCorrect: false,
+          attemptDurationMs: expect.any(Number),
+          incorrectMove: "1... Kd7",
+          correctMove: null,
+        }),
+      ),
     );
     expect(mocks.recordCustomPuzzleSetProgress).toHaveBeenCalledWith(
       "4b648b2a-e2bf-49dc-aaed-235c05615d1b",
@@ -1485,14 +1546,16 @@ describe("PuzzleSolverPage solution options", () => {
     });
 
     await waitFor(() =>
-      expect(mocks.recordPuzzleProgress).toHaveBeenCalledWith({
-        username: "solver",
-        puzzleId: "1369",
-        puzzleCorrect: false,
-        attemptDurationMs: null,
-        incorrectMove: "1... Kd7",
-        correctMove: null,
-      }),
+      expect(mocks.recordPuzzleProgress).toHaveBeenCalledWith(
+        expect.objectContaining({
+          username: "solver",
+          puzzleId: "1369",
+          puzzleCorrect: false,
+          attemptDurationMs: null,
+          incorrectMove: "1... Kd7",
+          correctMove: null,
+        }),
+      ),
     );
     performanceNow.mockRestore();
   });
@@ -1500,7 +1563,7 @@ describe("PuzzleSolverPage solution options", () => {
   it("logs a replayed attempt without replacing the saved solve", async () => {
     render(<PuzzleSolverPage />);
 
-    await screen.findByRole("button", { name: "Give up and reveal the solution" });
+    await screen.findByRole("button", { name: "Resign and reveal the solution" });
     const board = mocks.chessboardProps.at(-1);
     expect(board?.analysisMode).toBe(false);
     expect(board?.showSolution).toBe(false);
@@ -1527,8 +1590,8 @@ describe("PuzzleSolverPage solution options", () => {
       });
     });
 
-    expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true);
-    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
+    expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(false);
+    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
     await waitFor(() =>
       expect(mocks.recordPuzzleProgress).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1536,7 +1599,7 @@ describe("PuzzleSolverPage solution options", () => {
           attempt: {
             id: expect.any(String),
             pgn: '[Variant "Atomic"]\n\n12... Kd7 *',
-            recordProgress: false,
+            runId: "bf6cd63f-c399-4d3c-905c-04ab563e8949",
             resigned: false,
           },
         }),

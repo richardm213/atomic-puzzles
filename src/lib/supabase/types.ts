@@ -1,3 +1,4 @@
+import type { PuzzleAttemptColor } from "../../../shared/domain/puzzles/puzzleGrading";
 import type { PuzzleIssue } from "../../../shared/domain/puzzles/puzzleIssues";
 import type { RawPuzzleRow } from "../../types/puzzles";
 
@@ -7,6 +8,9 @@ export type PuzzleProgressRow = {
   first_attempt_duration_ms?: number | null;
   puzzle_correct: boolean;
   rated?: boolean;
+  has_solved?: boolean;
+  grading_available_at?: string | null;
+  attempt_color?: PuzzleAttemptColor | null;
   incorrect_move: string | null;
   correct_move?: string | null;
 };
