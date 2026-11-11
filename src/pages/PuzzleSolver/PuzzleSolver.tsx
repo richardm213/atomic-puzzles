@@ -876,18 +876,10 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const blindPosition = isAnalysisMode ? null : blindLeadIn;
   const hasAttemptedActivePuzzle = sessionAccess.hasAttempted;
   const boardShowsSolution = puzzleSession.solutionRevealed;
-  const canViewPostAttemptDetails = testMode
-    ? puzzleSession.attempt === "solved" || boardShowsSolution
-    : hasAttemptedActivePuzzle;
-  const canViewOtherAttempts =
-    canViewPostAttemptDetails ||
-    (!testMode &&
-      !hasSolvedPuzzle &&
-      !blindMode &&
-      !isCustomSetRoute &&
-      !isDashboardSetSolveMode &&
-      hasUnratedAttempt &&
-      unratedReason !== null);
+  const canViewPostAttemptDetails =
+    boardShowsSolution ||
+    puzzleSession.attempt === "solved" ||
+    (!testMode && puzzleSession.attempt === "wrong");
   const sourceMatchId = activePuzzle
     ? getPuzzleSetSourceId(activePuzzle, Number.parseInt(routeSetKey, 10))
     : "";
@@ -898,11 +890,9 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     hasSolvedPuzzle || isCustomSetRoute || isDashboardSetSolveMode
       ? SOLVED_BEFORE_BADGE_LABEL
       : ATTEMPTED_PUZZLE_BADGE_LABEL;
-  // A creator's unrated solve still unlocks editing in analysis, including on revisit.
   const canManagePuzzleExplanation = isPuzzleExplanationEditor && isAnalysisMode;
   const canViewExplanation =
-    canManagePuzzleExplanation ||
-    ((hasExplanation || isPuzzleExplanationEditor) && canViewPostAttemptDetails);
+    (hasExplanation || isPuzzleExplanationEditor) && canViewPostAttemptDetails;
   const showSolution = activePuzzleInfoTab === "solution";
   const showExplanation = activePuzzleInfoTab === "explanation";
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
@@ -1368,7 +1358,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   };
 
   const handleSelectOtherPuzzleAttemptsTab = () => {
-    if (!canViewOtherAttempts) return;
+    if (!canViewPostAttemptDetails) return;
 
     if (otherPuzzleAttemptsOpen) {
       if (otherPuzzleAttemptsStatus === "error") {
@@ -1723,7 +1713,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         onSave: (event) => void handleSaveExplanation(event),
       }}
       attempts={{
-        canView: canViewOtherAttempts,
+        canView: canViewPostAttemptDetails,
         puzzleKey: activePuzzleKey,
         status: otherPuzzleAttemptsStatus,
         rows: otherPuzzleAttempts,
@@ -1903,7 +1893,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
 
   const puzzleTagVoting =
     activePuzzleId &&
-    (testMode ? normalizedUsername === PUZZLE_ADMIN_USERNAME : hasAttemptedActivePuzzle) ? (
+    (testMode ? normalizedUsername === PUZZLE_ADMIN_USERNAME : canViewPostAttemptDetails) ? (
       <PuzzleTagVotingPanel
         key={`${activePuzzleId}:${normalizedUsername}`}
         puzzleId={activePuzzleId}

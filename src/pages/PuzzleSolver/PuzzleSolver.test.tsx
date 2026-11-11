@@ -1217,7 +1217,7 @@ describe("PuzzleSolverPage solution options", () => {
   });
 
   it.each([true, false])(
-    "unlocks other attempts after an unrated attempt and on revisit (correct: %s)",
+    "locks puzzle details again when revisiting your own puzzle (correct: %s)",
     async (puzzleCorrect) => {
       mocks.puzzleAuthor = mocks.username;
       mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValue([]);
@@ -1255,9 +1255,24 @@ describe("PuzzleSolverPage solution options", () => {
       ]);
       render(<PuzzleSolverPage />);
       const restored = await screen.findByRole("tab", { name: "Other attempts" });
+      await screen.findByTestId("mock-board");
+      expect(restored).toBeDisabled();
+      expect(screen.getByRole("tab", { name: "Explanation" })).toBeDisabled();
+      expect(screen.queryByRole("region", { name: "Puzzle tags" })).not.toBeInTheDocument();
+
       if (puzzleCorrect) {
-        expect(restored).toBeDisabled();
-        await user.click(await screen.findByRole("button", { name: "Give up and reveal the solution" }));
+        await user.click(
+          await screen.findByRole("button", { name: "Give up and reveal the solution" }),
+        );
+      } else {
+        act(() =>
+          mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+            puzzleId: "1369",
+            puzzleCorrect: false,
+            incorrectMove: "12... Rf8",
+            correctMove: null,
+          }),
+        );
       }
       await waitFor(() => expect(restored).toBeEnabled());
       await user.click(restored);
