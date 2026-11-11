@@ -3,6 +3,7 @@ begin;
 -- First-result fields remain the rating history. These two fields summarize later play.
 alter table public.puzzle_progress
   add column if not exists has_solved boolean not null default false,
+  add column if not exists solved_move text,
   add column if not exists attempt_color text,
   add column if not exists grading_available_at timestamptz;
 
@@ -293,7 +294,7 @@ begin
     state.original_color := coalesce(state.original_color,
       case run.misses when 0 then 'green' when 1 then 'yellow' when 2 then 'orange' else 'red' end);
     color := case when state.correct_streak >= 2 then 'blue' else state.original_color end;
-    update public.puzzle_progress set has_solved=true
+    update public.puzzle_progress set has_solved=true,solved_move=coalesce(solved_move,p_correct_move)
     where username=solver and puzzle_id=puzzle_key::text;
   else
     if run.misses = 0 and not run.previously_solved then

@@ -68,7 +68,7 @@ begin
   response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'correct','1. Nf3 *',active_run,1000,null,'1. Nf3');
   if (response->>'coinDelta')::numeric <> 0 then raise exception 'Reward after four misses'; end if;
   if exists(select 1 from public.puzzle_progress where username=solver and
-      (puzzle_correct or incorrect_move <> '1. e4' or first_attempt_duration_ms <> 20000 or not has_solved)) then
+      (puzzle_correct or incorrect_move <> '1. e4' or first_attempt_duration_ms <> 20000 or not has_solved or solved_move is distinct from '1. Nf3')) then
     raise exception 'First result was overwritten or later solve lost';
   end if;
   if (select count(*) from public.puzzle_rating_events where username=solver) <> 1 then
@@ -89,11 +89,14 @@ begin
   if (response->>'unratedUntil')::timestamptz < old_available then raise exception 'Cooldown moved backwards'; end if;
   for i in 1..2 loop
     update public.puzzle_solver_states set grading_available_at=now()-interval '1 second' where username=solver;
-    response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'correct','1. Nf3 *',null,1000,null,'1. Nf3');
+    response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'correct','1. d4 *',null,1000,null,'1. d4');
     if (response->>'coinDelta')::numeric <> 0.75 or (response->>'rated')::boolean then
       raise exception 'Repeat solve did not use quarter stakes without speed: %',response;
     end if;
   end loop;
+  perform pg_temp.assert_grading(
+    (select solved_move from public.puzzle_progress where username=solver)='1. Nf3',
+    'A repeat graded solve replaced the first correct-solve move');
   if response->'grading'->>'color' <> 'blue' then raise exception 'Clean graded streak did not become blue'; end if;
   update public.puzzle_solver_states set grading_available_at=now()-interval '1 second' where username=solver;
   response := public.submit_puzzle_run_attempt(gen_random_uuid(),solver,pid,'incorrect','1. d4 *',null,1000,'1. d4',null);
@@ -230,7 +233,7 @@ begin
       insert into public.puzzle_solver_states(username,puzzle_id,grading_available_at,original_color,correct_streak)
       values(solver,pid::bigint,available,case when was_correct then 'green' end,
         case when was_correct then 1 else 0 end);
-      select to_jsonb(p)-'has_solved'-'attempt_color'-'grading_available_at' into first_snapshot
+      select to_jsonb(p)-'has_solved'-'solved_move'-'attempt_color'-'grading_available_at' into first_snapshot
         from public.puzzle_progress p where username=solver;
       response := public.get_puzzle_grading_state(solver,pid);
       perform pg_temp.assert_grading(
@@ -288,7 +291,7 @@ begin
         (select balance from public.coin_accounts where username=solver)=
           100
         and (select count(*) from public.puzzle_rating_events where username=solver)=1
-        and (select to_jsonb(p)-'has_solved'-'attempt_color'-'grading_available_at'
+        and (select to_jsonb(p)-'has_solved'-'solved_move'-'attempt_color'-'grading_available_at'
              from public.puzzle_progress p where username=solver)=first_snapshot,
         format('Historical wallet, first move/time, or rating changed for %s',solver));
       select grading_available_at into available from public.puzzle_solver_states where username=solver;
@@ -311,6 +314,9 @@ begin
           and (select correct_streak from public.puzzle_solver_states where username=solver)=
             case when was_correct then 1 else 0 end,
           'Practice retained attempts, completed runs, or streak changes');
+        perform pg_temp.assert_grading(was_correct or
+          (select solved_move is null from public.puzzle_progress where username=solver),
+          'Practice recorded a correct-solve move');
       end if;
       if is_recent and not was_correct then
         update public.puzzle_solver_states set grading_available_at=now() where username=solver;
@@ -319,7 +325,7 @@ begin
           '1. Nf3 *',null,1000,null,'1. Nf3');
         perform pg_temp.assert_grading((response->>'coinDelta')::numeric=3
           and response->'grading'->>'color'='green'
-          and (select to_jsonb(p)-'has_solved'-'attempt_color'-'grading_available_at'
+          and (select to_jsonb(p)-'has_solved'-'solved_move'-'attempt_color'-'grading_available_at'
                from public.puzzle_progress p where username=solver)=first_snapshot,
           'Practice changed solve history or reduced future graded stakes');
       end if;

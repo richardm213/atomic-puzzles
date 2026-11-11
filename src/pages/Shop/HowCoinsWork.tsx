@@ -3,9 +3,7 @@ import "./HowCoinsWork.css";
 import {
   faArrowRight,
   faCheck,
-  faChessKnight,
   faClockRotateLeft,
-  faFlag,
   faTriangleExclamation,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -37,7 +35,7 @@ const attemptExamples: {
   { color: "orange", result: "Solved on try 3", correct: false },
   { color: "red", result: "Solved on try 4+", correct: false },
   { color: "red", result: "Not solved · 1–2 misses", correct: false },
-  { color: "purple", result: "3+ misses without a solve", correct: false },
+  { color: "purple", result: "Not solved 3+ misses", correct: false },
   { color: "blue", result: "2 clean graded runs in a row", correct: true },
 ];
 
@@ -141,28 +139,63 @@ export const HowCoinsWorkPage = () => (
 
       <section className="coinGuideSection" aria-labelledby="grading-cooldown-heading">
         <h2 id="grading-cooldown-heading">When does grading return?</h2>
-        <ol className="coinGradingFlow" aria-label="Grading cycle">
-          <li>
-            <FontAwesomeIcon icon={faChessKnight} aria-hidden="true" />
-            <strong>Graded run</strong>
-            <span>Keep trying. Leaving saves your run.</span>
-          </li>
-          <li>
-            <FontAwesomeIcon icon={faFlag} aria-hidden="true" />
-            <strong>Solve or resign</strong>
-            <span>The run ends.</span>
-          </li>
-          <li>
-            <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-            <strong>Ungraded for 2 months</strong>
-            <span>No coins. Attempts aren’t recorded.</span>
-          </li>
-        </ol>
+        <figure
+          className="coinGradingCycle"
+          aria-label="Grading cycle, clockwise: graded run, solve or resign, ungraded, grading returns, repeat"
+        >
+          <svg
+            className="coinGradingCycleArrows"
+            viewBox="0 0 100 100"
+            fill="none"
+            aria-hidden="true"
+          >
+            <defs>
+              <marker
+                id="coin-cycle-arrow"
+                viewBox="0 0 5 5"
+                refX="4"
+                refY="2.5"
+                markerWidth="5"
+                markerHeight="5"
+                markerUnits="userSpaceOnUse"
+                orient="auto"
+              >
+                <path d="M0 0 5 2.5 0 5Z" fill="currentColor" />
+              </marker>
+            </defs>
+            {[0, 90, 180, 270].map((rotation) => (
+              <path
+                key={rotation}
+                d="M75 6.7 A50 50 0 0 1 93.3 25"
+                transform={`rotate(${rotation} 50 50)`}
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                markerEnd="url(#coin-cycle-arrow)"
+              />
+            ))}
+          </svg>
+          <ol>
+            <li>
+              <strong>Graded run</strong>
+              <span>Leaving saves your run.</span>
+            </li>
+            <li>
+              <strong>Solve or resign</strong>
+              <span>The run ends.</span>
+            </li>
+            <li>
+              <strong>Ungraded</strong>
+              <span>No coins.</span>
+            </li>
+            <li>
+              <strong>Grading returns</strong>
+              <span>After 2 months.</span>
+            </li>
+          </ol>
+        </figure>
         <p>
-          After 2 months, grading returns. Already solved it? Rewards and penalties are ¼ as much.
-        </p>
-        <p>
-          Any practice attempt—right or wrong—or confirmed resignation restarts the two-month timer.
+          Any practice resets the two-month timer. Previously solved puzzles pay and cost ¼ as much.
         </p>
       </section>
 
@@ -206,9 +239,8 @@ export const HowCoinsWorkPage = () => (
             on your own unrated puzzles. A practice run stays practice until it ends.
           </p>
           <p>
-            <strong>Colors:</strong> Only graded solves count toward blue. A graded mistake breaks
-            the blue streak and restores your original solve color. Green stays green after a later
-            miss.
+            <strong>Colors:</strong> Only graded solves count toward bright green. A graded mistake
+            resets the streak and restores your original solve color.
           </p>
           <p>
             <strong>Penalties:</strong> Total miss deductions stay below twice the first-miss

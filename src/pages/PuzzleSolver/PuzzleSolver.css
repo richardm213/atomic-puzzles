@@ -1497,15 +1497,17 @@ button.puzzleRatingBadge.editable:focus-visible {
 
 .puzzleOtherAttemptsControls {
   display: flex;
-  justify-content: flex-end;
-  padding: 8px 10px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1);
+  padding: var(--space-2);
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
 }
 
 .puzzleOtherAttemptsControls label {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-1);
   min-height: 28px;
   color: var(--color-muted);
   font-size: 12px;
@@ -2038,6 +2040,10 @@ button.puzzleRatingBadge.editable:focus-visible {
   .mobileActionCard .puzzleExplanationEditButton,
   .mobileActionCard .puzzleExplanationFormActions button {
     min-height: var(--control-height-touch);
+  }
+
+  .mobileActionCard .puzzleOtherAttemptsControls label {
+    min-height: 44px;
   }
 
   .mobileActionCard .puzzleOtherAttemptRow {

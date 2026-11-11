@@ -16,11 +16,11 @@
 }
 
 .puzzleOtherAttemptResult.green {
-  --attempt-color: var(--color-success);
+  --attempt-color: var(--color-grading-green);
 }
 
 .puzzleOtherAttemptResult.yellow {
-  --attempt-color: var(--color-warning);
+  --attempt-color: var(--color-grading-yellow);
 }
 
 .puzzleOtherAttemptResult.orange {
@@ -28,15 +28,16 @@
 }
 
 .puzzleOtherAttemptResult.red {
-  --attempt-color: var(--color-danger);
+  --attempt-color: var(--color-grading-red);
 }
 
 .puzzleOtherAttemptResult.purple {
   --attempt-color: var(--color-grading-purple);
 }
 
+/* Keep the stored "blue" streak value compatible with existing grading history. */
 .puzzleOtherAttemptResult.blue {
-  --attempt-color: var(--color-grading-blue);
+  --attempt-color: var(--color-grading-streak);
 }
 
 .puzzleOtherAttemptResult:focus-visible {

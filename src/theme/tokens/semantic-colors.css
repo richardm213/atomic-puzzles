@@ -37,9 +37,13 @@
   --color-rating-graph-rapid: #f0a33a;
   --color-rating-graph-atomic960: #22cda2;
   --color-calendar-monthly: #aa8cff;
-  --color-grading-orange: var(--color-rating-graph-rapid);
-  --color-grading-purple: var(--color-calendar-monthly);
-  --color-grading-blue: var(--color-rating-graph-hyper);
+  /* A consistent grading palette, with a brighter green for clean repeat solves. */
+  --color-grading-green: #8dceaa;
+  --color-grading-yellow: #e4c775;
+  --color-grading-orange: #e5a16f;
+  --color-grading-red: #e28e96;
+  --color-grading-purple: #b6a0dc;
+  --color-grading-streak: #56db8c;
   --color-player-white: #f4f6f8;
   --color-player-black: #171c25;
   --color-gold: #f5c26b;
@@ -84,6 +88,12 @@
   --color-rating-graph-rapid: #9a5b00;
   --color-rating-graph-atomic960: #087f68;
   --color-calendar-monthly: #6946bd;
+  --color-grading-green: #326a48;
+  --color-grading-yellow: #795913;
+  --color-grading-orange: #934b19;
+  --color-grading-red: #a63745;
+  --color-grading-purple: #704a95;
+  --color-grading-streak: #087036;
   --color-gold: #8f6500;
   --color-accent-warm: #d6a34c;
   --color-accent-warm-strong: #a86d00;

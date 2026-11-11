@@ -51,6 +51,9 @@ type PuzzleInfoSectionProps = {
     puzzleKey: string;
     status: "idle" | "loading" | "loaded" | "error";
     rows: PuzzleProgressWithUsernameRow[];
+    correctOnly: boolean;
+    onCorrectOnlyChange: (checked: boolean) => void;
+    singleLineMove: string | null;
     onToggle: () => void;
   };
   comments: { canView: boolean; puzzleId: number | undefined; onSelect: () => void } | null;
@@ -60,15 +63,39 @@ const AttemptsPanel = ({
   status,
   rows,
   onRetry,
+  correctOnly,
+  onCorrectOnlyChange,
+  singleLineMove,
 }: {
   status: PuzzleInfoSectionProps["attempts"]["status"];
   rows: PuzzleProgressWithUsernameRow[];
   onRetry: () => void;
+  correctOnly: boolean;
+  onCorrectOnlyChange: (checked: boolean) => void;
+  singleLineMove: string | null;
 }) => {
   const [hideAnswers, setHideAnswers] = useState(false);
 
   return (
     <div className="puzzleOtherAttemptsPanel" aria-live="polite">
+      <div className="puzzleOtherAttemptsControls">
+        <label>
+          <input
+            type="checkbox"
+            checked={correctOnly}
+            onChange={(event) => onCorrectOnlyChange(event.target.checked)}
+          />
+          Correct attempts
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={hideAnswers}
+            onChange={(event) => setHideAnswers(event.target.checked)}
+          />
+          Hide answers
+        </label>
+      </div>
       {status === "loading" ? (
         <div className="puzzleOtherAttemptsState">Loading attempts...</div>
       ) : status === "error" ? (
@@ -79,54 +106,52 @@ const AttemptsPanel = ({
           </button>
         </div>
       ) : rows.length > 0 ? (
-        <>
-          <div className="puzzleOtherAttemptsControls">
-            <label>
-              <input
-                type="checkbox"
-                checked={hideAnswers}
-                onChange={(event) => setHideAnswers(event.target.checked)}
-              />
-              Hide answers
-            </label>
-          </div>
-          <ul className="puzzleOtherAttemptsList" aria-label="Other puzzle attempts">
-            {rows.map((attempt) => (
-              <li
-                key={`${attempt.username}-${attempt.first_attempt_at}`}
-                className={`puzzleOtherAttemptRow ${attempt.puzzle_correct ? "correct" : "incorrect"}`}
+        <ul className="puzzleOtherAttemptsList" aria-label="Other puzzle attempts">
+          {rows.map((attempt) => (
+            <li
+              key={`${attempt.username}-${attempt.first_attempt_at}`}
+              className={`puzzleOtherAttemptRow ${correctOnly || attempt.puzzle_correct ? "correct" : "incorrect"}`}
+            >
+              <Link
+                className="puzzleOtherAttemptUser"
+                to="/@/$username/puzzles"
+                params={{ username: attempt.username }}
               >
-                <Link
-                  className="puzzleOtherAttemptUser"
-                  to="/@/$username/puzzles"
-                  params={{ username: attempt.username }}
+                {attempt.username}
+              </Link>
+              <PuzzleAttemptResult
+                color={attempt.attempt_color ?? (attempt.puzzle_correct ? "green" : "red")}
+                correct={correctOnly || attempt.puzzle_correct}
+                move={
+                  correctOnly
+                    ? (attempt.solved_move ??
+                      (attempt.puzzle_correct ? attempt.correct_move : null) ??
+                      singleLineMove)
+                    : attempt.puzzle_correct
+                      ? attempt.correct_move
+                      : attempt.incorrect_move
+                }
+                hideAnswers={hideAnswers}
+              />
+              <time className="puzzleOtherAttemptTime" dateTime={attempt.first_attempt_at}>
+                {formatLocalDateTime(attempt.first_attempt_at)}
+              </time>
+              {typeof attempt.first_attempt_duration_ms === "number" ? (
+                <span
+                  className="puzzleOtherAttemptDuration"
+                  aria-label={`Attempt time ${formatElapsedDuration(attempt.first_attempt_duration_ms)}`}
                 >
-                  {attempt.username}
-                </Link>
-                <PuzzleAttemptResult
-                  color={attempt.attempt_color ?? (attempt.puzzle_correct ? "green" : "red")}
-                  correct={attempt.puzzle_correct}
-                  move={attempt.puzzle_correct ? attempt.correct_move : attempt.incorrect_move}
-                  hideAnswers={hideAnswers}
-                />
-                <time className="puzzleOtherAttemptTime" dateTime={attempt.first_attempt_at}>
-                  {formatLocalDateTime(attempt.first_attempt_at)}
-                </time>
-                {typeof attempt.first_attempt_duration_ms === "number" ? (
-                  <span
-                    className="puzzleOtherAttemptDuration"
-                    aria-label={`Attempt time ${formatElapsedDuration(attempt.first_attempt_duration_ms)}`}
-                  >
-                    <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
-                    {formatElapsedDuration(attempt.first_attempt_duration_ms)}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </>
+                  <FontAwesomeIcon icon={faClockRotateLeft} aria-hidden="true" />
+                  {formatElapsedDuration(attempt.first_attempt_duration_ms)}
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
       ) : (
-        <div className="puzzleOtherAttemptsState">No other attempts yet.</div>
+        <div className="puzzleOtherAttemptsState">
+          {correctOnly ? "No correct attempts yet." : "No other attempts yet."}
+        </div>
       )}
     </div>
   );
@@ -152,7 +177,14 @@ export const PuzzleInfoSection = ({
   } else if (showAttempts && attempts.canView) {
     panel = (
       <div className="puzzleInfoPanel">
-        <AttemptsPanel status={attempts.status} rows={attempts.rows} onRetry={attempts.onToggle} />
+        <AttemptsPanel
+          status={attempts.status}
+          rows={attempts.rows}
+          onRetry={attempts.onToggle}
+          correctOnly={attempts.correctOnly}
+          onCorrectOnlyChange={attempts.onCorrectOnlyChange}
+          singleLineMove={attempts.singleLineMove}
+        />
       </div>
     );
   } else if (showExplanation && explanation.canView) {

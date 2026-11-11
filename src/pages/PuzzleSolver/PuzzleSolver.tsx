@@ -58,7 +58,7 @@ import { useBoardItemShortcuts } from "../../hooks/useBoardItemShortcuts";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { boardLineNavigation, getBoardLineState } from "../../lib/analysis/boardState";
 import { ApiError } from "../../lib/api/postApi";
-import { startingPlyFromFen } from "../../lib/chess/pgn";
+import { movePrefix, startingPlyFromFen } from "../../lib/chess/pgn";
 import {
   fetchCustomPuzzleSet,
   getOrderedPuzzleIndexesForCustomSet,
@@ -90,7 +90,6 @@ import {
   fetchPuzzleGradingState,
   fetchPuzzleProgressRowsForUsername,
   fetchPuzzleRatingExclusions,
-  type PuzzleProgressWithUsernameRow,
   recordPuzzleProgress,
   setOwnPuzzlePermanentlyUnrated,
 } from "../../lib/supabase/puzzleProgress";
@@ -280,12 +279,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     state: "idle",
   });
   const [pinnedSolutionLineIndex, setPinnedSolutionLineIndex] = useState<number | null>(null);
-  const [otherPuzzleAttemptsStatus, setOtherPuzzleAttemptsStatus] = useState<
-    "idle" | "loading" | "loaded" | "error"
-  >("idle");
-  const [otherPuzzleAttempts, setOtherPuzzleAttempts] = useState<PuzzleProgressWithUsernameRow[]>(
-    [],
-  );
+  const [correctAttemptsOnly, setCorrectAttemptsOnly] = useState(false);
   const [ratingEditorOpen, setRatingEditorOpen] = useState(false);
   const [ratingDraftLevel, setRatingDraftLevel] = useState<PuzzleLevel>(1);
   const [ratingSaveStatus, setRatingSaveStatus] = useState<AsyncActionStatus>({ state: "idle" });
@@ -896,6 +890,28 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const showSolution = activePuzzleInfoTab === "solution";
   const showExplanation = activePuzzleInfoTab === "explanation";
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
+  const otherAttemptsQuery = useQuery({
+    queryKey: ["puzzle-attempts", activePuzzleKey, correctAttemptsOnly],
+    queryFn: () =>
+      fetchPuzzleAttemptsForPuzzle(activePuzzleKey, {
+        limit: OTHER_PUZZLE_ATTEMPTS_LIMIT,
+        correctOnly: correctAttemptsOnly,
+      }),
+    enabled: canViewPostAttemptDetails && otherPuzzleAttemptsOpen,
+    retry: 1,
+    retryDelay: 350,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+  const otherPuzzleAttemptsStatus = !otherPuzzleAttemptsOpen
+    ? "idle"
+    : otherAttemptsQuery.isPending
+      ? "loading"
+      : otherAttemptsQuery.isError
+        ? "error"
+        : "loaded";
+  const singleLineFirstMove =
+    boardState.solutionLines?.length === 1 ? boardState.solutionLines[0]?.[0] : null;
 
   useEffect(() => {
     setUnratedMarkStatus({ state: "idle" });
@@ -1080,8 +1096,10 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
               ["puzzle-grading", normalizedUsername, normalizedPuzzleId],
               result.grading,
             );
-            if (activePuzzleKeyRef.current === normalizedPuzzleId)
-              setOtherPuzzleAttemptsStatus("idle");
+            if (recorded)
+              void queryClient.invalidateQueries({
+                queryKey: ["puzzle-attempts", normalizedPuzzleId],
+              });
           }
           if (result?.unratedUntil) {
             setRatingExclusions((current) =>
@@ -1197,8 +1215,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     setFinishedIntroKey("");
     setBoardState(createInitialBoardState());
     setMobileFeedback(null);
-    setOtherPuzzleAttemptsStatus("idle");
-    setOtherPuzzleAttempts([]);
+    setCorrectAttemptsOnly(false);
     previousBoardSnapshotRef.current = createInitialBoardSnapshot();
   }, [puzzleVisitKey, blindMode, fen, resetPuzzleUiState]);
 
@@ -1402,39 +1419,12 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     revealSolution();
   };
 
-  const loadOtherPuzzleAttempts = () => {
-    if (!activePuzzleKey || otherPuzzleAttemptsStatus === "loaded") return;
-
-    const puzzleKeyForRequest = activePuzzleKey;
-    setOtherPuzzleAttemptsStatus("loading");
-    const fetchAttempts = () =>
-      fetchPuzzleAttemptsForPuzzle(puzzleKeyForRequest, {
-        limit: OTHER_PUZZLE_ATTEMPTS_LIMIT,
-      });
-    void fetchAttempts()
-      .catch(async () => {
-        await new Promise((resolve) => window.setTimeout(resolve, 350));
-        return fetchAttempts();
-      })
-      .then((rows) => {
-        if (activePuzzleKeyRef.current !== puzzleKeyForRequest) return;
-        setOtherPuzzleAttempts(rows);
-        setOtherPuzzleAttemptsStatus("loaded");
-      })
-      .catch((error) => {
-        if (activePuzzleKeyRef.current !== puzzleKeyForRequest) return;
-        globalThis.console?.error(error);
-        setOtherPuzzleAttempts([]);
-        setOtherPuzzleAttemptsStatus("error");
-      });
-  };
-
   const handleSelectOtherPuzzleAttemptsTab = () => {
     if (!canViewPostAttemptDetails) return;
 
     if (otherPuzzleAttemptsOpen) {
       if (otherPuzzleAttemptsStatus === "error") {
-        loadOtherPuzzleAttempts();
+        void otherAttemptsQuery.refetch();
         return;
       }
       setActivePuzzleInfoTab(null);
@@ -1449,7 +1439,6 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         boardPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
-    loadOtherPuzzleAttempts();
   };
 
   const handleSelectExplanationTab = () => {
@@ -1795,7 +1784,12 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         canView: canViewPostAttemptDetails,
         puzzleKey: activePuzzleKey,
         status: otherPuzzleAttemptsStatus,
-        rows: otherPuzzleAttempts,
+        rows: otherAttemptsQuery.data ?? [],
+        correctOnly: correctAttemptsOnly,
+        onCorrectOnlyChange: setCorrectAttemptsOnly,
+        singleLineMove: singleLineFirstMove
+          ? `${movePrefix(startingPlyFromFen(fen), true)}${singleLineFirstMove}`
+          : null,
         onToggle: handleSelectOtherPuzzleAttemptsTab,
       }}
       comments={

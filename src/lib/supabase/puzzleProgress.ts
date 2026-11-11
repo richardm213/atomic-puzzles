@@ -276,6 +276,7 @@ export type RecordPuzzleProgressInput = {
 };
 
 export type FetchPuzzleAttemptsForPuzzleOptions = {
+  correctOnly?: boolean;
   excludeUsername?: string;
   limit?: number;
 };
@@ -499,11 +500,13 @@ export const fetchPuzzleAttemptsForPuzzle = async (
   let query = supabase
     .from(PUZZLE_PROGRESS_TABLE)
     .select(
-      "username,puzzle_id,first_attempt_at,first_attempt_duration_ms,puzzle_correct,rated,incorrect_move,correct_move,has_solved,attempt_color,grading_available_at",
+      "username,puzzle_id,first_attempt_at,first_attempt_duration_ms,puzzle_correct,rated,incorrect_move,correct_move,has_solved,solved_move,attempt_color,grading_available_at",
     )
     .eq("puzzle_id", normalizedPuzzleId)
     .order("first_attempt_at", { ascending: false })
     .limit(boundedLimit);
+
+  if (options.correctOnly) query = query.eq("has_solved", true);
 
   if (normalizedExcludeUsername) {
     query = query.neq("username", normalizedExcludeUsername);
@@ -524,6 +527,7 @@ export const fetchPuzzleAttemptsForPuzzle = async (
       puzzle_correct: Boolean(row?.puzzle_correct),
       rated: row?.rated !== false,
       has_solved: row?.has_solved ?? row?.puzzle_correct,
+      solved_move: row?.solved_move?.trim() || null,
       grading_available_at: row?.grading_available_at ?? null,
       attempt_color: row?.attempt_color ?? null,
       incorrect_move:

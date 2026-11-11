@@ -1385,6 +1385,86 @@ describe("PuzzleSolverPage solution options", () => {
     expect(attempts.getAllByLabelText("Solved on the first try").length).toBe(2);
   });
 
+  it("shows recovered solves as correct without changing their original result, color, or time", async () => {
+    const rows = [
+      {
+        username: "recovered",
+        puzzle_id: "1369",
+        first_attempt_at: "2026-07-09T07:00:00Z",
+        first_attempt_duration_ms: 65000,
+        puzzle_correct: false,
+        has_solved: true,
+        incorrect_move: "12... Kd7",
+        correct_move: null,
+        solved_move: "12... Rf8",
+        attempt_color: "yellow",
+      },
+      {
+        username: "unsolved",
+        puzzle_id: "1369",
+        first_attempt_at: "2026-07-09T08:00:00Z",
+        puzzle_correct: false,
+        has_solved: false,
+        incorrect_move: "12... e5",
+        correct_move: null,
+      },
+    ];
+    mocks.fetchPuzzleAttemptsForPuzzle.mockImplementation(async (_id, options) =>
+      options.correctOnly ? rows.filter((row) => row.has_solved) : rows,
+    );
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+    await user.click(await screen.findByRole("button", { name: "Resign and reveal the solution" }));
+    await user.click(await screen.findByRole("button", { name: "Confirm resignation" }));
+    await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
+    const recovered = () => within(screen.getByText("recovered").closest("li")!);
+    expect(await screen.findByLabelText("Played 12... Kd7")).toBeVisible();
+    expect(recovered().getByRole("img", { name: "Incorrect" })).toBeVisible();
+
+    await user.click(screen.getByRole("checkbox", { name: "Correct attempts" }));
+    expect(await screen.findByLabelText("Played 12... Rf8")).toBeVisible();
+    expect(screen.queryByText("unsolved")).not.toBeInTheDocument();
+    expect(recovered().getByRole("img", { name: "Correct" })).toBeVisible();
+    expect(recovered().getByLabelText("Solved on the second try")).toBeVisible();
+    expect(recovered().getByLabelText("Attempt time 1:05")).toBeVisible();
+
+    await user.click(screen.getByRole("checkbox", { name: "Hide answers" }));
+    expect(recovered().queryByRole("img", { name: "Correct" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Played 12... Rf8")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox", { name: "Hide answers" }));
+    await user.click(screen.getByRole("checkbox", { name: "Correct attempts" }));
+    expect(await screen.findByLabelText("Played 12... Kd7")).toBeVisible();
+    expect(recovered().getByRole("img", { name: "Incorrect" })).toBeVisible();
+    expect(screen.getByText("unsolved")).toBeVisible();
+  });
+
+  it("keeps the filter available when there are no correct attempts", async () => {
+    mocks.fetchPuzzleAttemptsForPuzzle
+      .mockResolvedValueOnce([
+        {
+          username: "unsolved",
+          puzzle_id: "1369",
+          first_attempt_at: "2026-07-09T08:00:00Z",
+          puzzle_correct: false,
+          has_solved: false,
+          incorrect_move: "12... e5",
+          correct_move: null,
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    const user = userEvent.setup();
+    render(<PuzzleSolverPage />);
+    await user.click(await screen.findByRole("button", { name: "Resign and reveal the solution" }));
+    await user.click(await screen.findByRole("button", { name: "Confirm resignation" }));
+    await user.click(await screen.findByRole("tab", { name: "Other attempts" }));
+    await screen.findByText("unsolved");
+    await user.click(screen.getByRole("checkbox", { name: "Correct attempts" }));
+    expect(await screen.findByText("No correct attempts yet.")).toBeVisible();
+    await user.click(screen.getByRole("checkbox", { name: "Correct attempts" }));
+    expect(await screen.findByText("unsolved")).toBeVisible();
+    expect(mocks.fetchPuzzleAttemptsForPuzzle).toHaveBeenCalledTimes(2);
+  });
+
   it("retries loading other attempts after a request fails", async () => {
     const user = userEvent.setup();
     mocks.fetchPuzzleAttemptsForPuzzle

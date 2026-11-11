@@ -14,7 +14,10 @@ import { makeUci, parseSquare } from "chessops/util";
 import type { Atomic } from "chessops/variant";
 import { memo, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { formatPuzzleAttemptPgn } from "../../../shared/domain/puzzles/attemptPgn";
+import {
+  correctAttemptMoveIndex,
+  formatPuzzleAttemptPgn,
+} from "../../../shared/domain/puzzles/attemptPgn";
 import type { PuzzleIntro } from "../../../shared/domain/puzzles/gameHistory";
 import { useAppSettings } from "../../context/AppSettings";
 import { playBoardMoveSound } from "../../lib/boardSounds/boardSounds";
@@ -381,22 +384,12 @@ const ChessboardComponent = ({
   );
 
   const getCorrectLineMove = useCallback((): string | null => {
-    const mainLine = solutionEntriesRef.current[0]?.moveEntries;
-    if (!mainLine || solutionEntriesRef.current.length < 2) return null;
+    if (!solutionEntriesRef.current[0]?.moveEntries.length) return null;
 
-    const playedMoveKeys = historyMoveKeys(historyRef.current);
-    const playedDivergenceIndex = playedMoveKeys.findIndex(
-      (moveKey, moveIndex) => moveKey !== mainLine[moveIndex]?.key,
+    const displayedMoveIndex = correctAttemptMoveIndex(
+      solutionEntriesRef.current.map((entry) => entry.moveEntries),
+      historyMoveKeys(historyRef.current),
     );
-    const mainLineDivergenceIndex = mainLine.findIndex((mainMove, moveIndex) =>
-      solutionEntriesRef.current
-        .slice(1)
-        .some((alternateLine) => alternateLine.moveEntries[moveIndex]?.key !== mainMove.key),
-    );
-    const displayedMoveIndex =
-      playedDivergenceIndex < 0 ? mainLineDivergenceIndex : playedDivergenceIndex;
-    if (displayedMoveIndex < 0) return null;
-
     const playedSan = historyMoveSans(historyRef.current)[displayedMoveIndex];
     return playedSan
       ? `${movePrefix(startingPlyFromFen(fenRef.current) + displayedMoveIndex, true)}${playedSan}`

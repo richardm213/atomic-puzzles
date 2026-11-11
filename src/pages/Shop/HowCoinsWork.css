@@ -240,40 +240,64 @@
   color: var(--color-success);
 }
 
-.coinGradingFlow {
+.coinGradingCycle {
+  --cycle-node-size: clamp(7rem, 26vw, 9rem);
+
+  position: relative;
+  justify-self: center;
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 1;
+  margin: 0;
+}
+
+.coinGradingCycleArrows {
+  position: absolute;
+  inset: calc(var(--cycle-node-size) / 2);
+  width: calc(100% - var(--cycle-node-size));
+  height: calc(100% - var(--cycle-node-size));
+  overflow: visible;
+  color: var(--color-primary-soft);
+  pointer-events: none;
+}
+
+.coinGradingCycle ol {
+  position: absolute;
+  inset: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-5);
+  grid-template-columns: var(--cycle-node-size) minmax(0, 1fr) var(--cycle-node-size);
+  grid-template-rows: var(--cycle-node-size) minmax(0, 1fr) var(--cycle-node-size);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.coinGradingFlow li {
-  position: relative;
+.coinGradingCycle li {
   display: grid;
-  align-content: start;
-  justify-items: center;
-  gap: var(--space-2);
-  padding: var(--space-4) var(--space-2);
+  align-self: center;
+  justify-self: center;
+  gap: var(--space-1);
+  width: var(--cycle-node-size);
   text-align: center;
 }
 
-.coinGradingFlow li + li::before {
-  position: absolute;
-  top: var(--space-4);
-  left: calc(-1 * var(--space-4));
-  color: var(--color-muted);
-  content: "→";
+.coinGradingCycle li:nth-child(1) {
+  grid-area: 1 / 2;
 }
 
-.coinGradingFlow li > svg {
-  height: 24px;
-  margin-bottom: var(--space-1);
-  color: var(--color-primary-soft);
+.coinGradingCycle li:nth-child(2) {
+  grid-area: 2 / 3;
 }
 
-.coinGradingFlow li > span {
+.coinGradingCycle li:nth-child(3) {
+  grid-area: 3 / 2;
+}
+
+.coinGradingCycle li:nth-child(4) {
+  grid-area: 2 / 1;
+}
+
+.coinGradingCycle li > span {
   color: var(--color-muted);
   font-size: 0.875rem;
   line-height: 1.5;
@@ -379,7 +403,7 @@
   .coinGuideDetails p,
   .coinRuleList dt,
   .coinGradingKey dd,
-  .coinGradingFlow li > span {
+  .coinGradingCycle li > span {
     font-size: 1rem;
   }
 
@@ -388,28 +412,8 @@
     padding-inline: var(--space-3);
   }
 
-  .coinGradingKey,
-  .coinGradingFlow {
+  .coinGradingKey {
     grid-template-columns: 1fr;
-  }
-
-  .coinGradingFlow li {
-    grid-template-columns: 28px 1fr;
-    justify-items: start;
-    padding-block: var(--space-3);
-    text-align: left;
-  }
-
-  .coinGradingFlow li > svg {
-    grid-row: span 2;
-    align-self: center;
-    margin: 0;
-  }
-
-  .coinGradingFlow li + li::before {
-    top: calc(-1 * var(--space-4));
-    left: var(--space-2);
-    content: "↓";
   }
 
   .coinAttemptSample {

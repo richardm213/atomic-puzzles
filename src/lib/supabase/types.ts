@@ -16,6 +16,7 @@ export type PuzzleProgressRow = {
 };
 
 export type PuzzleProgressWithUsernameRow = PuzzleProgressRow & {
+  solved_move?: string | null;
   user_id?: number;
   username: string;
 };

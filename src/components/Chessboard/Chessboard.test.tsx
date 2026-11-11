@@ -645,7 +645,7 @@ describe("Chessboard orchestration", () => {
     vi.useRealTimers();
   });
 
-  it("does not report a line move when the puzzle has only one solution", () => {
+  it("reports the opening move when the puzzle has only one solution", () => {
     vi.useFakeTimers();
     const onAttemptResolved = vi.fn();
     renderBoard({
@@ -664,7 +664,7 @@ describe("Chessboard orchestration", () => {
         puzzleId: "test",
         puzzleCorrect: true,
         incorrectMove: null,
-        correctMove: null,
+        correctMove: "1. e4",
       }),
     );
     vi.useRealTimers();

@@ -1,17 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { rpcMock } = vi.hoisted(() => ({
+const { rpcMock, fromMock } = vi.hoisted(() => ({
+  fromMock: vi.fn(),
   rpcMock: vi.fn(),
 }));
 
 vi.mock("./client", () => ({
   getSupabaseClient: () => ({
     rpc: rpcMock,
+    from: fromMock,
   }),
 }));
 
 import {
   fetchAttemptedPuzzleIds,
+  fetchPuzzleAttemptsForPuzzle,
   fetchPuzzleProgressPage,
   recordPuzzleProgress,
 } from "./puzzleProgress";
@@ -273,5 +276,41 @@ describe("fetchPuzzleProgressPage", () => {
     });
     expect(page.total).toBe(2);
     expect(page.rows.map((row) => row.puzzle_id)).toEqual(["3", "2"]);
+  });
+});
+
+describe("fetchPuzzleAttemptsForPuzzle", () => {
+  it("filters solved players in the query while preserving their original incorrect result", async () => {
+    const query = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      then: (resolve: (value: unknown) => unknown) =>
+        Promise.resolve({
+          data: [
+            {
+              username: "Recovered",
+              puzzle_id: "1742",
+              first_attempt_at: "2026-11-10T00:00:00Z",
+              puzzle_correct: false,
+              has_solved: true,
+              incorrect_move: "18. e4",
+              solved_move: " 18. d5 ",
+            },
+          ],
+          error: null,
+        }).then(resolve),
+    };
+    fromMock.mockReturnValue(query);
+    const rows = await fetchPuzzleAttemptsForPuzzle("1742", { correctOnly: true, limit: 30 });
+    expect(query.eq).toHaveBeenCalledWith("has_solved", true);
+    expect(query.limit).toHaveBeenCalledWith(30);
+    expect(rows[0]).toMatchObject({
+      puzzle_correct: false,
+      has_solved: true,
+      solved_move: "18. d5",
+      incorrect_move: "18. e4",
+    });
   });
 });
