@@ -245,6 +245,7 @@ export type RecordPuzzleProgressInput = {
   attemptDurationMs: number | null;
   incorrectMove: string | null;
   correctMove: string | null;
+  attempt?: { id: string; pgn: string; recordProgress: boolean; resigned?: boolean };
 };
 
 export type FetchPuzzleAttemptsForPuzzleOptions = {
@@ -265,6 +266,7 @@ export const recordPuzzleProgress = async ({
   attemptDurationMs,
   incorrectMove,
   correctMove,
+  attempt,
 }: RecordPuzzleProgressInput): Promise<RecordPuzzleProgressResult | null> => {
   const normalizedUsername = normalizeUsername(username);
   const normalizedPuzzleId = normalizePuzzleId(puzzleId);
@@ -277,7 +279,7 @@ export const recordPuzzleProgress = async ({
 
   if (!normalizedUsername || !normalizedPuzzleId) return null;
 
-  const requestKey = `${normalizedUsername}:${normalizedPuzzleId}`;
+  const requestKey = attempt?.id ?? `${normalizedUsername}:${normalizedPuzzleId}`;
   const existingRequest = puzzleProgressWriteRequests.get(requestKey);
   if (existingRequest) {
     return existingRequest;
@@ -292,6 +294,7 @@ export const recordPuzzleProgress = async ({
         attemptDurationMs: normalizedAttemptDurationMs,
         incorrectMove: normalizedIncorrectMove,
         correctMove: normalizedCorrectMove,
+        ...(attempt ? { attempt } : {}),
       },
       {
         schema: puzzleProgressResponseSchema,

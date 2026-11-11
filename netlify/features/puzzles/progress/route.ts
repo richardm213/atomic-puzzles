@@ -25,6 +25,14 @@ const attemptBodySchema = z.object({
   attemptDurationMs: z.number().int().nonnegative().max(3_600_000).nullable(),
   incorrectMove: z.string().trim().max(100).nullable().optional(),
   correctMove: z.string().trim().max(100).nullable().optional(),
+  attempt: z
+    .object({
+      id: z.uuid(),
+      pgn: z.string().trim().min(1).max(16000),
+      recordProgress: z.boolean(),
+      resigned: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 const progressBodySchema = z.union([
@@ -78,14 +86,29 @@ export const puzzleProgressRoute = async (event: FunctionEvent) => {
     }
     return identityResponse(identity, 200, { permanentlyUnrated: input.permanentlyUnrated });
   }
-  const { data, error } = await supabase.rpc("record_puzzle_attempt_result", {
+  const progressArgs = {
     p_username: username,
     p_puzzle_id: input.puzzleId,
-    p_puzzle_correct: input.puzzleCorrect,
     p_attempt_duration_ms: input.attemptDurationMs,
     p_incorrect_move: input.puzzleCorrect ? null : input.incorrectMove || null,
     p_correct_move: input.puzzleCorrect ? input.correctMove || null : null,
-  });
+  };
+  const { data, error } = input.attempt
+    ? await supabase.rpc("record_puzzle_attempt_with_pgn", {
+        ...progressArgs,
+        p_attempt_id: input.attempt.id,
+        p_attempt_pgn: input.attempt.pgn,
+        p_record_progress: input.attempt.recordProgress,
+        p_outcome: input.attempt.resigned
+          ? "resigned"
+          : input.puzzleCorrect
+            ? "correct"
+            : "incorrect",
+      })
+    : await supabase.rpc("record_puzzle_attempt_result", {
+        ...progressArgs,
+        p_puzzle_correct: input.puzzleCorrect,
+      });
   if (error) {
     if (error.message.includes("puzzle_rating_exclusion_active")) {
       throw new HttpError(

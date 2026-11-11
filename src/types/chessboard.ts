@@ -7,6 +7,7 @@ export type PositionState = {
   winner?: Color | undefined;
   error: string;
   lineMoves?: string[];
+  attemptPgn?: string;
   view: BoardView;
 };
 
@@ -66,6 +67,7 @@ export type SolutionNavigation =
 export type AttemptResolved = {
   puzzleId: string | number | null | undefined;
   puzzleCorrect: boolean;
+  attemptPgn?: string;
   incorrectMove: string | null;
   correctMove: string | null;
 };

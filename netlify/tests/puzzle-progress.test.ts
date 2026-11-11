@@ -85,6 +85,38 @@ describe("puzzle-progress function", () => {
     expect(JSON.parse(response.body)).toMatchObject({ coinAward: 0, coinDelta: 0 });
   });
 
+  it("saves a resignation PGN under the authenticated identity", async () => {
+    const rpc = vi.fn(async () => ({ data: { ...savedAttempt, rated: false }, error: null }));
+    mocks.createClient.mockReturnValue({ rpc });
+    const id = "8b298685-4ce8-4d69-9654-2dd18ea6864a";
+    const pgn = '[Variant "Atomic"]\n\n7... e5 *';
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { cookie: createSiteSessionCookie("Solver", {}).split(";")[0] },
+      body: JSON.stringify({
+        username: "different-player",
+        puzzleId: "42",
+        puzzleCorrect: false,
+        attemptDurationMs: null,
+        attempt: { id, pgn, recordProgress: false, resigned: true },
+      }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("record_puzzle_attempt_with_pgn", {
+      p_username: "solver",
+      p_puzzle_id: "42",
+      p_attempt_id: id,
+      p_attempt_pgn: pgn,
+      p_outcome: "resigned",
+      p_record_progress: false,
+      p_attempt_duration_ms: null,
+      p_correct_move: null,
+      p_incorrect_move: null,
+    });
+  });
+
   it.each([true, false])(
     "sets the unrated preference for the signed-in identity (%s)",
     async (permanentlyUnrated) => {

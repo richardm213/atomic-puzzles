@@ -1497,7 +1497,7 @@ describe("PuzzleSolverPage solution options", () => {
     performanceNow.mockRestore();
   });
 
-  it("reveals the solution after a replayed attempt without changing the saved solve", async () => {
+  it("logs a replayed attempt without replacing the saved solve", async () => {
     render(<PuzzleSolverPage />);
 
     await screen.findByRole("button", { name: "Give up and reveal the solution" });
@@ -1510,7 +1510,8 @@ describe("PuzzleSolverPage solution options", () => {
       board?.onAttemptResolved?.({
         puzzleId: 1369,
         puzzleCorrect: false,
-        incorrectMove: "1... Kd7",
+        incorrectMove: "12... Kd7",
+        attemptPgn: '[Variant "Atomic"]\n\n12... Kd7 *',
         correctMove: null,
       });
       board?.onStateChange?.({
@@ -1528,7 +1529,19 @@ describe("PuzzleSolverPage solution options", () => {
 
     expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true);
     expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
-    expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mocks.recordPuzzleProgress).toHaveBeenCalledWith(
+        expect.objectContaining({
+          puzzleId: "1369",
+          attempt: {
+            id: expect.any(String),
+            pgn: '[Variant "Atomic"]\n\n12... Kd7 *',
+            recordProgress: false,
+            resigned: false,
+          },
+        }),
+      ),
+    );
   });
 
   it.each(["fresh", "replay"])("plays the opening move on a %s visit", async (visit) => {

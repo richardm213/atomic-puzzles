@@ -449,16 +449,23 @@ describe("Chessboard orchestration", () => {
     vi.useRealTimers();
   });
 
-  it("reports an incorrect move in SAN notation", () => {
+  it("saves the complete failed attempt using the FEN move numbers and side", () => {
     vi.useFakeTimers();
     const onAttemptResolved = vi.fn();
+    const fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 7";
     renderBoard({
+      fen,
+      orientation: "black",
       analysisMode: false,
-      solution: "1. e4",
+      solution: "7... e5 8. Nf3 Nc6",
       onAttemptResolved,
     });
 
-    play("d2", "d4");
+    play("e7", "e5");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    play("d7", "d5");
     act(() => {
       vi.advanceTimersByTime(250);
     });
@@ -466,8 +473,9 @@ describe("Chessboard orchestration", () => {
     expect(onAttemptResolved).toHaveBeenCalledWith({
       puzzleId: "test",
       puzzleCorrect: false,
-      incorrectMove: "1. d4",
+      incorrectMove: "8... d5",
       correctMove: null,
+      attemptPgn: expect.stringContaining(`[FEN "${fen}"]\n[Result "*"]\n\n7... e5 8. Nf3 d5 *`),
     });
     vi.useRealTimers();
   });
@@ -486,12 +494,14 @@ describe("Chessboard orchestration", () => {
       vi.advanceTimersByTime(250);
     });
 
-    expect(onAttemptResolved).toHaveBeenCalledWith({
-      puzzleId: "test",
-      puzzleCorrect: true,
-      incorrectMove: null,
-      correctMove: "1. d4",
-    });
+    expect(onAttemptResolved).toHaveBeenCalledWith(
+      expect.objectContaining({
+        puzzleId: "test",
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: "1. d4",
+      }),
+    );
     vi.useRealTimers();
   });
 
@@ -510,12 +520,14 @@ describe("Chessboard orchestration", () => {
     });
 
     expect(states.at(-1)).toMatchObject({ solved: true });
-    expect(onAttemptResolved).toHaveBeenCalledWith({
-      puzzleId: "test",
-      puzzleCorrect: true,
-      incorrectMove: null,
-      correctMove: "1. d4",
-    });
+    expect(onAttemptResolved).toHaveBeenCalledWith(
+      expect.objectContaining({
+        puzzleId: "test",
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: "1. d4",
+      }),
+    );
     vi.useRealTimers();
   });
 
@@ -622,12 +634,14 @@ describe("Chessboard orchestration", () => {
       vi.advanceTimersByTime(250);
     });
 
-    expect(onAttemptResolved).toHaveBeenCalledWith({
-      puzzleId: "test",
-      puzzleCorrect: true,
-      incorrectMove: null,
-      correctMove: "1. e4",
-    });
+    expect(onAttemptResolved).toHaveBeenCalledWith(
+      expect.objectContaining({
+        puzzleId: "test",
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: "1. e4",
+      }),
+    );
     vi.useRealTimers();
   });
 
@@ -645,12 +659,14 @@ describe("Chessboard orchestration", () => {
       vi.advanceTimersByTime(250);
     });
 
-    expect(onAttemptResolved).toHaveBeenCalledWith({
-      puzzleId: "test",
-      puzzleCorrect: true,
-      incorrectMove: null,
-      correctMove: null,
-    });
+    expect(onAttemptResolved).toHaveBeenCalledWith(
+      expect.objectContaining({
+        puzzleId: "test",
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: null,
+      }),
+    );
     vi.useRealTimers();
   });
 
@@ -658,8 +674,9 @@ describe("Chessboard orchestration", () => {
     vi.useFakeTimers();
     const onAttemptResolved = vi.fn();
     renderBoard({
+      fen: STARTING_FEN.replace(/1$/, "7"),
       analysisMode: false,
-      solution: "1. e4 e5 2. Nf3 Nc6 3. Bb5 (3. Bc4)",
+      solution: "7. e4 e5 8. Nf3 Nc6 9. Bb5 (9. Bc4)",
       onAttemptResolved,
     });
 
@@ -676,12 +693,15 @@ describe("Chessboard orchestration", () => {
       vi.advanceTimersByTime(250);
     });
 
-    expect(onAttemptResolved).toHaveBeenLastCalledWith({
-      puzzleId: "test",
-      puzzleCorrect: true,
-      incorrectMove: null,
-      correctMove: "3. Bc4",
-    });
+    expect(onAttemptResolved).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        puzzleId: "test",
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: "9. Bc4",
+        attemptPgn: expect.stringContaining("7. e4 e5 8. Nf3 Nc6 9. Bc4 *"),
+      }),
+    );
     vi.useRealTimers();
   });
 
@@ -707,12 +727,14 @@ describe("Chessboard orchestration", () => {
       vi.advanceTimersByTime(250);
     });
 
-    expect(onAttemptResolved).toHaveBeenLastCalledWith({
-      puzzleId: "test",
-      puzzleCorrect: true,
-      incorrectMove: null,
-      correctMove: "3. Bb5",
-    });
+    expect(onAttemptResolved).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        puzzleId: "test",
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: "3. Bb5",
+      }),
+    );
     vi.useRealTimers();
   });
 

@@ -14,6 +14,7 @@ import { makeUci, parseSquare } from "chessops/util";
 import type { Atomic } from "chessops/variant";
 import { memo, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { formatPuzzleAttemptPgn } from "../../../shared/domain/puzzles/attemptPgn";
 import type { PuzzleIntro } from "../../../shared/domain/puzzles/gameHistory";
 import { useAppSettings } from "../../context/AppSettings";
 import { playBoardMoveSound } from "../../lib/boardSounds/boardSounds";
@@ -24,6 +25,7 @@ import {
   movePrefix,
   parseSolutionUciLines,
   splitSolutionMove,
+  startingPlyFromFen,
   toComparableUci,
   type UciSolutionEntry,
   type UciSolutionLine,
@@ -227,6 +229,7 @@ const ChessboardComponent = ({
   const pendingPromotionRef = useRef<PendingPromotion | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<PendingPromotion | null>(null);
   const historyRef = useRef<BoardHistory>(createBoardHistory());
+  const retryLinesRef = useRef<string[][]>([]);
   const {
     interactionLockedRef,
     attemptRef,
@@ -395,8 +398,19 @@ const ChessboardComponent = ({
     if (displayedMoveIndex < 0) return null;
 
     const playedSan = historyMoveSans(historyRef.current)[displayedMoveIndex];
-    return playedSan ? `${movePrefix(displayedMoveIndex, true)}${playedSan}` : null;
-  }, []);
+    return playedSan
+      ? `${movePrefix(startingPlyFromFen(fenRef.current) + displayedMoveIndex, true)}${playedSan}`
+      : null;
+  }, [fenRef]);
+
+  const getAttemptPgn = useCallback(
+    (finalMove?: string): string => {
+      const played = historyMoveSans(historyRef.current);
+      if (finalMove) played.push(finalMove);
+      return formatPuzzleAttemptPgn(fenRef.current, [played, ...retryLinesRef.current]);
+    },
+    [fenRef],
+  );
 
   const getDisplayTurn = useCallback(
     (position: Atomic, nextState?: BoardFeedback | undefined): Color => {
@@ -441,6 +455,7 @@ const ChessboardComponent = ({
         winner: position.outcome()?.winner,
         error: "",
         lineMoves: historyMoveSans(history),
+        ...(isTraining() ? { attemptPgn: getAttemptPgn() } : {}),
         solutionLines: canBrowseSolution()
           ? solutionEntriesRef.current.map((entry) => [...entry.sanLine])
           : [],
@@ -457,8 +472,10 @@ const ChessboardComponent = ({
       attemptRef,
       canBrowseSolution,
       evaluationTimerRef,
+      getAttemptPgn,
       getDisplayTurn,
       getPlaybackContext,
+      isTraining,
       onStateChangeRef,
     ],
   );
@@ -476,6 +493,7 @@ const ChessboardComponent = ({
       solved?: boolean;
     }): void => {
       historyRef.current = history;
+      retryLinesRef.current = [];
       viewRef.current.position = historyRef.current.index;
       viewRef.current.line = { source: "history" };
       alternativeContinuationSelectedRef.current = false;
@@ -944,6 +962,7 @@ const ChessboardComponent = ({
         if (!activePos) return;
 
         if (moveEvaluation === "retry" || createsTwofoldRepetition) {
+          retryLinesRef.current.push([...historyMoveSans(historyRef.current), userMoveSan]);
           interactionLockedRef.current = false;
           syncBoard(activePos, undefined, {
             feedback: "retry",
@@ -957,7 +976,8 @@ const ChessboardComponent = ({
           onAttemptResolvedRef.current?.({
             puzzleId: puzzleIdRef.current,
             puzzleCorrect: false,
-            incorrectMove: `${Math.floor(progress / 2) + 1}. ${userMoveSan}`,
+            incorrectMove: `${movePrefix(startingPlyFromFen(makeFen(activePos.toSetup())), true)}${userMoveSan}`,
+            attemptPgn: getAttemptPgn(userMoveSan),
             correctMove: null,
           });
           syncBoard(activePos, undefined, {
@@ -982,6 +1002,7 @@ const ChessboardComponent = ({
             puzzleCorrect: true,
             incorrectMove: null,
             correctMove: getCorrectLineMove(),
+            attemptPgn: getAttemptPgn(),
           });
           syncBoard(activePos, keyPair(orig, dest), {
             status: "Correct",
@@ -999,6 +1020,7 @@ const ChessboardComponent = ({
             puzzleCorrect: true,
             incorrectMove: null,
             correctMove: getCorrectLineMove(),
+            attemptPgn: getAttemptPgn(),
           });
         }
 
@@ -1029,6 +1051,7 @@ const ChessboardComponent = ({
       evaluationTimerRef,
       emitState,
       getCorrectLineMove,
+      getAttemptPgn,
       onAttemptResolvedRef,
       playMoveSound,
       puzzleIdRef,

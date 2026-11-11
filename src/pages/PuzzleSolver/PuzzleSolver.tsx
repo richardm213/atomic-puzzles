@@ -1002,17 +1002,29 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       incorrectMove,
       correctMove,
       attemptDurationMs,
+      attemptPgn,
+      replay,
+      resigned = false,
     }: {
       puzzleId: string | number | null | undefined;
       puzzleCorrect: boolean;
       incorrectMove: string | null;
       correctMove: string | null;
       attemptDurationMs: number | null;
+      attemptPgn?: string;
+      replay: boolean;
+      resigned?: boolean;
     }): void => {
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       if (!normalizedPuzzleId || !user?.username) return;
-      if (attemptedPuzzleIdsRef.current.has(normalizedPuzzleId)) return;
+      const recordProgress =
+        !resigned && !replay && !attemptedPuzzleIdsRef.current.has(normalizedPuzzleId);
+      if (!recordProgress && !attemptPgn) return;
+      const attempt = attemptPgn
+        ? { id: crypto.randomUUID(), pgn: attemptPgn, recordProgress, resigned }
+        : undefined;
       const isFirstRecordedAttempt =
+        recordProgress &&
         !unratedPuzzleIdsRef.current.has(normalizedPuzzleId) &&
         !countedTodayPuzzleIdsRef.current.has(normalizedPuzzleId);
       if (isFirstRecordedAttempt) {
@@ -1030,7 +1042,9 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
             attemptDurationMs,
             incorrectMove,
             correctMove,
+            ...(attempt ? { attempt } : {}),
           }).then((result) => {
+            if (!recordProgress) return;
             if (result?.unratedUntil) {
               setRatingExclusions((current) =>
                 new Map(current).set(normalizedPuzzleId, result.unratedUntil!),
@@ -1070,7 +1084,13 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   );
 
   const handleAttemptResolved = useCallback(
-    ({ puzzleId, puzzleCorrect, incorrectMove, correctMove }: AttemptResolved): void => {
+    ({
+      puzzleId,
+      puzzleCorrect,
+      incorrectMove,
+      correctMove,
+      attemptPgn,
+    }: AttemptResolved): void => {
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       if (
         normalizedPuzzleId !== activePuzzleKey ||
@@ -1111,15 +1131,15 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       // Test attempts drive the same board and analysis states, but never reach either write path.
       if (testMode) return;
 
-      if (entry !== "replay") {
-        enqueuePuzzleProgressWrite({
-          puzzleId: normalizedPuzzleId,
-          puzzleCorrect,
-          attemptDurationMs,
-          incorrectMove,
-          correctMove,
-        });
-      }
+      enqueuePuzzleProgressWrite({
+        puzzleId: normalizedPuzzleId,
+        puzzleCorrect,
+        attemptDurationMs,
+        incorrectMove,
+        correctMove,
+        ...(attemptPgn ? { attemptPgn } : {}),
+        replay: entry === "replay",
+      });
       if (SERVER_CUSTOM_SET_ID_PATTERN.test(routeCustomSetId)) {
         void recordCustomPuzzleSetProgress(routeCustomSetId, normalizedPuzzleId, puzzleCorrect)
           .then(() =>
@@ -1327,6 +1347,18 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     setElapsedTimeMs(elapsedTimeMsRef.current);
     setElapsedTimerRunning(false);
     setPinnedSolutionLineIndex(0);
+    if (!testMode && boardState.attemptPgn) {
+      enqueuePuzzleProgressWrite({
+        puzzleId: activePuzzleKey,
+        puzzleCorrect: false,
+        attemptDurationMs: null,
+        incorrectMove: null,
+        correctMove: null,
+        attemptPgn: boardState.attemptPgn,
+        replay: entry === "replay",
+        resigned: true,
+      });
+    }
     revealSolution();
   };
 
