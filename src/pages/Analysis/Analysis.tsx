@@ -175,7 +175,6 @@ const gameExplorerSettings = (
   const { white } = decodeGameResult(game);
   return {
     ...settings,
-    explorerScope: "player",
     playerColor: "white",
     username: white,
     opponent: "",
@@ -526,9 +525,14 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     showPerformance,
   } = explorerSettings;
   const updateExplorerSettings = useCallback(
-    (patch: Partial<StoredExplorerSettings>): void =>
-      setExplorerSettings((current) => ({ ...current, ...patch })),
-    [setExplorerSettings],
+    (patch: Partial<StoredExplorerSettings>): void => {
+      if (game && patch.explorerScope) {
+        const { explorerScope } = patch;
+        setPersistedExplorerSettings((current) => ({ ...current, explorerScope }));
+      }
+      setExplorerSettings((current) => ({ ...current, ...patch }));
+    },
+    [game, setExplorerSettings, setPersistedExplorerSettings],
   );
   const {
     isOpen: usernamePickerOpen,
