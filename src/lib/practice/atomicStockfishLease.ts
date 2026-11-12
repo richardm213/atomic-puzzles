@@ -36,17 +36,33 @@ if (typeof window !== "undefined") {
   });
 }
 
-const waitUntilCurrentTab = async (): Promise<void> => {
-  if (document.visibilityState === "visible" && document.hasFocus()) return;
-  await new Promise<void>((resolve) => {
-    const check = (): void => {
-      if (document.visibilityState !== "visible" || !document.hasFocus()) return;
+const isCurrentTab = (): boolean => document.visibilityState === "visible" && document.hasFocus();
+
+const waitUntilCurrentTab = async (signal: AbortSignal): Promise<void> => {
+  signal.throwIfAborted();
+  if (isCurrentTab()) return;
+  await new Promise<void>((resolve, reject) => {
+    const cleanup = (): void => {
       window.removeEventListener("focus", check);
       document.removeEventListener("visibilitychange", check);
+      signal.removeEventListener("abort", abort);
+    };
+    const abort = (): void => {
+      cleanup();
+      reject(
+        signal.reason instanceof Error
+          ? signal.reason
+          : new DOMException("Atomic-Stockfish lease cancelled", "AbortError"),
+      );
+    };
+    const check = (): void => {
+      if (!isCurrentTab()) return;
+      cleanup();
       resolve();
     };
     window.addEventListener("focus", check);
     document.addEventListener("visibilitychange", check);
+    signal.addEventListener("abort", abort, { once: true });
   });
 };
 
@@ -62,17 +78,23 @@ const announceClaim = (): void => {
 
 export const acquireAtomicStockfishLease = async (
   onRevoked: () => void | Promise<void>,
+  signal: AbortSignal,
 ): Promise<AtomicStockfishLease> => {
   if (!navigator.locks) {
     throw new Error("Atomic-Stockfish requires browser support for cross-tab locking");
   }
 
-  await waitUntilCurrentTab();
+  await waitUntilCurrentTab(signal);
+  signal.throwIfAborted();
   announceClaim();
 
   return new Promise<AtomicStockfishLease>((resolve, reject) => {
     void navigator.locks
-      .request(LOCK_NAME, async () => {
+      .request(LOCK_NAME, { signal }, async () => {
+        if (!isCurrentTab()) {
+          reject(new DOMException("Atomic-Stockfish moved to the active tab", "AbortError"));
+          return;
+        }
         let released = false;
         let resolveRelease: (() => void) | null = null;
         const hold = new Promise<void>((holdResolve) => {
@@ -83,8 +105,10 @@ export const acquireAtomicStockfishLease = async (
           released = true;
           resolveRelease?.();
         };
+        let revoking = false;
         const revoke = (): void => {
-          if (released) return;
+          if (released || revoking) return;
+          revoking = true;
           void Promise.resolve(onRevoked()).finally(release);
         };
         revokeHeldLease = revoke;

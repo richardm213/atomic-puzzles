@@ -1,12 +1,13 @@
-# Fairy-Stockfish 14 browser benchmark
+# Local chess engine browser benchmark
 
-This benchmark measures the production Fairy-Stockfish 14 analysis path in a real desktop Firefox session.
+This benchmark measures the production local analysis path in a real desktop Firefox session. It selects the engine explicitly and does not use the site's saved preference.
 
 ```bash
-npm run benchmark:fsf
+npm run benchmark:fsf -- --engine=atomic-stockfish
+npm run benchmark:fsf -- --engine=fairy-stockfish-14
 ```
 
-The command starts a local cross-origin-isolated Vite server, opens Firefox, runs six fixed atomic positions, and writes the result to `benchmarks/fairy-stockfish/results/`. Set `FIREFOX_BIN` if Firefox is installed elsewhere. Use `npm run benchmark:fsf -- --no-open` when you want to open the printed URL yourself.
+The command starts a local cross-origin-isolated Vite server, opens Firefox, runs six fixed atomic positions, and writes the result to `benchmarks/fairy-stockfish/results/`. Fairy-Stockfish 14 is the default when `--engine` is omitted. Atomic-Stockfish uses the configured NNUE URL (or the site's public asset URL); give the benchmark tab focus so it can acquire the engine lease. Set `FIREFOX_BIN` if Firefox is installed elsewhere, or add `--no-open` to open the printed URL yourself.
 
 ## What it measures
 

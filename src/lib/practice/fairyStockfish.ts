@@ -1,8 +1,14 @@
+import { ATOMIC_STOCKFISH_NNUE, ATOMIC_STOCKFISH_WORKER_URL } from "./atomicStockfishAssets";
 import { acquireAtomicStockfishLease } from "./atomicStockfishLease";
-import { type LocalAnalysisEngine, readLocalAnalysisEngine } from "./localAnalysisEngine";
+import {
+  type LocalAnalysisEngine,
+  localAnalysisEngineLabel,
+  readLocalAnalysisEngine,
+} from "./localAnalysisEngine";
 
 type StockfishEngine = {
   addMessageListener: (listener: (line: string) => void) => void;
+  onFailure?: (listener: (error: Error) => void) => () => void;
   dispose: () => void;
   removeMessageListener: (listener: (line: string) => void) => void;
   postMessage: (command: string) => void;
@@ -40,11 +46,9 @@ const enginePromises: Record<LocalAnalysisEngine, Promise<StockfishEngine> | nul
   "atomic-stockfish": null,
   "fairy-stockfish-14": null,
 };
+const atomicStockfishStartups = new WeakMap<Promise<StockfishEngine>, AbortController>();
 let engineSearchQueue: Promise<void> = Promise.resolve();
-const configuredMultiPvCounts: Record<LocalAnalysisEngine, number> = {
-  "atomic-stockfish": 1,
-  "fairy-stockfish-14": 1,
-};
+const configuredMultiPvCounts = new WeakMap<StockfishEngine, number>();
 type CachedEvaluation = {
   candidates: EngineCandidate[];
   expiresAt: number;
@@ -62,6 +66,8 @@ const PRACTICE_MULTIPV_COUNT = 3;
 const ENGINE_RESPONSE_TIMEOUT_MS = 15_000;
 const ENGINE_SEARCH_TIMEOUT_MS = MAX_THINK_TIME_MS + 2_000;
 const ENGINE_REQUEST_TIMEOUT_MS = 20_000;
+const ATOMIC_STOCKFISH_STARTUP_TIMEOUT_MS = 65_000;
+const ATOMIC_STOCKFISH_REQUEST_TIMEOUT_MS = 80_000;
 const ENGINE_PROGRESS_INTERVAL_MS = 100;
 const MAX_CANDIDATE_SCORE_GAP_CP = 150;
 const MULTIPV_COUNT = 5;
@@ -183,11 +189,12 @@ export const withEngineRequestTimeout = <T>(
   request: Promise<T>,
   onTimeout: () => void,
   timeoutMs = ENGINE_REQUEST_TIMEOUT_MS,
+  engineLabel = "Fairy-Stockfish",
 ): Promise<T> =>
   new Promise((resolve, reject) => {
     const timeout = window.setTimeout(() => {
       onTimeout();
-      reject(new Error("Fairy-Stockfish stopped responding"));
+      reject(new Error(`${engineLabel} stopped responding`));
     }, timeoutMs);
 
     request.then(
@@ -380,11 +387,6 @@ type AtomicWorkerResponse =
   | { type: "downloadProgress" }
   | { type: "search" };
 
-const ATOMIC_STOCKFISH_WORKER_URL =
-  "/engines/atomic-stockfish/01cc6f44f52709d3f4a0b0994d68f9226cc311fa/atomic-stockfish.worker.js";
-const ATOMIC_STOCKFISH_NNUE_SHA256 =
-  "99dc67eabf26a64faeeca3a88b4c38597a840b8d4a874b9f2cf658c6f92a04a6";
-
 const atomicStockfishNetworkUrl = (): string => {
   const configuredUrl = import.meta.env.VITE_ATOMIC_STOCKFISH_NNUE_URL?.trim();
   if (configuredUrl) return configuredUrl;
@@ -393,128 +395,173 @@ const atomicStockfishNetworkUrl = (): string => {
   return `${supabaseUrl}/storage/v1/object/public/engine-assets/atomic-stockfish/v1.0/atomic-run3b-gzip.nnue`;
 };
 
-const initializeAtomicStockfish = async (): Promise<StockfishEngine> => {
+const initializeAtomicStockfish = async (
+  evict: () => void,
+  startup: AbortController,
+): Promise<StockfishEngine> => {
   if (!globalThis.crossOriginIsolated || typeof SharedArrayBuffer === "undefined") {
     throw new Error("Atomic-Stockfish requires cross-origin isolation");
   }
 
+  const networkUrl = atomicStockfishNetworkUrl();
   const listeners = new Set<(line: string) => void>();
+  const failureListeners = new Set<(error: Error) => void>();
   let worker: Worker | null = null;
-  let revoked = false;
-  let rejectInitialization: ((reason?: unknown) => void) | null = null;
+  let lease: Awaited<ReturnType<typeof acquireAtomicStockfishLease>> | null = null;
+  let rejectInitialization: ((reason: Error) => void) | null = null;
   let disposePromise: Promise<void> | null = null;
   let resolveDispose: (() => void) | null = null;
   let disposeTimeout: number | null = null;
-  let lease: Awaited<ReturnType<typeof acquireAtomicStockfishLease>> | null = null;
+  let failure: Error | null = null;
 
   const finishDispose = (): void => {
     if (disposeTimeout !== null) window.clearTimeout(disposeTimeout);
     disposeTimeout = null;
     worker?.terminate();
     worker = null;
+    lease?.release();
     resolveDispose?.();
     resolveDispose = null;
-    lease?.release();
   };
-  const disposeWorker = (): Promise<void> => {
+  const publishFailure = (error: Error): void => {
+    if (failure) return;
+    failure = error;
+    evict();
+    rejectInitialization?.(error);
+    failureListeners.forEach((listener) => listener(error));
+  };
+  const disposeWorker = (reason: Error): Promise<void> => {
+    publishFailure(reason);
     if (disposePromise) return disposePromise;
     if (!worker) {
-      lease?.release();
+      finishDispose();
       return Promise.resolve();
     }
     disposePromise = new Promise<void>((resolve) => {
       resolveDispose = resolve;
-      worker?.postMessage({ type: "dispose" });
       disposeTimeout = window.setTimeout(finishDispose, 2_000);
+      worker?.postMessage({ type: "dispose" });
     });
     return disposePromise;
   };
-
-  lease = await acquireAtomicStockfishLease(async () => {
-    revoked = true;
-    enginePromises["atomic-stockfish"] = null;
-    configuredMultiPvCounts["atomic-stockfish"] = 1;
-    rejectInitialization?.(
-      new DOMException("Atomic-Stockfish moved to the active tab", "AbortError"),
-    );
-    await disposeWorker();
-  });
-  if (revoked) throw new DOMException("Atomic-Stockfish moved to the active tab", "AbortError");
-
-  worker = new Worker(ATOMIC_STOCKFISH_WORKER_URL, { type: "module" });
-  worker.addEventListener("message", (event: MessageEvent<AtomicWorkerResponse>) => {
-    const message = event.data;
-    if (message.type === "disposed") finishDispose();
-    if (message.type === "line") listeners.forEach((listener) => listener(message.line));
-    if (message.type === "error" && !message.fatal) {
-      console.error(`Atomic-Stockfish: ${message.message}`);
+  const failWorker = (error: Error): void => {
+    publishFailure(error);
+    finishDispose();
+  };
+  const handleStartupAbort = (): void => {
+    const reason: unknown = startup.signal.reason;
+    if (reason instanceof DOMException && reason.name === "AbortError") {
+      void disposeWorker(reason);
+    } else {
+      failWorker(
+        reason instanceof Error ? reason : new Error("Atomic-Stockfish initialization failed"),
+      );
     }
-  });
+  };
+  startup.signal.addEventListener("abort", handleStartupAbort, { once: true });
+  const startupDeadline = window.setTimeout(
+    () => startup.abort(new Error("Atomic-Stockfish initialization timed out")),
+    ATOMIC_STOCKFISH_STARTUP_TIMEOUT_MS,
+  );
 
   try {
+    lease = await acquireAtomicStockfishLease(() => {
+      const reason = new DOMException("Atomic-Stockfish moved to the active tab", "AbortError");
+      startup.abort(reason);
+      return disposeWorker(reason);
+    }, startup.signal);
+    startup.signal.throwIfAborted();
+
+    const instance = new Worker(ATOMIC_STOCKFISH_WORKER_URL, { type: "module" });
+    worker = instance;
     await new Promise<void>((resolve, reject) => {
       rejectInitialization = reject;
-      const handleMessage = (event: MessageEvent<AtomicWorkerResponse>): void => {
+      let ready = false;
+      instance.addEventListener("message", (event: MessageEvent<AtomicWorkerResponse>) => {
         const message = event.data;
-        if (message.type === "ready") {
-          worker?.removeEventListener("message", handleMessage);
-          rejectInitialization = null;
-          resolve();
-          return;
+        if (message.type === "disposed") {
+          finishDispose();
+        } else if (message.type === "ready" && !failure) {
+          instance.postMessage({
+            type: "command",
+            command: "setoption name UCI_Chess960 value true\nisready",
+          });
+        } else if (message.type === "line" && !failure) {
+          if (!ready && message.line === "readyok") {
+            ready = true;
+            rejectInitialization = null;
+            resolve();
+          } else {
+            listeners.forEach((listener) => listener(message.line));
+          }
+        } else if (message.type === "error") {
+          if (message.fatal || !ready) failWorker(new Error(message.message));
+          else console.error(`Atomic-Stockfish: ${message.message}`);
         }
-        if (message.type === "error" && message.fatal) {
-          worker?.removeEventListener("message", handleMessage);
-          rejectInitialization = null;
-          reject(new Error(message.message));
-        }
-      };
-      worker?.addEventListener("message", handleMessage);
-      worker?.addEventListener(
-        "error",
-        () => reject(new Error("Atomic-Stockfish worker failed to load")),
-        { once: true },
-      );
-      worker?.postMessage({
+      });
+      instance.addEventListener("error", () => {
+        failWorker(new Error("Atomic-Stockfish worker failed"));
+      });
+      instance.addEventListener("messageerror", () => {
+        failWorker(new Error("Atomic-Stockfish worker sent an unreadable message"));
+      });
+      instance.postMessage({
         type: "initialize",
-        networkUrl: atomicStockfishNetworkUrl(),
-        expectedSha256: ATOMIC_STOCKFISH_NNUE_SHA256,
+        networkUrl,
+        ...ATOMIC_STOCKFISH_NNUE,
         threads: Math.min(4, Math.max(1, navigator.hardwareConcurrency - 1)),
         hashMiB: 64,
         multiPv: 1,
       });
     });
   } catch (error) {
-    await disposeWorker();
+    // A requested disposal owns its graceful shutdown; all other startup failures
+    // (including a synchronous Worker constructor failure) release the lease here.
+    if (!disposePromise) finishDispose();
     throw error;
-  }
-  if (revoked) {
-    await disposeWorker();
-    throw new DOMException("Atomic-Stockfish moved to the active tab", "AbortError");
+  } finally {
+    rejectInitialization = null;
+    startup.signal.removeEventListener("abort", handleStartupAbort);
+    window.clearTimeout(startupDeadline);
   }
 
-  const engine: StockfishEngine = {
+  return {
     addMessageListener: (listener) => listeners.add(listener),
+    onFailure: (listener) => {
+      failureListeners.add(listener);
+      if (failure) {
+        const error = failure;
+        queueMicrotask(() => {
+          if (failureListeners.has(listener)) listener(error);
+        });
+      }
+      return () => failureListeners.delete(listener);
+    },
     dispose: () => {
-      void disposeWorker();
+      void disposeWorker(new DOMException("Atomic-Stockfish was closed", "AbortError"));
     },
     removeMessageListener: (listener) => listeners.delete(listener),
     postMessage: (command) => worker?.postMessage({ type: "command", command }),
   };
-  engine.postMessage("setoption name UCI_Chess960 value true");
-  const engineReady = waitForLine(engine, (line) => line === "readyok");
-  engine.postMessage("isready");
-  await engineReady;
-  return engine;
 };
 
 const getEngine = (kind: LocalAnalysisEngine): Promise<StockfishEngine> => {
-  enginePromises[kind] ??= (
-    kind === "atomic-stockfish" ? initializeAtomicStockfish() : initializeEngine()
-  ).catch((error) => {
-    enginePromises[kind] = null;
-    throw error;
-  });
-  return enginePromises[kind];
+  const cached = enginePromises[kind];
+  if (cached) return cached;
+
+  const evict = (): void => {
+    if (enginePromises[kind] === pending) enginePromises[kind] = null;
+  };
+  const startup = kind === "atomic-stockfish" ? new AbortController() : null;
+  const pending = (startup ? initializeAtomicStockfish(evict, startup) : initializeEngine()).catch(
+    (error) => {
+      evict();
+      throw error;
+    },
+  );
+  if (startup) atomicStockfishStartups.set(pending, startup);
+  enginePromises[kind] = pending;
+  return pending;
 };
 
 export const disposeInactiveLocalAnalysisEngine = (active: LocalAnalysisEngine): void => {
@@ -522,12 +569,15 @@ export const disposeInactiveLocalAnalysisEngine = (active: LocalAnalysisEngine):
     active === "atomic-stockfish" ? "fairy-stockfish-14" : "atomic-stockfish";
   const inactiveEngine = enginePromises[inactive];
   enginePromises[inactive] = null;
-  configuredMultiPvCounts[inactive] = 1;
-  if (inactiveEngine)
+  if (inactiveEngine) {
+    atomicStockfishStartups
+      .get(inactiveEngine)
+      ?.abort(new DOMException("Atomic-Stockfish was closed", "AbortError"));
     void inactiveEngine.then(
       (engine) => engine.dispose(),
       () => undefined,
     );
+  }
 };
 
 const waitForBestMove = (
@@ -551,6 +601,7 @@ const waitForBestMove = (
       window.clearTimeout(timeout);
       engine.removeMessageListener(handleLine);
       signal?.removeEventListener("abort", handleAbort);
+      removeFailureListener?.();
     };
     const handleLine = (line: string): void => {
       if (line.startsWith("info ")) {
@@ -599,6 +650,10 @@ const waitForBestMove = (
       // like the result of the new position and can leave isready blocked.
     };
 
+    const removeFailureListener = engine.onFailure?.((error) => {
+      cleanup();
+      reject(error);
+    });
     engine.addMessageListener(handleLine);
     signal?.addEventListener("abort", handleAbort, { once: true });
     if (signal?.aborted) handleAbort();
@@ -617,14 +672,16 @@ const searchFairyStockfish = async (
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     let engine: StockfishEngine | null = null;
+    signal?.throwIfAborted();
+    const pending = getEngine(kind);
 
     try {
-      engine = await getEngine(kind);
-      if (signal?.aborted) throw new DOMException("Engine search cancelled", "AbortError");
+      engine = await pending;
+      signal?.throwIfAborted();
 
-      if (configuredMultiPvCounts[kind] !== multiPvCount) {
+      if ((configuredMultiPvCounts.get(engine) ?? 1) !== multiPvCount) {
         engine.postMessage(`setoption name MultiPV value ${multiPvCount}`);
-        configuredMultiPvCounts[kind] = multiPvCount;
+        configuredMultiPvCounts.set(engine, multiPvCount);
       }
       engine.postMessage(`position fen ${fen}`);
       const bestMoveResult = waitForBestMove(engine, signal, multiPvCount, onProgress, stopWhen);
@@ -639,9 +696,8 @@ const searchFairyStockfish = async (
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") throw error;
 
+      if (enginePromises[kind] === pending) enginePromises[kind] = null;
       engine?.dispose();
-      enginePromises[kind] = null;
-      configuredMultiPvCounts[kind] = 1;
       lastFailure = error;
 
       const recoverable =
@@ -656,6 +712,7 @@ const searchFairyStockfish = async (
 };
 
 const queueFairyStockfishSearch = <T>(
+  kind: LocalAnalysisEngine,
   search: (signal: AbortSignal) => Promise<T>,
   signal?: AbortSignal,
 ): Promise<T> => {
@@ -671,7 +728,12 @@ const queueFairyStockfishSearch = <T>(
     () => undefined,
     () => undefined,
   );
-  const request = withEngineRequestTimeout(queuedSearch, () => requestController.abort());
+  const request = withEngineRequestTimeout(
+    queuedSearch,
+    () => requestController.abort(),
+    kind === "atomic-stockfish" ? ATOMIC_STOCKFISH_REQUEST_TIMEOUT_MS : ENGINE_REQUEST_TIMEOUT_MS,
+    localAnalysisEngineLabel(kind),
+  );
   return request.finally(() => signal?.removeEventListener("abort", handleAbort));
 };
 
@@ -703,6 +765,7 @@ export const analyzeFairyStockfishPosition = async (
     ? cachedSearch.candidates
     : (
         await queueFairyStockfishSearch(
+          engine,
           (requestSignal) =>
             searchFairyStockfish(
               engine,
@@ -747,16 +810,21 @@ export const findFairyStockfishMove = (
     );
   }
 
-  return queueFairyStockfishSearch(async (requestSignal) => {
-    const result = await searchFairyStockfish(
-      engine,
-      fen,
-      requestSignal,
-      PRACTICE_THINK_TIME_MS,
-      requestedLineCount,
-    );
-    return (
-      chooseEngineCandidate(result.candidates, Math.random, excludedMoves)?.move ?? result.bestMove
-    );
-  }, signal);
+  return queueFairyStockfishSearch(
+    engine,
+    async (requestSignal) => {
+      const result = await searchFairyStockfish(
+        engine,
+        fen,
+        requestSignal,
+        PRACTICE_THINK_TIME_MS,
+        requestedLineCount,
+      );
+      return (
+        chooseEngineCandidate(result.candidates, Math.random, excludedMoves)?.move ??
+        result.bestMove
+      );
+    },
+    signal,
+  );
 };
