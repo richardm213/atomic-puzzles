@@ -73,6 +73,7 @@ export const PredictionPendingOrders = ({
             <dialog
               ref={dialog}
               className="predictionOrderEditorBackdrop"
+              data-dialog-backdrop
               aria-labelledby={titleId}
               onCancel={(event) => {
                 event.preventDefault();

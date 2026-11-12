@@ -383,9 +383,6 @@ export const ShopPage = () => {
           event.preventDefault();
           closeRedeemDialog();
         }}
-        onClickCapture={(event) => {
-          if (event.target === event.currentTarget) closeRedeemDialog();
-        }}
       >
         {selectedReward ? (
           <form className="redeemDialogContent" onSubmit={confirmRedemption}>

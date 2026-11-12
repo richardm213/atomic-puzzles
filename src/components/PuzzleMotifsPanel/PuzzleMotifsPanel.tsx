@@ -61,13 +61,7 @@ export const PuzzleMotifsPanel = ({
     const dialog = dialogRef.current;
     if (dialog && !dialog.open) dialog.showModal();
 
-    const close = () => setSelectedTag(null);
-    const handleDialogClick = (event: MouseEvent) => {
-      if (event.target === dialog) close();
-    };
-    dialog?.addEventListener("click", handleDialogClick);
     return () => {
-      dialog?.removeEventListener("click", handleDialogClick);
       if (dialog?.open) dialog.close();
     };
   }, [selectedMotif]);

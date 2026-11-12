@@ -56,19 +56,6 @@ export const BetShareSlip = ({
     const dialog = pane.current;
     if (!dialog) return;
     dialog.showModal();
-    const outside = (event: MouseEvent) => {
-      if (event.target !== dialog) return;
-      const bounds = dialog.getBoundingClientRect();
-      if (
-        event.clientX < bounds.left ||
-        event.clientX > bounds.right ||
-        event.clientY < bounds.top ||
-        event.clientY > bounds.bottom
-      )
-        dialog.close();
-    };
-    dialog.addEventListener("click", outside);
-    return () => dialog.removeEventListener("click", outside);
   }, []);
 
   useEffect(() => {

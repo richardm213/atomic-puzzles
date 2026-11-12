@@ -275,3 +275,31 @@ test("a puzzle without an intro keeps its original move numbers through play and
   await analysis.getByRole("button", { name: "Go to start" }).click();
   await expect(analysis.getByRole("button", { name: "17. Qb3+", exact: true })).toBeVisible();
 });
+
+test("tag popups close on the backdrop and dismiss only the topmost dialog", async ({ page }) => {
+  await page.route("**/api/auth/session", (route) =>
+    route.fulfill({ json: { user: { username: "seaside_tiramisu" } } }),
+  );
+  await page.route("**/api/puzzles/play", (route) =>
+    route.fulfill({ json: { puzzles: [{ ...queuePuzzle, id: 101, tags: ["fork"] }] } }),
+  );
+  await page.route("**/api/puzzles/tags?**", (route) =>
+    route.fulfill({ json: { votes: [{ tag: "fork", up: 3, down: 0, vote: 0 }] } }),
+  );
+  await page.goto("/admin/puzzle-test/101");
+  const tag = page.getByRole("button", { name: /^View definition for Fork\b/ });
+  const definition = page.getByRole("dialog", { name: "Fork", exact: true });
+  await tag.click();
+  await definition.getByRole("heading", { name: "Fork", exact: true }).click();
+  await expect(definition).toBeVisible();
+  await definition.getByRole("button", { name: "Rename Fork", exact: true }).click();
+  const rename = page.getByRole("dialog", { name: "Rename tag", exact: true });
+  await expect(rename).toBeVisible();
+  await page.mouse.click(5, 5);
+  await expect(rename).toHaveCount(0);
+  await expect(definition).toBeVisible();
+  await page.mouse.click(5, 5);
+  await expect(definition).toHaveCount(0);
+  await tag.click();
+  await expect(definition).toBeVisible();
+});

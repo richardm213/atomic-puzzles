@@ -89,20 +89,7 @@ export const PredictionStrikeBets = ({
   useEffect(() => {
     const pane = dialog.current;
     if (!open || !pane) return;
-    const closeOnBackdrop = (event: MouseEvent) => {
-      if (event.target !== pane) return;
-      const bounds = pane.getBoundingClientRect();
-      if (
-        event.clientX < bounds.left ||
-        event.clientX > bounds.right ||
-        event.clientY < bounds.top ||
-        event.clientY > bounds.bottom
-      )
-        pane.close();
-    };
     pane.showModal();
-    pane.addEventListener("click", closeOnBackdrop);
-    return () => pane.removeEventListener("click", closeOnBackdrop);
   }, [open]);
   return (
     <>

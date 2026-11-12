@@ -11,10 +11,12 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 
 import { AppRouterProvider } from "./router";
+import { installDialogLightDismiss } from "./utils/dialogDismiss";
 import { installPreloadErrorRecovery } from "./utils/preloadRecovery";
 import { installPointerSelectFocusRelease } from "./utils/selectFocus";
 
 installPreloadErrorRecovery();
+installDialogLightDismiss();
 installPointerSelectFocusRelease();
 
 const rootElement = document.getElementById("root");

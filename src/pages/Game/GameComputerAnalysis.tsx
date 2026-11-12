@@ -257,9 +257,6 @@ export const GameComputerAnalysis = ({
             if (isRequesting) event.preventDefault();
             else closePurchaseDialog();
           }}
-          onClickCapture={(event) => {
-            if (event.target === event.currentTarget && !isRequesting) closePurchaseDialog();
-          }}
         >
           <form onSubmit={confirmPurchase}>
             <div>

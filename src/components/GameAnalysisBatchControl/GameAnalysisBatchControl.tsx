@@ -141,9 +141,6 @@ export const GameAnalysisBatchControl = ({
           if (mutation.isPending) event.preventDefault();
           else closeDialog();
         }}
-        onClickCapture={(event) => {
-          if (event.target === event.currentTarget) closeDialog();
-        }}
       >
         <form onSubmit={submit}>
           <div>
