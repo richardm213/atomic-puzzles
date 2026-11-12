@@ -8,6 +8,7 @@ import { getPuzzleMotifParent, puzzleMotifs } from "../../lib/puzzles/puzzleMoti
 import { usePuzzleMotifNames } from "../../lib/puzzles/usePuzzleMotifNames";
 import type { AsyncActionStatus } from "../../types/async";
 import { getErrorMessage } from "../../utils/errors";
+import { PuzzleMotifDefinition } from "../PuzzleMotifDefinition/PuzzleMotifDefinition";
 import { PuzzleMotifRename } from "../PuzzleMotifRename/PuzzleMotifRename";
 
 type SaveStatus = AsyncActionStatus;
@@ -261,7 +262,7 @@ export const PuzzleMotifsPanel = ({
                 </button>
               </div>
             </div>
-            <p>{selectedMotif.description}</p>
+            <PuzzleMotifDefinition motif={selectedMotif} name={getName(selectedMotif.tag)} />
             {canConvert ? (
               <div className="puzzleMotifConversions">
                 <strong>Convert to a subtag</strong>

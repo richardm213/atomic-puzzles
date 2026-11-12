@@ -952,6 +952,10 @@ describe("PuzzleSolverPage solution options", () => {
       within(motifList).queryByRole("button", { name: "Remove fork" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add tag" })).toBeInTheDocument();
+    fireEvent.click(within(motifList).getByRole("button", { name: /View definition for Fork/ }));
+    const definition = screen.getByRole("dialog", { name: "Fork" });
+    expect(within(definition).getByRole("figure", { name: "Fork example" })).toBeInTheDocument();
+    expect(within(definition).getByRole("group", { name: "Fork replay" })).toBeInTheDocument();
   });
 
   it("uses the player's primary nickname for the puzzle author link", async () => {

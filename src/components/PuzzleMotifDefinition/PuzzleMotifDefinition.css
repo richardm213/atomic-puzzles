@@ -1,0 +1,16 @@
+.puzzleMotifDefinitionExample {
+  --motif-board-width: 264px;
+  --motif-example-width: 680px;
+  min-width: 0;
+}
+
+.puzzleMotifDefinitionExample .motifExample {
+  margin-top: 0;
+}
+
+.puzzleMotifDefinitionDialog:has(.puzzleMotifDefinitionExample),
+.puzzleTagVoteDefinitionDialog:has(.puzzleMotifDefinitionExample) {
+  width: min(760px, calc(100% - var(--space-8)));
+  max-height: calc(100dvh - var(--space-8));
+  overflow: auto;
+}

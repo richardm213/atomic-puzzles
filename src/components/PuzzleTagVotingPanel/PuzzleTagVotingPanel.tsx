@@ -19,6 +19,7 @@ import { loadPuzzleTagVotes, voteOnPuzzleTag } from "../../lib/puzzles/puzzleTag
 import { usePuzzleMotifNames } from "../../lib/puzzles/usePuzzleMotifNames";
 import type { AsyncActionStatus } from "../../types/async";
 import { getErrorMessage } from "../../utils/errors";
+import { PuzzleMotifDefinition } from "../PuzzleMotifDefinition/PuzzleMotifDefinition";
 import { PuzzleMotifRename } from "../PuzzleMotifRename/PuzzleMotifRename";
 
 const motifsByTag = new Map(puzzleMotifs.map((motif) => [motif.tag, motif]));
@@ -349,7 +350,7 @@ export const PuzzleTagVotingPanel = ({
                 </button>
               </div>
             </div>
-            <p>{selectedMotif.description}</p>
+            <PuzzleMotifDefinition motif={selectedMotif} name={getName(selectedMotif.tag)} />
             {tallies ? (
               <div className="puzzleTagVoteDialogVotes">
                 <strong>
