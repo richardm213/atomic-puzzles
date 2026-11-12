@@ -3,19 +3,22 @@ import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { buildPgnHistory } from "./pgnHistory";
 
 describe("buildPgnHistory", () => {
-  it("loads the PGN mainline and its variations", () => {
-    const result = buildPgnHistory(STARTING_FEN, "1. e4 e5 (1... c5) 2. Nf3");
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.history.plies.slice(1).map((ply) => ply.san)).toEqual(["e4", "e5", "Nf3"]);
-      expect(
-        result.histories.map((history) => history.plies.slice(1).map((ply) => ply.san)),
-      ).toEqual([
-        ["e4", "e5", "Nf3"],
-        ["e4", "c5"],
-      ]);
-    }
-  });
+  it.each(["1. e4 e5 (1... c5) 2. Nf3", "e2e4 e7e5 (c7c5) g1f3"])(
+    "loads the mainline and variations from SAN or UCI: %s",
+    (pgn) => {
+      const result = buildPgnHistory(STARTING_FEN, pgn);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.history.plies.slice(1).map((ply) => ply.san)).toEqual(["e4", "e5", "Nf3"]);
+        expect(
+          result.histories.map((history) => history.plies.slice(1).map((ply) => ply.san)),
+        ).toEqual([
+          ["e4", "e5", "Nf3"],
+          ["e4", "c5"],
+        ]);
+      }
+    },
+  );
 
   it("loads nested PGN variations", () => {
     const result = buildPgnHistory(STARTING_FEN, "1. e4 e5 (1... c5 2. Nf3 (2. d4)) 2. Nf3");
@@ -84,6 +87,12 @@ describe("buildPgnHistory", () => {
       ]);
       expect(result.histories).toHaveLength(2);
     }
+  });
+
+  it("loads an empty PGN document without mistaking comments for variations", () => {
+    const result = buildPgnHistory(STARTING_FEN, '[Event "Example (empty)"]\n{ No moves (yet) } *');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.history.plies).toHaveLength(1);
   });
 
   it("distinguishes invalid FEN and PGN errors", () => {

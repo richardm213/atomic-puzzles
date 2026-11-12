@@ -32,6 +32,7 @@ describe("validatePuzzleSubmission", () => {
       blackPlayer: "",
       explanation: "The threat is atomic.",
       opaStyle: false,
+      tags: [],
     });
   });
 

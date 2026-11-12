@@ -2,11 +2,12 @@ import { kingAttacks } from "chessops/attacks";
 import { normalizeMove } from "chessops/chess";
 import { chessgroundMove } from "chessops/compat";
 import { makeFen, parseFen } from "chessops/fen";
-import { makeSan, parseSan } from "chessops/san";
+import { makeSan } from "chessops/san";
 import { isNormal, type NormalMove, type SquareName } from "chessops/types";
 import { kingCastlesTo, makeSquare, makeUci, parseUci } from "chessops/util";
 import { Atomic } from "chessops/variant";
 
+import { parseAtomicMove } from "../../../shared/domain/chess/pgn";
 import type { LessonDefinition } from "./atomicLessons";
 
 export type LessonFrame = {
@@ -24,8 +25,8 @@ export const readLessonMove = (position: Atomic, value: string): NormalMove | un
   const coordinate = text.toLowerCase().replace(/[-\s]/g, "");
   const move =
     parseUci(coordinate) ??
-    parseSan(position, text) ??
-    parseSan(
+    parseAtomicMove(position, text) ??
+    parseAtomicMove(
       position,
       text.replace(/^[kqrbn]/, (piece) => piece.toUpperCase()),
     );

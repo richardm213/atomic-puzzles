@@ -77,6 +77,14 @@ export const moveFromUci = (position: Position, uci: string): Move | null => {
   return position.isLegal(move) ? move : null;
 };
 
+// Chess.com can emit both check and mate markers. Normalize only that suffix;
+// chessops already accepts SAN rank/file disambiguation such as N1c3.
+export const parseAtomicMove = (position: Position, notation: string): Move | undefined =>
+  parseSan(position, notation.endsWith("+#") ? notation.slice(0, -2) + "#" : notation) ??
+  (/^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(notation)
+    ? (moveFromUci(position, notation.toLowerCase()) ?? undefined)
+    : undefined);
+
 export const fenAfterAtomicMove = (fen: string, uci: string): string | null => {
   try {
     const position = createAtomicPosition(fen);
@@ -406,15 +414,16 @@ export const serializeSanLinesToPgn = (fen: string, sanLines: string[][] = []): 
   return serializeSolutionLines(sanLines, startingPlyFromFen(fen));
 };
 
-export const parseSolutionUciLines = (fen: string, solution: unknown): UciSolutionLine[] => {
+export const parsePgnUciLines = (fen: string, solution: unknown): UciSolutionLine[] | null => {
   // 1. Validate the raw inputs and starting position.
-  if (typeof solution !== "string" || solution.trim().length === 0) return [];
+  if (typeof solution !== "string") return null;
+  if (solution.trim().length === 0) return [];
 
   let position: Position;
   try {
     position = createAtomicPosition(fen);
   } catch {
-    return [];
+    return null;
   }
 
   // 2. Remove PGN metadata/comments and split moves from variation parentheses.
@@ -479,8 +488,8 @@ export const parseSolutionUciLines = (fen: string, solution: unknown): UciSoluti
       lastBranchPosition = currentPosition.clone();
       lastBranchLine = [...currentLine];
 
-      const move = parseSan(currentPosition, parsedToken.san);
-      if (!move || !currentPosition.isLegal(move)) {
+      const move = parseAtomicMove(currentPosition, parsedToken.san);
+      if (!move) {
         parseFailed = true;
         return tokens.length;
       }
@@ -506,12 +515,16 @@ export const parseSolutionUciLines = (fen: string, solution: unknown): UciSoluti
   };
 
   parseBranch(0, position, [], [], false);
-  if (parseFailed) return [];
+  if (parseFailed) return null;
 
   // 4. Restore PGN branch order, then remove exact duplicate lines.
   parsedLines.sort(compareVariationOrder);
   return deduplicateSolutionLines(parsedLines);
 };
+
+// Puzzle callers treat invalid or empty input as having no solution lines.
+export const parseSolutionUciLines = (fen: string, solution: unknown): UciSolutionLine[] =>
+  parsePgnUciLines(fen, solution) ?? [];
 
 export const convertUciLineToSan = (initialFen: string, uciLine: UciSolutionLine): string[] => {
   let position: Position;

@@ -1,8 +1,8 @@
 import { INITIAL_FEN, makeFen } from "chessops/fen";
-import { makeSan, parseSan } from "chessops/san";
+import { makeSan } from "chessops/san";
 import { makeUci } from "chessops/util";
 
-import { createAtomicPosition, moveFromUci, splitSolutionMove } from "../chess/pgn";
+import { createAtomicPosition, parseAtomicMove, splitSolutionMove } from "../chess/pgn";
 import { startingFenKey } from "./submissionDuplicates";
 
 export type PuzzleIntro = { beforeFen: string; uci: string; san: string };
@@ -39,10 +39,8 @@ export const matchPuzzleGameHistory = (
 
     for (const raw of moves) {
       const token = splitSolutionMove(raw.trim()).san;
-      const move = /^[a-h][1-8][a-h][1-8][qrbn]?$/.test(token)
-        ? moveFromUci(position, token)
-        : parseSan(position, token);
-      if (!move || !position.isLegal(move)) {
+      const move = parseAtomicMove(position, token);
+      if (!move) {
         if (exactEnd) return null;
         break;
       }
@@ -95,8 +93,8 @@ export const rewindPuzzleLeadIn = (
   try {
     const position = createAtomicPosition(leadIn.beforeFen);
     for (const san of leadIn.moves.slice(0, start)) {
-      const move = parseSan(position, san);
-      if (!move || !position.isLegal(move)) return null;
+      const move = parseAtomicMove(position, san);
+      if (!move) return null;
       position.play(move);
     }
     return { beforeFen: makeFen(position.toSetup()), moves: leadIn.moves.slice(start) };

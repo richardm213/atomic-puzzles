@@ -182,6 +182,22 @@ describe("toComparableUci", () => {
 });
 
 describe("parseSolutionUciLines", () => {
+  it("accepts Chess.com checkmate markers after a line-broken move number", () => {
+    const fen = "k7/8/1Q6/8/8/8/8/7K w - - 0 15";
+    const lines = parseSolutionUciLines(fen, "15.\nQb7+#!");
+    expect(lines[0]?.map(({ uci, annotation }) => ({ uci, annotation }))).toEqual([
+      { uci: "b6b7", annotation: "!" },
+    ]);
+    expect(serializeUciLinesToPgn(fen, lines)).toBe("15. Qb7#!");
+  });
+
+  it("accepts redundant rank disambiguation and still requires it for ambiguous moves", () => {
+    expect(parseSolutionUciLines(STARTING_FEN, "1. N1c3")[0]?.[0]?.uci).toBe("b1c3");
+    const fen = "4k3/8/8/1N6/8/8/8/1N2K3 w - - 0 1";
+    expect(parseSolutionUciLines(fen, "1. N1c3")[0]?.[0]?.uci).toBe("b1c3");
+    expect(parseSolutionUciLines(fen, "1. Nc3")).toEqual([]);
+  });
+
   it("normalizes puzzle 414 long castling to the king destination", () => {
     const lines = parseSolutionUciLines(
       "rnb1kbnr/2p1q1p1/p4p2/3pp2p/3PP3/N1P4N/PP1B1PPP/R2QK2R w KQkq - 0 10",
