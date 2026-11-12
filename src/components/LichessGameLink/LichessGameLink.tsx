@@ -45,27 +45,18 @@ export const LichessGameLink = ({
   const normalizedGameId = String(gameId)
     .replace(/^(?:chesscom|pychess):/i, "")
     .trim();
-  const internalGameUrl = buildAtomicPuzzlesGameUrl(normalizedGameId);
   const useAtomicPuzzles =
     openInAtomicPuzzles ?? shouldUseAtomicPuzzlesGameLink({ source, mode, lichessLinkTarget });
-  if (useAtomicPuzzles && internalGameUrl) {
-    return (
-      <a
-        className={className}
-        href={internalGameUrl}
-        target="_blank"
-        rel="noreferrer"
-        {...interactionProps}
-      >
-        {children}
-      </a>
-    );
-  }
-  const gameUrl = buildExternalGameUrl(openInAtomicPuzzles === false ? normalizedGameId : gameId, {
-    source,
+  const position = {
     ...(orientation ? { orientation } : {}),
     ...(ply !== undefined ? { ply } : {}),
-  });
+  };
+  const gameUrl = useAtomicPuzzles
+    ? buildAtomicPuzzlesGameUrl(normalizedGameId, position)
+    : buildExternalGameUrl(openInAtomicPuzzles === false ? normalizedGameId : gameId, {
+        source,
+        ...position,
+      });
   if (!gameUrl) return <>{children}</>;
 
   return (

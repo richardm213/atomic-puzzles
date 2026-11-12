@@ -94,3 +94,65 @@ test("game puzzle drafts optionally copy editable continuations from the origina
   await launch.click();
   await expect(pgn).toHaveValue("1. d4 d5 2. Nf3 *");
 });
+
+test("game URLs retain side and exact ply and wait for navigation to settle", async ({ page }) => {
+  await page.route("**/api/archive-data?**", (route) =>
+    route.fulfill({
+      json:
+        new URL(route.request().url()).searchParams.get("resource") === "game"
+          ? {
+              game_id: "wolf-url",
+              external_match_id: "url-match",
+              result: 0,
+              mode: "wolfrandom",
+              player_1: "White",
+              player_2: "Black",
+              time_control: "180+2",
+              start_ts: 1700000000000,
+              initial_fen: null,
+              tournament: null,
+              moves: ["g1f3", "g8f6", "f3g1", "f6g8", "e2e4", "e7e5", "d2d3", "d7d6"],
+            }
+          : [],
+    }),
+  );
+  await page.addInitScript(() => {
+    const writes: string[] = [];
+    Object.assign(window, { gameUrlWrites: writes });
+    const replace = history.replaceState.bind(history);
+    history.replaceState = (state, unused, url) => {
+      if (url && /\/game\/.*\/(white|black)#\d+$/.test(String(url))) writes.push(String(url));
+      replace(state, unused, url);
+    };
+  });
+  await page.goto("/game/wolf-url");
+  await expect(page).toHaveURL(/\/game\/wolf-url\/white#6$/);
+
+  await page.goto("/game/wolf-url/black#3");
+  const next = page.getByRole("button", { name: "Next move", exact: true });
+  await expect(next).toBeEnabled();
+  await page.evaluate(
+    () => ((window as unknown as { gameUrlWrites: string[] }).gameUrlWrites.length = 0),
+  );
+  await next.click();
+  await page.waitForTimeout(250);
+  await next.click();
+  await page.waitForTimeout(350);
+  await expect(page).toHaveURL(/\/black#3$/);
+  await expect(page).toHaveURL(/\/black#5$/);
+  expect(
+    await page.evaluate(() => (window as unknown as { gameUrlWrites: string[] }).gameUrlWrites),
+  ).toEqual(["/game/wolf-url/black#5"]);
+
+  await page.getByRole("button", { name: "Engine settings", exact: true }).click();
+  await page.getByRole("button", { name: "Flip board", exact: true }).click();
+  await expect(page).toHaveURL(/\/white#5$/);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Next move", exact: true })).toBeEnabled();
+  await expect(page).toHaveURL(/\/white#5$/);
+
+  await page.goto("/game/wolf-url/black#0");
+  await expect(next).toBeEnabled();
+  await next.click();
+  await expect(page).toHaveURL(/\/black#1$/);
+});

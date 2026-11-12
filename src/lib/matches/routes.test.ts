@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildAtomicPuzzlesGameUrl,
   buildExternalGameUrl,
   buildLichessGameUrl,
   buildMatchRouteParams,
@@ -195,6 +196,15 @@ describe("buildSingleGameMatchUrl", () => {
         sourceValue: "chesscom",
       }),
     ).toBe("/game/123456789");
+  });
+
+  it("preserves the side and exact ply in internal game URLs", () => {
+    expect(buildAtomicPuzzlesGameUrl("game-id", { orientation: "black", ply: 24 })).toBe(
+      "/game/game-id/black#24",
+    );
+    expect(buildAtomicPuzzlesGameUrl("game-id", { orientation: "white", ply: 0 })).toBe(
+      "/game/game-id/white#0",
+    );
   });
 
   it("builds internal URLs for one-game PyChess matches", () => {

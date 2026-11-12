@@ -58,7 +58,6 @@ import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import {
   buildBoardLoadNavigation,
-  gameHashForPly,
   gamePlyFromHash,
   pgnLineIndexForPrefix,
   puzzlePrefillPgn,
@@ -378,7 +377,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const publishesDirectly = isApprovedPuzzleCreator(auth.user?.username ?? "");
   const puzzleActionLabel = publishesDirectly ? "Create puzzle" : "Submit puzzle";
   const keyboardShortcuts = useKeyboardShortcutSettings();
-  const { _splat: fenPath } = useParams({ strict: false });
+  const { _splat: fenPath, orientation: routeOrientation } = useParams({ strict: false });
   const handoffId = new URLSearchParams(
     typeof window === "undefined" ? "" : window.location.search,
   ).get("handoff");
@@ -401,7 +400,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
       // An unsaved draft link can return to its source position, not recreate its moves.
       const hash =
         draftSourcePly !== null && /^\d+$/.test(draftSourcePly)
-          ? `#ply-${draftSourcePly}`
+          ? `#${draftSourcePly}`
           : (location?.hash ?? "");
       return buildBoardLoadNavigation({
         fen: routeFen,
@@ -463,7 +462,9 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   );
   const [gameRootFen, setRootFen] = useState(routeFen);
   const rootFen = puzzleDraft?.fen ?? gameRootFen;
-  const [gameOrientation, setOrientation] = useState<"white" | "black">("white");
+  const [gameOrientation, setOrientation] = useState<"white" | "black">(
+    routeOrientation === "black" ? "black" : "white",
+  );
   const orientation = puzzleDraft?.orientation ?? gameOrientation;
   const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -745,9 +746,18 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
 
   useEffect(() => {
     setRootFen(routeFen);
-    if (!game) setOrientation(analysisHandoff?.orientation ?? "white");
     setNavigation(initialBoardNavigation);
-  }, [analysisHandoff?.orientation, game, initialBoardNavigation, routeFen]);
+  }, [initialBoardNavigation, routeFen]);
+
+  useEffect(() => {
+    setOrientation(
+      game
+        ? routeOrientation === "black"
+          ? "black"
+          : "white"
+        : (analysisHandoff?.orientation ?? "white"),
+    );
+  }, [analysisHandoff?.orientation, game, routeOrientation]);
 
   const requestNavigation = useCallback((command: PlaybackCommand): void => {
     setNavigation({ type: "command", command });
@@ -948,24 +958,35 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     setNavigation(null);
   }, [finishVariationPlayback]);
 
+  const gameId = game?.game_id;
+  const draftSourcePly = puzzleDraft?.sourcePly;
+  const boardReady = Boolean(boardState);
   useEffect(() => {
-    if (navigation !== null || (!puzzleDraft && !boardState)) return;
-    const url = new URL(window.location.href);
-    if (puzzleDraft) {
-      url.searchParams.set("puzzle", String(puzzleDraft.sourcePly));
-      url.hash = `ply-${currentPly}`;
-    } else if (game) {
-      if (url.searchParams.has("puzzle")) url.searchParams.delete("puzzle");
-      url.hash = gameHashForPly(currentPly);
-    } else if (url.searchParams.has("puzzle")) {
-      url.searchParams.delete("puzzle");
-      url.hash = hashBeforeDraft.current;
-    }
-    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
-    if (url.href !== window.location.href) {
-      window.history.replaceState(window.history.state, "", nextUrl);
-    }
-  }, [boardState, currentPly, game, navigation, puzzleDraft]);
+    if (navigation !== null || !boardReady) return;
+    // Match Lichess: write once navigation has settled, not on engine/UI updates.
+    const timeout = window.setTimeout(() => {
+      const url = new URL(window.location.href);
+      if (gameId) url.pathname = `/game/${encodeURIComponent(gameId)}/${orientation}`;
+      if (draftSourcePly !== undefined) {
+        url.searchParams.set("puzzle", String(draftSourcePly));
+        url.hash = String(currentPly);
+      } else if (gameId) {
+        url.searchParams.delete("puzzle");
+        url.hash = String(currentPly);
+      } else if (url.searchParams.has("puzzle")) {
+        url.searchParams.delete("puzzle");
+        url.hash = hashBeforeDraft.current;
+      }
+      if (url.href !== window.location.href) {
+        window.history.replaceState(
+          window.history.state,
+          "",
+          `${url.pathname}${url.search}${url.hash}`,
+        );
+      }
+    }, 750);
+    return () => window.clearTimeout(timeout);
+  }, [boardReady, currentPly, draftSourcePly, gameId, navigation, orientation]);
 
   const ensurePlayerStartDate = useCallback((): void => {
     setExplorerSettings((current) => ({

@@ -53,15 +53,10 @@ export const pgnLineIndexForPrefix = (fen: string, pgn: string, prefix: string[]
 
 export const gamePlyFromHash = (hash: string, moveCount: number, defaultPly = 0): number | null => {
   if (!hash) return Math.min(moveCount, defaultPly);
-  const exactPly = /^#ply-(\d+)$/.exec(hash);
-  if (exactPly) return Math.min(moveCount, Number(exactPly[1]));
   const match = /^#(\d+)$/.exec(hash);
   if (!match) return null;
-  return Math.min(moveCount, Number(match[1]) * 2);
+  return Math.min(moveCount, Number(match[1]));
 };
-
-export const gameHashForPly = (ply: number): string =>
-  ply === 0 ? "" : ply % 2 === 0 ? `#${ply / 2}` : `#ply-${ply}`;
 
 // Game moves take priority over the edited PGN. A diverging analysis branch
 // has no continuation in the original game, so leave that draft empty.

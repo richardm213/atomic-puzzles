@@ -53,18 +53,22 @@ export const isSingleGameMatch = (match: MatchRouteInput | null | undefined): bo
   return match?.gameCount === 1;
 };
 
+type GameLinkPosition = {
+  orientation?: "white" | "black";
+  ply?: number | null | undefined;
+};
+
+const gamePositionSuffix = ({ orientation, ply }: GameLinkPosition): string =>
+  `${orientation ? `/${orientation}` : ""}${typeof ply === "number" && Number.isInteger(ply) && ply >= 0 ? `#${ply}` : ""}`;
+
 export const buildLichessGameUrl = (
   gameId: string | number | null | undefined,
-  options: { orientation?: "white" | "black"; ply?: number | null | undefined } = {},
+  options: GameLinkPosition = {},
 ): string => {
   const normalizedGameId = String(gameId ?? "").trim();
   if (!normalizedGameId || normalizedGameId === "—") return "";
 
-  const orientationPath = options.orientation ? `/${options.orientation}` : "";
-  const ply = Number(options.ply);
-  const plyHash = Number.isInteger(ply) && ply >= 0 ? `#${ply}` : "";
-
-  return `https://lichess.org/game/${encodeURIComponent(normalizedGameId)}${orientationPath}${plyHash}`;
+  return `https://lichess.org/game/${encodeURIComponent(normalizedGameId)}${gamePositionSuffix(options)}`;
 };
 
 export const isChessComSource = (source: unknown): boolean => {
@@ -128,12 +132,15 @@ export const buildPyChessGameUrl = (gameId: string | number | null | undefined):
   return `https://www.pychess.org/${encodeURIComponent(normalizedGameId)}`;
 };
 
-export const buildAtomicPuzzlesGameUrl = (gameId: string | number | null | undefined): string => {
+export const buildAtomicPuzzlesGameUrl = (
+  gameId: string | number | null | undefined,
+  options: GameLinkPosition = {},
+): string => {
   const normalizedGameId = String(gameId ?? "")
     .trim()
     .replace(/^(?:chesscom|pychess):/i, "");
   if (!normalizedGameId || normalizedGameId === "—") return "";
-  return `/game/${encodeURIComponent(normalizedGameId)}`;
+  return `/game/${encodeURIComponent(normalizedGameId)}${gamePositionSuffix(options)}`;
 };
 
 export const buildExternalGameUrl = (

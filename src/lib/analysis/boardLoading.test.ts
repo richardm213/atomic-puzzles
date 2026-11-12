@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  buildBoardLoadNavigation,
-  gameHashForPly,
-  gamePlyFromHash,
-  puzzlePrefillPgn,
-} from "./boardLoading";
+import { buildBoardLoadNavigation, gamePlyFromHash, puzzlePrefillPgn } from "./boardLoading";
 
 const STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -45,16 +40,14 @@ describe("analysis board loading", () => {
       fen: STARTING_FEN,
     });
     expect(gamePlyFromHash("", 20)).toBe(0);
-    expect(gamePlyFromHash("#3", 20)).toBe(6);
-    expect(gamePlyFromHash(gameHashForPly(5), 20)).toBe(5);
-    expect(gameHashForPly(6)).toBe("#3");
+    expect(gamePlyFromHash("#3", 20)).toBe(3);
     expect(gamePlyFromHash("#30", 20)).toBe(20);
     expect(gamePlyFromHash("#bad", 20)).toBeNull();
     expect(gamePlyFromHash("", 20, 6)).toBe(6);
     expect(gamePlyFromHash("", 4, 6)).toBe(4);
     expect(gamePlyFromHash("#0", 20, 6)).toBe(0);
-    expect(gamePlyFromHash("#2", 20, 6)).toBe(4);
-    expect(gamePlyFromHash("#ply-3", 20, 6)).toBe(3);
+    expect(gamePlyFromHash("#2", 20, 6)).toBe(2);
+    expect(gamePlyFromHash("#ply-3", 20, 6)).toBeNull();
   });
 });
 

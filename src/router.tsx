@@ -353,7 +353,7 @@ const analysisFenRoute = createRoute({
 
 const gameRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/game/$gameId",
+  path: "/game/$gameId/{-$orientation}",
   loader: ({ context, params }) => {
     void import("./lib/games/queries").then(({ gameDetailQueryOptions }) =>
       context.queryClient.prefetchQuery(gameDetailQueryOptions(params.gameId)),
