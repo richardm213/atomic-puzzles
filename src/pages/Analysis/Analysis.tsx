@@ -393,6 +393,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   );
   const routeFen =
     game && initialFen ? initialFen : (analysisHandoff?.fen ?? fenFromRoute(fenPath));
+  const defaultGamePly = game?.mode === "wolfrandom" ? WOLFRANDOM_RANDOMIZED_PLIES : 0;
   const initialBoardNavigation = useMemo(() => {
     if (game) {
       const moves = initialMoves ?? [];
@@ -406,7 +407,9 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
       return buildBoardLoadNavigation({
         fen: routeFen,
         moves,
-        ply: gamePlyFromHash(hash, moves.length) ?? 0,
+        ply:
+          gamePlyFromHash(hash, moves.length, defaultGamePly) ??
+          Math.min(moves.length, defaultGamePly),
       });
     }
     return buildBoardLoadNavigation({
@@ -419,7 +422,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           }
         : {}),
     });
-  }, [analysisHandoff, game, initialMoves, routeFen]);
+  }, [analysisHandoff, defaultGamePly, game, initialMoves, routeFen]);
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const lowerClockRef = useRef<HTMLDivElement | null>(null);
   const rightPanelRef = useRef<HTMLElement | null>(null);
@@ -877,12 +880,16 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   useEffect(() => {
     if (!game || puzzleDraft) return;
     const handleHashChange = (): void => {
-      const hashPly = gamePlyFromHash(window.location.hash, game.moves?.length ?? 0);
+      const hashPly = gamePlyFromHash(
+        window.location.hash,
+        game.moves?.length ?? 0,
+        defaultGamePly,
+      );
       if (hashPly !== null && hashPly !== currentPly) navigateToPly(hashPly);
     };
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
-  }, [currentPly, game, navigateToPly, puzzleDraft]);
+  }, [currentPly, defaultGamePly, game, navigateToPly, puzzleDraft]);
 
   const navigateToAnalysisMove = useCallback(
     (lineIndex: number, moveIndex: number): void => {

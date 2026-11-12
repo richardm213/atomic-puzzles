@@ -51,8 +51,8 @@ export const pgnLineIndexForPrefix = (fen: string, pgn: string, prefix: string[]
   return Math.max(0, index);
 };
 
-export const gamePlyFromHash = (hash: string, moveCount: number): number | null => {
-  if (!hash) return 0;
+export const gamePlyFromHash = (hash: string, moveCount: number, defaultPly = 0): number | null => {
+  if (!hash) return Math.min(moveCount, defaultPly);
   const exactPly = /^#ply-(\d+)$/.exec(hash);
   if (exactPly) return Math.min(moveCount, Number(exactPly[1]));
   const match = /^#(\d+)$/.exec(hash);

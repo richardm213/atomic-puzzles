@@ -50,6 +50,11 @@ describe("analysis board loading", () => {
     expect(gameHashForPly(6)).toBe("#3");
     expect(gamePlyFromHash("#30", 20)).toBe(20);
     expect(gamePlyFromHash("#bad", 20)).toBeNull();
+    expect(gamePlyFromHash("", 20, 6)).toBe(6);
+    expect(gamePlyFromHash("", 4, 6)).toBe(4);
+    expect(gamePlyFromHash("#0", 20, 6)).toBe(0);
+    expect(gamePlyFromHash("#2", 20, 6)).toBe(4);
+    expect(gamePlyFromHash("#ply-3", 20, 6)).toBe(3);
   });
 });
 
