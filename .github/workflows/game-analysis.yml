@@ -29,8 +29,31 @@ env:
   GAME_ANALYSIS_WORKER_ONCE: ${{ inputs.once && 'true' || 'false' }}
 
 jobs:
-  queue:
+  pending:
     if: github.repository == 'richardm213/atomic-puzzles' && github.ref == 'refs/heads/main' && (vars.GAME_ANALYSIS_WORKERS_ENABLED == 'true' || github.event_name == 'workflow_dispatch') && github.event.schedule != '23 * * * *' && inputs.task != 'openings'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      work: ${{ steps.queue.outputs.work }}
+    steps:
+      - name: Check for queued work before installing dependencies
+        id: queue
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync } from 'node:fs';
+          const response = await fetch(`${process.env.SUPABASE_URL}/rest/v1/game_analyses?select=game_id&status=in.(queued,processing)&limit=1`, {
+            headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` },
+            signal: AbortSignal.timeout(15_000),
+          });
+          if (!response.ok) throw new Error(`Queue check returned HTTP ${response.status}`);
+          const rows = await response.json();
+          if (!Array.isArray(rows)) throw new Error('Invalid queue response');
+          appendFileSync(process.env.GITHUB_OUTPUT, `work=${rows.length > 0}\n`);
+          JS
+  queue:
+    needs: pending
+    if: needs.pending.outputs.work == 'true'
     strategy:
       fail-fast: false
       matrix:

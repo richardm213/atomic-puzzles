@@ -1,5 +1,0 @@
-[functions."game-analysis-sweep"]
-schedule = "* * * * *"
-
-[functions."game-analysis-submit-sweep"]
-schedule = "* * * * *"

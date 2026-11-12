@@ -1,5 +1,3 @@
-import process from "node:process";
-
 import { z } from "zod";
 
 import {
@@ -21,7 +19,7 @@ import type { FunctionEvent } from "../../platform/defineFunction";
 import { createServerSupabase } from "../../platform/environment";
 import { HttpError } from "../../platform/errors";
 import { parseJsonBody } from "../../platform/validation";
-
+import { dispatchGameAnalysisWorker } from "./dispatch";
 import { hydrateGameAnalysisPositions } from "./openings";
 
 const gameIdSchema = z.string().trim().min(1).max(160);
@@ -239,19 +237,6 @@ const selectFinishedAdminRecords = async (page: number, pageSize: number) => {
   };
 };
 
-const dispatchWorker = async (event: FunctionEvent, gameId: string): Promise<void> => {
-  const secret = process.env.GAME_ANALYSIS_WORKER_SECRET?.trim() ?? "";
-  const host = event.headers?.host ?? event.headers?.Host ?? "";
-  if (!secret || !host) return;
-  const protocol = host.includes("localhost") ? "http" : "https";
-  await fetch(`${protocol}://${host}/api/game-analysis-worker-background`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Game-Analysis-Worker": secret },
-    body: JSON.stringify({ gameId }),
-    signal: AbortSignal.timeout(5_000),
-  }).catch(() => undefined);
-};
-
 export const gameAnalysisRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, inputSchema, "Invalid game analysis request.");
   const identity = await authenticateRequest(
@@ -312,7 +297,9 @@ export const gameAnalysisRoute = async (event: FunctionEvent) => {
   }
   const record = await selectRecord(input.gameId);
   if (!record) throw new Error("The game analysis job was not created.");
-  await dispatchWorker(event, input.gameId);
+  if (record.status === "queued" || record.status === "processing") {
+    await dispatchGameAnalysisWorker();
+  }
   return identityResponse(identity, 200, {
     analysis: publicRecord(record),
     created: Boolean((data as { created?: unknown } | null)?.created),

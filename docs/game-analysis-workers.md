@@ -5,8 +5,8 @@ GitHub Actions. Netlify still serves `/api/game-analysis`, authenticates request
 charged jobs; it no longer processes analyses in background or scheduled functions.
 
 The queue has independent submission and result-polling jobs, each with its own concurrency
-group. A job checks for work, monitors an active queue for up to twenty minutes, and stops when
-it empties. Passes run about once per minute while active, subject to processing time. Existing
+group. A lightweight queue check skips checkout and dependency installation when no work is pending.
+An active worker monitors the queue for up to twenty minutes and stops when it empties. Passes run about once per minute while active, subject to processing time. Existing
 Supabase per-game leases, position budgets, AtomicDB rate limits, retries, refunds, and result
 notifications remain in the shared processing service.
 

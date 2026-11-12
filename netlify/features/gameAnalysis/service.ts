@@ -736,9 +736,7 @@ export const processPendingGameAnalyses = async (limit = SWEEP_JOB_LIMIT): Promi
   if (error) throw new Error(`Unable to load pending game analyses: ${error.message}`);
   const jobs = data ?? [];
   const positionsPerJob = gameAnalysisSweepPositionLimit(jobs.length);
-  // A background function owns this pump, so it can use AtomicDB's full five-request-per-second
-  // allowance instead of stopping at the scheduled-function timeout. Processing one game at a
-  // time keeps the five position requests inside AtomicDB's per-address limit.
+  // Processing one game at a time keeps position requests inside AtomicDB's per-address limit.
   await mapConcurrent(jobs, SWEEP_JOB_CONCURRENCY, async (row) => {
     try {
       await processGameAnalysisJob(String(row.game_id), positionsPerJob, { dueBefore });
