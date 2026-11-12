@@ -281,7 +281,9 @@ describe("PuzzleSubmissionPage fields", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<PuzzleSubmissionPage />);
 
-    fireEvent.change(screen.getByRole("textbox", { name: "Solution PGN" }), {
+    const solution = screen.getByRole("textbox", { name: "Solution PGN" });
+    await user.click(solution);
+    fireEvent.change(solution, {
       target: { value: `1. e4` },
     });
     expect(await screen.findByRole("link", { name: "puzzle 42" })).toHaveAttribute(
@@ -379,9 +381,9 @@ describe("PuzzleEditor move tree", () => {
 
     await user.clear(solution);
     await user.type(solution, "1. d4 d5");
-    await waitFor(() => expect(storedSolution.textContent).toBe("1. d4 d5"));
-
+    expect(storedSolution).toBeEmptyDOMElement();
     await user.click(explanation);
+    await waitFor(() => expect(storedSolution.textContent).toBe("1. d4 d5"));
     expect(solution).not.toHaveAttribute("readonly");
     expect((solution as HTMLTextAreaElement).value).toContain('[Variant "Atomic"]');
     expect((solution as HTMLTextAreaElement).value).toContain(`[FEN "${STARTING_FEN}"]`);
@@ -402,11 +404,12 @@ describe("PuzzleEditor move tree", () => {
       },
     });
 
+    fireEvent.blur(solution);
     expect(await screen.findByRole("button", { name: "5. d4" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "1. d4" })).not.toBeInTheDocument();
   });
 
-  it("can load a FEN by itself and clear the previous solution", async () => {
+  it("applies a FEN on blur and clears the previous solution", async () => {
     const user = userEvent.setup();
     render(<EditorHarness allowSolutionEditing />);
 
@@ -415,7 +418,8 @@ describe("PuzzleEditor move tree", () => {
     const fenInput = screen.getByRole("textbox", { name: "FEN" });
     await user.clear(fenInput);
     await user.type(fenInput, changedFen);
-    await user.click(screen.getByRole("button", { name: "Load FEN" }));
+    expect(screen.getByTestId("stored-fen")).toHaveTextContent(STARTING_FEN);
+    await user.tab();
 
     expect(screen.getByTestId("stored-fen")).toHaveTextContent(changedFen);
     expect(screen.getByTestId("stored-solution")).toBeEmptyDOMElement();
@@ -454,6 +458,7 @@ describe("PuzzleEditor move tree", () => {
       target: { value: `[Variant "Atomic"]\n[FEN "${changedFen}"]\n\n1... e5` },
     });
 
+    fireEvent.blur(textarea);
     expect(
       screen.getByText(
         "The puzzle FEN and initial position cannot be changed after the solution is loaded.",

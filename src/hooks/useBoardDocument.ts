@@ -1,10 +1,11 @@
-import type { ChangeEvent, FocusEvent, KeyboardEvent, TextareaHTMLAttributes } from "react";
+import type { ChangeEvent, TextareaHTMLAttributes } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { createAtomicPosition } from "../lib/chess/pgn";
 import { parseAtomicPgnInput } from "../lib/puzzles/puzzleSubmission";
 import type { ChessboardState } from "../types/chessboard";
 import { getErrorMessage } from "../utils/errors";
+import { inputCommitHandlers } from "../utils/inputCommit";
 
 type DocumentKind = "fen" | "pgn";
 
@@ -130,12 +131,7 @@ export const useBoardDocument = ({
       dirtyRef.current[kind] = false;
       activeEditorRef.current = kind;
     },
-    onBlur: (event: FocusEvent<HTMLTextAreaElement>) => commit(event.currentTarget.value),
-    onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (event.key !== "Enter" || event.shiftKey) return;
-      event.preventDefault();
-      commit(event.currentTarget.value, true);
-    },
+    ...inputCommitHandlers(commit),
     onChange: (event: ChangeEvent<HTMLTextAreaElement>) => {
       dirtyRef.current[kind] = true;
       setValue(event.target.value);

@@ -52,6 +52,7 @@ import {
 } from "../../types/chessboard";
 import { orientationFromFen } from "../../utils/chessNotation";
 import { getErrorMessage } from "../../utils/errors";
+import { inputCommitHandlers } from "../../utils/inputCommit";
 
 const combinePgnHeadersAndMoves = (headers: string, moves: string): string =>
   headers && moves ? `${headers}\n\n${moves}` : headers || moves;
@@ -224,10 +225,10 @@ export const PuzzleEditor = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
-  const applySolutionDraft = (): void => {
+  const applySolutionDraft = (draft: string): void => {
     try {
       if (batchMode && onBatchLoad) {
-        const pgns = splitPuzzlePgnBatch(solutionDraft);
+        const pgns = splitPuzzlePgnBatch(draft);
         if (pgns.length > 1) {
           const normalizedBatch = pgns.map((pgn, index) => {
             try {
@@ -243,7 +244,7 @@ export const PuzzleEditor = ({
         }
       }
 
-      const parsed = parsePuzzlePgnInput(solutionDraft, appliedFen);
+      const parsed = parsePuzzlePgnInput(draft, appliedFen);
       const nextFen = parsed.fen || appliedFen;
       const nextHeaders = ensurePuzzlePgnHeaders(parsed.headerText, nextFen);
 
@@ -275,6 +276,7 @@ export const PuzzleEditor = ({
       setAppliedFen(normalized.fen);
       setFenDraft(normalized.fen);
       setOrientation(orientationFromFen(normalized.fen));
+      setActiveLineIndex(0);
       setEditorError("");
       setNavigation({
         type: "solution",
@@ -283,37 +285,6 @@ export const PuzzleEditor = ({
       });
     } catch (error) {
       setEditorError(getErrorMessage(error, "Invalid move line."));
-    }
-  };
-
-  const handleSolutionChange = (solution: string): void => {
-    setSolutionDraft(solution);
-    setEditorError("");
-
-    if (!canEditSolution) return;
-
-    try {
-      const parsed = parsePuzzlePgnInput(solution, appliedFen);
-      if (fixedFenRef.current !== null && parsed.fen !== fixedFenRef.current) {
-        setEditorError(
-          "The puzzle FEN and initial position cannot be changed after the solution is loaded.",
-        );
-        return;
-      }
-      const normalized = validateParsedPuzzleSubmission(value, parsed);
-      if (fixedFenRef.current === null) fixedFenRef.current = normalized.fen;
-      onChange(normalized);
-      setAppliedFen(normalized.fen);
-      setFenDraft(normalized.fen);
-      setOrientation(orientationFromFen(normalized.fen));
-      setActiveLineIndex(0);
-      setNavigation({
-        type: "solution",
-        line: 0,
-        ply: 0,
-      });
-    } catch {
-      // Keep the last valid board and move tree while the replacement PGN is incomplete.
     }
   };
 
@@ -330,8 +301,8 @@ export const PuzzleEditor = ({
     }
   };
 
-  const applyFenDraft = (): void => {
-    const nextFen = fenDraft.trim();
+  const applyFenDraft = (draft: string): void => {
+    const nextFen = draft.trim();
     try {
       if (!nextFen) throw new Error("Enter a FEN.");
       createAtomicPosition(nextFen);
@@ -688,8 +659,11 @@ export const PuzzleEditor = ({
           required
           readOnly={solutionLocked}
           spellCheck={false}
-          onChange={(event) => handleSolutionChange(event.target.value)}
-          onBlur={solutionLocked ? undefined : applySolutionDraft}
+          onChange={(event) => {
+            setSolutionDraft(event.target.value);
+            setEditorError("");
+          }}
+          {...(!solutionLocked ? inputCommitHandlers(applySolutionDraft) : {})}
         />
       ) : (
         <div className="puzzleEditorFenField">
@@ -704,15 +678,8 @@ export const PuzzleEditor = ({
               setFenDraft(event.target.value);
               setEditorError("");
             }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !readOnly) applyFenDraft();
-            }}
+            {...(!readOnly ? inputCommitHandlers(applyFenDraft) : {})}
           />
-          {!readOnly ? (
-            <button type="button" className="queueSecondaryButton" onClick={applyFenDraft}>
-              Load FEN
-            </button>
-          ) : null}
         </div>
       )}
     </div>

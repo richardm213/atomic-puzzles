@@ -409,13 +409,11 @@
 
 .puzzleEditorFenField {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
+  grid-template-columns: minmax(0, 1fr);
   gap: 7px;
 }
 
 .puzzleEditorFenField label {
-  grid-column: 1 / -1;
   color: var(--color-heading);
   font-size: 13px;
   font-weight: 650;
@@ -430,10 +428,6 @@
   background: var(--color-panel-strong);
   color: var(--color-text);
   font: 12px/1.4 var(--font-mono, monospace);
-}
-
-.puzzleEditorFenField .queueSecondaryButton {
-  min-height: 42px;
 }
 
 .puzzleEditorFields .puzzleEditorSolutionField {
