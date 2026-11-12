@@ -12,14 +12,13 @@ import {
   gameAnalysisOpeningKey,
   gameAnalysisPositionKey,
   referenceGameAnalysisOpenings,
-  unavailableGameAnalysisOpening,
   type StoredAtomicDbPosition,
+  unavailableGameAnalysisOpening,
   WOLFRANDOM_RANDOMIZED_PLIES,
 } from "../../../shared/domain/gameAnalysis";
 import { createAtomicPosition } from "../../../shared/domain/puzzles/solutionPgn";
 import { queryArchiveResource } from "../../archive/queries";
 import { createServerSupabase } from "../../platform/environment";
-
 import {
   loadGameAnalysisOpenings,
   openingEvaluationData,
@@ -228,12 +227,11 @@ const initialStates = (fens: string[], skippedPositionCount = 0): PositionState[
       : { fen, terminal: false, completed: false };
   });
 
-const readStates = (
-  job: GameAnalysisJobRow,
+export const gameAnalysisPositionStates = (
   fens: string[],
+  storedStates: unknown,
   skippedPositionCount = 0,
 ): PositionState[] => {
-  const storedStates = job.position_states;
   if (!Array.isArray(storedStates) || storedStates.length !== fens.length) {
     return initialStates(fens, skippedPositionCount);
   }
@@ -249,6 +247,7 @@ const readStates = (
     const value = storedStates[index];
     if (!value || typeof value !== "object") return initialStates([fen])[0]!;
     const state = value as Partial<PositionState>;
+    if (state.data?.closure === "WOLFRANDOM_OPENING") return initialStates([fen])[0]!;
     return {
       fen,
       terminal: Boolean(state.terminal),
@@ -505,10 +504,8 @@ const processClaimedGameAnalysisJob = async (
   }
 
   const randomizedOpeningPlyCount = await randomizedOpeningPlies(data);
-  // A move's graph value belongs to the position after that move. Skip the initial position and
-  // all six randomized opening positions; the graph begins with White's fourth move.
-  const skippedPositionCount = randomizedOpeningPlyCount ? randomizedOpeningPlyCount + 1 : 0;
-  const states = readStates(data, fens, skippedPositionCount);
+  // The position after the six random plies is the first position worth evaluating.
+  const states = gameAnalysisPositionStates(fens, data.position_states, randomizedOpeningPlyCount);
   const openingStates = states.flatMap((state) => {
     if (state.terminal || state.data?.status === "SKIPPED") return [];
     const key = gameAnalysisOpeningKey(state.fen);

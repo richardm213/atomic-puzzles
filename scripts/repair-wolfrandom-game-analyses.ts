@@ -1,208 +1,161 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
 import {
+  hydrateGameAnalysisPositions,
+  queryGameAnalysisVariations,
+} from "../netlify/features/gameAnalysis/openings";
+import {
+  gameAnalysisPositionStates,
+  isCompletedAtomicDbPosition,
+} from "../netlify/features/gameAnalysis/service";
+import {
+  alignGameAnalysisPositionFens,
   applyGameAnalysisOpeningReview,
   buildGameAnalysisSummary,
-  type GameAnalysisSummary,
+  gameAnalysisPositionKey,
+  isGameAnalysisOpeningReference,
+  type PersistedGameAnalysisSummary,
+  referenceGameAnalysisOpenings,
   type StoredAtomicDbPosition,
+  WOLFRANDOM_RANDOMIZED_PLIES,
 } from "../shared/domain/gameAnalysis";
 
-const RANDOMIZED_PLIES = 6;
 const APPLY = process.argv.includes("--apply");
+const BOUNDARY = WOLFRANDOM_RANDOMIZED_PLIES;
+const url = process.env.VITE_SUPABASE_URL?.trim();
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+if (!url?.includes("arkicplonaruvmhhvwxd") || !key) {
+  throw new Error("Configure the current Supabase database and service-role key.");
+}
+const db = createClient(url, key, {
+  auth: { persistSession: false, autoRefreshToken: false },
+  global: {
+    fetch: (input, options) =>
+      fetch(input, { ...options, signal: options?.signal ?? AbortSignal.timeout(15_000) }),
+  },
+});
 
 type AnalysisRow = {
   game_id: string;
-  status: "queued" | "processing" | "ready" | "failed";
-  moves: unknown;
-  position_fens: unknown;
+  status: "queued" | "processing" | "ready";
+  updated_at: string;
+  moves: string[];
+  position_fens: string[];
   position_states: unknown;
-  completed_positions: number;
-  queued_positions: number;
-  result: unknown;
+  result: PersistedGameAnalysisSummary | null;
 };
 
-const requiredEnvironment = (name: string): string => {
-  const value = process.env[name]?.trim() ?? "";
-  if (!value) throw new Error(`${name} is required.`);
-  return value;
+const pendingPatch = (row: AnalysisRow) => {
+  const states = gameAnalysisPositionStates(row.position_fens, row.position_states, BOUNDARY);
+  return {
+    status: "processing",
+    position_states: states,
+    completed_positions: states.filter((state) => state.completed).length,
+    queued_positions: states.filter((state) => state.completed || state.requestStatus).length,
+    error: null,
+    next_check_at: new Date().toISOString(),
+  };
 };
 
-const skippedPosition = (fen: string): StoredAtomicDbPosition => ({
-  fen,
-  key: null,
-  status: "SKIPPED",
-  closure: "WOLFRANDOM_OPENING",
-  score: null,
-  point: null,
-  bestMove: null,
-  budgetNodes: null,
-  lines: [],
-  candidates: [],
-});
-
-const loadRows = async (): Promise<AnalysisRow[]> => {
-  const supabase = createSupabaseClient(
-    requiredEnvironment("VITE_SUPABASE_URL"),
-    requiredEnvironment("SUPABASE_SERVICE_ROLE_KEY"),
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
-  const rows: AnalysisRow[] = [];
+// Bound the expensive JSON inspection by indexed game IDs. Scanning every large
+// saved result in one query can time out even when the database is healthy.
+const affectedBatches = async function* () {
   for (let from = 0; ; from += 1_000) {
-    const { data, error } = await supabase
+    const { data: ids, error: idsError } = await db
       .from("game_analyses")
-      .select(
-        "game_id,status,moves,position_fens,position_states,completed_positions,queued_positions,result",
-      )
+      .select("game_id")
+      .in("status", ["ready", "queued", "processing"])
       .order("game_id")
       .range(from, from + 999);
-    if (error) throw new Error(`Unable to load game analyses: ${error.message}`);
-    rows.push(...((data ?? []) as AnalysisRow[]));
-    if ((data?.length ?? 0) < 1_000) break;
+    if (idsError) throw new Error(idsError.message);
+    for (let start = 0; start < (ids?.length ?? 0); start += 20) {
+      const batch = ids.slice(start, start + 20).map(({ game_id }) => game_id);
+      const { data, error } = await db
+        .from("game_analyses")
+        .select("game_id,status,updated_at,moves,position_fens,position_states,result")
+        .in("game_id", batch)
+        .or(
+          `and(status.eq.ready,result->positions->${BOUNDARY}->>closure.eq.WOLFRANDOM_OPENING),and(status.in.(queued,processing),position_states->${BOUNDARY}->data->>closure.eq.WOLFRANDOM_OPENING)`,
+        );
+      if (error) throw new Error(`Unable to inspect Wolfrandom analyses: ${error.message}`);
+      yield (data ?? []) as AnalysisRow[];
+    }
+    if ((ids?.length ?? 0) < 1_000) return;
   }
-  return rows;
 };
 
-const wolfrandomGameIds = async (): Promise<Set<string>> => {
-  const result = new Set<string>();
-  for (let page = 1; ; page += 1) {
-    const response = await fetch(
-      `https://atomicpuzzles.org/api/archive-data?${new URLSearchParams({
-        resource: "matches",
-        mode: "wolfrandom",
-        page: String(page),
-        pageSize: "200",
-      })}`,
-    );
-    if (!response.ok) throw new Error(`Archive API returned ${response.status}.`);
-    const body = (await response.json()) as {
-      rows?: Array<{ games?: unknown }>;
-      hasNextPage?: boolean;
-    };
-    for (const match of body.rows ?? []) {
-      if (!Array.isArray(match.games)) continue;
-      for (const game of match.games) {
-        const gameId =
-          typeof game === "string"
-            ? game.split(",")[0]
-            : game && typeof game === "object" && typeof Reflect.get(game, "game_id") === "string"
-              ? String(Reflect.get(game, "game_id"))
-              : "";
-        if (gameId) result.add(gameId);
+let affected = 0;
+for await (const rows of affectedBatches()) {
+  affected += rows.length;
+  if (!APPLY) continue;
+  for (const row of rows) {
+    const fen = row.position_fens[BOUNDARY];
+    if (!fen || row.position_fens.length !== row.moves.length + 1) {
+      throw new Error(`Invalid saved game: ${row.game_id}`);
+    }
+    let patch: Record<string, unknown>;
+    if (row.status === "ready") {
+      if (!row.result) throw new Error(`Missing saved review: ${row.game_id}`);
+      const positions = await hydrateGameAnalysisPositions(db, {
+        ...row.result,
+        positions: alignGameAnalysisPositionFens(row.result.positions, row.position_fens),
+      });
+      const { data: cached, error: cacheError } = await db
+        .from("game_analysis_positions")
+        .select("data")
+        .eq("fen_key", gameAnalysisPositionKey(fen))
+        .eq("completed", true)
+        .maybeSingle();
+      if (cacheError) throw new Error(cacheError.message);
+      const replacement: StoredAtomicDbPosition | null =
+        cached?.data?.variationPlies === 5
+          ? { ...cached.data, fen }
+          : await queryGameAnalysisVariations(fen, AbortSignal.timeout(20_000));
+      if (
+        replacement &&
+        replacement.status !== "SKIPPED" &&
+        isCompletedAtomicDbPosition(replacement)
+      ) {
+        positions[BOUNDARY] = replacement;
+        const result = applyGameAnalysisOpeningReview(
+          buildGameAnalysisSummary(row.moves, positions),
+          { wolfrandom: true },
+        );
+        const openings = new Map(
+          row.result.positions.flatMap((position, index) =>
+            isGameAnalysisOpeningReference(position)
+              ? [[position.openingKey, positions[index]!] as const]
+              : [],
+          ),
+        );
+        patch = { result: referenceGameAnalysisOpenings(result, openings), position_states: [] };
+      } else {
+        // Keep every evaluated position. The normal worker requests only the missing boundary,
+        // using the original paid job rather than charging for another analysis.
+        row.position_states = positions.map((data) => ({
+          fen: data.fen,
+          data,
+          completed: true,
+          terminal: data.closure === "TERMINAL",
+        }));
+        patch = pendingPatch(row);
       }
+    } else {
+      patch = pendingPatch(row);
     }
-    if (!body.hasNextPage) break;
-  }
-  return result;
-};
-
-const repairedActiveState = (row: AnalysisRow) => {
-  if (!Array.isArray(row.position_fens)) return null;
-  const existing = Array.isArray(row.position_states) ? row.position_states : [];
-  const states = row.position_fens.map((value, index) => {
-    const fen = typeof value === "string" ? value : "";
-    if (!fen) return null;
-    if (index < RANDOMIZED_PLIES) {
-      return { fen, terminal: false, completed: true, data: skippedPosition(fen) };
+    const { data: saved, error: saveError } = await db
+      .from("game_analyses")
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq("game_id", row.game_id)
+      .eq("updated_at", row.updated_at)
+      .select("game_id,status");
+    if (saveError || saved?.length !== 1) {
+      throw new Error(
+        `Unable to repair ${row.game_id}: ${saveError?.message ?? "job changed concurrently"}`,
+      );
     }
-    const state = existing[index];
-    return state && typeof state === "object"
-      ? state
-      : { fen, terminal: false, completed: false };
-  });
-  if (states.some((state) => state === null)) return null;
-  const completedPositions = states.filter(
-    (state) => state && typeof state === "object" && Reflect.get(state, "completed") === true,
-  ).length;
-  const queuedPositions = states.filter(
-    (state) =>
-      state &&
-      typeof state === "object" &&
-      (Reflect.get(state, "completed") === true ||
-        typeof Reflect.get(state, "requestStatus") === "string"),
-  ).length;
-  return { states, completedPositions, queuedPositions };
-};
-
-const repairedSummary = (row: AnalysisRow): GameAnalysisSummary | null => {
-  if (!row.result || typeof row.result !== "object" || !Array.isArray(row.moves)) return null;
-  const result = row.result as Partial<GameAnalysisSummary>;
-  if (!Array.isArray(result.positions) || result.positions.length !== row.moves.length + 1) {
-    return null;
+    console.log(JSON.stringify(saved[0]));
   }
-  const moves = row.moves.filter((move): move is string => typeof move === "string");
-  if (moves.length !== row.moves.length) return null;
-  const positions = result.positions.map((position, index) =>
-    index < RANDOMIZED_PLIES ? skippedPosition(position.fen) : position,
-  );
-  return applyGameAnalysisOpeningReview(buildGameAnalysisSummary(moves, positions), {
-    wolfrandom: true,
-  });
-};
+}
 
-const main = async (): Promise<void> => {
-  const rows = await loadRows();
-  const wolfrandomIds = await wolfrandomGameIds();
-  const wolfrandomRows = rows.filter((row) => wolfrandomIds.has(row.game_id));
-  const ready = wolfrandomRows.filter((row) => row.status === "ready");
-  const active = wolfrandomRows.filter(
-    (row) => row.status === "queued" || row.status === "processing",
-  );
-  const failed = wolfrandomRows.filter((row) => row.status === "failed");
-  const repairable = ready.flatMap((row) => {
-    const result = repairedSummary(row);
-    return result ? [{ row, result }] : [];
-  });
-
-  console.log(
-    JSON.stringify(
-      {
-        apply: APPLY,
-        totalAnalyses: rows.length,
-        wolfrandom: wolfrandomRows.length,
-        ready: ready.length,
-        repairableReady: repairable.length,
-        active: active.length,
-        failed: failed.length,
-      },
-      null,
-      2,
-    ),
-  );
-  if (!APPLY) return;
-
-  const supabase = createSupabaseClient(
-    requiredEnvironment("VITE_SUPABASE_URL"),
-    requiredEnvironment("SUPABASE_SERVICE_ROLE_KEY"),
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
-  for (const { row, result } of repairable) {
-    const { error } = await supabase
-      .from("game_analyses")
-      .update({ result, position_states: [], updated_at: new Date().toISOString() })
-      .eq("game_id", row.game_id)
-      .eq("status", "ready");
-    if (error) throw new Error(`Unable to repair ${row.game_id}: ${error.message}`);
-  }
-
-  for (const row of active) {
-    const repaired = repairedActiveState(row);
-    if (!repaired) throw new Error(`Unable to repair active state for ${row.game_id}.`);
-    const { error } = await supabase
-      .from("game_analyses")
-      .update({
-        position_states: repaired.states,
-        completed_positions: repaired.completedPositions,
-        queued_positions: repaired.queuedPositions,
-        updated_at: new Date().toISOString(),
-        next_check_at: new Date().toISOString(),
-      })
-      .eq("game_id", row.game_id)
-      .in("status", ["queued", "processing"]);
-    if (error) throw new Error(`Unable to repair active job ${row.game_id}: ${error.message}`);
-  }
-  console.log(
-    `Repaired ${repairable.length} ready analyses and reset ${active.length} active jobs for processing.`,
-  );
-};
-
-await main();
+console.log(JSON.stringify({ apply: APPLY, affected }));

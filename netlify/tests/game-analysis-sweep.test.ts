@@ -15,6 +15,7 @@ import {
   gameAnalysisPollIndexes,
   gameAnalysisPollSchedule,
   gameAnalysisPositionKey,
+  gameAnalysisPositionStates,
   gameAnalysisRequestParameters,
   gameAnalysisSubmissionLimit,
   gameAnalysisSweepPositionLimit,
@@ -24,6 +25,29 @@ import {
 } from "../features/gameAnalysis/service";
 
 describe("game analysis sweep", () => {
+  it("evaluates the position before White's fourth move and repairs the old skipped boundary", () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    const fens = Array.from({ length: 8 }, () => fen);
+    const old = fens.map((fen, index) => ({
+      fen,
+      completed: true,
+      terminal: false,
+      data:
+        index < 7
+          ? { fen, status: "SKIPPED", closure: "WOLFRANDOM_OPENING" }
+          : { fen, status: "OK", closure: null, variationPlies: 5 },
+    }));
+    for (const stored of [undefined, old]) {
+      const states = gameAnalysisPositionStates(fens, stored, 6);
+      expect(
+        states.slice(0, 6).every((state) => state.completed && state.data?.status === "SKIPPED"),
+      ).toBe(true);
+      expect(states[6]).toMatchObject({ fen, completed: false, terminal: false });
+      expect(states[6]?.data).toBeUndefined();
+      if (stored) expect(states[7]).toMatchObject({ completed: true, data: old[7]?.data });
+    }
+  });
+
   it("spreads a fixed position budget across the selected jobs", () => {
     expect(gameAnalysisSweepPositionLimit(1)).toBe(600);
     expect(gameAnalysisSweepPositionLimit(3)).toBe(200);

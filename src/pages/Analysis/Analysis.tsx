@@ -572,7 +572,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const positionAnalysisEnabled =
     atomicDbEngineSettings.enabled && (!game || gameComputerAnalysisEnabled);
   const wolfrandomOpening =
-    !puzzleDraft && game?.mode === "wolfrandom" && currentPly <= WOLFRANDOM_RANDOMIZED_PLIES;
+    !puzzleDraft && game?.mode === "wolfrandom" && currentPly < WOLFRANDOM_RANDOMIZED_PLIES;
   const positionAnalysisActive = positionAnalysisEnabled && !wolfrandomOpening;
   const gameAssessments = gameAnalysis.analysis?.result?.assessments ?? [];
   const currentAssessment =
@@ -1861,7 +1861,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
               moves={moveList}
               currentPly={currentPly}
               onNavigate={navigateToPly}
-              evaluationStartPly={game.mode === "wolfrandom" ? WOLFRANDOM_RANDOMIZED_PLIES + 1 : 0}
+              evaluationStartPly={game.mode === "wolfrandom" ? WOLFRANDOM_RANDOMIZED_PLIES : 0}
             />
           }
           computerAnalysisEnabled={gameComputerAnalysisEnabled}
