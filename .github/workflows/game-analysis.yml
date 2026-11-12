@@ -1,0 +1,71 @@
+name: Game analysis workers
+
+on:
+  schedule:
+    - cron: "3-59/5 * * * *"
+    - cron: "23 * * * *"
+  workflow_dispatch:
+    inputs:
+      task:
+        description: Queue workers or opening-cache refresh
+        type: choice
+        options: [workers, openings]
+        default: workers
+      once:
+        description: Run one pass instead of monitoring the queue for twenty minutes
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_URL: https://arkicplonaruvmhhvwxd.supabase.co
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  ATOMICDB_USERNAME: ${{ secrets.ATOMICDB_USERNAME }}
+  ATOMICDB_PASSWORD: ${{ secrets.ATOMICDB_PASSWORD }}
+  TURSO_MATCHES_DATABASE_URL: ${{ secrets.TURSO_MATCHES_DATABASE_URL }}
+  TURSO_MATCHES_AUTH_TOKEN: ${{ secrets.TURSO_MATCHES_AUTH_TOKEN }}
+  GAME_ANALYSIS_WORKER_ONCE: ${{ inputs.once && 'true' || 'false' }}
+
+jobs:
+  queue:
+    if: github.repository == 'richardm213/atomic-puzzles' && github.ref == 'refs/heads/main' && (vars.GAME_ANALYSIS_WORKERS_ENABLED == 'true' || github.event_name == 'workflow_dispatch') && github.event.schedule != '23 * * * *' && inputs.task != 'openings'
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [poll, submit]
+    concurrency:
+      group: game-analysis-${{ matrix.task }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Process the shared Supabase queue
+        run: npx --yes tsx scripts/run-game-analysis-worker.ts "${{ matrix.task }}"
+  openings:
+    if: github.repository == 'richardm213/atomic-puzzles' && github.ref == 'refs/heads/main' && (vars.GAME_ANALYSIS_WORKERS_ENABLED == 'true' || github.event_name == 'workflow_dispatch') && (github.event.schedule == '23 * * * *' || inputs.task == 'openings')
+    concurrency:
+      group: game-analysis-openings
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Refresh stale opening evaluations
+        run: npx --yes tsx scripts/run-game-analysis-worker.ts openings
