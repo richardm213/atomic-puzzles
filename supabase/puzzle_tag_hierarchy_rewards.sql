@@ -17,6 +17,7 @@ insert into public.puzzle_tag_hierarchy (tag, parent_tag) values
   ('square_clearance', null),
   ('fork', null),
   ('epaulette_fork', 'fork'),
+  ('crescent_fork', 'fork'),
   ('zwischenzug', null),
   ('knight_invasion', null),
   ('bishop_invasion', null),

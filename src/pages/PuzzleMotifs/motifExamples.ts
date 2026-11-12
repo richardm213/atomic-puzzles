@@ -35,6 +35,10 @@ export const motifExamples: Readonly<Record<string, MotifExample | undefined>> =
     fen: "rn1qkbnr/p1p3p1/7p/1p1pppN1/3PP1b1/2N2P2/PPP3PP/R1BQKB1R w KQkq - 0 7",
     pgn: "7. Ne6",
   },
+  crescent_fork: {
+    fen: "7k/p5p1/5p2/4n3/1P6/8/P6P/4R1K1 b - - 0 27",
+    pgn: "27... Nf3+ 28. Kf1 Nxe1#",
+  },
   zwischenzug: {
     fen: "r1b1kb1r/pppp4/4p1p1/8/8/2PP1QP1/PP3P2/R4K2 b kq - 0 13",
     pgn: "13... Bc5 14. d4 Rh2",

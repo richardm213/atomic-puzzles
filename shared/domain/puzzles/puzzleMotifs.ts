@@ -65,6 +65,13 @@ export const puzzleMotifs: PuzzleMotif[] = [
       "A knight attacks both pieces beside the king, threatening to explode the king by capturing either one.",
   },
   {
+    tag: "crescent_fork",
+    name: "Crescent fork",
+    parentTag: "fork",
+    description:
+      "A knight checks the king while attacking pieces around its escape squares, so every king move allows a capture that explodes the king.",
+  },
+  {
     tag: "zwischenzug",
     name: "Zwischenzug",
     description:

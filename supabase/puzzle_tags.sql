@@ -18,6 +18,7 @@ alter table public.puzzles
       'square_clearance',
       'fork',
       'epaulette_fork',
+      'crescent_fork',
       'zwischenzug',
       'knight_invasion',
       'bishop_invasion',
@@ -88,6 +89,7 @@ as $$
   with recursive relationships(child_tag, parent_tag) as (
     values
       ('epaulette_fork', 'fork'),
+      ('crescent_fork', 'fork'),
       ('castling_rook_invasion', 'rook_invasion'),
       ('prophylaxis', 'defensive'),
       ('prevent_invasion', 'defensive'),
