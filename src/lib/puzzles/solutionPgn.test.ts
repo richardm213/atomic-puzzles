@@ -182,13 +182,14 @@ describe("toComparableUci", () => {
 });
 
 describe("parseSolutionUciLines", () => {
-  it("accepts Chess.com checkmate markers after a line-broken move number", () => {
+  it("accepts standard and Chess.com checkmate notation after a line-broken move number", () => {
     const fen = "k7/8/1Q6/8/8/8/8/7K w - - 0 15";
-    const lines = parseSolutionUciLines(fen, "15.\nQb7+#!");
+    const lines = parseSolutionUciLines(fen, "15.\nQb7#!");
     expect(lines[0]?.map(({ uci, annotation }) => ({ uci, annotation }))).toEqual([
       { uci: "b6b7", annotation: "!" },
     ]);
     expect(serializeUciLinesToPgn(fen, lines)).toBe("15. Qb7#!");
+    expect(parseSolutionUciLines(fen, "15.\nQb7+#!")).toEqual(lines);
   });
 
   it("accepts redundant rank disambiguation and still requires it for ambiguous moves", () => {

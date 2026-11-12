@@ -1,8 +1,21 @@
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 
+import chesscomSpacedKnightPgn from "./fixtures/chesscom-spaced-knight.pgn?raw";
 import { buildPgnHistory } from "./pgnHistory";
 
 describe("buildPgnHistory", () => {
+  it("loads all 54 moves of pasted Chess.com PGN with a split N 1c3 token", () => {
+    const result = buildPgnHistory(STARTING_FEN, chesscomSpacedKnightPgn);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.history.plies).toHaveLength(109);
+    expect(result.history.plies[13]).toMatchObject({ uci: "b1c3", san: "N1c3" });
+    expect(result.history.plies.at(-1)).toMatchObject({
+      san: "Kd7",
+      fen: "8/3k1K2/6p1/3p2Pp/3Pp2P/4P3/8/8 w - - 1 55",
+    });
+  });
+
   it.each(["1. e4 e5 (1... c5) 2. Nf3", "e2e4 e7e5 (c7c5) g1f3"])(
     "loads the mainline and variations from SAN or UCI: %s",
     (pgn) => {

@@ -77,8 +77,6 @@ export const moveFromUci = (position: Position, uci: string): Move | null => {
   return position.isLegal(move) ? move : null;
 };
 
-// Chess.com can emit both check and mate markers. Normalize only that suffix;
-// chessops already accepts SAN rank/file disambiguation such as N1c3.
 export const parseAtomicMove = (position: Position, notation: string): Move | undefined =>
   parseSan(position, notation.endsWith("+#") ? notation.slice(0, -2) + "#" : notation) ??
   (/^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(notation)
@@ -89,7 +87,7 @@ export const fenAfterAtomicMove = (fen: string, uci: string): string | null => {
   try {
     const position = createAtomicPosition(fen);
     const move = moveFromUci(position, uci);
-    if (!move || !position.isLegal(move)) return null;
+    if (!move) return null;
     position.play(move);
     return makeFen(position.toSetup());
   } catch {
@@ -161,10 +159,9 @@ const parseSolutionToken = (token: string): AnnotatedSolutionMove | null => {
 
 const tokenizeSolution = (solution: string): string[] =>
   solution
-    .replace(/\[[^\]]*\]/gs, " ")
-    .replace(/\{[^}]*\}/gs, " ")
-    .replace(/;[^\r\n]*/g, " ")
-    .replace(/\$\d+/g, " ")
+    .replace(/\[[^\]]*\]|\{[^}]*\}|;[^\r\n]*|\$\d+/g, " ")
+    // Copied Chess.com moves can split the piece from its origin qualifier: N 1c3.
+    .replace(/\b([NBRQK])\s+(?=[a-h1-8])/g, "$1")
     .match(/\(|\)|[^\s()]+/g) ?? [];
 
 const compareVariationOrder = (left: ParsedSolutionLine, right: ParsedSolutionLine): number => {
