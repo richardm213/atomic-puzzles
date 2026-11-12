@@ -568,8 +568,8 @@ begin
 end;
 $$;
 
--- Match names and puzzle writes share a transaction. A queued submission also
--- reserves the canonical set, so later submissions reuse the name before review.
+-- Only tournament matches reserve a canonical set. Other game puzzles keep
+-- their source game, match and position history without creating a set.
 -- Requires puzzle_sets.sql and puzzle_game_id.sql.
 drop function if exists public.save_match_puzzle(jsonb, text, text, text, bigint, boolean, boolean);
 
@@ -590,54 +590,36 @@ set search_path = public
 as $$
 declare
   match_set public.puzzle_sets%rowtype;
-  set_name text;
-  set_date text;
-  set_players text[];
-  requested_name text := nullif(btrim(p_puzzle->>'eventName'), '');
-  rename_existing boolean := false;
+  set_name text := '';
+  set_date text := coalesce(p_puzzle->>'eventDate', '');
+  set_players text[] := public.normalize_puzzle_set_players(
+    array(select jsonb_array_elements_text(p_puzzle->'players'))
+  );
+  tournament_match boolean := coalesce((p_puzzle->>'tournamentMatch')::boolean, false)
+    or exists (select 1 from public.tournament_matches where match_id = p_match_id);
   saved_puzzle_id bigint;
   source_moves jsonb := p_puzzle->'positionMoves';
   source_fen text := p_puzzle->>'gameInitialFen';
   queued public.puzzles_queue%rowtype;
 begin
   perform pg_advisory_xact_lock(hashtextextended(p_match_id, 1));
-
-  select * into match_set
-  from public.puzzle_sets
-  where source_id = p_match_id
-     or (id = p_legacy_set_id and source_id is null)
-  order by (source_id = p_match_id) desc nulls last, id
-  limit 1;
-
-  set_name := coalesce(match_set.event_name, requested_name);
-  set_date := coalesce(match_set.event_date, p_puzzle->>'eventDate', '');
-  set_players := coalesce(match_set.players, public.normalize_puzzle_set_players(
-    array(select jsonb_array_elements_text(p_puzzle->'players'))
-  ));
-  if set_name is null then
-    raise exception 'Enter a name for this match';
+  if p_rename_from is not null then
+    raise exception 'Match set name changed';
   end if;
 
-  if p_rename_from is not null then
-    if position(p_match_id in p_rename_from) = 0
-       or requested_name is null or length(requested_name) > 100
-       or exists (select 1 from public.tournament_matches where match_id = p_match_id)
-       or (match_set.id is not null and match_set.event_name <> p_rename_from) then
-      raise exception 'Match set name changed';
-    end if;
+  if tournament_match then
+    select * into match_set
+    from public.puzzle_sets
+    where source_id = p_match_id
+       or (id = p_legacy_set_id and source_id is null)
+    order by (source_id = p_match_id) desc nulls last, id
+    limit 1;
 
-    rename_existing := match_set.id is not null;
-    if rename_existing then
-      -- Review locks queue rows before inserting a published puzzle. Use the
-      -- same order so an approval cannot publish under the old name mid-rename.
-      perform id from public.puzzles_queue where match_id = p_match_id order by id for update;
-    else
-      insert into public.puzzle_sets (event_name, event_date, players, source_id)
-      values (requested_name, set_date, set_players, p_match_id)
-      on conflict do nothing returning * into match_set;
-      if match_set.id is null then
-        raise exception 'Match set name already in use';
-      end if;
+    set_name := coalesce(match_set.event_name, nullif(btrim(p_puzzle->>'eventName'), ''));
+    set_date := coalesce(match_set.event_date, set_date);
+    set_players := coalesce(match_set.players, set_players);
+    if set_name is null then
+      raise exception 'Missing tournament set name';
     end if;
   end if;
 
@@ -667,48 +649,24 @@ begin
     where id = queued.id;
   end if;
 
-  if match_set.id is null then
-    insert into public.puzzle_sets (event_name, event_date, players)
-    values (set_name, set_date, set_players) on conflict do nothing;
+  if tournament_match then
+    if match_set.id is null then
+      insert into public.puzzle_sets (event_name, event_date, players)
+      values (set_name, set_date, set_players) on conflict do nothing;
 
-    select * into match_set
-    from public.puzzle_sets
-    where lower(btrim(event_name)) = lower(btrim(set_name))
-      and event_date = set_date
-      and public.normalize_puzzle_set_players(players) = public.normalize_puzzle_set_players(set_players)
-    limit 1;
-  end if;
+      select * into match_set
+      from public.puzzle_sets
+      where lower(btrim(event_name)) = lower(btrim(set_name))
+        and event_date = set_date
+        and public.normalize_puzzle_set_players(players) = set_players
+      limit 1;
+    end if;
 
-  update public.puzzle_sets set source_id = p_match_id
-  where id = match_set.id and (source_id is null or source_id = p_match_id);
-  if not found then
-    raise exception 'Puzzle set belongs to another match';
-  end if;
-
-  if rename_existing then
-    begin
-      update public.puzzle_sets set event_name = requested_name
-      where id = match_set.id and event_name = p_rename_from;
-      if not found then
-        raise exception 'Match set name changed';
-      end if;
-    exception when unique_violation then
-      raise exception 'Match set name already in use';
-    end;
-
-    -- Keep the published and queued compatibility metadata in the same set.
-    update public.puzzles
-    set event_name = requested_name,
-        event = case when event = p_rename_from then requested_name else event end
-    where puzzle_set_id = match_set.id and event_name = p_rename_from;
-
-    perform set_config('app.renaming_match_puzzle_set', p_match_id, true);
-    update public.puzzles_queue
-    set event_name = requested_name,
-        event = case when event = p_rename_from then requested_name else event end
-    where match_id = p_match_id and event_name = p_rename_from;
-    perform set_config('app.renaming_match_puzzle_set', '', true);
-    set_name := requested_name;
+    update public.puzzle_sets set source_id = p_match_id
+    where id = match_set.id and (source_id is null or source_id = p_match_id);
+    if not found then
+      raise exception 'Puzzle set belongs to another match';
+    end if;
   end if;
 
   if p_publish then

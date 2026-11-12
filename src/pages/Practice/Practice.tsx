@@ -5,7 +5,6 @@ import {
   faDice,
   faPause,
   faPlay,
-  faPuzzlePiece,
   faRobot,
   faRotateLeft,
   faShuffle,
@@ -50,6 +49,7 @@ import {
 } from "../../features/analysisWorkspace/OpeningExplorerPanel";
 import {
   PuzzleComposer,
+  PuzzleComposerButton,
   type PuzzleCreationResult,
 } from "../../features/analysisWorkspace/PuzzleComposer";
 import {
@@ -1519,18 +1519,6 @@ export const PracticePage = () => {
                 <FontAwesomeIcon icon={faDice} />
               </button>
             </span>
-            {auth.isAuthenticated ? (
-              <span className="practiceActionTooltip" data-tooltip={puzzleActionLabel}>
-                <button
-                  type="button"
-                  onClick={startPuzzle}
-                  disabled={Boolean(puzzleDraft || navigation) || !boardState || gameFinished}
-                  aria-label={puzzleActionLabel}
-                >
-                  <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
-                </button>
-              </span>
-            ) : null}
             <span className="practiceActionTooltip" data-tooltip="Swap opponent’s move">
               <button
                 type="button"
@@ -1565,6 +1553,15 @@ export const PracticePage = () => {
           movePanelClassName="practicePlayedMovesPanel"
           engine={
             <AtomicDbAnalysisBlock
+              beforeSettings={
+                auth.isAuthenticated ? (
+                  <PuzzleComposerButton
+                    label={puzzleActionLabel}
+                    disabled={Boolean(puzzleDraft || navigation) || !boardState || gameFinished}
+                    onClick={startPuzzle}
+                  />
+                ) : null
+              }
               fen={atomicDbFen}
               analysis={atomicDbAnalysis}
               settings={atomicDbEngineSettings}

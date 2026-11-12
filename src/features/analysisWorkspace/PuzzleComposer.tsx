@@ -1,19 +1,20 @@
 import "./PuzzleComposer.css";
 
-import { faPencil, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faPuzzlePiece } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { FormEvent, ReactNode, Ref } from "react";
+import type { FormEvent, MouseEventHandler, ReactNode, Ref } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
 import { PuzzleStartingFenWarning } from "../../components/PuzzleStartingFenWarning/PuzzleStartingFenWarning";
 import {
   addMatchPuzzle,
   fetchMatchPuzzleContext,
   matchPuzzleContextKey,
 } from "../../lib/puzzles/matchPuzzles";
-import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
 import { puzzleQueryKeys } from "../../lib/puzzles/puzzleQueries";
+import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
 import { DIFFERENT_START_MOVE_CONFIRMATION, submitPuzzle } from "../../lib/supabase/puzzleQueue";
 import { getErrorMessage } from "../../utils/errors";
 
@@ -22,6 +23,27 @@ export type PuzzleCreationResult =
   | {
       destination: "review";
     };
+
+export const PuzzleComposerButton = ({
+  label,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: MouseEventHandler<HTMLButtonElement>;
+}) => (
+  <button
+    type="button"
+    className="atomicDbSettingsButton"
+    aria-label={label}
+    title={disabled ? "Choose a playable position" : label}
+    disabled={disabled}
+    onClick={onClick}
+  >
+    <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
+  </button>
+);
 
 export const PuzzleComposer = ({
   match,
@@ -50,23 +72,17 @@ export const PuzzleComposer = ({
     queryFn: match ? () => fetchMatchPuzzleContext(match.gameId) : skipToken,
     refetchOnWindowFocus: false,
   });
-  const [matchName, setMatchName] = useState("");
-  const [renameFrom, setRenameFrom] = useState<string | null>(null);
   const [opaStyle, setOpaStyle] = useState(false);
   const [explanation, setExplanation] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const cancelRef = useRef<HTMLButtonElement | null>(null);
-  const editNameRef = useRef<HTMLButtonElement>(null);
-  const renameInputRef = useRef<HTMLInputElement>(null);
-  const matchNameId = useId();
   const explanationId = useId();
-  const checkingName = context.isFetching && !context.data?.setName;
+  const checkingName = Boolean(match) && context.isPending;
   const setName = context.data?.setName;
-  const canSave = Boolean(
-    solution && (!match || (renameFrom ? matchName.trim() : setName)),
-  );
+  const canSave = Boolean(solution && (!match || context.data));
   const confirmDifferentStart = error === DIFFERENT_START_MOVE_CONFIRMATION;
   const submitLabel = publishesDirectly
     ? { idle: "Create puzzle", pending: "Creating…", confirm: "Create anyway" }
@@ -77,21 +93,9 @@ export const PuzzleComposer = ({
   }, []);
 
   useEffect(() => {
-    if (!renameFrom) return;
-    renameInputRef.current?.focus();
-    renameInputRef.current?.select();
-  }, [renameFrom]);
-
-  useEffect(() => {
     // A confirmation applies only to the line that triggered it.
     setError("");
-  }, [solution, matchName]);
-
-  const cancelRename = () => {
-    setRenameFrom(null);
-    setMatchName("");
-    requestAnimationFrame(() => editNameRef.current?.focus());
-  };
+  }, [solution]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -99,35 +103,24 @@ export const PuzzleComposer = ({
     savingRef.current = true;
     setSaving(true);
     setError("");
-    const newName = matchName.trim();
-    const renaming = Boolean(renameFrom && renameFrom !== newName);
+    const puzzle = { fen, solution, opaStyle, explanation, tags };
     try {
       let result: PuzzleCreationResult;
       if (match && context.data) {
         const matchResult = await addMatchPuzzle({
           gameId: match.gameId,
           ...positionHistory,
-          fen,
-          solution,
-          opaStyle,
-          explanation,
-          matchName: renaming ? newName : "",
-          ...(renaming && renameFrom ? { renameFrom } : {}),
+          ...puzzle,
           allowDifferentStartMove: confirmDifferentStart,
-        });
-        queryClient.setQueryData(matchPuzzleContextKey(match.matchId), {
-          ...context.data,
-          setName: matchResult.setName,
-          canRenameSet: context.data.canRenameSet && matchResult.setName.includes(match.matchId),
         });
         result = matchResult;
       } else {
         result = await submitPuzzle(
-          { fen, solution, event: "", explanation: "" },
+          { ...puzzle, event: "" },
           { allowDifferentStartMove: confirmDifferentStart, positionHistory },
         );
       }
-      if (result.destination === "published" || renaming) {
+      if (result.destination === "published") {
         void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.catalog });
       }
       onAdded(result);
@@ -160,84 +153,32 @@ export const PuzzleComposer = ({
           </div>
         ) : null}
         {children}
-        {match ? (
-          <div className="boardPuzzleComposerMetadata">
-            <label className="boardPuzzleComposerCheckbox">
-              <input
-                type="checkbox"
-                checked={opaStyle}
-                onChange={(event) => setOpaStyle(event.target.checked)}
-                disabled={saving}
-              />
-              OPA style
-            </label>
-            <div className="boardPuzzleComposerField">
-              <label htmlFor={explanationId}>Explanation</label>
-              <textarea
-                id={explanationId}
-                rows={2}
-                maxLength={5000}
-                value={explanation}
-                onChange={(event) => setExplanation(event.target.value)}
-                disabled={saving}
-              />
-            </div>
+        <div className="boardPuzzleComposerMetadata">
+          <label className="boardPuzzleComposerCheckbox">
+            <input
+              type="checkbox"
+              checked={opaStyle}
+              onChange={(event) => setOpaStyle(event.target.checked)}
+              disabled={saving}
+            />
+            OPA style
+          </label>
+          <div className="boardPuzzleComposerField">
+            <label htmlFor={explanationId}>Explanation</label>
+            <textarea
+              id={explanationId}
+              rows={2}
+              maxLength={5000}
+              value={explanation}
+              onChange={(event) => setExplanation(event.target.value)}
+              disabled={saving}
+            />
           </div>
-        ) : null}
+          <PuzzleMotifsPanel visible tags={tags} canManage={!saving} onUpdate={setTags} />
+        </div>
       </div>
       <div className="boardPuzzleComposerFooter">
-        {renameFrom ? (
-          <div className="boardPuzzleSetName">
-            <div className="boardPuzzleComposerField">
-              <label htmlFor={matchNameId}>Set name</label>
-              <input
-                id={matchNameId}
-                ref={renameInputRef}
-                value={matchName}
-                maxLength={100}
-                required
-                disabled={saving}
-                onChange={(event) => setMatchName(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key !== "Escape") return;
-                  event.preventDefault();
-                  event.stopPropagation();
-                  cancelRename();
-                }}
-              />
-            </div>
-            <button
-              className="boardPuzzleSetEdit"
-              type="button"
-              aria-label="Keep current set name"
-              title="Keep current set name"
-              onClick={cancelRename}
-              disabled={saving}
-            >
-              <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
-            </button>
-          </div>
-        ) : setName ? (
-          <div className="boardPuzzleSetName">
-            <p>Set: {setName}</p>
-            {context.data?.canRenameSet ? (
-              <button
-                className="boardPuzzleSetEdit"
-                ref={editNameRef}
-                type="button"
-                aria-label="Edit set name"
-                title="Edit set name"
-                disabled={saving}
-                onClick={() => {
-                  setRenameFrom(setName);
-                  setMatchName(setName);
-                }}
-              >
-                <FontAwesomeIcon icon={faPencil} aria-hidden="true" />
-              </button>
-            ) : null}
-          </div>
-        ) : null}
+        {setName ? <p>Set: {setName}</p> : null}
         {error ? (
           <p className="boardPuzzleComposerError" role="alert">
             {error}

@@ -36,6 +36,18 @@ test("game puzzle drafts optionally copy editable continuations from the origina
           : [],
     });
   });
+  const submissions: Record<string, unknown>[] = [];
+  await page.route("**/api/puzzles/submit", (route) => {
+    const input = route.request().postDataJSON();
+    if (input.action === "match-context") {
+      return route.fulfill({ json: { setName: "", players: ["White", "Black"] } });
+    }
+    if (input.action === "starting-fen-match") {
+      return route.fulfill({ json: { puzzleId: null } });
+    }
+    submissions.push(input);
+    return route.fulfill({ json: { destination: "review", setName: "" } });
+  });
   await page.goto("/game/draft-test");
   const pgn = page.getByRole("textbox", { name: "PGN", exact: true });
   const launch = page.getByRole("button", { name: "Submit puzzle", exact: true });
@@ -63,7 +75,16 @@ test("game puzzle drafts optionally copy editable continuations from the origina
   await page.getByRole("button", { name: "1. e4", exact: true }).click();
   await launch.click();
   await expect(pgn).toHaveValue("1... e5 2. Nf3 Nc6 3. Bc4 *");
-  await composer.getByRole("button", { name: "Cancel" }).click();
+  await composer.getByRole("button", { name: "Submit puzzle", exact: true }).click();
+  await expect(composer).not.toBeVisible();
+  expect(submissions).toEqual([
+    expect.objectContaining({
+      action: "add-match-puzzle",
+      gameId: "draft-test",
+      positionMoves: ["e4"],
+      solution: "1... e5 2. Nf3 Nc6 3. Bc4 *",
+    }),
+  ]);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/analysis");

@@ -132,14 +132,6 @@ describe("puzzle-submit function", () => {
     { username: "submitter", setName: "Match match-1", publish: false, source: "new", setId: null },
     {
       username: "submitter",
-      setName: "Match match-1",
-      renameTo: "Alice and Bob",
-      publish: false,
-      source: "linked",
-      setId: 42,
-    },
-    {
-      username: "submitter",
       setName: "Older match",
       publish: false,
       source: "historical",
@@ -161,8 +153,10 @@ describe("puzzle-submit function", () => {
     },
   ])(
     "uses $source match metadata for '$setName'",
-    async ({ username, setName, publish, source, setId, renameTo }) => {
-      let storedSetName = setName;
+    async ({ username, setName, publish, source, setId }) => {
+      const tournamentMatch = source.startsWith("tournament");
+      const expectedName = tournamentMatch ? setName : "";
+      const storedSetName = setName;
       mocks.queryArchiveResource.mockResolvedValue({
         external_match_id: "match-1",
         player_1: "alice",
@@ -234,7 +228,7 @@ describe("puzzle-submit function", () => {
         }
         return { upsert: vi.fn(async () => ({ error: null })) };
       });
-      const savedName = renameTo ?? setName;
+      const savedName = expectedName;
       const result = publish
         ? { destination: "published", setName: savedName, puzzleId: 1801 }
         : { destination: "review", setName: savedName };
@@ -248,8 +242,8 @@ describe("puzzle-submit function", () => {
       });
       expect(preview.statusCode).toBe(200);
       expect(JSON.parse(preview.body)).toMatchObject({
-        setName,
-        canRenameSet: Boolean(renameTo) || source === "new",
+        setName: expectedName,
+        canRenameSet: false,
       });
       expect(rpc).not.toHaveBeenCalled();
 
@@ -271,25 +265,23 @@ describe("puzzle-submit function", () => {
             solution: "2. Nf3",
             explanation: "  The opening move changes the center.  ",
             opaStyle: true,
+            tags: ["fork"],
             matchName,
             renameFrom,
             whitePlayer: "spoofed",
           }),
         });
-      if (!renameTo && source !== "new") {
+      {
         const forbidden = await submitMatch("Not allowed", setName);
         expect(forbidden.statusCode).toBe(409);
         expect(rpc).not.toHaveBeenCalled();
       }
-      if (source === "linked" && !renameTo) {
+      if (source === "linked") {
         const mismatch = await submitMatch(setName, undefined, username, "game-1", ["d4"]);
         expect(mismatch.statusCode).toBe(400);
         expect(rpc).not.toHaveBeenCalled();
       }
-      const response = await submitMatch(
-        renameTo ?? "Ignored name",
-        renameTo ? setName : undefined,
-      );
+      const response = await submitMatch("Ignored name");
       expect(response.statusCode).toBe(201);
       expect(JSON.parse(response.body)).toEqual(result);
       expect(rpc).toHaveBeenCalledWith(
@@ -297,15 +289,16 @@ describe("puzzle-submit function", () => {
         expect.objectContaining({
           p_game_id: "game-1",
           p_match_id: "match-1",
-          p_legacy_set_id: setId,
+          p_legacy_set_id: tournamentMatch ? setId : null,
           p_publish: publish,
-          ...(renameTo ? { p_rename_from: setName } : {}),
           p_puzzle: expect.objectContaining({
             eventName: savedName,
+            tournamentMatch,
             positionMoves: ["e4", "c5"],
             gameInitialFen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             explanation: "The opening move changes the center.",
             opaStyle: true,
+            tags: ["fork"],
             eventDate: "2026-11-09",
             whitePlayer: "bob",
             blackPlayer: "alice",
@@ -313,40 +306,6 @@ describe("puzzle-submit function", () => {
           }),
         }),
       );
-
-      if (renameTo) {
-        // Simulate the canonical set after the first creator's queued puzzle saves its name.
-        storedSetName = renameTo;
-        const otherCreator = "wolfram_ep";
-        const otherGameId = "game-2";
-        const otherPreview = await handler({
-          httpMethod: "POST",
-          headers: authHeaders(otherCreator),
-          body: JSON.stringify({ action: "match-context", gameId: otherGameId }),
-        });
-        expect(otherPreview.statusCode).toBe(200);
-        expect(JSON.parse(otherPreview.body)).toMatchObject({
-          setName: renameTo,
-          canRenameSet: false,
-        });
-        rpc.mockResolvedValueOnce({
-          data: { destination: "published", puzzleId: 1802, setName: renameTo },
-          error: null,
-        });
-        const otherSubmission = await submitMatch(setName, undefined, otherCreator, otherGameId);
-        expect(otherSubmission.statusCode).toBe(201);
-        expect(rpc).toHaveBeenLastCalledWith(
-          "save_match_puzzle",
-          expect.objectContaining({
-            p_submitted_by: otherCreator,
-            p_game_id: otherGameId,
-            p_match_id: "match-1",
-            p_legacy_set_id: setId,
-            p_publish: true,
-            p_puzzle: expect.objectContaining({ eventName: renameTo }),
-          }),
-        );
-      }
     },
   );
 

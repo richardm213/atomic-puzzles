@@ -1,9 +1,4 @@
-import {
-  faArrowsRotate,
-  faBookOpen,
-  faPuzzlePiece,
-  faXmark,
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowsRotate, faBookOpen, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
@@ -45,6 +40,7 @@ import {
 } from "../../features/analysisWorkspace/OpeningExplorerPanel";
 import {
   PuzzleComposer,
+  PuzzleComposerButton,
   type PuzzleCreationResult,
 } from "../../features/analysisWorkspace/PuzzleComposer";
 import {
@@ -1565,18 +1561,11 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                 <AtomicDbAnalysisBlock
                   beforeSettings={
                     auth.isAuthenticated && (!game || game.external_match_id) ? (
-                      <button
-                        className="atomicDbSettingsButton"
-                        type="button"
-                        aria-label={puzzleActionLabel}
-                        title={
-                          createPuzzleDisabled ? "Choose a playable position" : puzzleActionLabel
-                        }
+                      <PuzzleComposerButton
+                        label={puzzleActionLabel}
                         disabled={createPuzzleDisabled || Boolean(puzzleDraft)}
                         onClick={startPuzzle}
-                      >
-                        <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
-                      </button>
+                      />
                     ) : null
                   }
                   additionalSettings={

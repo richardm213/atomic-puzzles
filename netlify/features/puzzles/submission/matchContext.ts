@@ -94,6 +94,24 @@ export const loadMatchPuzzleContext = async (
   const lookupError = sets.error ?? rounds.error;
   if (lookupError) throw new Error(`Unable to look up the match set: ${lookupError.message}`);
 
+  const tournamentId = rounds.data?.tournament ?? game.tournament?.trim();
+  const archiveDate = new Date(game.start_ts);
+  const player1IsWhite = (game.result & 1) === 0;
+  const matchContext = {
+    matchId,
+    sourceGame: game,
+    tournamentMatch: Boolean(tournamentId),
+    eventDate:
+      rounds.data?.played_on ??
+      (Number.isFinite(archiveDate.getTime()) ? archiveDate.toISOString().slice(0, 10) : ""),
+    whitePlayer: player1IsWhite ? game.player_1 : game.player_2,
+    blackPlayer: player1IsWhite ? game.player_2 : game.player_1,
+    players: [game.player_1, game.player_2],
+  };
+  if (!tournamentId) {
+    return { ...matchContext, existingSetId: null, setName: "", canRenameSet: false };
+  }
+
   const linkedSet = sets.data?.find((set) => set.source_id === matchId);
   let existingSet: MatchPuzzleSet | null | undefined =
     linkedSet ?? sets.data?.find((set) => set.id === legacySetId && !set.source_id);
@@ -119,7 +137,6 @@ export const loadMatchPuzzleContext = async (
       if (!historicalSetIsShared) existingSet = historicalSet;
     }
   }
-  const tournamentId = rounds.data?.tournament ?? game.tournament?.trim();
   let tournamentTitle = game.tournament?.trim() ?? "";
   if (!existingSet && tournamentId) {
     const { data, error } = await db
@@ -139,20 +156,10 @@ export const loadMatchPuzzleContext = async (
     (historicalSetIsShared && !defaultName.includes(matchId)
       ? `${defaultName} · ${matchId}`
       : defaultName);
-  const player1IsWhite = (game.result & 1) === 0;
-  const archiveDate = new Date(game.start_ts);
-
   return {
-    matchId,
-    sourceGame: game,
+    ...matchContext,
     existingSetId: existingSet?.id ?? null,
     setName,
-    canRenameSet: !rounds.data && !game.tournament?.trim() && setName.includes(matchId),
-    eventDate:
-      rounds.data?.played_on ??
-      (Number.isFinite(archiveDate.getTime()) ? archiveDate.toISOString().slice(0, 10) : ""),
-    whitePlayer: player1IsWhite ? game.player_1 : game.player_2,
-    blackPlayer: player1IsWhite ? game.player_2 : game.player_1,
-    players: [game.player_1, game.player_2],
+    canRenameSet: false,
   };
 };

@@ -10,7 +10,6 @@ const matchPuzzleRequest = createPostApi("/api/puzzles/submit", {
 const matchContextSchema = z.object({
   setName: z.string(),
   players: z.tuple([z.string(), z.string()]),
-  canRenameSet: z.boolean().default(false),
 });
 
 const matchPuzzleResultSchema = z.discriminatedUnion("destination", [
@@ -33,17 +32,15 @@ export const fetchMatchPuzzleContext = (gameId: string) =>
     { errorMessage: "Unable to load the match set.", schema: matchContextSchema },
   );
 
-export const addMatchPuzzle = (input: PuzzlePositionHistory & {
-  gameId: string;
-  fen: string;
-  solution: string;
-  opaStyle: boolean;
-  explanation: string;
-  matchName: string;
-  renameFrom?: string | undefined;
-  allowDifferentStartMove: boolean;
-}) =>
-  matchPuzzleRequest(
-    { action: "add-match-puzzle", ...input },
-    { schema: matchPuzzleResultSchema },
-  );
+export const addMatchPuzzle = (
+  input: PuzzlePositionHistory & {
+    gameId: string;
+    fen: string;
+    solution: string;
+    opaStyle: boolean;
+    explanation: string;
+    tags: string[];
+    allowDifferentStartMove: boolean;
+  },
+) =>
+  matchPuzzleRequest({ action: "add-match-puzzle", ...input }, { schema: matchPuzzleResultSchema });

@@ -50,7 +50,10 @@ export class PuzzleSubmissionService {
         ? matchPuzzleGameHistory(fen, input.positionMoves, initialFen, true)
         : null;
     if ((input.positionMoves !== undefined || input.positionInitialFen !== undefined) && !history) {
-      throw new HttpError(400, "The moves leading up to the puzzle do not reach its starting position.");
+      throw new HttpError(
+        400,
+        "The moves leading up to the puzzle do not reach its starting position.",
+      );
     }
     const whitePlayer = input.whitePlayer?.trim() ?? "";
     const blackPlayer = input.blackPlayer?.trim() ?? "";
@@ -74,7 +77,9 @@ export class PuzzleSubmissionService {
       opaStyle: input.opaStyle === true,
       author,
       tags: normalizePuzzleMotifTags(input.tags),
-      ...(history && initialFen ? { positionMoves: history.moves, gameInitialFen: initialFen } : {}),
+      ...(history && initialFen
+        ? { positionMoves: history.moves, gameInitialFen: initialFen }
+        : {}),
     };
   }
 
@@ -136,7 +141,8 @@ export class PuzzleSubmissionService {
       throw new HttpError(409, "This set can no longer be renamed. Reopen the puzzle editor.");
     }
     const setName = input.renameFrom ? input.matchName : context.setName;
-    if (!setName) throw new HttpError(400, "Enter a name for this match.");
+    if (context.tournamentMatch && !setName)
+      throw new HttpError(400, "Missing tournament set name.");
     try {
       const initialFen = archivedGameInitialFen(context.sourceGame);
       const puzzle = this.normalize(
@@ -160,6 +166,7 @@ export class PuzzleSubmissionService {
           ...puzzle,
           event: setName,
           eventName: setName,
+          tournamentMatch: context.tournamentMatch,
           eventDate: context.eventDate,
           ...(archiveHistory && initialFen
             ? { positionMoves: archiveHistory.moves, gameInitialFen: initialFen }

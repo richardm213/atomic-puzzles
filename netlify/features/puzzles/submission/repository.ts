@@ -147,7 +147,7 @@ export class PuzzleSubmissionRepository {
 
   async saveMatchPuzzle(input: {
     username: string;
-    puzzle: QueuedPuzzleSubmission;
+    puzzle: QueuedPuzzleSubmission & { tournamentMatch: boolean };
     gameId: string;
     matchId: string;
     existingSetId: number | null;

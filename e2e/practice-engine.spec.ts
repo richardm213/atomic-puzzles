@@ -95,7 +95,7 @@ test("practice keeps its PGN and position when creating puzzles or changing oppo
   const savedFen = await fen.inputValue();
 
   const launcher = page
-    .getByRole("group", { name: "Practice controls", exact: true })
+    .getByLabel("Position analysis controls", { exact: true })
     .getByRole("button", { name: "Submit puzzle", exact: true });
   const composer = moves.getByRole("form", { name: "Puzzle draft" });
   await launcher.click();
@@ -108,11 +108,26 @@ test("practice keeps its PGN and position when creating puzzles or changing oppo
   expect(submissions).toHaveLength(0);
 
   await launcher.click();
+  await composer.getByRole("checkbox", { name: "OPA style" }).check();
+  await composer
+    .getByRole("textbox", { name: "Explanation", exact: true })
+    .fill("Challenge the center.");
+  await composer.getByRole("button", { name: "Add tag", exact: true }).click();
+  await composer.getByRole("searchbox", { name: "Search tags to add" }).fill("fork");
+  await composer.getByRole("button", { name: "Add Fork", exact: true }).click();
   await importPgn("1... c5");
   await expect(page).toHaveURL(/\?puzzle=1#ply-1$/);
   await composer.getByRole("button", { name: "Submit puzzle" }).click();
   await expect(page.getByText("Puzzle submitted for review.")).toBeVisible();
-  expect(submissions).toEqual([expect.objectContaining({ fen: savedFen, solution: "1... c5" })]);
+  expect(submissions).toEqual([
+    expect.objectContaining({
+      fen: savedFen,
+      solution: "1... c5",
+      explanation: "Challenge the center.",
+      opaStyle: true,
+      tags: ["fork"],
+    }),
+  ]);
   await expect(pgn).toHaveValue(savedPgn);
   await expect(fen).toHaveValue(savedFen);
 
