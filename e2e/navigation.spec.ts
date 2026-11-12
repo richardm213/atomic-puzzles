@@ -66,3 +66,28 @@ test("player search results remain clickable when pressing a result blurs the in
   await resultRowLink.click();
   await expect(page).toHaveURL(/\/@\/salmon_43$/);
 });
+
+test("motif replay controls update the board and restore its starting position", async ({
+  page,
+}) => {
+  await page.goto("/tactical-motifs");
+  await page
+    .getByRole("navigation", { name: "Glossary" })
+    .getByRole("link", { name: "Fork", exact: true })
+    .click();
+  const replay = page.getByRole("group", { name: "Fork replay", exact: true });
+  await expect(replay).toBeVisible();
+  const pieces = replay.locator("cg-board piece:not(.ghost)");
+  await expect(pieces.first()).toBeVisible();
+  const startingCount = await pieces.count();
+
+  await replay.getByRole("button", { name: "Next move", exact: true }).click();
+  await expect(replay.locator("cg-board square.check:visible")).toHaveCount(1);
+
+  await replay.getByRole("button", { name: "Final position", exact: true }).click();
+  await expect.poll(() => pieces.count()).toBeLessThan(startingCount);
+
+  await replay.getByRole("button", { name: "Starting position", exact: true }).click();
+  await expect(pieces).toHaveCount(startingCount);
+  await expect(replay.locator("cg-board square.check:visible")).toHaveCount(0);
+});

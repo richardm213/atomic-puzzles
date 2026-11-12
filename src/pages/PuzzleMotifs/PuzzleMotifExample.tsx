@@ -1,3 +1,5 @@
+import "./PuzzleMotifs.css";
+
 import {
   faBackwardStep,
   faChevronLeft,
@@ -100,7 +102,6 @@ const Replay = ({ example, name, focusRequest, startAtEnd = false }: ReplayProps
             coordinates
             solution={pgn}
             showSolution
-            disabled
             enableNavigationShortcuts={false}
             solutionNavigation={navigation}
           />
