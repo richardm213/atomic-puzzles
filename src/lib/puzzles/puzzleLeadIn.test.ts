@@ -1,4 +1,5 @@
-import { INITIAL_FEN } from "chessops/fen";
+import { INITIAL_FEN, makeFen } from "chessops/fen";
+import { parseSan } from "chessops/san";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -6,6 +7,7 @@ import {
   puzzleContextFromGameHistory,
   rewindPuzzleLeadIn,
 } from "../../../shared/domain/puzzles/gameHistory";
+import { createAtomicPosition } from "../chess/pgn";
 
 describe("blind puzzle lead-in", () => {
   it("uses the exact occurrence of a repeated position and excludes later game moves", () => {
@@ -16,7 +18,7 @@ describe("blind puzzle lead-in", () => {
       game_moves: [...moves, "e4", "e5"],
     });
 
-    expect(leadIn?.moves).toEqual(moves.slice(-MAX_BLIND_PUZZLE_PLIES));
+    expect(leadIn?.moves).toEqual(moves);
     expect(leadIn && rewindPuzzleLeadIn(leadIn, 1)).toEqual({
       beforeFen: intro?.beforeFen,
       moves: ["Ng8"],
@@ -31,5 +33,36 @@ describe("blind puzzle lead-in", () => {
       moves: ["e4"],
     });
     expect(puzzleContextFromGameHistory({ fen, position_moves: ["d4"] }).leadIn).toBeNull();
+  });
+  it("rewinds Chess960 castling history past 50 plies to its original starting position", () => {
+    const position = createAtomicPosition(
+      "bbrqnkrn/pppppppp/8/8/8/8/PPPPPPPP/BBRQNKRN w GCgc - 0 1",
+    );
+    const initialFen = makeFen(position.toSetup());
+    const moves = [
+      ...Array.from({ length: 13 }, () => ["Nd3", "Nd6", "Ne1", "Ne8"]).flat(),
+      "O-O",
+      "O-O",
+    ];
+    for (const san of moves) {
+      const move = parseSan(position, san);
+      expect(move && position.isLegal(move)).toBeTruthy();
+      position.play(move!);
+    }
+    const fen = makeFen(position.toSetup());
+    const { leadIn, intro } = puzzleContextFromGameHistory({
+      fen,
+      game_initial_fen: initialFen,
+      position_moves: moves,
+    });
+    expect(leadIn && rewindPuzzleLeadIn(leadIn, "start")).toEqual({
+      beforeFen: initialFen,
+      moves,
+    });
+    expect(leadIn && rewindPuzzleLeadIn(leadIn, 1)).toEqual({
+      beforeFen: intro?.beforeFen,
+      moves: ["O-O"],
+    });
+    expect(leadIn?.moves).toHaveLength(54);
   });
 });

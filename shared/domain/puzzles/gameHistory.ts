@@ -31,7 +31,7 @@ export const matchPuzzleGameHistory = (
     const played: string[] = [];
     const matches: Array<ReplayMatch & { exact: boolean }> = [];
     let beforeFen = makeFen(position.toSetup());
-    const positions = [beforeFen];
+    const startingFen = beforeFen;
     const matchesTarget = (afterFen: string) => startingFenKey(afterFen) === startingFenKey(target);
     if (matchesTarget(beforeFen) && (!exactEnd || !moves.length)) {
       matches.push({ moves: [], intro: null, leadIn: null, exact: beforeFen === target });
@@ -52,15 +52,13 @@ export const matchPuzzleGameHistory = (
       position.play(move);
       const afterFen = makeFen(position.toSetup());
       if (matchesTarget(afterFen) && (!exactEnd || played.length === moves.length)) {
-        const start = Math.max(0, played.length - MAX_BLIND_PUZZLE_PLIES);
         matches.push({
           moves: [...played],
           intro: { beforeFen, san, uci: makeUci(move) },
-          leadIn: { beforeFen: positions[start]!, moves: played.slice(start) },
+          leadIn: { beforeFen: startingFen, moves: [...played] },
           exact: afterFen === target,
         });
       }
-      positions.push(afterFen);
       beforeFen = afterFen;
     }
 
@@ -88,9 +86,12 @@ export const puzzleContextFromGameHistory = (row: {
   return { intro: match?.intro ?? null, leadIn: match?.leadIn ?? null };
 };
 
-export const rewindPuzzleLeadIn = (leadIn: PuzzleLeadIn, plies: number): PuzzleLeadIn | null => {
-  const start = Math.max(0, leadIn.moves.length - plies);
-  if (!leadIn.moves.length || plies < 1) return null;
+export const rewindPuzzleLeadIn = (
+  leadIn: PuzzleLeadIn,
+  plies: number | "start",
+): PuzzleLeadIn | null => {
+  const start = plies === "start" ? 0 : Math.max(0, leadIn.moves.length - plies);
+  if (!leadIn.moves.length || (plies !== "start" && plies < 1)) return null;
   try {
     const position = createAtomicPosition(leadIn.beforeFen);
     for (const san of leadIn.moves.slice(0, start)) {

@@ -262,6 +262,41 @@ describe("Chessboard orchestration", () => {
     }
   });
 
+  it("solves Chess960 castling blind while keeping the original starting position displayed", () => {
+    vi.useFakeTimers();
+    try {
+      const blindFen = "bbrqnkrn/pppppppp/8/8/8/8/PPPPPPPP/BBRQNKRN w GCgc - 0 1";
+      const states = renderBoard({
+        blindFen,
+        fen: "bbrqnkrn/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/BBRQNKRN w GCgc - 0 2",
+        analysisMode: false,
+        solution: "2. O-O O-O 3. Nd3",
+      });
+      const clickSquare = (name: string) =>
+        fireEvent.click(screen.getByRole("button", { name, exact: true }));
+      clickSquare("f1");
+      clickSquare("g1");
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(states.at(-1)).toMatchObject({ error: "", lineMoves: ["O-O", "O-O"] });
+      expect(mocks.set).toHaveBeenLastCalledWith(
+        expect.objectContaining({ fen: blindFen, lastMove: [] }),
+      );
+      clickSquare("e1");
+      clickSquare("d3");
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(states.at(-1)).toMatchObject({ solved: true, lineMoves: ["O-O", "O-O", "Nd3"] });
+      expect(mocks.set).toHaveBeenLastCalledWith(
+        expect.objectContaining({ fen: blindFen, lastMove: [] }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("does not mutate previously emitted move arrays", () => {
     const states = renderBoard();
     const initialState = states.at(-1)!;

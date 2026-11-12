@@ -73,7 +73,7 @@ export type LabeledOption = { value: string; label: string };
 
 const blindPuzzlesSchema = z.object({
   enabled: z.boolean(),
-  plies: z.number().int().min(1).max(MAX_BLIND_PUZZLE_PLIES),
+  plies: z.union([z.number().int().min(1).max(MAX_BLIND_PUZZLE_PLIES), z.literal("start")]),
 });
 type BlindPuzzleSettings = z.infer<typeof blindPuzzlesSchema>;
 

@@ -1192,10 +1192,14 @@ export const TopNav = () => {
                           <select
                             value={blindPuzzles.plies}
                             onChange={(event) => {
-                              const plies = Number(event.target.value);
+                              const plies =
+                                event.target.value === "start"
+                                  ? "start"
+                                  : Number(event.target.value);
                               setBlindPuzzles((current) => ({ ...current, plies }));
                             }}
                           >
+                            <option value="start">Starting position</option>
                             {Array.from({ length: MAX_BLIND_PUZZLE_PLIES }, (_, i) => (
                               <option key={i + 1} value={i + 1}>
                                 {i + 1}
