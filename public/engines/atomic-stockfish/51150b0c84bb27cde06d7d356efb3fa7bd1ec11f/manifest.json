@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "target": "browser-worker",
-  "sourceCommit": "01cc6f44f52709d3f4a0b0994d68f9226cc311fa",
+  "sourceCommit": "51150b0c84bb27cde06d7d356efb3fa7bd1ec11f",
   "sourceTreeDirty": false,
   "sourceDateEpoch": 0,
   "debug": false,
@@ -33,8 +33,8 @@
     "-DNDEBUG",
     "-include",
     "tests/wasm-engine/uci_only.h",
-    "-DGIT_SHA=01cc6f44",
-    "-DGIT_DATE=20261105"
+    "-DGIT_SHA=51150b0c",
+    "-DGIT_DATE=20261111"
   ],
   "linkFlags": [
     "-sENVIRONMENT=worker",
@@ -82,17 +82,6 @@
     "src/nnue/network.cpp",
     "src/nnue/atomic_v2/atomic_v2_accumulator.cpp",
     "src/nnue/atomic_v2/atomic_v2_network.cpp",
-    "src/nnue/atomic_v3/hm_oracle.cpp",
-    "src/nnue/atomic_v3/capture_pair.cpp",
-    "src/nnue/atomic_v3/king_blast_ep.cpp",
-    "src/nnue/atomic_v3/blast_ring.cpp",
-    "src/nnue/atomic_v3/full_refresh.cpp",
-    "src/nnue/atomic_v3/numeric.cpp",
-    "src/nnue/atomic_v3/wire_network.cpp",
-    "src/nnue/atomic_v3/scalar_backend.cpp",
-    "src/nnue/atomic_v3/simd_isa.cpp",
-    "src/nnue/atomic_v3/incremental_simd_kernels.cpp",
-    "src/nnue/atomic_v3/incremental_backend.cpp",
     "src/nnue/features/half_ka_v2_atomic.cpp"
   ],
   "initialMemoryBytes": 536870912,
@@ -119,33 +108,31 @@
   "embeddedNetwork": false,
   "supportedNetworkBackends": [
     "Legacy Atomic V1",
-    "AtomicNNUEV2",
-    "AtomicNNUEV3"
+    "AtomicNNUEV2"
   ],
   "networkFileVersions": [
     "0x7AF32F20",
-    "0xA70C0002",
-    "0xA70C0003"
+    "0xA70C0002"
   ],
   "referenceNetwork": {
-    "name": "atomic_run3b_e202_l05.nnue",
+    "name": "atomic-ft3b-1p2B.nnue",
     "bytes": 47721376,
-    "sha256": "99dc67eabf26a64faeeca3a88b4c38597a840b8d4a874b9f2cf658c6f92a04a6"
+    "sha256": "a32645ea6749c2500119bd53b55cc5baf2f6c502659f247e5e5ca4f26ea48e29"
   },
   "artifacts": [
     {
       "name": "atomic-stockfish.mjs",
-      "bytes": 76295,
-      "gzipBytes": 21221,
+      "bytes": 74724,
+      "gzipBytes": 20995,
       "brotliBytes": null,
-      "sha256": "5298e1b38e7f08c9b09a2ff1c05feb3a576ddf9580036b1ede2b151efbd52f5a"
+      "sha256": "de6ec3f51f36eef424a6efa20ca1f218fd2ba40faa18e65518d138a25dd8cf51"
     },
     {
       "name": "atomic-stockfish.wasm",
-      "bytes": 625941,
-      "gzipBytes": 227692,
+      "bytes": 486314,
+      "gzipBytes": 185594,
       "brotliBytes": null,
-      "sha256": "95a07819d96f3630b62d3836e026ab92b7f6d3b21a6909e5827162cae055ddf5"
+      "sha256": "91b6dcf51e029fa201165e2fc11b407a8d61e1dd29d2cba698a6bf97ff2ad3ad"
     },
     {
       "name": "atomic-stockfish.worker.js",

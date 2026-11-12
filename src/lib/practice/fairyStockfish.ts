@@ -381,16 +381,16 @@ type AtomicWorkerResponse =
   | { type: "search" };
 
 const ATOMIC_STOCKFISH_WORKER_URL =
-  "/engines/atomic-stockfish/01cc6f44f52709d3f4a0b0994d68f9226cc311fa/atomic-stockfish.worker.js";
+  "/engines/atomic-stockfish/51150b0c84bb27cde06d7d356efb3fa7bd1ec11f/atomic-stockfish.worker.js";
 const ATOMIC_STOCKFISH_NNUE_SHA256 =
-  "99dc67eabf26a64faeeca3a88b4c38597a840b8d4a874b9f2cf658c6f92a04a6";
+  "a32645ea6749c2500119bd53b55cc5baf2f6c502659f247e5e5ca4f26ea48e29";
 
 const atomicStockfishNetworkUrl = (): string => {
   const configuredUrl = import.meta.env.VITE_ATOMIC_STOCKFISH_NNUE_URL?.trim();
   if (configuredUrl) return configuredUrl;
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim().replace(/\/$/, "");
   if (!supabaseUrl) throw new Error("Atomic-Stockfish network URL is not configured");
-  return `${supabaseUrl}/storage/v1/object/public/engine-assets/atomic-stockfish/v1.0/atomic-run3b-gzip.nnue`;
+  return `${supabaseUrl}/storage/v1/object/public/engine-assets/atomic-stockfish/51150b0c84bb27cde06d7d356efb3fa7bd1ec11f/atomic-ft3b-1p2B-gzip.nnue`;
 };
 
 const initializeAtomicStockfish = async (): Promise<StockfishEngine> => {
