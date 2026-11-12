@@ -43,7 +43,8 @@ test("game puzzle drafts optionally copy editable continuations from the origina
       return route.fulfill({ json: { setName: "", players: ["White", "Black"] } });
     }
     if (input.action === "starting-fen-match") {
-      return route.fulfill({ json: { puzzleId: null } });
+      const initialPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+      return route.fulfill({ json: { puzzleId: input.fen === initialPosition ? 42 : null } });
     }
     submissions.push(input);
     return route.fulfill({ json: { destination: "review", setName: "" } });
@@ -54,6 +55,10 @@ test("game puzzle drafts optionally copy editable continuations from the origina
   const composer = page.getByRole("form", { name: "Puzzle draft" });
   await launch.click();
   await expect(pgn).toHaveValue("");
+  await expect(composer.getByRole("link", { name: "puzzle 42" })).toHaveAttribute(
+    "href",
+    "/solve/42",
+  );
   await composer.getByRole("button", { name: "Cancel" }).click();
 
   await page.getByRole("button", { name: "Engine settings", exact: true }).click();
@@ -93,6 +98,10 @@ test("game puzzle drafts optionally copy editable continuations from the origina
   await page.getByRole("button", { name: "Go to start" }).click();
   await launch.click();
   await expect(pgn).toHaveValue("1. d4 d5 2. Nf3 *");
+  await expect(composer.getByRole("link", { name: "puzzle 42" })).toHaveAttribute(
+    "href",
+    "/solve/42",
+  );
 });
 
 test("game URLs retain side and exact ply and wait for navigation to settle", async ({ page }) => {

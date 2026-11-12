@@ -20,6 +20,25 @@ export type QueuedPuzzleSubmission = {
   gameInitialFen?: string;
 };
 
+const throwDuplicatePuzzleError = (message: string) => {
+  const duplicate =
+    /Puzzle (?:start move already exists|moves already exist) for FEN( in queue)?/.exec(message);
+  if (duplicate) {
+    throw new HttpError(
+      409,
+      duplicate[1]
+        ? "A puzzle with this FEN and starting move is already pending review."
+        : "A puzzle with this FEN and starting move already exists.",
+    );
+  }
+  if (message.includes("Puzzle FEN exists with different start move")) {
+    throw new HttpError(409, DIFFERENT_START_MOVE_CONFIRMATION);
+  }
+  if (message.includes("Puzzle start move is duplicated within this batch")) {
+    throw new HttpError(409, "This batch repeats a FEN with the same starting move.");
+  }
+};
+
 export class PuzzleSubmissionRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
@@ -72,24 +91,7 @@ export class PuzzleSubmissionRepository {
           p_allow_different_start_move: allowDifferentStartMove,
         });
     const { data, error } = await request.single();
-    if (
-      error?.message.includes("Puzzle start move already exists for FEN in queue") ||
-      error?.message.includes("Puzzle moves already exist for FEN in queue")
-    ) {
-      throw new HttpError(
-        409,
-        "A puzzle with this FEN and starting move is already pending review.",
-      );
-    }
-    if (
-      error?.message.includes("Puzzle start move already exists for FEN") ||
-      error?.message.includes("Puzzle moves already exist for FEN")
-    ) {
-      throw new HttpError(409, "A puzzle with this FEN and starting move already exists.");
-    }
-    if (error?.message.includes("Puzzle FEN exists with different start move")) {
-      throw new HttpError(409, DIFFERENT_START_MOVE_CONFIRMATION);
-    }
+    throwDuplicatePuzzleError(error?.message ?? "");
     if (error) throw new Error(`Unable to submit puzzle: ${error.message}`);
     return data;
   }
@@ -106,27 +108,7 @@ export class PuzzleSubmissionRepository {
       p_submitted_by: username,
       p_allow_different_start_move: allowDifferentStartMove,
     });
-    if (
-      error?.message.includes("Puzzle start move already exists for FEN in queue") ||
-      error?.message.includes("Puzzle moves already exist for FEN in queue")
-    ) {
-      throw new HttpError(
-        409,
-        "A puzzle with this FEN and starting move is already pending review.",
-      );
-    }
-    if (
-      error?.message.includes("Puzzle start move already exists for FEN") ||
-      error?.message.includes("Puzzle moves already exist for FEN")
-    ) {
-      throw new HttpError(409, "A puzzle with this FEN and starting move already exists.");
-    }
-    if (error?.message.includes("Puzzle start move is duplicated within this batch")) {
-      throw new HttpError(409, "This batch repeats a FEN with the same starting move.");
-    }
-    if (error?.message.includes("Puzzle FEN exists with different start move")) {
-      throw new HttpError(409, DIFFERENT_START_MOVE_CONFIRMATION);
-    }
+    throwDuplicatePuzzleError(error?.message ?? "");
     if (/only approved puzzle creators/i.test(error?.message ?? "")) {
       throw new HttpError(403, "This account is not approved to publish puzzles directly.");
     }
@@ -167,18 +149,7 @@ export class PuzzleSubmissionRepository {
       ...(input.renameFrom ? { p_rename_from: input.renameFrom } : {}),
     });
     const message = error?.message ?? "";
-    if (message.includes("Puzzle start move already exists for FEN in queue")) {
-      throw new HttpError(
-        409,
-        "A puzzle with this FEN and starting move is already pending review.",
-      );
-    }
-    if (message.includes("Puzzle start move already exists for FEN")) {
-      throw new HttpError(409, "A puzzle with this FEN and starting move already exists.");
-    }
-    if (message.includes("Puzzle FEN exists with different start move")) {
-      throw new HttpError(409, DIFFERENT_START_MOVE_CONFIRMATION);
-    }
+    throwDuplicatePuzzleError(message);
     if (message.includes("Puzzle set belongs to another match")) {
       throw new HttpError(
         409,
