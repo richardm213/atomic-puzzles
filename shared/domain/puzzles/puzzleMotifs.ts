@@ -75,7 +75,7 @@ export const puzzleMotifs: PuzzleMotif[] = [
     tag: "zwischenzug",
     name: "Zwischenzug",
     description:
-      "A forcing move is inserted before the expected reply, escaping a threat and/or making the intended continuation possible.",
+      "A forcing move is inserted before the natural continuation. Often, it lets a player escape a threat with tempo and then resume the intended line.",
   },
   {
     tag: "knight_invasion",
