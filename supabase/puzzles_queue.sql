@@ -100,30 +100,8 @@ create index if not exists puzzles_queue_fen_idx
 create index if not exists puzzles_fen_idx
   on public.puzzles ((btrim(fen)));
 
--- Solutions are stored as normalized PGN movetext. This extracts the first
--- SAN token so submissions from the same position can be compared even when
--- the remaining line differs.
-create or replace function public.puzzle_start_move(p_solution text)
-returns text
-language sql
-immutable
-set search_path = public
-as $$
-  select translate(lower(
-    regexp_replace(
-      coalesce(
-        substring(
-          regexp_replace(btrim(coalesce(p_solution, '')), '[[:space:]]+', ' ', 'g')
-          from '^[[:space:]]*[0-9]+\.[.]*[[:space:]]*([^[:space:]()]+)'
-        ),
-        ''
-      ),
-      '[!?#+]+$',
-      ''
-    )
-  ), '0', 'o');
-$$;
-
+-- Duplicate starting positions are informational warnings in the editor and queue.
+-- Legacy RPC flags remain accepted for older clients, but do not restrict submission.
 -- Inserts a server-verified submission with no time-based submission limit.
 drop function if exists public.enqueue_puzzle_submission(text, text, text, text, text);
 drop function if exists public.enqueue_puzzle_submission(text, text, text, text, text, boolean);
@@ -146,7 +124,7 @@ create or replace function public.enqueue_puzzle_submission(
   p_author text,
   p_tags text[],
   p_submitted_by text,
-  p_allow_different_start_move boolean
+  p_allow_different_start_move boolean default false
 )
 returns public.puzzles_queue
 language plpgsql
@@ -176,36 +154,6 @@ begin
     raise exception 'A solution is required';
   end if;
 
-  -- Serialize every submission from the same position so the checks below
-  -- cannot race with a direct publication or another queue submission.
-  perform pg_advisory_xact_lock(
-    hashtextextended(normalized_fen, 0)
-  );
-
-  if exists (
-    select 1
-    from public.puzzles
-    where btrim(fen) = normalized_fen
-      and public.puzzle_start_move(solution) = public.puzzle_start_move(normalized_solution)
-  ) then
-    raise exception 'Puzzle start move already exists for FEN';
-  end if;
-
-  if exists (
-    select 1
-    from public.puzzles_queue
-    where btrim(fen) = normalized_fen
-      and public.puzzle_start_move(solution) = public.puzzle_start_move(normalized_solution)
-  ) then
-    raise exception 'Puzzle start move already exists for FEN in queue';
-  end if;
-
-  if not coalesce(p_allow_different_start_move, false) and (
-    exists (select 1 from public.puzzles where btrim(fen) = normalized_fen)
-    or exists (select 1 from public.puzzles_queue where btrim(fen) = normalized_fen)
-  ) then
-    raise exception 'Puzzle FEN exists with different start move';
-  end if;
 
   insert into public.puzzles_queue (
     fen,
@@ -251,7 +199,7 @@ $$;
 create or replace function public.enqueue_puzzle_with_position_history(
   p_puzzle jsonb,
   p_submitted_by text,
-  p_allow_different_start_move boolean
+  p_allow_different_start_move boolean default false
 )
 returns public.puzzles_queue
 language plpgsql
@@ -284,7 +232,7 @@ $$;
 revoke all on function public.enqueue_puzzle_with_position_history(jsonb, text, boolean) from public, anon, authenticated;
 grant execute on function public.enqueue_puzzle_with_position_history(jsonb, text, boolean) to service_role;
 
--- Approved creators bypass review. ID allocation, duplicate checks, and the
+-- Approved creators bypass review. ID allocation and the
 -- insert happen in one transaction so a direct submission cannot claim a
 -- stale or conflicting puzzle ID.
 drop function if exists public.publish_approved_puzzle_submission(text, text, text, text, text);
@@ -333,37 +281,8 @@ begin
     raise exception 'A solution is required';
   end if;
 
-  -- Match the queue function's FEN lock so publication and queue submission
-  -- checks cannot race each other.
-  perform pg_advisory_xact_lock(
-    hashtextextended(normalized_fen, 0)
-  );
 
   lock table public.puzzles in share row exclusive mode;
-
-  if exists (
-    select 1
-    from public.puzzles
-    where btrim(fen) = normalized_fen
-      and public.puzzle_start_move(solution) = public.puzzle_start_move(normalized_solution)
-  ) then
-    raise exception 'Puzzle start move already exists for FEN';
-  end if;
-
-  if exists (
-    select 1
-    from public.puzzles_queue
-    where btrim(fen) = normalized_fen
-      and public.puzzle_start_move(solution) = public.puzzle_start_move(normalized_solution)
-  ) then
-    raise exception 'Puzzle start move already exists for FEN in queue';
-  end if;
-
-  if exists (select 1 from public.puzzles where btrim(fen) = normalized_fen)
-    or exists (select 1 from public.puzzles_queue where btrim(fen) = normalized_fen)
-  then
-    raise exception 'Puzzle FEN exists with different start move';
-  end if;
 
   select coalesce(max(id), 0) + 1
   into next_puzzle_id
@@ -400,8 +319,7 @@ end;
 $$;
 
 -- Publishes a complete approved-creator batch atomically. The table lock keeps
--- ID allocation contiguous across concurrent creators, while deterministically
--- ordered advisory locks serialize duplicates against normal queue submissions.
+-- ID allocation contiguous across concurrent creators.
 drop function if exists public.publish_approved_puzzle_batch(jsonb, text);
 
 create or replace function public.publish_approved_puzzle_batch(
@@ -422,7 +340,6 @@ declare
   normalized_author text;
   next_puzzle_id bigint;
   puzzle_ids bigint[] := array[]::bigint[];
-  duplicate_lock_key bigint;
   puzzle_id_sequence text;
 begin
   if normalized_username not in ('seaside_tiramisu', 'wolfram_ep', 'randoomplayer') then
@@ -437,41 +354,7 @@ begin
     raise exception 'A batch must contain between 1 and 100 puzzles';
   end if;
 
-  for duplicate_lock_key in
-    select distinct hashtextextended(btrim(coalesce(value->>'fen', '')), 0)
-    from jsonb_array_elements(p_puzzles)
-    order by 1
-  loop
-    perform pg_advisory_xact_lock(duplicate_lock_key);
-  end loop;
-
   lock table public.puzzles in share row exclusive mode;
-
-  if exists (
-    select 1
-    from (
-      select
-        btrim(coalesce(value->>'fen', '')) as fen,
-        public.puzzle_start_move(value->>'solution') as start_move
-      from jsonb_array_elements(p_puzzles)
-    ) normalized
-    group by normalized.fen, normalized.start_move
-    having count(*) > 1
-  ) then
-    raise exception 'Puzzle start move is duplicated within this batch';
-  end if;
-
-  if not coalesce(p_allow_different_start_move, false) and exists (
-    select 1
-    from (
-      select btrim(coalesce(value->>'fen', '')) as fen
-      from jsonb_array_elements(p_puzzles)
-    ) normalized
-    group by normalized.fen
-    having count(*) > 1
-  ) then
-    raise exception 'Puzzle FEN exists with different start move';
-  end if;
 
   select coalesce(max(id), 0) + 1
   into next_puzzle_id
@@ -498,31 +381,6 @@ begin
 
     if normalized_solution = '' then
       raise exception 'A solution is required';
-    end if;
-
-    if exists (
-      select 1
-      from public.puzzles
-      where btrim(fen) = normalized_fen
-        and public.puzzle_start_move(solution) = public.puzzle_start_move(normalized_solution)
-    ) then
-      raise exception 'Puzzle start move already exists for FEN';
-    end if;
-
-    if exists (
-      select 1
-      from public.puzzles_queue
-      where btrim(fen) = normalized_fen
-        and public.puzzle_start_move(solution) = public.puzzle_start_move(normalized_solution)
-    ) then
-      raise exception 'Puzzle start move already exists for FEN in queue';
-    end if;
-
-    if not coalesce(p_allow_different_start_move, false) and (
-      exists (select 1 from public.puzzles where btrim(fen) = normalized_fen)
-      or exists (select 1 from public.puzzles_queue where btrim(fen) = normalized_fen)
-    ) then
-      raise exception 'Puzzle FEN exists with different start move';
     end if;
 
     insert into public.puzzles (
@@ -580,7 +438,7 @@ create or replace function public.save_match_puzzle(
   p_match_id text,
   p_legacy_set_id bigint,
   p_publish boolean,
-  p_allow_different_start_move boolean,
+  p_allow_different_start_move boolean default false,
   p_rename_from text default null
 )
 returns jsonb
@@ -830,7 +688,6 @@ drop policy if exists "public can edit pending puzzles" on public.puzzles_queue;
 
 revoke all on public.puzzles_queue from anon, authenticated;
 revoke usage, select on sequence public.puzzles_queue_id_seq from anon, authenticated;
-revoke all on function public.puzzle_start_move(text) from public;
 revoke all on function public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text, text[], text, boolean) from public;
 grant execute on function public.enqueue_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text, text[], text, boolean) to service_role;
 revoke all on function public.publish_approved_puzzle_submission(text, text, text, text, text, text[], text, text, text, boolean, text) from public;
@@ -841,6 +698,8 @@ revoke all on function public.approve_queued_puzzle(bigint, text, bigint) from p
 grant execute on function public.approve_queued_puzzle(bigint, text, bigint) to service_role;
 revoke all on function public.approve_queued_puzzle(bigint, text, bigint, boolean, boolean) from public;
 grant execute on function public.approve_queued_puzzle(bigint, text, bigint, boolean, boolean) to service_role;
+
+drop function if exists public.puzzle_start_move(text);
 
 -- Make newly created RPC functions available to PostgREST immediately.
 notify pgrst, 'reload schema';

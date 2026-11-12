@@ -15,7 +15,7 @@ import {
 } from "../../lib/puzzles/matchPuzzles";
 import { puzzleQueryKeys } from "../../lib/puzzles/puzzleQueries";
 import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
-import { DIFFERENT_START_MOVE_CONFIRMATION, submitPuzzle } from "../../lib/supabase/puzzleQueue";
+import { submitPuzzle } from "../../lib/supabase/puzzleQueue";
 import { getErrorMessage } from "../../utils/errors";
 
 export type PuzzleCreationResult =
@@ -83,17 +83,15 @@ export const PuzzleComposer = ({
   const checkingName = Boolean(match) && context.isPending;
   const setName = context.data?.setName;
   const canSave = Boolean(solution && (!match || context.data));
-  const confirmDifferentStart = error === DIFFERENT_START_MOVE_CONFIRMATION;
   const submitLabel = publishesDirectly
-    ? { idle: "Create puzzle", pending: "Creating…", confirm: "Create anyway" }
-    : { idle: "Submit puzzle", pending: "Submitting…", confirm: "Submit anyway" };
+    ? { idle: "Create puzzle", pending: "Creating…" }
+    : { idle: "Submit puzzle", pending: "Submitting…" };
 
   useEffect(() => {
     cancelRef.current?.focus();
   }, []);
 
   useEffect(() => {
-    // A confirmation applies only to the line that triggered it.
     setError("");
   }, [solution]);
 
@@ -111,14 +109,10 @@ export const PuzzleComposer = ({
           gameId: match.gameId,
           ...positionHistory,
           ...puzzle,
-          allowDifferentStartMove: confirmDifferentStart,
         });
         result = matchResult;
       } else {
-        result = await submitPuzzle(
-          { ...puzzle, event: "" },
-          { allowDifferentStartMove: confirmDifferentStart, positionHistory },
-        );
+        result = await submitPuzzle({ ...puzzle, event: "" }, { positionHistory });
       }
       if (result.destination === "published") {
         void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.catalog });
@@ -190,11 +184,7 @@ export const PuzzleComposer = ({
             Cancel
           </button>
           <button type="submit" disabled={!canSave || saving}>
-            {saving
-              ? submitLabel.pending
-              : confirmDifferentStart
-                ? submitLabel.confirm
-                : submitLabel.idle}
+            {saving ? submitLabel.pending : submitLabel.idle}
           </button>
         </div>
       </div>

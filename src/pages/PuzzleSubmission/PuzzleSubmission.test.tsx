@@ -10,7 +10,6 @@ import {
   parseSolutionUciLines,
   serializeSanLinesToPgn,
 } from "../../lib/puzzles/solutionPgn";
-import { DIFFERENT_START_MOVE_CONFIRMATION } from "../../lib/supabase/puzzleQueue";
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
 import { PuzzleEditor } from "./PuzzleEditor";
 import { PuzzleSubmissionPage } from "./PuzzleSubmission";
@@ -263,7 +262,7 @@ describe("PuzzleSubmissionPage fields", () => {
     expect(screen.getByRole("button", { name: "FEN" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("asks before sending an alternate starting move to the review queue", async () => {
+  it("warns about an existing FEN without blocking submission", async () => {
     const user = userEvent.setup();
     let submissionRequestCount = 0;
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
@@ -276,15 +275,7 @@ describe("PuzzleSubmissionPage fields", () => {
       }
       submissionRequestCount += 1;
       return Promise.resolve(
-        submissionRequestCount === 1
-          ? new Response(JSON.stringify({ error: DIFFERENT_START_MOVE_CONFIRMATION }), {
-              status: 409,
-              headers: { "Content-Type": "application/json" },
-            })
-          : new Response(JSON.stringify({ destination: "review", puzzle: { id: 12 } }), {
-              status: 201,
-              headers: { "Content-Type": "application/json" },
-            }),
+        Response.json({ destination: "review", puzzle: { id: 12 } }, { status: 201 }),
       );
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -300,22 +291,8 @@ describe("PuzzleSubmissionPage fields", () => {
     expect(submissionRequestCount).toBe(0);
     await user.click(screen.getByRole("button", { name: "Submit for review" }));
 
-    expect(await screen.findByText(DIFFERENT_START_MOVE_CONFIRMATION)).toBeVisible();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Send to review" }));
-
     expect(await screen.findByText(/Puzzle submitted for review/)).toBeVisible();
-    const submissionCalls = fetchMock.mock.calls.filter(([input, request]) => {
-      const url = input instanceof Request ? input.url : String(input);
-      return (
-        url.includes("/api/puzzles/submit") &&
-        JSON.parse(String(request?.body)).action !== "starting-fen-match"
-      );
-    });
-    const [, secondRequest] = submissionCalls[1] ?? [];
-    expect(JSON.parse(String(secondRequest?.body))).toEqual(
-      expect.objectContaining({ allowDifferentStartMove: true }),
-    );
+    expect(submissionRequestCount).toBe(1);
   });
 });
 

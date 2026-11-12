@@ -44,16 +44,13 @@ const submissionBodySchema = z.union([
     gameId: z.string().trim().min(1).max(128),
     matchName: z.string().trim().max(100).default(""),
     renameFrom: z.string().min(1).max(1000).optional(),
-    allowDifferentStartMove: z.boolean().optional(),
   }),
   singleSubmissionSchema.extend({
     action: z.never().optional(),
-    allowDifferentStartMove: z.boolean().optional(),
   }),
   z.object({
     action: z.never().optional(),
     submissions: z.array(singleSubmissionSchema).min(1).max(100),
-    allowDifferentStartMove: z.boolean().optional(),
   }),
 ]);
 
@@ -95,11 +92,7 @@ export const puzzleSubmissionRoute = async (
   return jsonResponse(
     201,
     "submissions" in input
-      ? await service.submitBatch(
-          username,
-          input.submissions,
-          input.allowDifferentStartMove ?? false,
-        )
-      : await service.submit(username, input, input.allowDifferentStartMove ?? false),
+      ? await service.submitBatch(username, input.submissions)
+      : await service.submit(username, input),
   );
 };

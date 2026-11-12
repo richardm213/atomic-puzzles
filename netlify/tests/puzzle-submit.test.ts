@@ -404,7 +404,6 @@ describe("puzzle-submit function", () => {
       p_author: "submitter",
       p_submitted_by: "submitter",
       p_tags: ["fork"],
-      p_allow_different_start_move: false,
     });
   });
 
@@ -446,7 +445,6 @@ describe("puzzle-submit function", () => {
         "publish_approved_puzzle_batch",
         expect.objectContaining({
           p_submitted_by: username,
-          p_allow_different_start_move: false,
           p_puzzles: [
             expect.objectContaining({
               solution: "1. e4",
@@ -578,109 +576,7 @@ describe("puzzle-submit function", () => {
     expect(rpc).not.toHaveBeenCalledWith("publish_approved_puzzle_batch", expect.anything());
   });
 
-  it("returns a clear conflict when the FEN and starting move already exist", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(JSON.stringify({ username: "submitter" }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          }),
-      ),
-    );
-    const upsert = vi.fn(async () => ({ error: null }));
-    const single = vi.fn(async () => ({
-      data: null,
-      error: { message: "Puzzle moves already exist for FEN" },
-    }));
-    const rpc = vi.fn(() => ({ single }));
-    const from = vi.fn(() => ({ upsert }));
-    mocks.createClient.mockReturnValue({ from, rpc });
-
-    const response = await handler({
-      httpMethod: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
-        fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-        solution: "1. e4",
-        explanation: "",
-      }),
-    });
-
-    expect(response.statusCode).toBe(409);
-    expect(JSON.parse(response.body)).toEqual({
-      error: "A puzzle with this FEN and starting move already exists.",
-      code: "conflict",
-    });
-  });
-
-  it("returns a clear conflict when the FEN and moves are already in the review queue", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(
-        async () =>
-          new Response(JSON.stringify({ username: "submitter" }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          }),
-      ),
-    );
-    const upsert = vi.fn(async () => ({ error: null }));
-    const single = vi.fn(async () => ({
-      data: null,
-      error: { message: "Puzzle moves already exist for FEN in queue" },
-    }));
-    const rpc = vi.fn(() => ({ single }));
-    const from = vi.fn(() => ({ upsert }));
-    mocks.createClient.mockReturnValue({ from, rpc });
-
-    const response = await handler({
-      httpMethod: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
-        fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-        solution: "1. e4",
-        explanation: "",
-      }),
-    });
-
-    expect(response.statusCode).toBe(409);
-    expect(JSON.parse(response.body)).toEqual({
-      error: "A puzzle with this FEN and starting move is already pending review.",
-      code: "conflict",
-    });
-  });
-
-  it("asks before queueing a different starting move from the same FEN", async () => {
-    const upsert = vi.fn(async () => ({ error: null }));
-    const single = vi.fn(async () => ({
-      data: null,
-      error: { message: "Puzzle FEN exists with different start move" },
-    }));
-    const rpc = vi.fn(() => ({ single }));
-    const from = vi.fn(() => ({ upsert }));
-    mocks.createClient.mockReturnValue({ from, rpc });
-
-    const response = await handler({
-      httpMethod: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
-        fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-        solution: "1. d4",
-        explanation: "",
-      }),
-    });
-
-    expect(response.statusCode).toBe(409);
-    expect(JSON.parse(response.body).error).toMatch(/Continue with this submission/);
-    expect(rpc).toHaveBeenCalledWith(
-      "enqueue_puzzle_submission",
-      expect.objectContaining({ p_allow_different_start_move: false }),
-    );
-  });
-
-  it("publishes a confirmed different starting move directly for seaside_tiramisu's chosen author", async () => {
+  it("publishes directly for seaside_tiramisu's chosen author", async () => {
     const upsert = vi.fn(async () => ({ error: null }));
     const rpc = vi.fn(async () => ({ data: [1802], error: null }));
     const from = vi.fn(() => ({ upsert }));
@@ -694,7 +590,6 @@ describe("puzzle-submit function", () => {
         solution: "1. d4",
         explanation: "",
         author: "maracker",
-        allowDifferentStartMove: true,
       }),
     });
 
@@ -707,7 +602,6 @@ describe("puzzle-submit function", () => {
       "publish_approved_puzzle_batch",
       expect.objectContaining({
         p_submitted_by: "seaside_tiramisu",
-        p_allow_different_start_move: true,
         p_puzzles: [expect.objectContaining({ author: "maracker" })],
       }),
     );

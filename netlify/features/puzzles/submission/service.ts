@@ -83,29 +83,19 @@ export class PuzzleSubmissionService {
     };
   }
 
-  async submitBatch(
-    username: string,
-    inputs: PuzzleSubmissionInput[],
-    allowDifferentStartMove = false,
-  ) {
+  async submitBatch(username: string, inputs: PuzzleSubmissionInput[]) {
     try {
       // Validate every puzzle before performing the first write.
       const normalizedPuzzles = inputs.map((input) => this.normalize(username, input));
       if (isApprovedPuzzleCreator(username)) {
         return {
           destination: "published" as const,
-          puzzleIds: await this.repository.publishBatch(
-            username,
-            normalizedPuzzles,
-            allowDifferentStartMove,
-          ),
+          puzzleIds: await this.repository.publishBatch(username, normalizedPuzzles),
         };
       }
       const puzzles = [];
       for (const normalizedPuzzle of normalizedPuzzles) {
-        puzzles.push(
-          await this.repository.enqueue(username, normalizedPuzzle, allowDifferentStartMove),
-        );
+        puzzles.push(await this.repository.enqueue(username, normalizedPuzzle));
       }
       return {
         destination: "review" as const,
@@ -120,8 +110,8 @@ export class PuzzleSubmissionService {
     }
   }
 
-  async submit(username: string, input: PuzzleSubmissionInput, allowDifferentStartMove = false) {
-    const result = await this.submitBatch(username, [input], allowDifferentStartMove);
+  async submit(username: string, input: PuzzleSubmissionInput) {
+    const result = await this.submitBatch(username, [input]);
     return result.destination === "published"
       ? { destination: result.destination, puzzleId: result.puzzleIds[0] }
       : { destination: result.destination, puzzle: result.puzzles[0] };
@@ -133,7 +123,6 @@ export class PuzzleSubmissionService {
       gameId: string;
       matchName: string;
       renameFrom?: string | undefined;
-      allowDifferentStartMove?: boolean | undefined;
     },
     context: Awaited<ReturnType<typeof loadMatchPuzzleContext>>,
   ) {
@@ -177,7 +166,6 @@ export class PuzzleSubmissionService {
         existingSetId: context.existingSetId,
         renameFrom: input.renameFrom,
         publish,
-        allowDifferentStartMove: input.allowDifferentStartMove ?? false,
       });
     } catch (error) {
       if (error instanceof Error && PUBLIC_DOMAIN_ERROR.test(error.message)) {

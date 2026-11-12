@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { DIFFERENT_START_MOVE_CONFIRMATION } from "../../../../shared/domain/puzzles/submissionDuplicates";
 import { HttpError } from "../../../platform/errors";
 
 export type QueuedPuzzleSubmission = {
@@ -18,25 +17,6 @@ export type QueuedPuzzleSubmission = {
   tags: string[];
   positionMoves?: string[];
   gameInitialFen?: string;
-};
-
-const throwDuplicatePuzzleError = (message: string) => {
-  const duplicate =
-    /Puzzle (?:start move already exists|moves already exist) for FEN( in queue)?/.exec(message);
-  if (duplicate) {
-    throw new HttpError(
-      409,
-      duplicate[1]
-        ? "A puzzle with this FEN and starting move is already pending review."
-        : "A puzzle with this FEN and starting move already exists.",
-    );
-  }
-  if (message.includes("Puzzle FEN exists with different start move")) {
-    throw new HttpError(409, DIFFERENT_START_MOVE_CONFIRMATION);
-  }
-  if (message.includes("Puzzle start move is duplicated within this batch")) {
-    throw new HttpError(409, "This batch repeats a FEN with the same starting move.");
-  }
 };
 
 export class PuzzleSubmissionRepository {
@@ -66,13 +46,12 @@ export class PuzzleSubmissionRepository {
     if (userError) throw new Error(`Unable to verify account: ${userError.message}`);
   }
 
-  async enqueue(username: string, puzzle: QueuedPuzzleSubmission, allowDifferentStartMove = false) {
+  async enqueue(username: string, puzzle: QueuedPuzzleSubmission) {
     await this.ensureUser(username);
     const request = puzzle.positionMoves
       ? this.supabase.rpc("enqueue_puzzle_with_position_history", {
           p_puzzle: puzzle,
           p_submitted_by: username,
-          p_allow_different_start_move: allowDifferentStartMove,
         })
       : this.supabase.rpc("enqueue_puzzle_submission", {
           p_fen: puzzle.fen,
@@ -88,27 +67,19 @@ export class PuzzleSubmissionRepository {
           p_author: puzzle.author,
           p_tags: puzzle.tags,
           p_submitted_by: username,
-          p_allow_different_start_move: allowDifferentStartMove,
         });
     const { data, error } = await request.single();
-    throwDuplicatePuzzleError(error?.message ?? "");
     if (error) throw new Error(`Unable to submit puzzle: ${error.message}`);
     return data;
   }
 
-  async publishBatch(
-    username: string,
-    puzzles: QueuedPuzzleSubmission[],
-    allowDifferentStartMove = false,
-  ): Promise<number[]> {
+  async publishBatch(username: string, puzzles: QueuedPuzzleSubmission[]): Promise<number[]> {
     await this.ensureUser(username);
 
     const { data, error } = await this.supabase.rpc("publish_approved_puzzle_batch", {
       p_puzzles: puzzles,
       p_submitted_by: username,
-      p_allow_different_start_move: allowDifferentStartMove,
     });
-    throwDuplicatePuzzleError(error?.message ?? "");
     if (/only approved puzzle creators/i.test(error?.message ?? "")) {
       throw new HttpError(403, "This account is not approved to publish puzzles directly.");
     }
@@ -135,7 +106,6 @@ export class PuzzleSubmissionRepository {
     existingSetId: number | null;
     renameFrom?: string | undefined;
     publish: boolean;
-    allowDifferentStartMove: boolean;
   }) {
     await this.ensureUser(input.username);
     const { data, error } = await this.supabase.rpc("save_match_puzzle", {
@@ -145,11 +115,9 @@ export class PuzzleSubmissionRepository {
       p_match_id: input.matchId,
       p_legacy_set_id: input.existingSetId,
       p_publish: input.publish,
-      p_allow_different_start_move: input.allowDifferentStartMove,
       ...(input.renameFrom ? { p_rename_from: input.renameFrom } : {}),
     });
     const message = error?.message ?? "";
-    throwDuplicatePuzzleError(message);
     if (message.includes("Puzzle set belongs to another match")) {
       throw new HttpError(
         409,

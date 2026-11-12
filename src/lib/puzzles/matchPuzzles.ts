@@ -40,7 +40,6 @@ export const addMatchPuzzle = (
     opaStyle: boolean;
     explanation: string;
     tags: string[];
-    allowDifferentStartMove: boolean;
   },
 ) =>
   matchPuzzleRequest({ action: "add-match-puzzle", ...input }, { schema: matchPuzzleResultSchema });

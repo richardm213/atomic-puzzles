@@ -12,6 +12,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
+import { PuzzleStartingFenWarning } from "../../components/PuzzleStartingFenWarning/PuzzleStartingFenWarning";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
@@ -339,6 +340,7 @@ export const PuzzleReviewPage = () => {
                 <span>{new Date(selected.created_at).toLocaleString()}</span>
               </div>
               <PuzzleEditor
+                beforeActions={<PuzzleStartingFenWarning fen={value.fen} />}
                 value={value}
                 onChange={changeValue}
                 resetKey={`${selected.id}-${editorRevision}`}

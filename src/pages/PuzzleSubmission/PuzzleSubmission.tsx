@@ -16,11 +16,7 @@ import {
   type PuzzleSubmissionValue,
   validatePuzzleSubmission,
 } from "../../lib/puzzles/puzzleSubmission";
-import {
-  DIFFERENT_START_MOVE_CONFIRMATION,
-  submitPuzzle,
-  submitPuzzleBatch,
-} from "../../lib/supabase/puzzleQueue";
+import { submitPuzzle, submitPuzzleBatch } from "../../lib/supabase/puzzleQueue";
 import { getErrorMessage } from "../../utils/errors";
 import { normalizeUsername } from "../../utils/playerNames";
 import { PuzzleEditor } from "./PuzzleEditor";
@@ -46,18 +42,16 @@ export const PuzzleSubmissionPage = () => {
   const [editorVersion, setEditorVersion] = useState(0);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [confirmDifferentStartMove, setConfirmDifferentStartMove] = useState(false);
   const publishesDirectly = isApprovedPuzzleCreator(user?.username ?? "");
   const canSetAuthor = normalizeUsername(user?.username) === AUTHOR_OVERRIDE_USERNAME;
   const [author, setAuthor] = useState("");
   const [keepAuthor, setKeepAuthor] = useState(false);
 
-  const submit = async (allowDifferentStartMove = false): Promise<void> => {
+  const submit = async (): Promise<void> => {
     if (!user?.username) return;
     setSubmitting(true);
     setMessage("");
     setError("");
-    if (!allowDifferentStartMove) setConfirmDifferentStartMove(false);
     let submittedCount = 0;
     const createdPuzzleIds: number[] = [];
     try {
@@ -72,7 +66,6 @@ export const PuzzleSubmissionPage = () => {
       });
       if (publishesDirectly) {
         const result = await submitPuzzleBatch(normalizedSubmissions, {
-          allowDifferentStartMove,
           author: canSetAuthor ? author : undefined,
         });
         if (result.destination !== "published") {
@@ -83,7 +76,6 @@ export const PuzzleSubmissionPage = () => {
       } else {
         if (normalizedSubmissions.length > 1) {
           const result = await submitPuzzleBatch(normalizedSubmissions, {
-            allowDifferentStartMove,
             author: canSetAuthor ? author : undefined,
           });
           if (result.destination !== "review") {
@@ -94,7 +86,6 @@ export const PuzzleSubmissionPage = () => {
           const normalized = normalizedSubmissions[0];
           if (!normalized) throw new Error("No puzzle was available to submit.");
           await submitPuzzle(normalized, {
-            allowDifferentStartMove,
             author: canSetAuthor ? author : undefined,
           });
           submittedCount = 1;
@@ -104,7 +95,6 @@ export const PuzzleSubmissionPage = () => {
       setBatchValues([]);
       setActiveBatchIndex(0);
       setEditorVersion((version) => version + 1);
-      setConfirmDifferentStartMove(false);
       if (!keepAuthor) setAuthor("");
       if (publishesDirectly) {
         announceCoinsEarned(createdPuzzleIds.length * 10, "Puzzle created");
@@ -124,10 +114,6 @@ export const PuzzleSubmissionPage = () => {
         setActiveBatchIndex(0);
         setValue(remaining[0] ?? createEmptyPuzzleSubmission());
         setEditorVersion((version) => version + 1);
-      }
-      if (detail === DIFFERENT_START_MOVE_CONFIRMATION) {
-        setConfirmDifferentStartMove(true);
-        return;
       }
       setError(
         submittedCount > 0
@@ -149,7 +135,6 @@ export const PuzzleSubmissionPage = () => {
     setValue(createEmptyPuzzleSubmission());
     setMessage("");
     setError("");
-    setConfirmDifferentStartMove(false);
     setEditorVersion((version) => version + 1);
   };
 
@@ -175,7 +160,6 @@ export const PuzzleSubmissionPage = () => {
     setEditorVersion((version) => version + 1);
     setMessage(`${nextValues.length} puzzles loaded. Review them with Previous and Next.`);
     setError("");
-    setConfirmDifferentStartMove(false);
   };
 
   const navigateBatch = (index: number): void => {
@@ -186,7 +170,6 @@ export const PuzzleSubmissionPage = () => {
     setEditorVersion((version) => version + 1);
     setMessage("");
     setError("");
-    setConfirmDifferentStartMove(false);
   };
 
   const currentLocation = `${window.location.pathname}${window.location.search}`;
@@ -284,26 +267,24 @@ export const PuzzleSubmissionPage = () => {
             onPreviousPuzzle={() => navigateBatch(activeBatchIndex - 1)}
             onNextPuzzle={() => navigateBatch(activeBatchIndex + 1)}
             feedback={
-              confirmDifferentStartMove
-                ? { tone: "warning", text: DIFFERENT_START_MOVE_CONFIRMATION }
-                : error
-                  ? { tone: "error", text: error }
-                  : message
-                    ? {
-                        tone: "success",
-                        text: message.includes("submitted for review") ? (
-                          <>
-                            {message} You can view your submission in the queue at{" "}
-                            <a href="https://atomicpuzzles.org/puzzles/review">
-                              atomicpuzzles.org/puzzles/review
-                            </a>
-                            .
-                          </>
-                        ) : (
-                          message
-                        ),
-                      }
-                    : undefined
+              error
+                ? { tone: "error", text: error }
+                : message
+                  ? {
+                      tone: "success",
+                      text: message.includes("submitted for review") ? (
+                        <>
+                          {message} You can view your submission in the queue at{" "}
+                          <a href="https://atomicpuzzles.org/puzzles/review">
+                            atomicpuzzles.org/puzzles/review
+                          </a>
+                          .
+                        </>
+                      ) : (
+                        message
+                      ),
+                    }
+                  : undefined
             }
             beforeActions={<PuzzleStartingFenWarning fen={value.fen} />}
             actions={
@@ -313,21 +294,11 @@ export const PuzzleSubmissionPage = () => {
                     ? `Creating for ${author.trim() || user?.username}`
                     : `Submitting as ${user?.username}`}
                 </span>
-                {confirmDifferentStartMove ? (
-                  <button
-                    type="button"
-                    className="queueSecondaryButton"
-                    disabled={submitting}
-                    onClick={() => setConfirmDifferentStartMove(false)}
-                  >
-                    Cancel
-                  </button>
-                ) : null}
                 <button
                   type="button"
                   className="queuePrimaryButton puzzleSubmitReviewButton"
                   disabled={submitting}
-                  onClick={() => void submit(confirmDifferentStartMove)}
+                  onClick={() => void submit()}
                 >
                   <FontAwesomeIcon icon={faPaperPlane} aria-hidden="true" />
                   <span>
@@ -335,17 +306,13 @@ export const PuzzleSubmissionPage = () => {
                       ? publishesDirectly
                         ? "Creating…"
                         : "Submitting…"
-                      : confirmDifferentStartMove
+                      : batchValues.length > 1
                         ? publishesDirectly
-                          ? "Create anyway"
-                          : "Send to review"
-                        : batchValues.length > 1
-                          ? publishesDirectly
-                            ? `Create ${batchValues.length} puzzles`
-                            : `Submit ${batchValues.length} puzzles for review`
-                          : publishesDirectly
-                            ? "Create puzzle"
-                            : "Submit for review"}
+                          ? `Create ${batchValues.length} puzzles`
+                          : `Submit ${batchValues.length} puzzles for review`
+                        : publishesDirectly
+                          ? "Create puzzle"
+                          : "Submit for review"}
                   </span>
                 </button>
               </div>

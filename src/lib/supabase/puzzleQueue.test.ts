@@ -119,7 +119,6 @@ describe("puzzle queue review client", () => {
     ).resolves.toEqual({ destination: "published", puzzleIds: [1801, 1802] });
     const [, request] = fetchMock.mock.calls[0] ?? [];
     expect(JSON.parse(String(request?.body))).toEqual({
-      allowDifferentStartMove: false,
       submissions: [
         {
           fen: "fen 1",

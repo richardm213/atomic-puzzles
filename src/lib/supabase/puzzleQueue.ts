@@ -7,8 +7,6 @@ import {
 } from "../puzzles/puzzleSubmission";
 import type { PuzzleQueueRow, PuzzleReviewQueueRow } from "./types";
 
-export { DIFFERENT_START_MOVE_CONFIRMATION } from "../../../shared/domain/puzzles/submissionDuplicates";
-
 const reviewRequest = createPostApi("/api/puzzles/review", {
   errorMessage: "Unable to review puzzle.",
   invalidMessage: "Unable to review puzzle: the server returned no data.",
@@ -23,7 +21,6 @@ export type PuzzleBatchSubmissionResult =
   | { destination: "published"; puzzleIds: number[] };
 
 type PuzzleSubmissionOptions = {
-  allowDifferentStartMove?: boolean;
   author?: string | undefined;
 };
 
@@ -50,7 +47,6 @@ export const submitPuzzle = async (
       author: options.author?.trim() ?? "",
       tags: input.tags ?? [],
       ...options.positionHistory,
-      allowDifferentStartMove: options.allowDifferentStartMove ?? false,
     },
     {
       errorMessage: (response) =>
@@ -88,7 +84,6 @@ export const submitPuzzleBatch = async (
         author: options.author?.trim() ?? "",
         tags: input.tags ?? [],
       })),
-      allowDifferentStartMove: options.allowDifferentStartMove ?? false,
     },
     {
       errorMessage: (response) =>

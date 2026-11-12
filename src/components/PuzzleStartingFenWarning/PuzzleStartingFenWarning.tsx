@@ -42,13 +42,13 @@ export const PuzzleStartingFenWarning = ({ fen }: { fen: string }) => {
       <FontAwesomeIcon icon={faTriangleExclamation} aria-hidden="true" />
       <div className="puzzleStartingFenWarningCopy">
         <strong>
-          Starting FEN matches{" "}
+          Starting FEN matches&nbsp;
           <a href={appAssetPath(`/solve/${puzzleId}`)} target="_blank" rel="noopener noreferrer">
             puzzle {puzzleId}
           </a>
           .
         </strong>
-        <span>Only submit your puzzle if your solution is meaningfully different.</span>
+        <span>Compare the solutions to check whether they are meaningfully different.</span>
       </div>
     </div>
   );

@@ -1,8 +1,5 @@
 import { parseFen } from "chessops/fen";
 
-export const DIFFERENT_START_MOVE_CONFIRMATION =
-  "This FEN already exists with a different starting move. Continue with this submission?";
-
 // The position is determined by the first four FEN fields; the counters are not part of it.
 export const startingFenKey = (fen: string): string | null => {
   const fields = fen.trim().split(/\s+/);

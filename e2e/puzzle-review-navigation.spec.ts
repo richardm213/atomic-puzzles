@@ -32,7 +32,10 @@ test("deleting a puzzle variation removes it from backward and forward navigatio
     });
   });
 
+  await page.route("**/api/puzzles/submit", (route) => route.fulfill({ json: { puzzleId: 42 } }));
   await page.goto("/puzzles/review");
+  await expect(page.getByRole("link", { name: "puzzle 42" })).toHaveAttribute("href", "/solve/42");
+  await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeEnabled();
 
   const moves = page.getByRole("region", { name: "Solution moves" });
   const alternateMove = moves.getByRole("button", { name: /c5/ });
