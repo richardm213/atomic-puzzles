@@ -1409,7 +1409,7 @@ const ChessboardComponent = ({
         navigateTo(solutionNavigation.ply);
         break;
       case "annotate": {
-        const annotation = /^[!?]{0,2}$/.test(solutionNavigation.annotation)
+        const annotation = /^(?:\?|\?\?|\?!|!\?|!!)?$/.test(solutionNavigation.annotation)
           ? solutionNavigation.annotation
           : "";
         if (solutionNavigation.source === "custom" && solutionNavigation.line !== undefined) {

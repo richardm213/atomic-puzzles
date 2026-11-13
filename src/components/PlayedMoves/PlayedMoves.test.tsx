@@ -21,22 +21,25 @@ describe("PlayedMoves", () => {
     expect(screen.queryByRole("menu", { name: "Move annotation" })).not.toBeInTheDocument();
 
     fireEvent.contextMenu(move);
+    expect(
+      screen.queryByRole("menuitemcheckbox", { name: "Annotate with !" }),
+    ).not.toBeInTheDocument();
     fireEvent.click(
-      screen.getByRole("menuitemcheckbox", { name: "Annotate with !", checked: false }),
+      screen.getByRole("menuitemcheckbox", { name: "Annotate with ?", checked: false }),
     );
-    expect(onAnnotate).toHaveBeenCalledWith(0, "!");
+    expect(onAnnotate).toHaveBeenCalledWith(0, "?");
 
     rerender(
       <PlayedMoves
-        moves={["e4!", "e5"]}
+        moves={["e4?", "e5"]}
         currentPly={0}
         onNavigate={onNavigate}
         onAnnotate={onAnnotate}
       />,
     );
-    fireEvent.contextMenu(screen.getByRole("button", { name: "e4!" }));
+    fireEvent.contextMenu(screen.getByRole("button", { name: "e4?" }));
     fireEvent.click(
-      screen.getByRole("menuitemcheckbox", { name: "Annotate with !", checked: true }),
+      screen.getByRole("menuitemcheckbox", { name: "Annotate with ?", checked: true }),
     );
     expect(onAnnotate).toHaveBeenLastCalledWith(0, "");
   });

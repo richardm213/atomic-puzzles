@@ -7,6 +7,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import {
   buildIndexedSolutionMoveTree,
+  formatSolutionMove,
   type IndexedSolutionMoveNode,
   movePrefix,
   orderedChildren,
@@ -72,7 +73,7 @@ export const AnalysisContinuationChoices = ({
             onClick={() => onSelect(option.lineIndex, option.plyIndex)}
           >
             {movePrefix(ply, ply % 2 === 1)}
-            {option.move}
+            {formatSolutionMove(option.move)}
           </button>
         ))}
       </div>
@@ -206,7 +207,11 @@ export const AnalysisMoveTree = ({
         key={`${keyPrefix}-move-${ply}-${node.move}`}
         type="button"
         className={`analysisTreeMove ${visibleAssessment?.classification ?? ""} ${current ? "active" : ""}`}
-        aria-label={[prefix.trim(), node.move, visibleAssessment?.classification]
+        aria-label={[
+          prefix.trim(),
+          formatSolutionMove(node.move ?? ""),
+          visibleAssessment?.classification,
+        ]
           .filter(Boolean)
           .join(" ")}
         aria-current={current ? "step" : undefined}
@@ -229,7 +234,7 @@ export const AnalysisMoveTree = ({
         title={onAnnotate || onDelete ? "Right-click to edit move" : undefined}
       >
         {prefix ? <span className="analysisTreeMoveNumber">{prefix.trim()}</span> : null}
-        {node.move}
+        {formatSolutionMove(node.move ?? "")}
         {visibleAssessment ? (
           <b aria-label={visibleAssessment.classification}>{visibleAssessment.symbol}</b>
         ) : null}
@@ -296,13 +301,13 @@ export const AnalysisMoveTree = ({
           <button
             type="button"
             className={`analysisTreeMove ${currentPly === 0 && !beforePreviousMove ? "active" : ""}`}
-            aria-label={`${movePrefix(previousMove.ply, true).trim()} ${previousMove.san}`}
+            aria-label={`${movePrefix(previousMove.ply, true).trim()} ${formatSolutionMove(previousMove.san)}`}
             aria-current={currentPly === 0 && !beforePreviousMove ? "step" : undefined}
             onClick={onSelectPreviousMove}
           >
             <span className="visuallyHidden">Opponent’s previous move: </span>
             <span className="analysisTreeMoveNumber">{movePrefix(previousMove.ply, true)}</span>
-            {previousMove.san}
+            {formatSolutionMove(previousMove.san)}
           </button>
         ) : null}
         {renderContinuations(tree, 0, "root", 0, !previousMove && initialPly % 2 === 1)}

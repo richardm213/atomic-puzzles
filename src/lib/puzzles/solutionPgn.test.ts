@@ -61,6 +61,14 @@ describe("compareMoves", () => {
 });
 
 describe("solution move annotations", () => {
+  it("discards the retired standalone annotation in parsed and raw SAN exports", () => {
+    expect(splitSolutionMove("e4!")).toEqual({ san: "e4", annotation: "", retry: false });
+    expect(serializeSanLinesToPgn(STARTING_FEN, [["e4!", "e5?!"]])).toBe("1. e4 e5?!");
+    expect(normalizeSolutionPgn(STARTING_FEN, "1. e4! (1. d4!) e5?! {Keep this!}")).toBe(
+      "1. e4 (1. d4) e5?! {Keep this!}",
+    );
+  });
+
   it("separates SAN, preserves the exact suffix, and classifies retries", () => {
     expect(splitSolutionMove("Bb5+?!")).toEqual({
       san: "Bb5+",
@@ -186,9 +194,9 @@ describe("parseSolutionUciLines", () => {
     const fen = "k7/8/1Q6/8/8/8/8/7K w - - 0 15";
     const lines = parseSolutionUciLines(fen, "15.\nQb7#!");
     expect(lines[0]?.map(({ uci, annotation }) => ({ uci, annotation }))).toEqual([
-      { uci: "b6b7", annotation: "!" },
+      { uci: "b6b7", annotation: "" },
     ]);
-    expect(serializeUciLinesToPgn(fen, lines)).toBe("15. Qb7#!");
+    expect(serializeUciLinesToPgn(fen, lines)).toBe("15. Qb7#");
     expect(parseSolutionUciLines(fen, "15.\nQb7+#!")).toEqual(lines);
   });
 
@@ -264,10 +272,10 @@ describe("parseSolutionUciLines", () => {
     expect(lines[0]?.[0]).toMatchObject({ annotation: "", retry: false });
   });
 
-  it("preserves mixed annotations without treating ! alone as retry", () => {
+  it("drops standalone ! while preserving mixed annotations and retry flags", () => {
     const lines = parseSolutionUciLines(STARTING_FEN, "1. e4! e5?! 2. Nf3!!");
     expect(lines[0]?.map((entry) => entry.uci)).toEqual(["e2e4", "e7e5", "g1f3"]);
-    expect(lines[0]?.map((entry) => entry.annotation)).toEqual(["!", "?!", "!!"]);
+    expect(lines[0]?.map((entry) => entry.annotation)).toEqual(["", "?!", "!!"]);
     expect(lines[0]?.map((entry) => entry.retry)).toEqual([false, true, false]);
   });
 
@@ -320,7 +328,7 @@ describe("convertUciLineToSan", () => {
   it("preserves exact annotations", () => {
     const lines = parseSolutionUciLines(STARTING_FEN, "1. e4! e5?! 2. Nf3!!");
     const san = convertUciLineToSan(STARTING_FEN, lines[0] ?? []);
-    expect(san).toEqual(["e4!", "e5?!", "Nf3!!"]);
+    expect(san).toEqual(["e4", "e5?!", "Nf3!!"]);
   });
 
   it("returns an empty array on an invalid FEN", () => {
@@ -375,7 +383,7 @@ describe("serializeUciLinesToPgn / normalizeSolutionPgn", () => {
 
   it("round-trips exact move annotations through UCI lines", () => {
     const lines = parseSolutionUciLines(STARTING_FEN, "1. e4! e5?! 2. Nf3!!");
-    expect(serializeUciLinesToPgn(STARTING_FEN, lines)).toBe("1. e4! e5?! 2. Nf3!!");
+    expect(serializeUciLinesToPgn(STARTING_FEN, lines)).toBe("1. e4 e5?! 2. Nf3!!");
   });
 
   it("normalizeSolutionPgn round-trips SAN through UCI", () => {

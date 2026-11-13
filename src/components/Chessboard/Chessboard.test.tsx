@@ -1256,7 +1256,7 @@ describe("Chessboard orchestration", () => {
     });
 
     expect(states.at(-1)?.customLines).toEqual([
-      ["e4?", "e5", "Nf3!"],
+      ["e4?", "e5", "Nf3"],
       ["e4?", "c5?", "Nf3"],
     ]);
   });

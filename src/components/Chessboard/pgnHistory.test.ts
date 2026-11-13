@@ -53,7 +53,7 @@ describe("buildPgnHistory", () => {
     const result = buildPgnHistory(STARTING_FEN, "1. e4? e5 2. Nf3!");
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.history.plies.slice(1).map((ply) => ply.san)).toEqual(["e4?", "e5", "Nf3!"]);
+      expect(result.history.plies.slice(1).map((ply) => ply.san)).toEqual(["e4?", "e5", "Nf3"]);
     }
   });
 

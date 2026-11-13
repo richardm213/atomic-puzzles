@@ -4,6 +4,7 @@ import {
   parseSolutionUciLines,
   serializeSanLinesToPgn,
   serializeUciLinesToPgn,
+  stripRetiredMoveAnnotations,
 } from "../chess/pgn";
 import { synchronizeTranspositions } from "../chess/transpositions";
 import { normalizePuzzleMotifTags } from "./puzzleMotifs";
@@ -38,7 +39,7 @@ const PGN_MOVETEXT_PATTERN = /^\d+\.(?:\.\.)?\s*\S/;
 const unescapePgnTagValue = (value: string): string => value.replace(/\\(["\\])/g, "$1");
 
 export const compactPuzzleSolution = (solution: string): string =>
-  solution
+  stripRetiredMoveAnnotations(solution)
     .replace(/\\r\\n|\\n|\\r|[\r\n]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -106,7 +107,7 @@ export const parseAtomicPgnInput = (input: string, fallbackFen: string): ParsedP
     throw new Error('The PGN Variant header must be "Atomic".');
   }
 
-  const solution = movetextLines.join("\n").trim();
+  const solution = stripRetiredMoveAnnotations(movetextLines.join("\n").trim());
 
   return {
     fen: headers.get("fen")?.trim() || fallbackFen.trim(),
@@ -130,7 +131,7 @@ export const validateParsedPuzzleSubmission = (
   parsedPgn: ParsedPuzzlePgn,
 ): PuzzleSubmissionValue => {
   const fen = parsedPgn.fen;
-  const solution = parsedPgn.solution;
+  const solution = stripRetiredMoveAnnotations(parsedPgn.solution);
   const explanation = value.explanation.trim();
   const event = parsedPgn.event || value.event.trim();
   const whitePlayer = value.whitePlayer?.trim() ?? "";

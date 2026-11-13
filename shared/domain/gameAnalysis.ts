@@ -348,7 +348,7 @@ export const classifyPracticeMove = (
 export const CLASSIFICATION_SYMBOLS: Record<MoveClassification, string> = {
   best: "✓",
   excellent: "★",
-  good: "!",
+  good: "✓",
   inaccuracy: "?!",
   mistake: "?",
   blunder: "??",

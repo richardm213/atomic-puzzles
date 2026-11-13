@@ -70,9 +70,17 @@ test("game puzzle drafts optionally copy editable continuations from the origina
 
   await launch.click();
   await expect(pgn).toHaveValue("1. e4 e5 *");
-  await pgn.fill("1. d4 d5");
+  await pgn.fill("1. d4! d5");
   await pgn.press("Enter");
   await expect(pgn).toHaveValue("1. d4 d5 *");
+  await page.getByRole("button", { name: "1. d4", exact: true }).click({ button: "right" });
+  await expect(
+    page.getByRole("menuitemcheckbox", { name: "Annotate with !", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("menuitemcheckbox", { name: "Annotate with ?", exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
   await composer.getByRole("button", { name: "Cancel" }).click();
 
   // Start after White’s first move and copy only the remaining continuation.

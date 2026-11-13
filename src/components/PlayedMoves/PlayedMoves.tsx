@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { splitSolutionMove } from "../../lib/chess/pgn";
+import { formatSolutionMove, splitSolutionMove } from "../../lib/chess/pgn";
 import type { GameMoveAssessment } from "../../lib/gameAnalysis/gameAnalysis";
 import {
   type AnnotationMenuPosition,
@@ -92,7 +92,7 @@ export const PlayedMoves = ({
                 }
                 title={onAnnotate || onDelete ? "Right-click to edit move" : undefined}
               >
-                <span>{pair.white}</span>
+                <span>{formatSolutionMove(pair.white)}</span>
                 {visibleAssessment(pair.whitePly) ? (
                   <b aria-label={visibleAssessment(pair.whitePly)!.classification}>
                     {visibleAssessment(pair.whitePly)!.symbol}
@@ -125,7 +125,7 @@ export const PlayedMoves = ({
                 }
                 title={onAnnotate || onDelete ? "Right-click to edit move" : undefined}
               >
-                <span>{pair.black}</span>
+                <span>{formatSolutionMove(pair.black)}</span>
                 {visibleAssessment(pair.blackPly) ? (
                   <b aria-label={visibleAssessment(pair.blackPly)!.classification}>
                     {visibleAssessment(pair.blackPly)!.symbol}

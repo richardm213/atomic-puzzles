@@ -6,6 +6,7 @@ import {
   buildIndexedSolutionMoveTree,
   compareMoves,
   findMainChild,
+  formatSolutionMove,
   type IndexedSolutionMoveNode,
   movePrefix,
   orderedChildren,
@@ -79,7 +80,7 @@ export const VariationTree = ({
         onClick={() => onMoveClick(targetLine, ply)}
       >
         {movePrefix(displayPly, forceMoveNumber)}
-        {node.move}
+        {formatSolutionMove(node.move ?? "")}
       </button>,
     ];
     const children = orderedChildren(node);

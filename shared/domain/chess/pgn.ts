@@ -139,8 +139,9 @@ const MOVE_NUMBER_PREFIX = /^\d+\.(\.\.)?/;
 const NON_MOVE_TOKENS = new Set(["", "...", "*", "1-0", "0-1", "1/2-1/2"]);
 
 export const splitSolutionMove = (move = ""): AnnotatedSolutionMove => {
-  const annotation = move.match(MOVE_ANNOTATION_SUFFIX)?.[0] ?? "";
-  const san = annotation ? move.slice(0, -annotation.length) : move;
+  const suffix = move.match(MOVE_ANNOTATION_SUFFIX)?.[0] ?? "";
+  const annotation = suffix === "!" ? "" : suffix;
+  const san = suffix ? move.slice(0, -suffix.length) : move;
   return { san, annotation, retry: annotation.includes("?") };
 };
 
@@ -149,7 +150,17 @@ export const stripSolutionMoveAnnotation = (move = ""): string => splitSolutionM
 export const sameSolutionMove = (left = "", right = ""): boolean =>
   stripSolutionMoveAnnotation(left) === stripSolutionMoveAnnotation(right);
 
-export const formatSolutionMove = (san: string, annotation = ""): string => `${san}${annotation}`;
+export const formatSolutionMove = (
+  san: string,
+  annotation = splitSolutionMove(san).annotation,
+): string => `${splitSolutionMove(san).san}${annotation === "!" ? "" : annotation}`;
+
+// Strip only the retired standalone glyph. Leave headers, comments and other annotations intact.
+export const stripRetiredMoveAnnotations = (pgn: string): string =>
+  pgn.replace(
+    /\[[^\]]*\]|\{[^}]*\}|;[^\r\n]*|([^\s()[\]{}]+)/g,
+    (text: string, move: string | undefined) => (move ? formatSolutionMove(move) : text),
+  );
 
 const parseSolutionToken = (token: string): AnnotatedSolutionMove | null => {
   const moveText = token.replace(MOVE_NUMBER_PREFIX, "");
@@ -403,7 +414,7 @@ const serializeSolutionLines = (sanLines: string[][], initialPly = 0): string =>
     tokens.push(`(${serializeSolutionBranch(variation, initialPly, true).join(" ")})`);
   });
   tokens.push(...mainTail);
-  return tokens.join(" ");
+  return stripRetiredMoveAnnotations(tokens.join(" "));
 };
 
 export const serializeSanLinesToPgn = (fen: string, sanLines: string[][] = []): string => {
@@ -556,7 +567,8 @@ export const serializeUciLinesToPgn = (fen: string, uciLines: UciSolutionLine[] 
 };
 
 export const normalizeSolutionPgn = (fen: string, solution: unknown): string => {
-  const normalized = typeof solution === "string" ? solution.trim() : "";
+  const normalized =
+    typeof solution === "string" ? stripRetiredMoveAnnotations(solution.trim()) : "";
   if (!normalized || !fen) return normalized;
   if (/[()]/.test(normalized)) return normalized;
 

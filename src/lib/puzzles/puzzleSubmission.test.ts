@@ -16,6 +16,17 @@ describe("compactPuzzleSolution", () => {
 });
 
 describe("validatePuzzleSubmission", () => {
+  it("does not save standalone ! annotations in puzzle variations, preserving comments and other glyphs", () => {
+    const submission = validatePuzzleSubmission({
+      fen: STARTING_FEN,
+      solution: '[Event "Surprise!"]\n\n1. e4! (1. d4!) e5?! {Keep this!}',
+      event: "",
+      explanation: "",
+    });
+    expect(submission.solution).toBe("1. e4 (1. d4) e5?! {Keep this!}");
+    expect(submission.event).toBe("Surprise!");
+  });
+
   it("normalizes a legal submission", () => {
     expect(
       validatePuzzleSubmission({
