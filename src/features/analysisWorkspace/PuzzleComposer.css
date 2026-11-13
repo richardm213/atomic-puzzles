@@ -70,8 +70,12 @@
 }
 
 .boardPuzzleComposerField textarea {
+  min-height: calc(3lh + 2 * var(--space-2) + 2px);
   padding-block: var(--space-2);
-  resize: vertical;
+  field-sizing: content;
+  font-size: var(--text-body);
+  line-height: 1.5;
+  resize: none;
 }
 
 .boardPuzzleComposerFooter {

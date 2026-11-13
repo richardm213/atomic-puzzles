@@ -164,7 +164,7 @@ export const PuzzleComposer = ({
             <label htmlFor={explanationId}>Explanation</label>
             <textarea
               id={explanationId}
-              rows={2}
+              rows={3}
               maxLength={5000}
               value={explanation}
               onChange={(event) => setExplanation(event.target.value)}
