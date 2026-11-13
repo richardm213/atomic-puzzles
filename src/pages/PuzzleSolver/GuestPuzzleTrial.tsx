@@ -83,7 +83,7 @@ const GuestPuzzle = ({
   }, [solved]);
 
   return (
-    <section className="guestPuzzleTrial" aria-labelledby="guest-puzzle-title">
+    <section data-board-resize="guest" className="guestPuzzleTrial" aria-labelledby="guest-puzzle-title">
       <div className="boardWrap guestPuzzleBoard">
         <div
           className={`boardFrame${solved ? " hasFeedback correct" : missed ? " hasFeedback wrong" : ""}`}

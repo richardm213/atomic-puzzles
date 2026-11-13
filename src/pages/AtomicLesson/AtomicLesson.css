@@ -16,7 +16,7 @@
 
 .atomicLessonWorkspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.26fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, var(--board-user-size, 1.26fr)) minmax(0, 1fr);
   align-items: start;
   gap: var(--space-6);
 }
@@ -56,7 +56,7 @@
 
 .atomicLessonToolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1.26fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, var(--board-user-size, 1.26fr)) minmax(0, 1fr);
   align-items: end;
   gap: var(--space-6);
   margin-bottom: var(--space-4);

@@ -71,3 +71,28 @@ test("puzzle next and previous controls update the route", async ({ page }) => {
   await expect(page).toHaveURL(/\/solve\/102$/);
   await expect(page.getByRole("button", { name: /Previous/ }).first()).toBeEnabled();
 });
+
+test("board resizing supports dragging, keyboard adjustment, saved size, and reset", async ({ page }) => {
+  await page.goto("/analysis");
+  const board = page.locator(".cg-boardShell:visible");
+  const grip = page.getByRole("button", { name: "Resize board", exact: true });
+  await expect(grip).toBeVisible();
+  const original = (await board.boundingBox())!.width;
+  const corner = (await grip.boundingBox())!;
+  await page.mouse.move(corner.x + corner.width / 2, corner.y + corner.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(corner.x + corner.width / 2 - 100, corner.y + corner.height / 2 - 100, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(async () => (await board.boundingBox())!.width).toBeLessThan(original - 50);
+  const dragged = (await board.boundingBox())!.width;
+  await grip.focus();
+  await grip.press("Shift+ArrowRight");
+  await expect.poll(async () => (await board.boundingBox())!.width).toBeGreaterThan(dragged + 20);
+  const resized = (await board.boundingBox())!.width;
+  await page.reload();
+  await expect.poll(async () => (await board.boundingBox())!.width).toBeCloseTo(resized, 0);
+  await grip.dblclick();
+  await expect.poll(async () => (await board.boundingBox())!.width).toBeCloseTo(original, 0);
+  await page.reload();
+  await expect.poll(async () => (await board.boundingBox())!.width).toBeCloseTo(original, 0);
+});

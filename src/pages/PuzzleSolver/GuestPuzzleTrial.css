@@ -1,9 +1,10 @@
 .guestPuzzleTrial {
-  --guest-board-size: clamp(
+  --board-resize-gutter: 14px;
+  --guest-board-size: var(--board-user-size, clamp(
     200px,
     calc(var(--page-shell-min-height-dynamic) - 2 * var(--space-4)),
     500px
-  );
+  ));
 
   width: min(100%, 1024px);
   margin-inline: auto;
@@ -152,11 +153,11 @@
 
 @media (max-width: 560px) {
   .guestPuzzleTrial {
-    --guest-board-size: clamp(
+    --guest-board-size: var(--board-user-size, clamp(
       180px,
       calc(var(--page-shell-min-height-dynamic) - 3 * var(--space-16) - var(--space-8)),
       500px
-    );
+    ));
 
     grid-template:
       "board" auto

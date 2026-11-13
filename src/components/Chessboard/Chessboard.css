@@ -1,7 +1,7 @@
 .cg-boardShell,
 .cg-board,
 .emptyBoard {
-  width: min(100%, 31rem);
+  width: min(100%, var(--board-user-size, 31rem));
   aspect-ratio: 1 / 1;
   height: auto;
 }
@@ -170,5 +170,58 @@
   .boardPromotionOption,
   .boardPromotionPiece {
     transition: none;
+  }
+}
+
+.cg-boardShell > .cg-board {
+  width: 100%;
+}
+
+.boardResizeHandle {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  z-index: 8;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--cg-board-coord-light, var(--color-heading));
+  opacity: 0.45;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.boardResizeHandle::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  background: repeating-linear-gradient(135deg, transparent 0 3px, currentColor 3px 4px);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+.boardResizeHandle:hover,
+.boardResizeHandle:focus-visible,
+.boardResizeHandle:active {
+  opacity: 1;
+}
+
+.boardResizeHandle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .boardResizeHandle {
+    width: 44px;
+    height: 44px;
+    right: -16px;
+    bottom: -16px;
+  }
+
+  .boardResizeHandle::after {
+    inset: 16px;
   }
 }

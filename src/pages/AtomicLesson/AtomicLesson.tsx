@@ -515,7 +515,7 @@ export const AtomicLessonPage = () => {
   );
 
   return (
-    <div className="page atomicLessonPage">
+    <div className="page atomicLessonPage" data-board-resize="lesson">
       <Seo
         title="Learn Atomic Chess: Interactive Lessons | Atomic Puzzles"
         description="Play through atomic chess rules, tactics, endgames, and three starter openings. Get a coaching note after each move."

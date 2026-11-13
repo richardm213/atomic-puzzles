@@ -56,6 +56,7 @@ import {
 } from "./boardHistory";
 import { resolvePlayback } from "./boardPlayback";
 import { BoardPromotionPicker } from "./BoardPromotionPicker";
+import { BoardResizeHandle } from "./BoardResizeHandle";
 import { isTextEntryTarget, useBoardShortcuts } from "./boardShortcuts";
 import { buildBoardStyle, buildPieceStyle } from "./boardStyle";
 import { buildPgnHistory } from "./pgnHistory";
@@ -1692,6 +1693,7 @@ const ChessboardComponent = ({
       style={{ ...pieceStyle, ...boardStyle }}
     >
       <div ref={elementRef} className="cg-board" />
+      <BoardResizeHandle />
       {blindFen && !disabled && !pendingPromotion ? (
         <BlindMoveSquares
           key={blindFen}

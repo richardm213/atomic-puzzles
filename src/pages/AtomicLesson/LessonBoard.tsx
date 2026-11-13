@@ -12,6 +12,7 @@ import type { Atomic } from "chessops/variant";
 import { useLayoutEffect, useRef } from "react";
 
 import { BoardPromotionPicker } from "../../components/Chessboard/BoardPromotionPicker";
+import { BoardResizeHandle } from "../../components/Chessboard/BoardResizeHandle";
 import { buildBoardStyle, buildPieceStyle } from "../../components/Chessboard/boardStyle";
 import type { PendingPromotion, PromotionRole } from "../../components/Chessboard/promotionHelpers";
 import { useAppSettings } from "../../context/AppSettings";
@@ -105,6 +106,7 @@ export const LessonBoard = ({
         ),
       }}
     >
+      <BoardResizeHandle />
       <div
         ref={host}
         className="cg-board"

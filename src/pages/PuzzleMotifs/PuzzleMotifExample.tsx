@@ -67,7 +67,7 @@ const Replay = ({ example, name, focusRequest, startAtEnd = false }: ReplayProps
   };
 
   return (
-    <figure className="motifExample" aria-label={`${name} example`}>
+    <figure data-board-resize="motif" className="motifExample" aria-label={`${name} example`}>
       {/* The replay group can take focus itself or receive arrow keys from its controls. */}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
       <div
@@ -92,7 +92,7 @@ const Replay = ({ example, name, focusRequest, startAtEnd = false }: ReplayProps
       >
         <div
           className="motifReplayBoard"
-          role="img"
+          role="group"
           aria-label={`Atomic chess board, ${orientation} at the bottom`}
         >
           <Chessboard

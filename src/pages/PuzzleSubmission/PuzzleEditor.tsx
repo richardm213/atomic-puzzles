@@ -691,7 +691,7 @@ export const PuzzleEditor = ({
   ) : null;
 
   return (
-    <fieldset className="puzzleEditor" disabled={busy} aria-busy={busy}>
+    <fieldset data-board-resize="editor" className="puzzleEditor" disabled={busy} aria-busy={busy}>
       <div className="puzzleEditorBoard">
         <Chessboard
           disabled={busy}

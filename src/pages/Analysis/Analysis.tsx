@@ -113,7 +113,6 @@ type AtomicDbRequestStatus =
   { state: "idle" } | { state: "requested" } | { state: "error"; message: string };
 const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
 const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
-const BOARD_SIZE_STORAGE_KEY = "atomic-puzzles.analysis.board-size";
 const NOTATION_LAYOUT_STORAGE_KEY = "atomic-puzzles.analysis.notation-layout";
 const EXPLORER_OPEN_STORAGE_KEY = "atomic-puzzles.analysis.explorer-open";
 const GAME_EXPLORER_OPEN_STORAGE_KEY = "atomic-puzzles.games.explorer-open";
@@ -184,14 +183,6 @@ const clampRating = (rating: number): number =>
     Math.min(MAX_EXPLORER_RATING, Number.isFinite(rating) ? rating : PLAYER_MIN_RATING),
   );
 
-const clampAnalysisBoardSize = (size: number, maxSize = MAX_ANALYSIS_BOARD_SIZE): number =>
-  Math.round(
-    Math.max(
-      MIN_ANALYSIS_BOARD_SIZE,
-      Math.min(maxSize, Number.isFinite(size) ? size : DEFAULT_ANALYSIS_BOARD_SIZE),
-    ),
-  );
-
 const isSingleColumnLayout = (): boolean =>
   typeof window !== "undefined" && window.matchMedia(BOARD_STACK_QUERY).matches;
 
@@ -236,10 +227,6 @@ const getResponsiveAnalysisBoardFloor = (viewportWidth: number): number => {
 
 const defaultExplorerOpen = (): boolean => !isSingleColumnLayout();
 
-const boardSizeSchema = z.coerce
-  .number()
-  .positive()
-  .transform((size) => clampAnalysisBoardSize(size));
 const notationLayoutSchema = z.enum(["inline", "non-inline"]);
 
 const validMonthFilter = (value: unknown): string => {
@@ -445,11 +432,6 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const documentBeforeDraft = useRef({ fen: "", pgn: "" });
   const boardState = puzzleDraft ? puzzleBoardState : gameBoardState;
   const [atomicDbEngineSettings, setAtomicDbEngineSettings] = useAtomicDbEngineSettings();
-  const [boardSize, setBoardSize] = usePersistedState(
-    BOARD_SIZE_STORAGE_KEY,
-    boardSizeSchema,
-    DEFAULT_ANALYSIS_BOARD_SIZE,
-  );
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === "undefined" ? 1440 : window.innerWidth,
   );
@@ -668,13 +650,13 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     : null;
   const responsiveBoardFloor = getResponsiveAnalysisBoardFloor(viewportWidth);
   const displayedBoardSize = Math.min(
-    Math.max(boardSize, responsiveBoardFloor),
+    Math.max(DEFAULT_ANALYSIS_BOARD_SIZE, responsiveBoardFloor),
     getMaxAnalysisBoardSize(Boolean(game)),
   );
   const analysisPageStyle = {
     "--analysis-board-size": game
-      ? `min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 88px))`
-      : `min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 44px))`,
+      ? `var(--board-user-size, min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 88px)))`
+      : `var(--board-user-size, min(${displayedBoardSize}px, calc(100dvh - var(--nav-height) - 44px)))`,
   } as CSSProperties;
   const showExplorerResults = !filtersOpen;
   const playerRatingValue = clampRating(minRating);
@@ -839,49 +821,6 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     window.addEventListener("resize", handleWindowResize);
     return () => window.removeEventListener("resize", handleWindowResize);
   }, []);
-
-  const handleBoardResizePointerDown = (event: ReactPointerEvent<HTMLButtonElement>): void => {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    const handle = event.currentTarget;
-    const startX = event.clientX;
-    const startY = event.clientY;
-    const startSize = boardSize;
-    const pointerId = event.pointerId;
-    const controller = new AbortController();
-    handle.setPointerCapture(pointerId);
-
-    const handlePointerMove = (moveEvent: PointerEvent): void => {
-      if (moveEvent.pointerId !== pointerId) return;
-
-      moveEvent.preventDefault();
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
-      const resizeDelta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
-
-      setBoardSize(
-        clampAnalysisBoardSize(startSize + resizeDelta, getMaxAnalysisBoardSize(Boolean(game))),
-      );
-    };
-
-    const handlePointerUp = (upEvent: PointerEvent): void => {
-      if (upEvent.pointerId !== pointerId) return;
-      if (handle.hasPointerCapture(pointerId)) {
-        handle.releasePointerCapture(pointerId);
-      }
-      controller.abort();
-    };
-
-    handle.addEventListener("pointermove", handlePointerMove, {
-      passive: false,
-      signal: controller.signal,
-    });
-    handle.addEventListener("pointerup", handlePointerUp, { signal: controller.signal });
-    handle.addEventListener("pointercancel", handlePointerUp, { signal: controller.signal });
-  };
 
   const navigateToPly = useCallback((plyIndex: number): void => {
     setNavigation({ type: "history", ply: plyIndex });
@@ -1567,6 +1506,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
 
   return (
     <AnalysisWorkspaceLayout
+      data-board-resize={game ? "game" : "analysis"}
       className={game ? "gameAnalysisPage" : undefined}
       style={analysisPageStyle}
     >
@@ -1812,13 +1752,6 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
               neutral={wolfrandomOpening}
               orientation={orientation}
               threatMode={effectiveThreatMode}
-            />
-            <button
-              type="button"
-              className="analysisBoardResizeHandle"
-              aria-label="Resize analysis board"
-              title="Resize board"
-              onPointerDown={handleBoardResizePointerDown}
             />
           </>
         }

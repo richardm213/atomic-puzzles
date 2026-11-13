@@ -157,6 +157,7 @@
 }
 
 .motifExample {
+  --motif-board-width: var(--board-user-size, 264px);
   max-width: var(--motif-example-width);
   margin: var(--space-4) 0 0;
 }

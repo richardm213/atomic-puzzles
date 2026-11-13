@@ -1,6 +1,7 @@
 .page.puzzlePage {
+  --board-resize-gutter: 14px;
   --puzzle-gold: color-mix(in srgb, var(--color-accent-warm) 76%, var(--color-heading));
-  --puzzle-board-column: min(500px, max(200px, calc(100svh - 98px)));
+  --puzzle-board-column: var(--board-user-size, min(500px, max(200px, calc(100svh - 98px))));
   --puzzle-details-width: clamp(184px, calc(36vw - 160px), 300px);
   --puzzle-moves-min: clamp(220px, calc(31.25vw - 80px), 320px);
   --puzzle-rail-min: clamp(192px, 36vw, 300px);
@@ -1617,7 +1618,7 @@ button.puzzleRatingBadge.editable:focus-visible {
   place-items: center;
   gap: 9px;
   width: 100%;
-  max-width: 500px;
+  max-width: var(--board-user-size, 500px);
   padding: 6px;
   border-radius: var(--radius-lg);
   background: var(--color-panel);
@@ -1633,8 +1634,8 @@ button.puzzleRatingBadge.editable:focus-visible {
   position: relative;
   display: grid;
   place-items: center;
-  width: min(100%, 488px, max(186px, calc(100svh - 112px)));
-  max-width: 488px;
+  width: min(100%, var(--board-user-size, min(488px, max(186px, calc(100svh - 112px)))));
+  max-width: var(--board-user-size, 488px);
   aspect-ratio: 1 / 1;
 }
 
@@ -1676,7 +1677,7 @@ button.puzzleRatingBadge.editable:focus-visible {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 488px;
+  max-width: var(--board-user-size, 488px);
 }
 
 .boardFrame.correct {
@@ -1804,14 +1805,14 @@ button.puzzleRatingBadge.editable:focus-visible {
     --puzzle-controls-width: clamp(400px, calc(6.25vw + 320px), 480px);
     --puzzle-moves-min: clamp(320px, calc(6.25vw + 240px), 400px);
 
-    --puzzle-board-column: min(
+    --puzzle-board-column: var(--board-user-size, min(
       clamp(600px, calc(12.5vw + 440px), 820px),
       max(200px, calc(100svh - var(--nav-height) - 48px)),
       calc(
         100vw - var(--puzzle-details-width) - var(--puzzle-moves-min) - 2 *
           (var(--board-layout-gap) + var(--board-layout-gutter))
       )
-    );
+    ));
   }
 
   .puzzlePage .boardFrame {

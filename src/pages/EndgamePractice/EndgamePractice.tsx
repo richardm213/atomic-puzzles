@@ -613,7 +613,7 @@ export const EndgamePracticePage = () => {
               : "Ready";
 
   return (
-    <div className="endgamePracticePage">
+    <div className="endgamePracticePage" data-board-resize="endgame">
       <Seo
         title="Endgame practice"
         description="Timed atomic queen endgame practice with rank-based leaderboards."

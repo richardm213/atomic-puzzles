@@ -2040,7 +2040,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         : "");
 
   return (
-    <div className="page puzzlePage">
+    <div className="page puzzlePage" data-board-resize="puzzle">
       <Seo
         title={
           testMode ? "Puzzle test" : activePuzzleId ? `Puzzle #${activePuzzleId}` : "Solve a Puzzle"

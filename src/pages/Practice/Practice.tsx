@@ -1400,7 +1400,7 @@ export const PracticePage = () => {
   ) : null;
 
   const pageStyle = {
-    "--analysis-board-size": "min(516px, calc(100dvh - var(--nav-height) - 44px))",
+    "--analysis-board-size": "var(--board-user-size, min(516px, calc(100dvh - var(--nav-height) - 44px)))",
   } as CSSProperties;
 
   const boardStatus = (color: PracticeSide) => (
@@ -1416,7 +1416,7 @@ export const PracticePage = () => {
   );
 
   return (
-    <AnalysisWorkspaceLayout className="practicePage" style={pageStyle}>
+    <AnalysisWorkspaceLayout data-board-resize="practice" className="practicePage" style={pageStyle}>
       <Seo
         title={
           opponentSource === "player" && opponentUsernames.length === 1
