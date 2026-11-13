@@ -1138,15 +1138,11 @@
   }
 
   .gameAnalysisPage .analysisBoardPanel {
-    order: -3;
     /* Align the board and evaluation bar as a unit within the page gutters. */
     justify-self: start;
   }
 
   .gameAnalysisPage .boardClockRow {
-    grid-column: 1;
-    justify-self: center;
-    width: min(100%, var(--analysis-board-size, 520px));
     min-height: 0;
     /* Tighten the space around each clock without changing other grid gaps. */
     margin-block: calc(-1 * var(--space-1));
@@ -1156,12 +1152,7 @@
     padding-block: 1px;
   }
 
-  .gameAnalysisPage .boardClockRow:first-child {
-    order: -4;
-  }
-
   .gameAnalysisPage .boardClockRow:nth-child(3) {
-    order: -2;
     margin-block-end: 0;
   }
 

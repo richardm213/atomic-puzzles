@@ -2,7 +2,7 @@ import "./BoardClock.css";
 
 import type { Ref } from "react";
 
-import type { MaterialPieceRole } from "../../lib/chess/materialCount";
+import type { MaterialCount } from "../../lib/chess/materialCount";
 import { MaterialDifferencePieces } from "../MaterialDifferencePieces/MaterialDifferencePieces";
 
 export const BoardClock = ({
@@ -12,25 +12,32 @@ export const BoardClock = ({
   expired = false,
   rowRef,
   material,
+  color,
 }: {
-  value: string;
-  ariaLabel: string;
+  value?: string | undefined;
+  ariaLabel?: string | undefined;
+  color: "white" | "black";
   active?: boolean;
   expired?: boolean;
   rowRef?: Ref<HTMLDivElement> | undefined;
-  material?: { side: "white" | "black"; pieces: readonly MaterialPieceRole[] };
-}) => (
-  <div
-    ref={rowRef}
-    className={`boardClockRow${active ? " active" : ""}${expired ? " expired" : ""}`}
-  >
-    {material?.pieces.length ? (
-      <span className="boardClockMaterial">
-        <MaterialDifferencePieces pieces={material.pieces} side={material.side} compact />
-      </span>
-    ) : null}
-    <time className="boardClock" aria-label={ariaLabel}>
-      {value}
-    </time>
-  </div>
-);
+  material?: MaterialCount;
+}) => {
+  const pieces = color === "white" ? material?.whitePieces : material?.blackPieces;
+  return (
+    <div
+      ref={rowRef}
+      className={`boardClockRow${active ? " active" : ""}${expired ? " expired" : ""}`}
+    >
+      {pieces?.length ? (
+        <span className="boardClockMaterial">
+          <MaterialDifferencePieces pieces={pieces} side={color} compact />
+        </span>
+      ) : null}
+      {value !== undefined ? (
+        <time className="boardClock" aria-label={ariaLabel}>
+          {value}
+        </time>
+      ) : null}
+    </div>
+  );
+};

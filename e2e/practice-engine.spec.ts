@@ -141,3 +141,37 @@ test("practice keeps its PGN and position when creating puzzles or changing oppo
   await page.reload();
   await expect(pgn).not.toHaveValue(/\be4\b|\bd4\b/);
 });
+
+test("analysis and practice share material rows, with both practice clocks", async ({ page }) => {
+  const fen = "4k2r/8/8/8/8/8/PP6/1Q2K3 w - - 0 1";
+  for (const route of ["/analysis", "/practice"]) {
+    await page.goto(route);
+    const input = page.getByRole("textbox", { name: "FEN", exact: true });
+    await input.fill(fen);
+    await input.press("Enter");
+    await expect(
+      page.getByRole("img", { name: "White material difference: queen, pawn, pawn", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("img", { name: "Black material difference: rook", exact: true }),
+    ).toBeVisible();
+    if (route === "/practice") {
+      await expect(page.getByLabel("Your clock: 3:00", { exact: true })).toBeVisible();
+      await expect(page.getByLabel("Opponent clock: 3:00", { exact: true })).toBeVisible();
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    const rows = page.locator(".boardClockRow");
+    await expect(async () => {
+      const top = await rows.first().boundingBox();
+      const board = await page.locator(".analysisBoardPanel").boundingBox();
+      const bottom = await rows.last().boundingBox();
+      expect(board!.y - (top!.y + top!.height)).toBeGreaterThanOrEqual(0);
+      expect(board!.y - (top!.y + top!.height)).toBeLessThanOrEqual(16);
+      expect(bottom!.y - (board!.y + board!.height)).toBeGreaterThanOrEqual(0);
+      expect(bottom!.y - (board!.y + board!.height)).toBeLessThanOrEqual(16);
+      const material = await rows.first().getByRole("img").boundingBox();
+      expect(material!.height).toBeGreaterThan(0);
+    }).toPass();
+    await page.setViewportSize({ width: 1280, height: 900 });
+  }
+});

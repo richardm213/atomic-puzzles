@@ -71,6 +71,7 @@ import {
   getBoardMoveState,
 } from "../../lib/analysis/boardState";
 import { apiRequest } from "../../lib/api/postApi";
+import { materialCountFromFen } from "../../lib/chess/materialCount";
 import { keyboardShortcutAction, keyboardShortcutHint } from "../../lib/keyboardShortcuts";
 import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
 import { serializeSanLinesToPgn, startingPlyFromFen } from "../../lib/puzzles/solutionPgn";
@@ -92,6 +93,7 @@ import {
   mergeExplorerApiResponses,
 } from "../../utils/openingExplorer";
 import { practicePath, practiceRouteParam, practiceUsernamesFromRoute } from "./practiceRoutes";
+import { usePracticeClocks } from "./usePracticeClocks";
 import {
   MAX_PRACTICE_PLAYERS,
   normalizeClockValue,
@@ -264,7 +266,6 @@ export const PracticePage = () => {
   const lowerClockRef = useRef<HTMLDivElement | null>(null);
   const practicePanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
-  const remainingClockMsRef = useRef(clockMinutes * 60_000);
   const lastAutoFenRef = useRef("");
   const triedMoveUcisByFenRef = useRef<Map<string, Set<string>>>(new Map());
   const [restoredBoard] = useState(() =>
@@ -305,7 +306,7 @@ export const PracticePage = () => {
     practicePanelRef,
     boardPanelRef,
     lowerClockRef,
-    clockEnabled,
+    true,
   );
   const {
     movePanelHeight,
@@ -322,8 +323,6 @@ export const PracticePage = () => {
   const [randomPlayerLoading, setRandomPlayerLoading] = useState(false);
   const [randomPlayerError, setRandomPlayerError] = useState("");
   const [dismissedError, setDismissedError] = useState("");
-  const [remainingClockMs, setRemainingClockMs] = useState(clockMinutes * 60_000);
-  const [clockExpired, setClockExpired] = useState(false);
   const [gamePaused, setGamePaused] = useState(true);
   const [sessionStarted, setSessionStarted] = useState(false);
 
@@ -429,6 +428,27 @@ export const PracticePage = () => {
     plyCount: 1,
     fallbackToEngine: true,
   });
+  const runningSide =
+    clockEnabled &&
+    !gamePaused &&
+    !gameFinished &&
+    !puzzleDraft &&
+    currentPly === moveList.length &&
+    !navigation &&
+    (currentTurn === opponentSide || (status === "ready" && !pendingAutoMove && !databaseExhausted))
+      ? currentTurn
+      : null;
+  const {
+    remaining: remainingClockMs,
+    expired: expiredSide,
+    reset: resetClocks,
+    addIncrement: addPracticeIncrement,
+  } = usePracticeClocks(clockMinutes, clockIncrementSeconds, runningSide);
+  const clockExpired = expiredSide !== null;
+  const material = useMemo(() => materialCountFromFen(analysisFen), [analysisFen]);
+  useEffect(() => {
+    if (expiredSide) setGamePaused(true);
+  }, [expiredSide]);
   const popupError =
     (status === "error" ? "Could not load database moves. Try again." : "") ||
     (engineMoveAnalysis.status === "error" ? engineMoveAnalysis.error : "") ||
@@ -536,64 +556,11 @@ export const PracticePage = () => {
 
   const resetPracticeClock = useCallback(
     (minutes = clockMinutes, pauseGame = true): void => {
-      const nextMilliseconds = minutes * 60_000;
-      remainingClockMsRef.current = nextMilliseconds;
-      setRemainingClockMs((current) =>
-        Math.ceil(current / 1000) === Math.ceil(nextMilliseconds / 1000) && nextMilliseconds > 0
-          ? current
-          : nextMilliseconds,
-      );
-      setClockExpired(nextMilliseconds <= 0);
+      resetClocks(minutes);
       if (pauseGame) setGamePaused(true);
     },
-    [clockMinutes],
+    [clockMinutes, resetClocks],
   );
-
-  const addPracticeIncrement = useCallback((): void => {
-    if (clockExpired) return;
-    const nextMilliseconds = remainingClockMsRef.current + clockIncrementSeconds * 1000;
-    remainingClockMsRef.current = nextMilliseconds;
-    setRemainingClockMs(nextMilliseconds);
-  }, [clockExpired, clockIncrementSeconds]);
-
-  const clockRunning =
-    clockEnabled &&
-    !clockExpired &&
-    !gamePaused &&
-    status === "ready" &&
-    currentTurn === side &&
-    currentPly === moveList.length &&
-    !navigation &&
-    !pendingAutoMove &&
-    !databaseExhausted;
-
-  useEffect(() => {
-    if (!clockRunning) return;
-
-    let lastTick = window.performance.now();
-    const updateClock = (): void => {
-      const now = window.performance.now();
-      const elapsed = now - lastTick;
-      lastTick = now;
-      const nextMilliseconds = Math.max(0, remainingClockMsRef.current - elapsed);
-      remainingClockMsRef.current = nextMilliseconds;
-      setRemainingClockMs((displayedMilliseconds) =>
-        Math.ceil(displayedMilliseconds / 1000) === Math.ceil(nextMilliseconds / 1000)
-          ? displayedMilliseconds
-          : nextMilliseconds,
-      );
-      if (nextMilliseconds <= 0) {
-        setClockExpired(true);
-        setGamePaused(true);
-      }
-    };
-    const interval = window.setInterval(updateClock, 250);
-
-    return () => {
-      updateClock();
-      window.clearInterval(interval);
-    };
-  }, [clockRunning]);
 
   useEffect(() => {
     if (
@@ -691,22 +658,12 @@ export const PracticePage = () => {
 
   const playPracticeMove = useCallback(
     (uci: string): void => {
-      if (currentTurn === side && !gamePaused) addPracticeIncrement();
       clearAutoMoveState();
       setHoveredMoveUci(null);
       recordTriedMove(currentFen, uci);
       queueNavigation({ type: "play", uci });
     },
-    [
-      addPracticeIncrement,
-      currentFen,
-      currentTurn,
-      gamePaused,
-      queueNavigation,
-      recordTriedMove,
-      side,
-      clearAutoMoveState,
-    ],
+    [currentFen, queueNavigation, recordTriedMove, clearAutoMoveState],
   );
 
   const playAtomicDbLine = useCallback(
@@ -816,17 +773,19 @@ export const PracticePage = () => {
 
   const handleBoardStateChange = useCallback(
     (nextState: ChessboardState): void => {
+      const command = navigationRef.current;
       if (
-        navigationRef.current === null &&
-        boardState?.turn === side &&
-        nextState.turn === opponentSide &&
+        (!command || command.type === "play") &&
+        !gamePaused &&
+        clockEnabled &&
+        boardState?.turn &&
+        nextState.turn !== boardState.turn &&
         boardPly(nextState) > boardPly(boardState)
-      ) {
-        if (!gamePaused) addPracticeIncrement();
-      }
+      )
+        addPracticeIncrement(boardState.turn);
       setBoardState(nextState);
     },
-    [addPracticeIncrement, boardState, gamePaused, opponentSide, side],
+    [addPracticeIncrement, boardState, clockEnabled, gamePaused],
   );
 
   const handleNavigationHandled = useCallback((): void => {
@@ -1444,6 +1403,18 @@ export const PracticePage = () => {
     "--analysis-board-size": "min(516px, calc(100dvh - var(--nav-height) - 44px))",
   } as CSSProperties;
 
+  const boardStatus = (color: PracticeSide) => (
+    <BoardClock
+      color={color}
+      material={material}
+      rowRef={color === (puzzleDraft?.orientation ?? side) ? lowerClockRef : undefined}
+      value={clockEnabled ? formatClockTime(remainingClockMs[color]) : undefined}
+      ariaLabel={`${color === side ? "Your" : "Opponent"} clock: ${formatClockTime(remainingClockMs[color])}`}
+      active={runningSide === color && !clockExpired}
+      expired={expiredSide === color}
+    />
+  );
+
   return (
     <AnalysisWorkspaceLayout className="practicePage" style={pageStyle}>
       <Seo
@@ -1733,17 +1704,10 @@ export const PracticePage = () => {
             orientation={puzzleDraft?.orientation ?? side}
           />
         }
+        boardBefore={boardStatus(oppositeSide(puzzleDraft?.orientation ?? side))}
         boardAfter={
           <>
-            {clockEnabled ? (
-              <BoardClock
-                rowRef={lowerClockRef}
-                value={formatClockTime(remainingClockMs)}
-                ariaLabel={`Your clock: ${formatClockTime(remainingClockMs)}`}
-                active={clockRunning}
-                expired={clockExpired}
-              />
-            ) : null}
+            {boardStatus(puzzleDraft?.orientation ?? side)}
             <ShareExportPanel
               className="practiceShareExport"
               title="Share & export"

@@ -4,6 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: var(--space-2);
 }
 
 .boardClock {
@@ -25,9 +26,6 @@
   display: flex;
   align-items: center;
   min-inline-size: 0;
-  /* The clock remains the only item that sets the row's height. */
-  block-size: 0;
-  margin-inline-end: var(--space-2);
 }
 
 .boardClockRow.active .boardClock {

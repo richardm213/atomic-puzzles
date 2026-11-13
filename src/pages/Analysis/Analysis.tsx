@@ -16,6 +16,7 @@ import { WOLFRANDOM_RANDOMIZED_PLIES } from "../../../shared/domain/gameAnalysis
 import { isApprovedPuzzleCreator } from "../../../shared/domain/puzzles/approvedPuzzleCreators";
 import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
+import { BoardClock } from "../../components/BoardClock/BoardClock";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
 import {
   isTextEntryTarget,
@@ -68,6 +69,7 @@ import {
   getBoardMoveState,
 } from "../../lib/analysis/boardState";
 import { readAnalysisHandoff } from "../../lib/analysis/handoff";
+import { gameClockAtPly } from "../../lib/archive/gameClock";
 import { type ArchiveGame, decodeGameResult } from "../../lib/archive/games";
 import { isAtomicTablebasePosition } from "../../lib/atomicTablebase/material";
 import { materialCountFromFen } from "../../lib/chess/materialCount";
@@ -96,11 +98,7 @@ import {
   type ExplorerRequestNavigation,
   fetchExplorerApiResponse,
 } from "../../utils/openingExplorer";
-import {
-  GameAnalysisHeader,
-  GameBoardClock,
-  GameMatchNavigation,
-} from "../Game/GameAnalysisHeader";
+import { GameAnalysisHeader, GameMatchNavigation } from "../Game/GameAnalysisHeader";
 import { GameComputerAnalysis, GameComputerAnalysisPlayers } from "../Game/GameComputerAnalysis";
 import { GameUnderboard, type GameUnderboardTab } from "../Game/GameUnderboard";
 
@@ -565,10 +563,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     moveList,
     terminalOutcome,
   } = getBoardMoveState(boardState, rootFen);
-  const gameMaterial = useMemo(
-    () => materialCountFromFen(game ? currentFen : null),
-    [game, currentFen],
-  );
+  const material = useMemo(() => materialCountFromFen(currentFen), [currentFen]);
   const gameAnalysis = useGameAnalysis(game, gameRootFen, auth.user?.username ?? "");
   const positionAnalysisEnabled =
     atomicDbEngineSettings.enabled && (!game || gameComputerAnalysisEnabled);
@@ -689,7 +684,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     rightPanelRef,
     boardPanelRef,
     lowerClockRef,
-    Boolean(game),
+    true,
   );
   const {
     movePanelHeight,
@@ -1301,6 +1296,16 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
     keyboardShortcuts,
   ]);
 
+  const boardStatus = (color: "white" | "black") => (
+    <BoardClock
+      color={color}
+      material={material}
+      rowRef={color === orientation ? lowerClockRef : undefined}
+      {...(game
+        ? gameClockAtPly(game, puzzleDraft ? boardPly(gameBoardState) : currentPly, color)
+        : {})}
+    />
+  );
   const continuationChoices = (
     <AnalysisContinuationChoices
       lines={analysisLines}
@@ -1796,27 +1801,8 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
               }
             : undefined
         }
-        boardBefore={
-          game ? (
-            <GameBoardClock
-              game={game}
-              material={gameMaterial}
-              currentPly={puzzleDraft ? boardPly(gameBoardState) : currentPly}
-              color={orientation === "white" ? "black" : "white"}
-            />
-          ) : null
-        }
-        boardAfter={
-          game ? (
-            <GameBoardClock
-              game={game}
-              material={gameMaterial}
-              currentPly={puzzleDraft ? boardPly(gameBoardState) : currentPly}
-              color={orientation === "white" ? "white" : "black"}
-              rowRef={lowerClockRef}
-            />
-          ) : null
-        }
+        boardBefore={boardStatus(orientation === "white" ? "black" : "white")}
+        boardAfter={boardStatus(orientation)}
         boardOverlay={
           <>
             <AtomicDbEvalBar

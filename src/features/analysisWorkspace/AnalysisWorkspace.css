@@ -1572,11 +1572,25 @@ button.analysisLichessLink {
     display: contents;
   }
 
+  .analysisBoardColumn > .boardClockRow {
+    grid-column: 1;
+    justify-self: center;
+    width: min(100%, var(--analysis-board-size, 520px));
+  }
+
+  .analysisBoardColumn > .boardClockRow:first-child {
+    order: -4;
+  }
+
+  .analysisBoardColumn > .boardClockRow:nth-child(3) {
+    order: -2;
+  }
+
   .analysisBoardPanel {
     --analysis-eval-bar-gutter: 20px;
     grid-column: 1;
     grid-row: auto;
-    order: -1;
+    order: -3;
     justify-self: center;
     width: min(
       calc(100% - var(--analysis-eval-bar-gutter)),

@@ -2,49 +2,18 @@ import { faArrowLeft, faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import type { Ref } from "react";
 
-import { BoardClock } from "../../components/BoardClock/BoardClock";
 import { lichessIcons } from "../../components/PlayerHoverCard/lichessIcons";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { modeLabels } from "../../constants/matches";
 import { useBoardItemShortcuts } from "../../hooks/useBoardItemShortcuts";
 import type { ArchiveGame } from "../../lib/archive/games";
 import { decodeGameResult } from "../../lib/archive/games";
-import type { MaterialCount } from "../../lib/chess/materialCount";
 import { gameTerminationLabel } from "../../lib/games/termination";
 import { loadRawMatchById } from "../../lib/matches/data";
 import { buildExternalGameUrl } from "../../lib/matches/routes";
 import { getTournamentMatchLocation, getTournamentRouteId } from "../../lib/matches/tournaments";
 import { formatLocalDateTime } from "../../utils/formatters";
-
-const initialClock = (timeControl: string): number | null => {
-  const minutes = Number(timeControl.split("+")[0]);
-  return Number.isFinite(minutes) && minutes >= 0 ? minutes * 60_000 : null;
-};
-
-const clockAtPly = (
-  clocks: number[] | null,
-  currentPly: number,
-  side: 0 | 1,
-  fallback: number | null,
-): number | null => {
-  if (!clocks || currentPly <= side) return fallback;
-  const lastIndex = Math.min(currentPly - 1, clocks.length - 1);
-  const index = lastIndex - ((lastIndex - side + 2) % 2);
-  return index >= 0 ? (clocks[index] ?? null) : null;
-};
-
-const formatClock = (milliseconds: number | null): string => {
-  if (milliseconds === null) return "—";
-  const totalTenths = Math.max(0, Math.round(milliseconds / 100));
-  const minutes = Math.floor(totalTenths / 600);
-  const seconds = Math.floor((totalTenths % 600) / 10);
-  const tenths = totalTenths % 10;
-  return minutes > 0
-    ? `${minutes}:${String(seconds).padStart(2, "0")}`
-    : `00:${String(seconds).padStart(2, "0")}.${tenths}`;
-};
 
 const ratingForPlayer = (game: ArchiveGame, username: string) =>
   username === game.player_1
@@ -85,41 +54,6 @@ const PlayerRating = ({ game, username }: { game: ArchiveGame; username: string 
         </span>
       ) : null}
     </span>
-  );
-};
-
-export const GameBoardClock = ({
-  game,
-  currentPly,
-  color,
-  material,
-  rowRef,
-}: {
-  game: ArchiveGame;
-  currentPly: number;
-  color: "white" | "black";
-  material: MaterialCount;
-  rowRef?: Ref<HTMLDivElement> | undefined;
-}) => {
-  const { white, black } = decodeGameResult(game);
-  const startingClock = initialClock(game.time_control);
-  const whiteClock = clockAtPly(game.clocks, currentPly, 0, startingClock);
-  const blackClock = clockAtPly(game.clocks, currentPly, 1, startingClock);
-  const username = color === "white" ? white : black;
-  const clock = color === "white" ? whiteClock : blackClock;
-  const active = (currentPly % 2 === 0 ? "white" : "black") === color;
-
-  return (
-    <BoardClock
-      rowRef={rowRef}
-      value={formatClock(clock)}
-      ariaLabel={`${username} clock, ${active ? "to move" : "waiting"}`}
-      active={active}
-      material={{
-        side: color,
-        pieces: color === "white" ? material.whitePieces : material.blackPieces,
-      }}
-    />
   );
 };
 
