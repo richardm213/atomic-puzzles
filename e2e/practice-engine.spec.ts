@@ -168,9 +168,13 @@ test("practice keeps its PGN and position when creating puzzles or changing oppo
   await expect(pgn).not.toHaveValue(/\be4\b|\bd4\b/);
 });
 
-test("analysis and practice share material rows, with both practice clocks", async ({ page }) => {
+test("analysis and practice share default sizing and material rows, with both practice clocks", async ({
+  page,
+}) => {
+  let analysisSize: { board: number; controls: number } | undefined;
   const fen = "4k2r/8/8/8/8/8/PP6/1Q2K3 w - - 0 1";
   for (const route of ["/analysis", "/practice"]) {
+    await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto(route);
     const input = page.getByRole("textbox", { name: "FEN", exact: true });
     await input.fill(fen);
@@ -181,6 +185,17 @@ test("analysis and practice share material rows, with both practice clocks", asy
     await expect(
       page.getByRole("img", { name: "Black material difference: rook", exact: true }),
     ).toBeVisible();
+    const dimensions = await page.evaluate(() => ({
+      board: document.querySelector("cg-board")!.getBoundingClientRect().width,
+      controls: document
+        .querySelector(".analysisRightPanel, .practicePanel")!
+        .getBoundingClientRect().width,
+    }));
+    if (route === "/analysis") analysisSize = dimensions;
+    else {
+      expect(dimensions.board).toBeCloseTo(analysisSize!.board, 0);
+      expect(dimensions.controls).toBeCloseTo(analysisSize!.controls, 0);
+    }
     if (route === "/practice") {
       await expect(page.getByLabel("Your clock: 3:00", { exact: true })).toBeVisible();
       await expect(page.getByLabel("Opponent clock: 3:00", { exact: true })).toBeVisible();

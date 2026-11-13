@@ -23,6 +23,7 @@ import {
   type AnnotationMenuPosition,
   annotationMenuPosition,
   MoveAnnotationMenu,
+  type MoveMenuAction,
 } from "../MoveAnnotationMenu/MoveAnnotationMenu";
 import {
   activeLineIndex,
@@ -146,6 +147,7 @@ export const AnalysisMoveTree = ({
   onCycleOptions,
   onAnnotate,
   onDelete,
+  moveActions,
   assessments = [],
   initialFen,
 }: {
@@ -162,6 +164,7 @@ export const AnalysisMoveTree = ({
   onCycleOptions?: CycleOptions | undefined;
   onAnnotate?: ((lineIndex: number, moveIndex: number, annotation: string) => void) | undefined;
   onDelete?: ((lineIndex: number, moveIndex: number) => void) | undefined;
+  moveActions?: ((lineIndex: number, moveIndex: number) => MoveMenuAction[]) | undefined;
   assessments?: GameMoveAssessment[] | undefined;
   initialFen?: string | undefined;
 }) => {
@@ -219,7 +222,7 @@ export const AnalysisMoveTree = ({
           onSelect(targetLine, ply);
         }}
         onContextMenu={
-          onAnnotate || onDelete
+          onAnnotate || onDelete || moveActions
             ? (event) => {
                 event.preventDefault();
                 setAnnotationTarget({
@@ -231,7 +234,7 @@ export const AnalysisMoveTree = ({
               }
             : undefined
         }
-        title={onAnnotate || onDelete ? "Right-click to edit move" : undefined}
+        title={onAnnotate || onDelete || moveActions ? "Right-click to edit move" : undefined}
       >
         {prefix ? <span className="analysisTreeMoveNumber">{prefix.trim()}</span> : null}
         {formatSolutionMove(node.move ?? "")}
@@ -323,10 +326,11 @@ export const AnalysisMoveTree = ({
           onCycleOptions={onCycleOptions}
         />
       )}
-      {annotationTarget && (onAnnotate || onDelete) ? (
+      {annotationTarget && (onAnnotate || onDelete || moveActions) ? (
         <MoveAnnotationMenu
           position={annotationTarget.position}
           current={annotationTarget.current}
+          actions={moveActions?.(annotationTarget.lineIndex, annotationTarget.moveIndex)}
           onClose={closeAnnotationMenu}
           onSelect={
             onAnnotate

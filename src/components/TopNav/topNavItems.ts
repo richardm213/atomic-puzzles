@@ -216,12 +216,18 @@ export const navItems: NavItem[] = [
   {
     to: "/analysis",
     label: "Analysis",
-    isActive: (pathname) => pathname === "/analysis" || pathname === "/practice",
+    isActive: (pathname) =>
+      pathname === "/analysis" || pathname === "/practice" || pathname === "/openings",
     children: [
       {
         to: "/analysis",
         label: "Analysis board",
         isActive: (pathname) => pathname === "/analysis",
+      },
+      {
+        to: "/openings",
+        label: "Openings",
+        isActive: (pathname) => pathname === "/openings",
       },
       {
         to: "/practice",

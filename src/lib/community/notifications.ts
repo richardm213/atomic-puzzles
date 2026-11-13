@@ -86,6 +86,16 @@ export const isCommentMentionNotification = (notification: UserNotification): bo
 export const notificationCategory = (notification: UserNotification): string => {
   if (
     notification.notification_type === "feature" &&
+    notification.feature_key?.startsWith("opening-update:")
+  )
+    return "Opening update";
+  if (
+    notification.notification_type === "feature" &&
+    notification.feature_key?.startsWith("opening-sale:")
+  )
+    return "Opening sale";
+  if (
+    notification.notification_type === "feature" &&
     notification.feature_key?.startsWith("coin-fine:")
   )
     return "Fine";

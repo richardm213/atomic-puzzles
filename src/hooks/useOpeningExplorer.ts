@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 
 import type {
   OpeningDatabaseGame,
@@ -65,7 +65,12 @@ export const useOpeningExplorer = ({
   const cacheRef = useRef(new Map<string, { result: OpeningExplorerRequest; expiresAt: number }>());
   const lastChangeAtRef = useRef<number | null>(null);
   const navigationRef = useRef<ExplorerRequestNavigation | null>(null);
-  const [state, setState] = useState<OpeningExplorerState>(() => emptyState("idle"));
+  const requestKey = JSON.stringify([cacheKey ?? fen, fen, playerColor, showPerformance]);
+  const [stored, setStored] = useState(() => ({ key: requestKey, value: emptyState("idle") }));
+  const setState = useCallback(
+    (value: OpeningExplorerState) => setStored({ key: requestKey, value }),
+    [requestKey],
+  );
 
   useEffect(() => {
     if (!enabled) {
@@ -164,7 +169,14 @@ export const useOpeningExplorer = ({
     showPerformance,
     timeoutMessage,
     timeoutMs,
+    setState,
   ]);
 
-  return state;
+  // Consumers may schedule moves in their effects before our fetch effect clears the old result.
+  // Never expose a ready result for a different position or set of filters during that render.
+  return !enabled
+    ? emptyState("idle")
+    : stored.key === requestKey
+      ? stored.value
+      : emptyState("loading");
 };

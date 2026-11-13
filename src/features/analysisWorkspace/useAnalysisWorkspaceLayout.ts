@@ -4,6 +4,18 @@ import { z } from "zod";
 
 import { usePersistedState } from "../../hooks/usePersistedState";
 
+export const useWorkspaceViewport = () => {
+  const [width, setWidth] = useState(() =>
+    typeof window === "undefined" ? 1440 : window.innerWidth,
+  );
+  useEffect(() => {
+    const resize = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, []);
+  return { width, stacked: width <= 560 };
+};
+
 type PanelRef = RefObject<HTMLElement | null>;
 
 export const useBoardAlignedPanelHeight = (

@@ -1,0 +1,384 @@
+.page.openingPage {
+  max-width: 1920px;
+  width: min(1920px, 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-5);
+}
+.openingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.openingNewForm,
+.openingControlPanel {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.openingNewForm {
+  margin-top: var(--space-4);
+}
+.openingWorkspace {
+  min-width: 0;
+}
+.openingControlPanel {
+  padding: var(--space-4);
+}
+.openingConfirm label {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.openingConfirm input,
+.openingConfirm select,
+.openingConfirm textarea {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-2);
+  color: var(--color-text);
+  background: var(--color-panel-deep);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+.openingConfirm textarea {
+  width: 100%;
+  min-height: 70px;
+  resize: vertical;
+}
+.openingUnderboard button,
+.openingConfirm button {
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: var(--color-panel);
+  cursor: pointer;
+  font: inherit;
+}
+:where(.openingUnderboard, .openingConfirm) button:hover:not(:disabled),
+:where(.openingUnderboard, .openingConfirm) button[aria-pressed="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+:where(.openingUnderboard, .openingConfirm) button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.openingPage :focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.openingActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.openingPage .openingCheck {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.openingConfirm fieldset {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.openingUnderboard p,
+.openingConfirm p {
+  margin: 0;
+  line-height: 1.5;
+}
+.openingConfirm small {
+  color: var(--color-muted);
+}
+.openingUpdateNotice {
+  display: grid;
+  gap: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4);
+}
+.openingConfirm {
+  width: min(440px, calc(100vw - 32px));
+  padding: var(--space-5);
+  color: var(--color-text);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+.openingConfirm::backdrop {
+  background: color-mix(in srgb, var(--color-panel-deep) 75%, transparent);
+}
+.openingConfirm .openingActions {
+  margin-top: var(--space-4);
+}
+.openingCatalog {
+  display: grid;
+  gap: var(--space-4);
+  grid-column: 1 / -1;
+}
+.openingCatalog article {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.openingCatalog h3,
+.openingCatalog p {
+  margin: 0;
+}
+@media (max-width: 760px) {
+  .openingUnderboard button,
+  .openingConfirm button,
+  .openingConfirm input,
+  .openingConfirm select {
+    min-height: 44px;
+  }
+  .openingPage {
+    font-size: 16px;
+  }
+}
+
+.openingCatalog .openingActions > button {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.openingTabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+.openingTabContent {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.openingSelectedLine {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+  align-items: end;
+}
+
+.openingPage .embeddedAnalysisWorkspace {
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+}
+.openingUnderboard {
+  width: 100%;
+  display: grid;
+  gap: var(--space-3);
+}
+.openingSettingsDialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: 85dvh;
+  overflow: auto;
+}
+.openingSettingsDialog .openingControlPanel {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: var(--space-4) 0 0;
+}
+
+.openingTreeFilter {
+  padding: var(--space-2) var(--space-3);
+}
+@media (max-width: 560px) {
+  .embeddedAnalysisWorkspace .openingUnderboard {
+    grid-column: 1;
+    order: -2;
+  }
+}
+.openingRepertoire {
+  --opening-move-lightness: 75%;
+
+  height: 100%;
+  min-width: 0;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow: hidden;
+}
+.openingTreeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.openingTreeHeader > div {
+  display: flex;
+  gap: var(--space-1);
+}
+.openingTreeScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.openingTree,
+.openingTree ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.openingTree ul {
+  margin-inline-start: 9px;
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--color-border);
+}
+.openingTreeRow {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 3px;
+  min-height: 26px;
+}
+.openingTree ul > li > .openingTreeRow::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: -12px;
+  width: 12px;
+  top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+.openingTreeToggle,
+.openingTreeLeaf {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+}
+.openingTreeToggle {
+  margin-block-start: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  background: var(--color-panel-deep);
+  color: var(--color-muted);
+  padding: 0;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+.openingTreeMove {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  cursor: pointer;
+}
+:root[data-theme="light"] .openingRepertoire {
+  --opening-move-lightness: 48%;
+}
+.openingTreeMove[data-kind="tertiary"]:not(.active):not(:hover) {
+  color: oklch(var(--opening-move-lightness) var(--opening-chroma, 0.125) var(--opening-hue-2));
+}
+.openingTreeMove[data-kind="mate"]:not(.active):not(:hover) {
+  color: oklch(var(--opening-move-lightness) var(--opening-chroma, 0.125) var(--opening-hue-7));
+}
+.openingTreeNumber {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+  margin-inline-end: 0;
+}
+.embeddedAnalysisWorkspace .atomicDbHeaderControls {
+  flex-wrap: wrap;
+}
+.embeddedAnalysisWorkspace .atomicDbBeforeSettings {
+  gap: 4px;
+}
+@media (max-width: 979px) {
+  .openingTreeScroll {
+    max-height: 320px;
+  }
+}
+@media (max-width: 560px) {
+  .openingTreeToggle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .openingTreeMove {
+    min-height: 44px;
+  }
+}
+
+.openingTreeHeader .analysisExplorerTabs {
+  width: 100%;
+}
+.openingTreeHeader .analysisExplorerTabs button {
+  width: auto;
+  flex: 1;
+  min-height: 36px;
+}
+.openingLibrary {
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.openingLibraryActions {
+  display: flex;
+  justify-content: flex-end;
+}
+.openingLibrary nav {
+  display: grid;
+  gap: var(--space-2);
+}
+.openingLibrary nav a {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--color-text);
+}
+.openingLibrary nav a[aria-current="page"] {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+.openingLibraryEmpty {
+  max-width: 420px;
+}
+.openingLibraryActions .openingAddButton {
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 24px;
+  background: var(--color-panel-deep);
+  color: var(--color-text);
+}
+.openingRepertoire > .openingLibrary {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.openingTreeMoves {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 4px;
+  row-gap: 2px;
+  min-width: 0;
+}
+.openingTreeToken {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.openingTreeMove[data-known="true"]:not(.active):not(:hover) {
+  color: var(--color-primary);
+}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { type AtomicDbResult, parseAtomicDbResponse } from "./atomicDb";
-import { selectSpacebarMove } from "./boardMoveSelection";
+import { chooseDatabaseMove, selectSpacebarMove } from "./boardMoveSelection";
 
 const FEN = "8/8/8/8/8/8/8/K6k w - - 0 1";
 const engineResult: AtomicDbResult = {
@@ -71,4 +71,19 @@ describe("selectSpacebarMove", () => {
       }),
     ).toBeNull();
   });
+});
+
+it("shares database selection across practice and repertoire building", () => {
+  expect(chooseDatabaseMove(databaseMoves, "popular")?.uci).toBe("a1b1");
+  expect(chooseDatabaseMove(databaseMoves, "random", () => 0)?.uci).toBe("a1a2");
+  expect(chooseDatabaseMove(databaseMoves, "frequency", () => 0.6)?.uci).toBe("a1b1");
+  expect(chooseDatabaseMove(databaseMoves, "frequency", () => 0.99)?.uci).toBe("a1b2");
+  expect(
+    chooseDatabaseMove(
+      databaseMoves.map((move) => ({ ...move, games: 0 })),
+      "frequency",
+      () => 0.99,
+    )?.uci,
+  ).toBe("a1b2");
+  expect(chooseDatabaseMove([], "frequency")).toBeNull();
 });

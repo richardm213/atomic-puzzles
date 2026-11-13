@@ -1,6 +1,7 @@
 import type { GameMoveAssessment } from "../../lib/gameAnalysis/gameAnalysis";
 import type { PlaybackCommand } from "../../types/chessboard";
 import { AnalysisMoveTree, type PreviousMove } from "../AnalysisMoveTree/AnalysisMoveTree";
+import type { MoveMenuAction } from "../MoveAnnotationMenu/MoveAnnotationMenu";
 import { PlayedMoves } from "../PlayedMoves/PlayedMoves";
 
 export const MoveNotation = ({
@@ -18,6 +19,7 @@ export const MoveNotation = ({
   onCycleOptions,
   onAnnotate,
   onDelete,
+  moveActions,
   assessments,
   initialFen,
 }: {
@@ -37,6 +39,7 @@ export const MoveNotation = ({
   onAnnotate?:
     ((lineIndex: number | undefined, moveIndex: number, annotation: string) => void) | undefined;
   onDelete?: ((lineIndex: number, moveIndex: number) => void) | undefined;
+  moveActions?: ((lineIndex: number, moveIndex: number) => MoveMenuAction[]) | undefined;
   assessments?: GameMoveAssessment[] | undefined;
   initialFen?: string | undefined;
 }) => {
@@ -44,7 +47,7 @@ export const MoveNotation = ({
     return <div className="analysisTree" aria-hidden="true" />;
   }
 
-  if (!inline && !previousMove && lines.length <= 1 && initialPly === 0) {
+  if (!moveActions && !inline && !previousMove && lines.length <= 1 && initialPly === 0) {
     const mainline = lines[0] ?? moves;
     return (
       <PlayedMoves
@@ -84,6 +87,7 @@ export const MoveNotation = ({
       assessments={assessments}
       initialFen={initialFen}
       onDelete={onDelete}
+      moveActions={moveActions}
       onAnnotate={onAnnotate}
     />
   );

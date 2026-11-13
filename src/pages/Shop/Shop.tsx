@@ -36,11 +36,12 @@ import {
 } from "../../lib/coins/coins";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { getErrorMessage } from "../../utils/errors";
+import { OpeningCatalog } from "../Openings/OpeningCatalog";
 
 const COIN_PRICE_IMAGE = "/images/coins/gold-coin-stack-v2.png";
 const BAG_PRICE_IMAGE = "/images/coins/gold-coin-sack.png";
 
-type ShopCategory = "all" | "discord" | "lichess" | "site";
+type ShopCategory = "all" | "discord" | "lichess" | "site" | "openings";
 
 type ShopItemIcon =
   | { kind: "fontawesome"; icon: IconDefinition }
@@ -135,6 +136,7 @@ const shopCategories: { key: ShopCategory; label: string; icon: ShopItemIcon }[]
   { key: "discord", label: "Discord", icon: { kind: "fontawesome", icon: faDiscord } },
   { key: "lichess", label: "Lichess", icon: { kind: "lichess" } },
   { key: "site", label: "Site", icon: { kind: "fontawesome", icon: faGlobe } },
+  { key: "openings", label: "Openings", icon: { kind: "fontawesome", icon: faBorderAll } },
 ];
 
 const ShopItemIcon = ({ icon }: { icon: ShopItemIcon }) => {
@@ -465,9 +467,7 @@ export const ShopPage = () => {
               </div>
             </div>
             <div className="dailyCoinPanel">
-              {summary.data?.dailyClaimAvailable === false ? (
-                <p>Next in {dailyCountdown}</p>
-              ) : null}
+              {summary.data?.dailyClaimAvailable === false ? <p>Next in {dailyCountdown}</p> : null}
               <button
                 className={`dailyClaimButton ${
                   summary.data?.dailyClaimAvailable === false ? "claimed" : ""
@@ -527,6 +527,7 @@ export const ShopPage = () => {
               </div>
             </div>
             <div className="shopItems">
+              {category === "all" || category === "openings" ? <OpeningCatalog /> : null}
               {shopItems
                 .filter(
                   (item) =>

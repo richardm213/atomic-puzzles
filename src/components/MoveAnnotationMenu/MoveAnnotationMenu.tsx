@@ -20,18 +20,22 @@ export const annotationMenuPosition = (
   };
 };
 
+export type MoveMenuAction = { label: string; checked?: boolean; onSelect: () => void };
+
 export const MoveAnnotationMenu = ({
   position,
   current,
   onSelect,
   onDelete,
   onClose,
+  actions,
 }: {
   position: AnnotationMenuPosition;
   current: string;
   onSelect?: ((annotation: string) => void) | undefined;
   onDelete?: (() => void) | undefined;
   onClose: () => void;
+  actions?: MoveMenuAction[] | undefined;
 }) => {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [coordinates, setCoordinates] = useState({ left: position.left, top: position.bottom + 6 });
@@ -78,6 +82,21 @@ export const MoveAnnotationMenu = ({
       aria-label="Move annotation"
       style={coordinates}
     >
+      {actions?.map((action) => (
+        <button
+          key={action.label}
+          type="button"
+          role="menuitemcheckbox"
+          aria-checked={action.checked ?? false}
+          className="moveAnnotationAction"
+          onClick={() => {
+            action.onSelect();
+            onClose();
+          }}
+        >
+          {action.label}
+        </button>
+      ))}
       {onSelect
         ? MOVE_ANNOTATIONS.map((annotation) => {
             const checked = current === annotation;

@@ -62,3 +62,9 @@
     min-height: 44px;
   }
 }
+
+.moveAnnotationMenu .moveAnnotationAction {
+  width: auto;
+  padding-inline: 10px;
+  white-space: nowrap;
+}

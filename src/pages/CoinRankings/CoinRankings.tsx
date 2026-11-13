@@ -65,6 +65,9 @@ const reasonCategory: Record<CoinTransactionReason, TransactionCategory> = {
   prediction_market_payout: "bets",
   prediction_liquidity_funding: "bets",
   game_analysis: "game-analysis",
+  opening_publish: "purchases",
+  opening_purchase: "purchases",
+  opening_sale: "purchases",
 };
 
 const selectedReasonsFor = (categories: TransactionCategory[]) =>
@@ -137,6 +140,12 @@ const transactionDescription = (transaction: CoinTransaction) => {
       ? `Refunded ${shopItemLabels[itemKey] ?? "a shop item"}`
       : `Purchased ${shopItemLabels[itemKey] ?? "a shop item"}`;
   }
+  if (transaction.reason === "opening_publish")
+    return `Published opening · ${metadataString(transaction, "title")}`;
+  if (transaction.reason === "opening_purchase")
+    return `Purchased opening · ${metadataString(transaction, "title")}`;
+  if (transaction.reason === "opening_sale")
+    return `Opening sale · ${metadataString(transaction, "title")}`;
   if (transaction.reason === "game_analysis") {
     const gameId = metadataString(transaction, "gameId");
     return transaction.amount > 0

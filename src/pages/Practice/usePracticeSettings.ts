@@ -6,6 +6,7 @@ import {
   normalizePracticeEngineSettings,
   type PracticeEngineSettings,
 } from "../../lib/practice/engineSettings";
+import { DEFAULT_PRACTICE_MOVE_SETTINGS } from "../../lib/practice/moveSource";
 
 const PRACTICE_SETTINGS_STORAGE_KEY = "atomic-puzzles.practice.settings";
 export const MAX_PRACTICE_PLAYERS = 8;
@@ -34,13 +35,11 @@ type StoredPracticeSettings = {
 };
 
 const DEFAULT_SETTINGS: StoredPracticeSettings = {
-  engine: normalizePracticeEngineSettings(null),
+  ...DEFAULT_PRACTICE_MOVE_SETTINGS,
   side: "white",
-  opponentMode: "frequency",
   opponentSource: "general",
   opponentUsernames: [],
   allowMultiplePlayers: false,
-  playerContinuation: "engine",
   showPerformance: false,
   clockMinutes: DEFAULT_CLOCK_MINUTES,
   clockIncrementSeconds: DEFAULT_CLOCK_INCREMENT_SECONDS,

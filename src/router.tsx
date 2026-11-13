@@ -43,6 +43,7 @@ const PredictionMarketPage = lazyRouteComponent(
   () => import("./pages/PredictionMarket/PredictionMarket"),
   "PredictionMarketPage",
 );
+const OpeningsPage = lazyRouteComponent(() => import("./pages/Openings/Openings"), "OpeningsPage");
 const AnalysisPage = lazyRouteComponent(() => import("./pages/Analysis/Analysis"), "AnalysisPage");
 const GamePage = lazyRouteComponent(() => import("./pages/Game/GamePage"), "GamePage");
 const AchievementsPage = lazyRouteComponent(
@@ -368,6 +369,14 @@ const legacyGameRoute = createRoute({
   beforeLoad: ({ params }) => {
     throw redirect({ to: "/game/$gameId", params: { gameId: params.gameId } });
   },
+});
+
+const openingPracticeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/openings",
+  validateSearch: (search: Record<string, unknown>): { opening?: string } =>
+    typeof search.opening === "string" ? { opening: search.opening } : {},
+  component: OpeningsPage,
 });
 
 const practiceRoute = createRoute({
@@ -919,6 +928,7 @@ const routeTree = rootRoute.addChildren([
   gameRoute,
   legacyGameRoute,
   practiceRoute,
+  openingPracticeRoute,
   endgamePracticeRoute,
   recentRoute,
   tournamentsRoute,

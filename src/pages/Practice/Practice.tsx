@@ -2,12 +2,8 @@ import "./Practice.css";
 
 import {
   faBookOpen,
-  faDice,
-  faPause,
-  faPlay,
   faRobot,
   faRotateLeft,
-  faShuffle,
   faTriangleExclamation,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -30,6 +26,7 @@ import {
 import { buildPgnHistory } from "../../components/Chessboard/pgnHistory";
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import type { OpeningDatabaseMove } from "../../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
+import { PracticeMoveButtons } from "../../components/PracticeMoveButtons/PracticeMoveButtons";
 import { Seo } from "../../components/Seo/Seo";
 import { ShareExportPanel } from "../../components/ShareExportPanel/ShareExportPanel";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
@@ -55,13 +52,15 @@ import {
 import {
   useBoardAlignedPanelHeight,
   useOpeningExplorerSplit,
+  useWorkspaceViewport,
 } from "../../features/analysisWorkspace/useAnalysisWorkspaceLayout";
+import { analysisBoardStyle } from "../../features/analysisWorkspace/workspaceSizing";
 import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
-import { type OpeningExplorerRequest, useOpeningExplorer } from "../../hooks/useOpeningExplorer";
+import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { readPersistedState, usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { buildBoardLoadNavigation } from "../../lib/analysis/boardLoading";
@@ -70,19 +69,22 @@ import {
   boardLineNavigation,
   getBoardMoveState,
 } from "../../lib/analysis/boardState";
-import { apiRequest } from "../../lib/api/postApi";
 import { materialCountFromFen } from "../../lib/chess/materialCount";
 import { keyboardShortcutAction, keyboardShortcutHint } from "../../lib/keyboardShortcuts";
 import { choosePracticeEngineMove } from "../../lib/practice/engineSelection";
 import {
   handoffApplies,
-  PRACTICE_SEARCH_LIMITS,
   type PracticeHandoff,
   shouldUsePracticeEngine,
 } from "../../lib/practice/engineSettings";
+import {
+  fetchPracticeExplorerResponse,
+  fetchRandomPracticePlayer,
+  PRACTICE_AUTOMOVE_MIN_THINK_MS,
+  practiceEngineSearchOptions,
+} from "../../lib/practice/moveSource";
 import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
 import { serializeSanLinesToPgn, startingPlyFromFen } from "../../lib/puzzles/solutionPgn";
-import { atomicLegalMoveCount } from "../../lib/puzzles/solutionPgn";
 import {
   boardPly,
   type ChessboardState,
@@ -90,16 +92,11 @@ import {
   type SolutionNavigation,
 } from "../../types/chessboard";
 import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
-import { selectSpacebarMove } from "../../utils/boardMoveSelection";
+import { chooseDatabaseMove, selectSpacebarMove } from "../../utils/boardMoveSelection";
 import { setBrowserStorageJson } from "../../utils/browserStorage";
 import { getErrorMessage } from "../../utils/errors";
 import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
-import {
-  buildOpeningExplorerUrl,
-  fetchExplorerApiResponse,
-  mergeExplorerApiResponses,
-} from "../../utils/openingExplorer";
 import { PracticeEngineSettings } from "./PracticeEngineSettings";
 import { practicePath, practiceRouteParam, practiceUsernamesFromRoute } from "./practiceRoutes";
 import { usePracticeClocks } from "./usePracticeClocks";
@@ -107,17 +104,10 @@ import {
   MAX_PRACTICE_PLAYERS,
   normalizeClockValue,
   normalizePracticeUsernames,
-  type OpponentMode,
-  type OpponentSource,
-  type PlayerContinuation,
   type PracticeSide,
   usePracticeSettings,
 } from "./usePracticeSettings";
 
-const randomOpeningPlayerSchema = z.object({ username: z.string().trim().min(1) });
-
-const PRACTICE_AUTOMOVE_MIN_THINK_MS = 240;
-const PLAYER_MIN_RATING = 1700;
 const MOVES_OPEN_STORAGE_KEY = "atomic-puzzles.practice.moves-open";
 const PRACTICE_BOARD_STORAGE_KEY = "atomic-puzzles.practice.board";
 const practiceBoardSchema = z.object({
@@ -153,88 +143,6 @@ const formatClockTime = (milliseconds: number): string => {
 };
 
 const oppositeSide = (side: PracticeSide): PracticeSide => (side === "white" ? "black" : "white");
-
-const fetchGeneralPracticeExplorerResponse = (fen: string, signal: AbortSignal) =>
-  fetchExplorerApiResponse(buildOpeningExplorerUrl({ fen, speeds: [0, 1] }), "practice", signal);
-
-const fetchPracticeExplorerResponse = async ({
-  fen,
-  opponentSource,
-  opponentUsernames,
-  opponentSide,
-  playerContinuation,
-  minGames,
-  signal,
-}: {
-  fen: string;
-  opponentSource: OpponentSource;
-  opponentUsernames: string[];
-  opponentSide: PracticeSide;
-  playerContinuation: PlayerContinuation;
-  minGames: number;
-  signal: AbortSignal;
-}): Promise<OpeningExplorerRequest> => {
-  if (opponentSource === "general") {
-    return {
-      response: await fetchGeneralPracticeExplorerResponse(fen, signal),
-    };
-  }
-
-  const playerResponse = await Promise.all(
-    opponentUsernames.map((opponentUsername) =>
-      fetchExplorerApiResponse(
-        buildOpeningExplorerUrl({
-          fen,
-          speeds: [0, 1],
-          username: opponentUsername,
-          color: opponentSide,
-          minRating: PLAYER_MIN_RATING,
-        }),
-        "practice",
-        signal,
-      ),
-    ),
-  ).then(mergeExplorerApiResponses);
-
-  if (
-    playerContinuation === "general" &&
-    playerResponse.moves.reduce((sum, move) => sum + move.games, 0) < minGames
-  ) {
-    return {
-      response: await fetchGeneralPracticeExplorerResponse(fen, signal),
-    };
-  }
-
-  return {
-    response: playerResponse,
-  };
-};
-
-const chooseOpponentMove = (moves: PracticeMove[], mode: OpponentMode): PracticeMove | null => {
-  const firstMove = moves[0];
-  if (!firstMove) return null;
-
-  if (mode === "popular") {
-    return moves.reduce((best, move) => (move.games > best.games ? move : best), firstMove);
-  }
-
-  if (mode === "random") {
-    return moves[Math.floor(Math.random() * moves.length)] ?? firstMove;
-  }
-
-  const totalGames = moves.reduce((total, move) => total + Math.max(0, move.games), 0);
-  if (totalGames <= 0) {
-    return moves[Math.floor(Math.random() * moves.length)] ?? firstMove;
-  }
-
-  let roll = Math.random() * totalGames;
-  for (const move of moves) {
-    roll -= Math.max(0, move.games);
-    if (roll <= 0) return move;
-  }
-
-  return moves.at(-1) ?? firstMove;
-};
 
 export const PracticePage = () => {
   const auth = useAuth();
@@ -456,22 +364,18 @@ export const PracticePage = () => {
   });
   const databaseExhausted = handoffActive || exhaustedFen === currentFen;
   const engineFallbackReady = databaseExhausted && (handoffActive || status === "ready");
-  const engineMoveLineCount = Math.min(64, Math.max(1, atomicLegalMoveCount(currentFen)));
-  const engineMoveAnalysis = useAtomicDbAnalysis(currentFen, {
-    enabled:
+  const engineMoveAnalysis = useAtomicDbAnalysis(
+    currentFen,
+    practiceEngineSearchOptions(
+      currentFen,
+      practiceEngine,
       engineFallbackReady &&
-      currentTurn === opponentSide &&
-      !gamePaused &&
-      navigation === null &&
-      lastAutoFenRef.current !== currentFen,
-    debounceMs: 0,
-    lineCount: engineMoveLineCount,
-    plyCount: 5,
-    fallbackToEngine: true,
-    candidateLimit: 64,
-    engineThinkTimeMs: practiceEngine.maxThinkTimeMs,
-    engineMaxDepth: PRACTICE_SEARCH_LIMITS[practiceEngine.speed - 1]!.depth,
-  });
+        currentTurn === opponentSide &&
+        !gamePaused &&
+        navigation === null &&
+        lastAutoFenRef.current !== currentFen,
+    ),
+  );
   const runningSide =
     clockEnabled &&
     !gamePaused &&
@@ -636,7 +540,7 @@ export const PracticePage = () => {
     const games = practiceMoves.reduce((sum, move) => sum + Math.max(0, move.games), 0);
     const autoMove = shouldUsePracticeEngine(games, practiceEngine.minGames)
       ? null
-      : chooseOpponentMove(getUntriedMoves(currentFen, practiceMoves), opponentMode);
+      : chooseDatabaseMove(getUntriedMoves(currentFen, practiceMoves), opponentMode);
     if (!autoMove) {
       // The selected player -> optional general database chain is complete. The shared AtomicDB
       // analysis path takes over from here and falls back to Atomic-Stockfish when necessary.
@@ -1066,12 +970,7 @@ export const PracticePage = () => {
     setRandomPlayerError("");
 
     try {
-      const data = await apiRequest("/api/opening-explorer?randomPlayer=1", {
-        errorMessage: "Could not select a random player",
-        invalidMessage: "No random player is available",
-        schema: randomOpeningPlayerSchema,
-        headers: { "X-Explorer-Intent": "visible" },
-      });
+      const data = await fetchRandomPracticePlayer();
       commitUsername(data.username);
     } catch (randomError) {
       setRandomPlayerError(getErrorMessage(randomError, "Could not select a random player"));
@@ -1488,10 +1387,8 @@ export const PracticePage = () => {
     </OpeningExplorerPanel>
   ) : null;
 
-  const pageStyle = {
-    "--analysis-board-size":
-      "var(--board-user-size, min(516px, calc(100dvh - var(--nav-height) - 44px)))",
-  } as CSSProperties;
+  const { width: viewportWidth } = useWorkspaceViewport();
+  const pageStyle = analysisBoardStyle(viewportWidth);
 
   const boardStatus = (color: PracticeSide) => (
     <BoardClock
@@ -1553,50 +1450,30 @@ export const PracticePage = () => {
             <strong>{totalGames ? `${formatGameCount(totalGames)} games` : "0 games"}</strong>
           </div>
 
-          <div className="practiceClockActions" role="group" aria-label="Practice controls">
-            <button
-              type="button"
-              onClick={toggleGamePaused}
-              disabled={!canRunPractice}
-              aria-label={
-                gamePaused ? (sessionStarted ? "Resume game" : "Start game") : "Pause game"
-              }
-              title={`${gamePaused ? "Start or resume game" : "Pause game"}${pauseShortcutHint ? ` (${pauseShortcutHint})` : ""}`}
-            >
-              <FontAwesomeIcon icon={gamePaused ? faPlay : faPause} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={restartPracticeGame}
-              disabled={Boolean(puzzleDraft)}
-              aria-label="Start over"
-              title="Start over from the initial position"
-            >
-              <FontAwesomeIcon icon={faRotateLeft} aria-hidden="true" />
-            </button>
-            <span className="practiceActionTooltip" data-tooltip="Practice random opponent">
+          <PracticeMoveButtons
+            paused={gamePaused}
+            onToggle={toggleGamePaused}
+            onRandom={() => void selectRandomPlayer()}
+            onDifferent={requestAlternateAutoMove}
+            toggleLabel={
+              gamePaused ? (sessionStarted ? "Resume game" : "Start game") : "Pause game"
+            }
+            toggleTitle={`${gamePaused ? "Start or resume game" : "Pause game"}${pauseShortcutHint ? ` (${pauseShortcutHint})` : ""}`}
+            toggleDisabled={!canRunPractice}
+            randomDisabled={Boolean(puzzleDraft) || randomPlayerLoading || !canChoosePracticePlayer}
+            differentDisabled={Boolean(puzzleDraft) || (!handoffActive && status !== "ready")}
+            afterToggle={
               <button
                 type="button"
-                className="practiceRandomBoppButton"
-                onClick={selectRandomPlayer}
-                disabled={Boolean(puzzleDraft) || randomPlayerLoading || !canChoosePracticePlayer}
-                aria-label="Practice a random opponent"
+                onClick={restartPracticeGame}
+                disabled={Boolean(puzzleDraft)}
+                aria-label="Start over"
+                title="Start over from the initial position"
               >
-                <FontAwesomeIcon icon={faDice} />
+                <FontAwesomeIcon icon={faRotateLeft} aria-hidden="true" />
               </button>
-            </span>
-            <span className="practiceActionTooltip" data-tooltip="Swap opponent’s move">
-              <button
-                type="button"
-                className="practiceAlternateMoveButton"
-                onClick={requestAlternateAutoMove}
-                disabled={Boolean(puzzleDraft) || (!handoffActive && status !== "ready")}
-                aria-label="Choose a different opponent move"
-              >
-                <FontAwesomeIcon icon={faShuffle} />
-              </button>
-            </span>
-          </div>
+            }
+          />
           {createdPuzzle ? (
             <p className="practicePuzzleConfirmation" role="status">
               {createdPuzzle.destination === "published" ? (

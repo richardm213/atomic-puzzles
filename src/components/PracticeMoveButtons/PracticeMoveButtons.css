@@ -1,0 +1,163 @@
+.practiceClockActions {
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 88%, transparent);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.practiceClockActions button {
+  width: 36px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.practiceClockActions > button:first-child {
+  width: 38px;
+  border-color: color-mix(in srgb, var(--color-primary-soft) 42%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary-soft);
+}
+
+.practiceClockActions > button:first-child svg {
+  transform: translateX(1px);
+}
+
+.practiceClockActions button:hover:not(:disabled) {
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-panel-deep) 46%, transparent);
+  color: var(--color-heading);
+}
+
+.practiceClockActions button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.practiceClockActions button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.practiceRandomBoppButton {
+  width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 82%, transparent);
+  color: var(--color-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.practiceRandomBoppButton:hover:not(:disabled) {
+  border-color: var(--color-accent-soft-border);
+  background: color-mix(in srgb, var(--color-panel-strong) 80%, var(--color-primary) 20%);
+  color: var(--color-heading);
+}
+
+.practiceRandomBoppButton:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.practiceActionTooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.practiceActionTooltip::after {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  z-index: 20;
+  width: max-content;
+  max-width: min(180px, 72vw);
+  padding: 6px 8px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-ui);
+  background: var(--color-panel-deep);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-panel-deep) 32%, transparent);
+  color: var(--color-heading);
+  content: attr(data-tooltip);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -3px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  white-space: nowrap;
+}
+
+.practiceActionTooltip:hover::after,
+.practiceActionTooltip:focus-within::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.practiceAlternateMoveButton {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: color-mix(in srgb, var(--color-panel-strong) 82%, transparent);
+  color: var(--color-muted);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.practiceAlternateMoveButton:hover:not(:disabled) {
+  border-color: var(--color-accent-soft-border);
+  background: color-mix(in srgb, var(--color-panel-strong) 80%, var(--color-primary) 20%);
+  color: var(--color-heading);
+}
+
+.practiceAlternateMoveButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.practiceMoveButtons.compact {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.practiceMoveButtons.compact button {
+  width: 28px;
+  height: 28px;
+}
+.practiceMoveButtons button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+@media (max-width: 560px) {
+  .practiceMoveButtons button,
+  .practiceMoveButtons.compact button {
+    width: 44px;
+    height: 44px;
+  }
+}

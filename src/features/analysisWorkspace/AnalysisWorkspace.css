@@ -46,6 +46,12 @@
   }
 }
 
+/* Shared desktop sizing for workspaces with a board and expandable tool rails. */
+.analysisPage.fluidWorkspace {
+  --analysis-preferred-board-size: clamp(516px, 42vw, 920px);
+  width: min(100%, 1920px);
+}
+
 :root[data-gemstone-theme] .analysisPage {
   --analysis-inaccuracy: var(--color-rating-graph-hyper);
 }

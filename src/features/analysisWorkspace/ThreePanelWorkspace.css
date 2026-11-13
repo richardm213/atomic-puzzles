@@ -1,0 +1,38 @@
+/* Follow the game-analysis breakpoints while keeping the two tool rails equal. */
+@media (min-width: 980px) {
+  .analysisPage.threePanelWorkspace {
+    grid-template-columns:
+      minmax(clamp(260px, 24vw, 380px), 1fr) minmax(0, var(--analysis-board-size))
+      minmax(clamp(260px, 24vw, 380px), 1fr);
+  }
+  .threePanelWorkspace > .analysisLeftRail {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .threePanelWorkspace > .analysisBoardColumn {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+  .threePanelWorkspace .analysisRightPanel {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}
+.analysisLeftRail {
+  min-width: 0;
+  height: var(--analysis-side-panel-height);
+}
+@media (560px < width < 980px) {
+  .threePanelWorkspace > .analysisLeftRail {
+    grid-column: 1;
+    grid-row: 3;
+    height: auto;
+  }
+}
+@media (max-width: 560px) {
+  .threePanelWorkspace > .analysisLeftRail {
+    grid-column: 1;
+    order: 2;
+    height: auto;
+  }
+}

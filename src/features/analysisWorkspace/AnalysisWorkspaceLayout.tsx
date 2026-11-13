@@ -1,6 +1,7 @@
 import "./AnalysisWorkspace.css";
+import "./ThreePanelWorkspace.css";
 
-import { type ComponentPropsWithoutRef,forwardRef } from "react";
+import { type ComponentPropsWithoutRef, forwardRef } from "react";
 
 const classNames = (...names: Array<string | undefined>): string => names.filter(Boolean).join(" ");
 
