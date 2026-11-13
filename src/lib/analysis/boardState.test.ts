@@ -1,5 +1,8 @@
+import { INITIAL_FEN } from "chessops/fen";
+
 import { type ChessboardState, initialBoardView } from "../../types/chessboard";
-import { getBoardLineState } from "./boardState";
+import { convertUciLineToSan, parseSolutionUciLines } from "../chess/pgn";
+import { boardPrefixNavigation, getBoardLineState } from "./boardState";
 
 const state = (overrides: Partial<ChessboardState>): ChessboardState => ({
   fen: "start",
@@ -13,6 +16,36 @@ const state = (overrides: Partial<ChessboardState>): ChessboardState => ({
 });
 
 describe("getBoardLineState", () => {
+  it("browses existing branches without reloading and retains them when adding a new path", () => {
+    const board = state({
+      lineMoves: ["e4", "e5", "Nc3"],
+      customLines: [
+        ["e4", "e5", "Nf3"],
+        ["e4", "e5", "Nc3"],
+      ],
+      view: { line: { source: "custom", index: 1 }, position: 3 },
+    });
+    expect(boardPrefixNavigation(board, INITIAL_FEN, ["e4"])).toEqual({
+      type: "custom",
+      line: 1,
+      ply: 1,
+    });
+    expect(boardPrefixNavigation(board, INITIAL_FEN, [])).toEqual({
+      type: "custom",
+      line: 1,
+      ply: 0,
+    });
+    const navigation = boardPrefixNavigation(board, INITIAL_FEN, ["d4", "d5"]);
+    expect(navigation.type).toBe("loadPgn");
+    if (navigation.type !== "loadPgn") throw new Error("Expected an additive PGN load");
+    const lines = parseSolutionUciLines(INITIAL_FEN, navigation.pgn).map((line) =>
+      convertUciLineToSan(INITIAL_FEN, line),
+    );
+    expect(lines).toEqual(expect.arrayContaining(board.customLines!));
+    expect(lines[navigation.line!]).toEqual(["d4", "d5"]);
+    expect(navigation.ply).toBe(2);
+  });
+
   it("keeps the board history visible when it is not in the stored variations", () => {
     const result = getBoardLineState(
       state({

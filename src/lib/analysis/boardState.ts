@@ -4,7 +4,8 @@ import {
   type ChessboardState,
   type SolutionNavigation,
 } from "../../types/chessboard";
-import { sameSolutionMove } from "../chess/pgn";
+import { sameSolutionMove, serializeSanLinesToPgn } from "../chess/pgn";
+import { buildBoardLoadNavigation, pgnLineIndexForPrefix } from "./boardLoading";
 
 export type DisplayedBoardLine = {
   moves: string[];
@@ -118,4 +119,27 @@ export const getBoardMoveState = (boardState: ChessboardState | null, fallbackFe
     canStepBack: !lineState.beforeIntro && lineState.currentPly > 0,
     canStepForward: lineState.beforeIntro || lineState.currentPly < lineState.moveList.length,
   } as const;
+};
+
+// Browse an existing line without reloading it; new paths extend the session's PGN.
+export const boardPrefixNavigation = (
+  boardState: ChessboardState | null,
+  fen: string,
+  prefix: string[],
+): SolutionNavigation => {
+  const { displayedLines, activeLineIndex, lines } = getBoardLineState(boardState);
+  const active = displayedLines[activeLineIndex];
+  const existing =
+    active && startsWithLine(active.moves, prefix)
+      ? active
+      : displayedLines.find((line) => startsWithLine(line.moves, prefix));
+  if (existing) return boardLineNavigation(existing.target, prefix.length);
+
+  const pgn = serializeSanLinesToPgn(fen, [...lines, prefix]);
+  return buildBoardLoadNavigation({
+    fen,
+    pgn,
+    line: pgnLineIndexForPrefix(fen, pgn, prefix),
+    ply: prefix.length,
+  });
 };

@@ -36,7 +36,7 @@ import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/A
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { buildBoardLoadNavigation } from "../../lib/analysis/boardLoading";
-import { getBoardMoveState } from "../../lib/analysis/boardState";
+import { boardPrefixNavigation, getBoardMoveState } from "../../lib/analysis/boardState";
 import { startingPlyFromFen } from "../../lib/chess/pgn";
 import { changeOpening, type OpeningCopy } from "../../lib/openings/api";
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
@@ -231,7 +231,9 @@ export const OpeningEditor = ({
     const line = visibleLines[index];
     if (!line) return;
     setLineId(line.id);
-    load(doc, line.moves.slice(0, ply + 1));
+    queueNavigation(
+      boardPrefixNavigation(board, doc.startFen, visibleSans[index]!.slice(0, ply + 1)),
+    );
   };
   const nextCard = (snapshot = copy) => {
     cancelAdvance();

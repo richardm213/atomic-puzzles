@@ -1540,6 +1540,17 @@ export const AnalysisPage = ({
             : undefined
       }
       style={analysisPageStyle}
+      onPointerDownCapture={
+        workspace?.leftPanel
+          ? (event) => {
+              if (!(event.target instanceof Element) || event.target.closest(".analysisLeftRail"))
+                return;
+              const focused = event.currentTarget.ownerDocument.activeElement;
+              if (focused?.closest(".analysisLeftRail"))
+                rightPanelRef.current?.focus({ preventScroll: true });
+            }
+          : undefined
+      }
     >
       {!workspace ? (
         <Seo
@@ -1571,11 +1582,6 @@ export const AnalysisPage = ({
           style={rightPanelStyle}
           aria-label="Analysis controls"
           tabIndex={workspace?.leftPanel ? -1 : undefined}
-          onPointerDownCapture={
-            workspace?.leftPanel
-              ? (event) => event.currentTarget.focus({ preventScroll: true })
-              : undefined
-          }
         >
           <AnalysisEngineExplorerPanels
             movePanelRef={movePanelRef}
