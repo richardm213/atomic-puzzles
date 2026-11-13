@@ -57,6 +57,7 @@ import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
+import { useBoardMoveEditing } from "../../hooks/useBoardMoveEditing";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useGameAnalysis } from "../../hooks/useGameAnalysis";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
@@ -66,14 +67,9 @@ import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import {
   buildBoardLoadNavigation,
   gamePlyFromHash,
-  pgnLineIndexForPrefix,
   puzzlePrefillPgn,
 } from "../../lib/analysis/boardLoading";
-import {
-  boardLineAnnotationNavigation,
-  boardLineNavigation,
-  getBoardMoveState,
-} from "../../lib/analysis/boardState";
+import { boardLineNavigation, getBoardMoveState } from "../../lib/analysis/boardState";
 import { readAnalysisHandoff } from "../../lib/analysis/handoff";
 import { gameClockAtPly } from "../../lib/archive/gameClock";
 import { type ArchiveGame, decodeGameResult } from "../../lib/archive/games";
@@ -81,8 +77,6 @@ import { isAtomicTablebasePosition } from "../../lib/atomicTablebase/material";
 import { materialCountFromFen } from "../../lib/chess/materialCount";
 import {
   createAtomicPosition,
-  prunePgnLinesFromMove,
-  sameSolutionMove,
   serializeSanLinesToPgn,
   startingPlyFromFen,
 } from "../../lib/chess/pgn";
@@ -864,34 +858,16 @@ export const AnalysisPage = ({
     [lineTargets],
   );
 
-  const annotateMove = useCallback(
-    (lineIndex: number | undefined, moveIndex: number, annotation: string): void => {
-      const target =
-        lineIndex === undefined ? { source: "history" as const } : lineTargets[lineIndex];
-      if (!target) return;
-      const nextNavigation = boardLineAnnotationNavigation(target, moveIndex + 1, annotation);
-      if (nextNavigation) setNavigation(nextNavigation);
+  const moveEditing = useBoardMoveEditing({
+    fen: rootFen,
+    lines: analysisLines,
+    lineTargets,
+    disabled: puzzleSaving || training,
+    onNavigate: (next) => {
+      practiceOpponent.pause();
+      setNavigation(next);
     },
-    [lineTargets],
-  );
-
-  const deleteMove = useCallback(
-    (lineIndex: number, moveIndex: number): void => {
-      const pruned = prunePgnLinesFromMove(analysisLines, lineIndex, moveIndex, sameSolutionMove);
-      if (!pruned.changed) return;
-      const pgn = serializeSanLinesToPgn(rootFen, pruned.lines);
-      const retainedMoves = pruned.lines[pruned.lineIndex]?.slice(0, pruned.ply) ?? [];
-      setNavigation(
-        buildBoardLoadNavigation({
-          fen: rootFen,
-          pgn,
-          line: pgnLineIndexForPrefix(rootFen, pgn, retainedMoves),
-          ply: pruned.ply,
-        }),
-      );
-    },
-    [analysisLines, rootFen],
-  );
+  });
 
   const playExplorerMove = (uci: string): void => {
     setHoveredExplorerMoveUci(null);
@@ -1284,8 +1260,7 @@ export const AnalysisPage = ({
       inline={notationLayout === "inline"}
       onNavigate={navigateToPly}
       onSelectVariation={navigateToAnalysisMove}
-      onAnnotate={(game && !puzzleDraft) || puzzleSaving ? undefined : annotateMove}
-      onDelete={(game && !puzzleDraft) || puzzleSaving ? undefined : deleteMove}
+      {...moveEditing}
       moveActions={workspace?.moveActions}
       assessments={
         game && !puzzleDraft && gameComputerAnalysisEnabled ? gameAssessments : undefined

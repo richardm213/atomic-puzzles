@@ -59,16 +59,13 @@ import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
+import { useBoardMoveEditing } from "../../hooks/useBoardMoveEditing";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { readPersistedState, usePersistedState } from "../../hooks/usePersistedState";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { buildBoardLoadNavigation } from "../../lib/analysis/boardLoading";
-import {
-  boardLineAnnotationNavigation,
-  boardLineNavigation,
-  getBoardMoveState,
-} from "../../lib/analysis/boardState";
+import { boardLineNavigation, getBoardMoveState } from "../../lib/analysis/boardState";
 import { materialCountFromFen } from "../../lib/chess/materialCount";
 import { keyboardShortcutAction, keyboardShortcutHint } from "../../lib/keyboardShortcuts";
 import { choosePracticeEngineMove } from "../../lib/practice/engineSelection";
@@ -737,16 +734,23 @@ export const PracticePage = () => {
     [clearAutoMoveState, currentPly, lineTargets, queueNavigation],
   );
 
-  const annotateMove = useCallback(
-    (lineIndex: number | undefined, moveIndex: number, annotation: string): void => {
-      const target =
-        lineIndex === undefined ? { source: "history" as const } : lineTargets[lineIndex];
-      if (!target) return;
-      const nextNavigation = boardLineAnnotationNavigation(target, moveIndex + 1, annotation);
-      if (nextNavigation) queueNavigation(nextNavigation);
+  const moveEditing = useBoardMoveEditing({
+    fen: practiceRootFen,
+    lines: analysisLines,
+    lineTargets,
+    onNavigate: (next) => {
+      clearAutoMoveState();
+      setGamePaused(true);
+      queueNavigation(next);
     },
-    [lineTargets, queueNavigation],
-  );
+  });
+  const draftMoveEditing = useBoardMoveEditing({
+    fen: puzzleDraft?.fen ?? practiceRootFen,
+    lines: draftBoard.lines,
+    lineTargets: draftBoard.lineTargets,
+    onNavigate: setDraftNavigation,
+    disabled: puzzleSaving,
+  });
 
   const handleBoardStateChange = useCallback(
     (nextState: ChessboardState): void => {
@@ -1551,6 +1555,7 @@ export const PracticePage = () => {
                   inline
                   onNavigate={(ply) => setDraftNavigation({ type: "history", ply })}
                   onSelectVariation={navigateToDraftMove}
+                  {...draftMoveEditing}
                 />
                 <AnalysisContinuationChoices
                   lines={draftBoard.lines}
@@ -1570,7 +1575,7 @@ export const PracticePage = () => {
                 inline
                 onNavigate={navigateToPly}
                 onSelectVariation={navigateToAnalysisMove}
-                onAnnotate={annotateMove}
+                {...moveEditing}
               />
             )
           }

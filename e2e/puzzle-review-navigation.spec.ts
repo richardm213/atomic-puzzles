@@ -195,6 +195,17 @@ test("solve-mode arrows replay only played moves until the solution is revealed"
   await expect(finalMove).toHaveAttribute("aria-current", "step");
   await expect(page).toHaveURL(/\/solve\/102$/);
 
+  await finalMove.click({ button: "right" });
+  await page.getByRole("menuitemcheckbox", { name: "Annotate with ?", exact: true }).click();
+  await expect(finalMove).toHaveText(/Nf6\?/);
+  await finalMove.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
+  await expect(finalMove).toHaveCount(0);
+  await expect(previousMove).toBeVisible();
+  await expect(analysis.getByRole("button", { name: /c5/ })).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(finalMove).toHaveCount(0);
+
   // The same keys should edit text normally when focus moves to the tag picker.
   await page.getByRole("button", { name: "Add tag", exact: true }).click();
   const tagSearch = page.getByRole("searchbox", { name: "Search tags" });
@@ -203,7 +214,7 @@ test("solve-mode arrows replay only played moves until the solution is revealed"
   await tagSearch.press("ArrowLeft");
   await tagSearch.press("o");
   await expect(tagSearch).toHaveValue("fork");
-  await expect(finalMove).toHaveAttribute("aria-current", "step");
+  await expect(previousMove).toHaveAttribute("aria-current", "step");
 });
 
 test("a puzzle without an intro keeps its original move numbers through play and navigation", async ({

@@ -10,6 +10,7 @@ import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButton
 import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
+import type { useBoardMoveEditing } from "../../hooks/useBoardMoveEditing";
 import { startingPlyFromFen } from "../../lib/chess/pgn";
 import type { PlaybackAvailability, PlaybackCommand } from "../../types/chessboard";
 
@@ -24,6 +25,7 @@ const initialEngineSettings = (): AtomicDbEngineSettings => ({
 export const PuzzleAnalysisPanel = ({
   fen,
   analysisActive,
+  moveEditing,
   initialPly,
   previousMove,
   beforePreviousMove,
@@ -46,6 +48,7 @@ export const PuzzleAnalysisPanel = ({
 }: {
   fen: string;
   analysisActive: boolean;
+  moveEditing: ReturnType<typeof useBoardMoveEditing>;
   initialPly: number;
   previousMove?: PuzzleIntro | null | undefined;
   beforePreviousMove?: boolean | undefined;
@@ -129,6 +132,7 @@ export const PuzzleAnalysisPanel = ({
           onNavigate={onNavigate}
           onSelectVariation={onSelectVariation}
           onCycleOptions={onCycleOptions}
+          {...moveEditing}
         />
         <div
           className={`puzzleMoveToolbar ${canGiveUp ? "hasGiveUp" : ""}`.trim()}

@@ -55,6 +55,7 @@ import {
 import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { useBoardItemShortcuts } from "../../hooks/useBoardItemShortcuts";
+import { useBoardMoveEditing } from "../../hooks/useBoardMoveEditing";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { boardLineNavigation, getBoardLineState } from "../../lib/analysis/boardState";
 import { ApiError } from "../../lib/api/postApi";
@@ -260,6 +261,9 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   } | null>(null);
   const [activePuzzleInfoTab, setActivePuzzleInfoTab] = useState<PuzzleInfoTab | null>(null);
   const [solutionNavigation, setSolutionNavigation] = useState<SolutionNavigation | null>(null);
+  const [analysisDocument, setAnalysisDocument] = useState<{ visit: string; pgn: string } | null>(
+    null,
+  );
   const [analysisPreviewMove, setAnalysisPreviewMove] = useState<string | null>(null);
   const [analysisEngineMoves, setAnalysisEngineMoves] = useState<readonly string[] | null>(null);
   const [puzzleSession, dispatchPuzzleSession] = useReducer(
@@ -1625,6 +1629,20 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   });
   const allVariationLines = variationLineState.lines;
   const activeVariationLineIndex = variationLineState.activeLineIndex;
+  const analysisMoveEditing = useBoardMoveEditing({
+    fen,
+    lines: allVariationLines,
+    lineTargets: variationLineState.lineTargets,
+    disabled: !isAnalysisMode || progressSaving,
+    onNavigate: (next) => {
+      if (next.type === "loadPgn" || next.type === "reset")
+        setAnalysisDocument({
+          visit: puzzleVisitKey,
+          pgn: next.type === "loadPgn" ? next.pgn : "",
+        });
+      setSolutionNavigation(next);
+    },
+  });
 
   const handleVariationMoveClick = useCallback(
     (lineIndex: number, moveIndex: number): void => {
@@ -1716,6 +1734,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
       key={activePuzzleId ?? "empty"}
       fen={currentFen}
       analysisActive={isAnalysisMode}
+      moveEditing={analysisMoveEditing}
       initialPly={startingPlyFromFen(fen)}
       previousMove={introPending ? undefined : activePuzzle?.intro}
       beforePreviousMove={baseLineState.beforeIntro}
@@ -2343,7 +2362,12 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
                 fen={fen}
                 orientation={orientation}
                 coordinates
-                solution={activePuzzle?.solution ?? ""}
+                solution={
+                  isAnalysisMode && analysisDocument?.visit === puzzleVisitKey
+                    ? analysisDocument.pgn
+                    : (activePuzzle?.solution ?? "")
+                }
+                solutionEditor={isAnalysisMode && analysisDocument?.visit === puzzleVisitKey}
                 showSolution={boardShowsSolution}
                 analysisMode={isAnalysisMode}
                 disabled={
