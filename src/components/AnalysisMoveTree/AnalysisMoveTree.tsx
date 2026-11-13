@@ -1,9 +1,9 @@
 import "./AnalysisMoveTree.css";
 
-import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { ReactNode } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   buildIndexedSolutionMoveTree,
@@ -12,6 +12,10 @@ import {
   orderedChildren,
   splitSolutionMove,
 } from "../../lib/chess/pgn";
+import {
+  buildTranspositionMoveTree,
+  type TranspositionMoveNode,
+} from "../../lib/chess/transpositions";
 import type { GameMoveAssessment } from "../../lib/gameAnalysis/gameAnalysis";
 import type { PlaybackCommand } from "../../types/chessboard";
 import {
@@ -56,11 +60,7 @@ export const AnalysisContinuationChoices = ({
   const ply = initialPly + currentPly;
 
   return (
-    <div
-      className={`analysisContinuationChoices${onCycleOptions ? "" : " compact"}`}
-      role="group"
-      aria-label="Choose continuation"
-    >
+    <div className="analysisContinuationChoices" role="group" aria-label="Choose continuation">
       <span>{options.length} options</span>
       <div className="analysisContinuationMoves">
         {options.map((option) => (
@@ -102,6 +102,26 @@ export const AnalysisContinuationChoices = ({
 
 const BLOCK_VARIATION_MIN_PLIES = 5;
 
+const visibleMoveNode = (
+  tree: IndexedSolutionMoveNode,
+  lines: string[][],
+  lineIndex: number,
+  currentPly: number,
+): IndexedSolutionMoveNode | undefined => {
+  let node: IndexedSolutionMoveNode | undefined = tree;
+  for (let ply = 0; ply < currentPly; ply++) {
+    const target = (node as TranspositionMoveNode | undefined)?.transposition;
+    if (target) {
+      node = tree;
+      for (let index = 0; index <= target.moveIndex; index++) {
+        node = node?.children.get(lines[target.lineIndex]?.[index] ?? "");
+      }
+    }
+    node = node?.children.get(lines[lineIndex]?.[ply] ?? "");
+  }
+  return node;
+};
+
 const isLongVariation = (node: IndexedSolutionMoveNode): boolean => {
   let current: IndexedSolutionMoveNode | undefined = node;
   for (let plies = 1; current; plies++) {
@@ -126,6 +146,7 @@ export const AnalysisMoveTree = ({
   onAnnotate,
   onDelete,
   assessments = [],
+  initialFen,
 }: {
   lines: string[][];
   moves: string[];
@@ -141,6 +162,7 @@ export const AnalysisMoveTree = ({
   onAnnotate?: ((lineIndex: number, moveIndex: number, annotation: string) => void) | undefined;
   onDelete?: ((lineIndex: number, moveIndex: number) => void) | undefined;
   assessments?: GameMoveAssessment[] | undefined;
+  initialFen?: string | undefined;
 }) => {
   const [annotationTarget, setAnnotationTarget] = useState<{
     lineIndex: number;
@@ -149,13 +171,20 @@ export const AnalysisMoveTree = ({
     position: AnnotationMenuPosition;
   } | null>(null);
   const closeAnnotationMenu = useCallback(() => setAnnotationTarget(null), []);
+  const tree = useMemo(
+    () =>
+      initialFen
+        ? buildTranspositionMoveTree(initialFen, lines)
+        : buildIndexedSolutionMoveTree(lines),
+    [initialFen, lines],
+  );
 
   if (!lines.length && !previousMove) return null;
 
   const currentMoves = moves.slice(0, currentPly);
   const matchingLines = matchingLineIndexes(lines, currentMoves);
   const activeLine = activeLineIndex(matchingLines, pinnedLineIndex ?? null);
-  const tree = buildIndexedSolutionMoveTree(lines);
+  const activeMove = initialFen ? visibleMoveNode(tree, lines, activeLine, currentPly) : undefined;
 
   const renderMove = (
     node: IndexedSolutionMoveNode,
@@ -169,7 +198,9 @@ export const AnalysisMoveTree = ({
     const mainlineAssessment = node.lineIndexes.has(0) ? assessments[ply] : undefined;
     const visibleAssessment =
       mainlineAssessment?.classification === "best" ? undefined : mainlineAssessment;
-    const current = node.lineIndexes.has(activeLine) && currentPly === ply + 1;
+    const current = initialFen
+      ? node === activeMove
+      : node.lineIndexes.has(activeLine) && currentPly === ply + 1;
     return (
       <button
         key={`${keyPrefix}-move-${ply}-${node.move}`}
@@ -213,6 +244,20 @@ export const AnalysisMoveTree = ({
     preferredLine: number,
     forceMoveNumber = false,
   ): ReactNode[] => {
+    const target = (parent as TranspositionMoveNode).transposition;
+    if (target)
+      return [
+        <button
+          key={`${keyPrefix}-transposition`}
+          type="button"
+          className="analysisTreeMove transpositionJump"
+          aria-label="Go to original continuation"
+          title="Go to original continuation"
+          onClick={() => onSelect(target.lineIndex, target.moveIndex)}
+        >
+          <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
+        </button>,
+      ];
     const children = orderedChildren(parent);
     const main = children.find((child) => child.lineIndexes.has(preferredLine)) ?? children[0];
     if (!main) return [];
@@ -242,17 +287,6 @@ export const AnalysisMoveTree = ({
 
   return (
     <>
-      {onCycleOptions && (
-        <AnalysisContinuationChoices
-          lines={lines}
-          moves={moves}
-          currentPly={currentPly}
-          pinnedLineIndex={pinnedLineIndex}
-          initialPly={initialPly}
-          onSelect={onSelect}
-          onCycleOptions={onCycleOptions}
-        />
-      )}
       <div
         className={`analysisTree ${inline ? "inline" : "nonInline"}`}
         role="list"
@@ -273,6 +307,17 @@ export const AnalysisMoveTree = ({
         ) : null}
         {renderContinuations(tree, 0, "root", 0, !previousMove && initialPly % 2 === 1)}
       </div>
+      {onCycleOptions && (
+        <AnalysisContinuationChoices
+          lines={lines}
+          moves={moves}
+          currentPly={currentPly}
+          pinnedLineIndex={pinnedLineIndex}
+          initialPly={initialPly}
+          onSelect={onSelect}
+          onCycleOptions={onCycleOptions}
+        />
+      )}
       {annotationTarget && (onAnnotate || onDelete) ? (
         <MoveAnnotationMenu
           position={annotationTarget.position}

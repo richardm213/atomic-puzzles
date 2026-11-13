@@ -77,6 +77,8 @@ import {
   annotateVariationMove,
   createVariationHistory,
   saveVariation,
+  synchronizeVariationHistory,
+  type TranspositionHistorySnapshot,
   variationHistoryAt,
   variationMoveSans,
 } from "./variationHistory";
@@ -111,6 +113,7 @@ export type ChessboardProps = {
   captureNavigationShortcuts?: boolean;
   enableNavigationShortcuts?: boolean;
   solutionEditor?: boolean;
+  linkTranspositions?: boolean;
   restrictMovesToSolution?: boolean;
   disabled?: boolean;
   hidden?: boolean;
@@ -198,6 +201,7 @@ const ChessboardComponent = ({
   captureNavigationShortcuts = false,
   enableNavigationShortcuts = true,
   solutionEditor = false,
+  linkTranspositions = false,
   restrictMovesToSolution = false,
   disabled = false,
   hidden = false,
@@ -297,6 +301,7 @@ const ChessboardComponent = ({
   const viewRef = useRef(initialBoardView());
   const alternativeContinuationSelectedRef = useRef(false);
   const customVariationsRef = useRef(createVariationHistory());
+  const transpositionHistoryRef = useRef<TranspositionHistorySnapshot | null>(null);
   const pieceStyle = useMemo(() => buildPieceStyle(pieceSet), [pieceSet]);
   const boardStyle = useMemo(
     () =>
@@ -427,6 +432,21 @@ const ChessboardComponent = ({
 
   const emitState = useCallback(
     (position: Atomic, next?: BoardFeedback | undefined): ChessboardState => {
+      if (linkTranspositions && analysisModeRef.current) {
+        const synchronized = synchronizeVariationHistory(
+          historyRef.current,
+          customVariationsRef.current,
+          transpositionHistoryRef.current,
+        );
+        if (synchronized) {
+          historyRef.current = synchronized.history;
+          customVariationsRef.current = synchronized.variations;
+          transpositionHistoryRef.current = synchronized.snapshot;
+          if (synchronized.lineIndex !== undefined) {
+            viewRef.current.line = { source: "custom", index: synchronized.lineIndex };
+          }
+        }
+      }
       const history = historyRef.current;
       const displayTurn = getDisplayTurn(position, next);
       const playbackContext = getPlaybackContext();
@@ -463,12 +483,14 @@ const ChessboardComponent = ({
     },
     [
       attemptRef,
+      analysisModeRef,
       canBrowseSolution,
       evaluationTimerRef,
       getAttemptPgn,
       getDisplayTurn,
       getPlaybackContext,
       isTraining,
+      linkTranspositions,
       onStateChangeRef,
     ],
   );

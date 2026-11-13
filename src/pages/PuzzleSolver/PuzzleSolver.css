@@ -2002,10 +2002,6 @@ button.puzzleRatingBadge.editable:focus-visible {
     padding: 4px 6px;
   }
 
-  .mobileActionCard .puzzleAnalysisMoves .analysisContinuationChoices {
-    display: none;
-  }
-
   .mobileActionCard .puzzleAnalysisMoves .analysisTree {
     padding: 2px 0 6px;
     line-height: 2.2;

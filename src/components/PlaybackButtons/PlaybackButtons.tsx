@@ -31,6 +31,8 @@ export const PlaybackButtons = ({
   onNavigate,
   labels,
   titles,
+  className,
+  ariaLabel,
 }: {
   buttonClassName: string;
   canStart: boolean;
@@ -40,6 +42,8 @@ export const PlaybackButtons = ({
   onNavigate: (command: PlaybackCommand) => void;
   labels?: Partial<Record<PlaybackCommand, string>>;
   titles?: Partial<Record<PlaybackCommand, string>>;
+  className?: string;
+  ariaLabel?: string;
 }) => {
   const enabled: Record<PlaybackCommand, boolean> = {
     start: canStart,
@@ -48,7 +52,7 @@ export const PlaybackButtons = ({
     end: canEnd,
   };
 
-  return BUTTONS.map((button) => (
+  const buttons = BUTTONS.map((button) => (
     <button
       key={button.command}
       type="button"
@@ -61,4 +65,11 @@ export const PlaybackButtons = ({
       <FontAwesomeIcon icon={button.icon} />
     </button>
   ));
+  return className ? (
+    <div className={className} aria-label={ariaLabel}>
+      {buttons}
+    </div>
+  ) : (
+    buttons
+  );
 };

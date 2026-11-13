@@ -1,3 +1,5 @@
+import { convertUciLineToSan, parseSolutionUciLines } from "../shared/domain/chess/pgn";
+import transpositionFixtures from "../src/lib/chess/fixtures/transpositionPuzzles.json" with { type: "json" };
 import { expect, test } from "./fixtures";
 
 test("game puzzle drafts optionally copy editable continuations from the original game", async ({
@@ -164,4 +166,112 @@ test("game URLs retain side and exact ply and wait for navigation to settle", as
   await expect(next).toBeEnabled();
   await next.click();
   await expect(page).toHaveURL(/\/black#1$/);
+});
+
+test("puzzle drafting detects a played transposition and keeps saved copies synchronized", async ({
+  page,
+}) => {
+  const fixture = transpositionFixtures.find((puzzle) => puzzle.id === "supplied")!;
+  const submissions: Record<string, unknown>[] = [];
+  let finishSave: (success: boolean) => void = () => {
+    throw new Error("No save pending");
+  };
+  await page.route("**/api/puzzles/submit", async (route) => {
+    const input = route.request().postDataJSON();
+    if (input.action === "starting-fen-match") return route.fulfill({ json: { puzzleId: null } });
+    submissions.push(input);
+    const success = await new Promise<boolean>((resolve) => {
+      finishSave = resolve;
+    });
+    return success
+      ? route.fulfill({ json: { destination: "review", puzzle: { id: 901, ...input } } })
+      : route.fulfill({ status: 503, json: { error: "Save failed for regression test" } });
+  });
+  await page.goto("/analysis");
+  const fen = page.getByRole("textbox", { name: "FEN", exact: true });
+  await fen.fill(fixture.fen);
+  await fen.press("Enter");
+  await page.getByRole("button", { name: "Submit puzzle", exact: true }).click();
+  const composer = page.getByRole("form", { name: "Puzzle draft" });
+  const pgn = page.getByRole("textbox", { name: "PGN", exact: true });
+  await pgn.fill("9. Bc4 Ng4 10. f3 Nf2");
+  await pgn.press("Enter");
+  const jumps = composer.getByRole("button", { name: "Go to original continuation" });
+  await expect(jumps).toHaveCount(0);
+  await page.getByRole("button", { name: "Go to start", exact: true }).click();
+
+  const play = async (uci: string) => {
+    const board = page.locator("cg-board:visible");
+    await board.scrollIntoViewIfNeeded();
+    const bounds = await board.boundingBox();
+    if (!bounds) throw new Error("Draft board is missing");
+    for (const square of [uci.slice(0, 2), uci.slice(2, 4)]) {
+      await page.mouse.click(
+        bounds.x + ((square.charCodeAt(0) - 97 + 0.5) * bounds.width) / 8,
+        bounds.y + ((8 - Number(square[1]) + 0.5) * bounds.height) / 8,
+      );
+    }
+  };
+  await play("f2f3");
+  await expect(jumps).toHaveCount(0);
+  await play("h6g4");
+  await expect(jumps).toHaveCount(0);
+  await play("f1c4");
+  await expect(jumps).toHaveCount(1);
+  const readLines = async () =>
+    parseSolutionUciLines(fixture.fen, await pgn.inputValue()).map((line) =>
+      convertUciLineToSan(fixture.fen, line),
+    );
+  await expect.poll(readLines).toEqual([
+    ["Bc4", "Ng4", "f3", "Nf2"],
+    ["f3", "Ng4", "Bc4", "Nf2"],
+  ]);
+  await jumps.click();
+  await expect(composer.getByRole("button", { name: "10. f3", exact: true })).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
+  await page.keyboard.press("ArrowRight");
+  await expect(composer.getByRole("button", { name: "Nf2", exact: true })).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
+  await play("d1b1");
+  await expect
+    .poll(async () => (await readLines()).map((line) => line.slice(3)))
+    .toEqual([
+      ["Nf2", "Qb1"],
+      ["Nf2", "Qb1"],
+    ]);
+  const followup = composer.getByRole("button", { name: "11. Qb1", exact: true });
+  await followup.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
+  await expect
+    .poll(async () => (await readLines()).map((line) => line.slice(3)))
+    .toEqual([["Nf2"], ["Nf2"]]);
+  await composer.getByRole("button", { name: "Submit puzzle", exact: true }).click();
+  await expect.poll(() => submissions.length).toBe(1);
+  await expect(composer.getByRole("textbox", { name: "Explanation" })).toBeDisabled();
+  await expect(pgn).toHaveAttribute("readonly", "");
+  await play("f3f4");
+  await expect
+    .poll(async () => (await readLines()).map((line) => line.slice(3)))
+    .toEqual([["Nf2"], ["Nf2"]]);
+  finishSave(false);
+  const submit = composer.getByRole("button", { name: "Submit puzzle", exact: true });
+  await expect(submit).toBeEnabled();
+  await expect(pgn).toBeEditable();
+  await expect(composer.getByRole("textbox", { name: "Explanation" })).toBeEnabled();
+  await submit.click();
+  await expect.poll(() => submissions.length).toBe(2);
+  finishSave(true);
+  await expect(composer).not.toBeVisible();
+  const saved = String(submissions[1]!.solution);
+  expect(saved).not.toMatch(/→|transposition/i);
+  expect(
+    parseSolutionUciLines(fixture.fen, saved).map((line) => convertUciLineToSan(fixture.fen, line)),
+  ).toEqual([
+    ["Bc4", "Ng4", "f3", "Nf2"],
+    ["f3", "Ng4", "Bc4", "Nf2"],
+  ]);
 });

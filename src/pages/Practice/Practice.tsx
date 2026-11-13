@@ -283,6 +283,7 @@ export const PracticePage = () => {
     positionHistory: PuzzlePositionHistory;
   } | null>(null);
   const [draftBoardState, setDraftBoardState] = useState<ChessboardState | null>(null);
+  const [puzzleSaving, setPuzzleSaving] = useState(false);
   const [draftNavigation, setDraftNavigation] = useState<SolutionNavigation | null>(null);
   const [createdPuzzle, setCreatedPuzzle] = useState<PuzzleCreationResult | null>(null);
   const puzzleLauncher = useRef<HTMLButtonElement | null>(null);
@@ -1583,12 +1584,14 @@ export const PracticePage = () => {
                 }
               }}
               onHoverMove={setHoveredMoveUci}
-              disabled={atomicDbLinePlaying}
+              disabled={atomicDbLinePlaying || puzzleSaving}
             />
           }
           moveContent={
             puzzleDraft ? (
               <PuzzleComposer
+                saving={puzzleSaving}
+                onSavingChange={setPuzzleSaving}
                 publishesDirectly={publishesDirectly}
                 positionHistory={puzzleDraft.positionHistory}
                 fen={puzzleDraft.fen}
@@ -1598,6 +1601,7 @@ export const PracticePage = () => {
               >
                 <MoveNotation
                   lines={draftBoard.lines}
+                  initialFen={puzzleDraft.fen}
                   moves={draftBoard.moveList}
                   currentPly={draftBoard.currentPly}
                   initialPly={startingPlyFromFen(puzzleDraft.fen)}
@@ -1701,6 +1705,8 @@ export const PracticePage = () => {
           puzzleDraft
             ? {
                 puzzleId: "practice-puzzle-draft",
+                linkTranspositions: true,
+                disabled: puzzleSaving,
                 fen: puzzleDraft.fen,
                 orientation: puzzleDraft.orientation,
                 coordinates: true,
@@ -1743,7 +1749,11 @@ export const PracticePage = () => {
               title="Share & export"
               document={
                 puzzleDraft
-                  ? { ...draftDocument, fen: { value: puzzleDraft.fen, readOnly: true, error: "" } }
+                  ? {
+                      ...draftDocument,
+                      fen: { value: puzzleDraft.fen, readOnly: true, error: "" },
+                      pgn: { ...draftDocument.pgn, readOnly: puzzleSaving },
+                    }
                   : practiceMoveText
                     ? { ...boardDocument, fen: { value: currentFen, readOnly: true, error: "" } }
                     : boardDocument

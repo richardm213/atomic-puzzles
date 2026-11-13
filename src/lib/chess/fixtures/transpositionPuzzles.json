@@ -1,0 +1,26 @@
+[
+  {
+    "id": 526,
+    "fen": "rn2kb1r/p5p1/5p2/1b1pp2p/Q2PP1n1/5P1N/PP1B2PP/R3K2R w KQkq - 3 15",
+    "solution": "15. Qc2 (15. Rc1 Bb4 16. Qxb4 (16. Qxb5 Na6 17. Rc6 (17. Ng5)) 16... Na6 17. Rc6 (17. Ng5)) (15. Qb4 Bxb4 16. Rc1 (16. Ng5 Na6 17. Rc1 Rc8 18. Rc6 (18. Rc7)) 16... Na6 17. Rc6 (17. Ng5)) 15... Na6 16. Rc1 (16. Bb4)",
+    "transpositions": 3
+  },
+  {
+    "id": 546,
+    "fen": "4r2k/p7/np4pp/3p4/1PP1N2P/3B1PPb/P7/4R1K1 w - - 0 24",
+    "solution": "24. c5 (24. Bb1 dxe4 25. Re7 (25. Bf5 Re2 26. Rxe2 Bg2 27. Bxg6) 25... Rxe7 26. Bxg6 (26. Bf5 Bg2 27. Bxg6)) (24. Bc2 dxe4 25. Re7 (25. Bf5 Re2 26. Rxe2 Bg2 27. Bxg6) 25... Rxe7 26. Bxg6 (26. Bf5 Bg2 27. Bxg6)) 24... bxc5 25. Bxa6",
+    "transpositions": 4
+  },
+  {
+    "id": 1209,
+    "fen": "5rk1/8/q2p2pp/3Pp3/2p5/2P2NP1/PP1Q3P/R3K2R b KQ - 0 17",
+    "solution": "17... Qb6 (17... Qa7 18. Kd1 Qe3 (18... Qf2 19. Qxf2 Rf2) 19. Qxe3 Rf2) 18. Kd1 Qe3 (18... Qf2 19. Qxf2 Rf2) 19. Qxe3 Rf2",
+    "transpositions": 3
+  },
+  {
+    "id": "supplied",
+    "fen": "rnbqkb1r/p1p3p1/5p1n/1p2p2p/3P1B2/N1P4N/PP3PPP/R2QKB1R w KQkq - 1 9",
+    "solution": "9. Bc4 (9. f3 Ng4 10. Bc4 Nf2 11. Qb1 Nd3+ 12. Bxd3 g6 13. O-O Bh6 14. Re1 O-O 15. Qc1) Ng4 10. f3 Nf2 11. Qb1 Nd3+ 12. Bxd3 g6 13. O-O Bh6 14. Re1 O-O 15. Qc1 *",
+    "transpositions": 1
+  }
+]

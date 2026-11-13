@@ -1,15 +1,16 @@
 .analysisContinuationChoices {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 6px 8px 2px;
-  padding: 6px 0;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
 }
 
 .analysisContinuationChoices > span {
   flex: 0 0 auto;
-  color: var(--color-subtle);
+  color: var(--color-muted);
   font-size: 11px;
   font-weight: 650;
 }
@@ -38,22 +39,6 @@
 }
 
 .analysisContinuationMoves button {
-  min-height: 28px;
-  padding: 2px 7px;
-}
-
-.analysisContinuationChoices.compact {
-  gap: var(--space-2);
-  margin: 0;
-  padding: var(--space-1) 0;
-  font-size: var(--text-sm);
-}
-
-.analysisContinuationChoices.compact > span {
-  color: var(--color-muted);
-}
-
-.analysisContinuationChoices.compact button {
   min-height: 24px;
   padding: 0 var(--space-2);
 }
@@ -81,8 +66,9 @@ button.analysisTreeMove:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
   border-color: var(--color-border);
   color: var(--color-muted);
 }
@@ -126,6 +112,22 @@ button.analysisTreeMove:hover {
   font-size: 11px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+}
+
+.analysisTreeMove.transpositionJump {
+  justify-content: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0 1px;
+  color: var(--color-primary);
+  font-size: 12px;
+}
+
+@media (pointer: coarse) {
+  .analysisTreeMove.transpositionJump {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 .analysisTreeMove.active .analysisTreeMoveNumber {
@@ -173,10 +175,6 @@ button.analysisTreeMove:hover {
 
   .analysisContinuationMoves button,
   .analysisContinuationArrows button {
-    min-height: 44px;
-  }
-
-  .analysisContinuationChoices.compact button {
     min-width: var(--control-height-touch);
     min-height: var(--control-height-touch);
   }

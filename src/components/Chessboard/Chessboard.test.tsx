@@ -820,6 +820,39 @@ describe("Chessboard orchestration", () => {
     });
   });
 
+  it("commits transpositions before immediate navigation and subsequent edits", () => {
+    const states = renderBoard({
+      fen: "rnbqkb1r/p1p3p1/5p1n/1p2p2p/3P1B2/N1P4N/PP3PPP/R2QKB1R w KQkq - 1 9",
+      linkTranspositions: true,
+      solutionNavigation: {
+        type: "loadPgn",
+        pgn: "9. Bc4 Ng4 10. f3 Nf2",
+        ply: 0,
+      },
+    });
+    play("f2", "f3");
+    play("h6", "g4");
+    // All actions occur before React can render or run passive effects.
+    act(() => {
+      mocks.config?.movable?.events?.after?.("f1", "c4");
+      expect(states.at(-1)?.customLines).toEqual([
+        ["Bc4", "Ng4", "f3", "Nf2"],
+        ["f3", "Ng4", "Bc4", "Nf2"],
+      ]);
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
+      expect(states.at(-1)?.view.position).toBe(4);
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" }));
+      expect(states.at(-1)?.view.position).toBe(3);
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
+      mocks.config?.movable?.events?.after?.("d1", "b1");
+      expect(states.at(-1)?.view.position).toBe(5);
+      expect(states.at(-1)?.customLines?.map((line) => line.slice(3))).toEqual([
+        ["Nf2", "Qb1"],
+        ["Nf2", "Qb1"],
+      ]);
+    });
+  });
+
   it("uses Down and Up to navigate to the end and start of a solution", () => {
     const states = renderBoard({ solution: "1. e4 e5 2. Nf3", showSolution: true });
 

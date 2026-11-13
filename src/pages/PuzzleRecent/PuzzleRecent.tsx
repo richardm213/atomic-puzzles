@@ -135,7 +135,7 @@ export const PuzzleRecentPage = () => {
   }, [authLoading, isAdmin]);
 
   const resetDraft = (): void => {
-    if (!response?.puzzle) return;
+    if (!response?.puzzle || saving || loading) return;
     setValue(puzzleValue(response.puzzle));
     setAuthor(response.puzzle.author ?? "");
     setTags(normalizePuzzleMotifTags(response.puzzle.tags));
@@ -145,7 +145,7 @@ export const PuzzleRecentPage = () => {
   };
 
   const save = async (): Promise<void> => {
-    if (!response?.puzzle) return;
+    if (!response?.puzzle || saving || loading) return;
     setSaving(true);
     setError("");
     setMessage("");
@@ -219,7 +219,7 @@ export const PuzzleRecentPage = () => {
               type="button"
               className="queueSecondaryButton"
               aria-label="Previous puzzle"
-              disabled={loading || !response?.olderPuzzleId}
+              disabled={loading || saving || !response?.olderPuzzleId}
               onClick={() => void load(puzzle?.id, "older")}
             >
               <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
@@ -239,12 +239,13 @@ export const PuzzleRecentPage = () => {
               <input
                 id="recent-puzzle-id"
                 type="number"
+                disabled={saving || loading}
                 min={1}
                 step={1}
                 value={jumpId}
                 onChange={(event) => setJumpId(event.target.value)}
               />
-              <button type="submit" className="queueSecondaryButton" disabled={loading}>
+              <button type="submit" className="queueSecondaryButton" disabled={loading || saving}>
                 Go
               </button>
             </form>
@@ -252,7 +253,7 @@ export const PuzzleRecentPage = () => {
               type="button"
               className="queueSecondaryButton"
               aria-label="Next puzzle"
-              disabled={loading || !response?.newerPuzzleId}
+              disabled={loading || saving || !response?.newerPuzzleId}
               onClick={() => void load(puzzle?.id, "newer")}
             >
               <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
@@ -288,6 +289,7 @@ export const PuzzleRecentPage = () => {
             {deleted ? <strong>Deleted by {puzzle.deleted_by}</strong> : null}
           </div>
           <PuzzleEditor
+            busy={saving || loading}
             value={value}
             onChange={setValue}
             resetKey={`${puzzle.id}-${editorRevision}`}
@@ -391,7 +393,7 @@ export const PuzzleRecentPage = () => {
                     key={`${puzzle.id}-${editorRevision}-tags`}
                     visible
                     tags={tags}
-                    canManage={editing && !deleted}
+                    canManage={editing && !deleted && !saving && !loading}
                     onUpdate={setTags}
                   />
                 </>
@@ -407,7 +409,7 @@ export const PuzzleRecentPage = () => {
               <button
                 type="button"
                 className="queuePrimaryButton"
-                disabled={saving}
+                disabled={saving || loading}
                 onClick={() => void restore()}
               >
                 <FontAwesomeIcon icon={faRotateLeft} aria-hidden="true" />
@@ -418,7 +420,7 @@ export const PuzzleRecentPage = () => {
                 <button
                   type="button"
                   className="queueSecondaryButton"
-                  disabled={saving}
+                  disabled={saving || loading}
                   onClick={resetDraft}
                 >
                   Cancel
@@ -426,7 +428,7 @@ export const PuzzleRecentPage = () => {
                 <button
                   type="button"
                   className="queuePrimaryButton"
-                  disabled={saving}
+                  disabled={saving || loading}
                   onClick={() => void save()}
                 >
                   <FontAwesomeIcon icon={faFloppyDisk} aria-hidden="true" />
@@ -437,7 +439,7 @@ export const PuzzleRecentPage = () => {
               <button
                 type="button"
                 className="queueDangerButton"
-                disabled={saving}
+                disabled={saving || loading}
                 onClick={() => void remove()}
               >
                 <FontAwesomeIcon icon={faTrash} aria-hidden="true" />

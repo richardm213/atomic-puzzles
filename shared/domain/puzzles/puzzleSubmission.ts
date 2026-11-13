@@ -1,5 +1,12 @@
+import {
+  convertUciLineToSan,
+  createAtomicPosition,
+  parseSolutionUciLines,
+  serializeSanLinesToPgn,
+  serializeUciLinesToPgn,
+} from "../chess/pgn";
+import { synchronizeTranspositions } from "../chess/transpositions";
 import { normalizePuzzleMotifTags } from "./puzzleMotifs";
-import { createAtomicPosition, parseSolutionUciLines, serializeUciLinesToPgn } from "./solutionPgn";
 
 export type PuzzlePositionHistory = {
   positionInitialFen: string;
@@ -137,9 +144,14 @@ export const validateParsedPuzzleSubmission = (
     throw new Error("The moves are not a legal atomic line from this FEN.");
   }
 
-  const normalizedSolution = /[()]/.test(solution)
-    ? solution.trim()
-    : serializeUciLinesToPgn(fen, solutionLines) || solution.trim();
+  const sanLines = solutionLines.map((line) => convertUciLineToSan(fen, line));
+  const synchronized = synchronizeTranspositions(fen, sanLines);
+  const normalizedSolution =
+    JSON.stringify(synchronized) !== JSON.stringify(sanLines)
+      ? serializeSanLinesToPgn(fen, synchronized)
+      : /[()]/.test(solution)
+        ? solution.trim()
+        : serializeUciLinesToPgn(fen, solutionLines) || solution.trim();
   return {
     fen,
     solution: normalizedSolution,

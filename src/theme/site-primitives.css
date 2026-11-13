@@ -90,7 +90,6 @@
   backdrop-filter: blur(16px);
 }
 
-.solutionOptionsHeader,
 .profileBestMonthRanksHeader,
 .puzzleEditorFields .puzzleEditorFieldHeader {
   display: flex;
@@ -261,7 +260,6 @@
   text-transform: uppercase;
 }
 
-.solutionOptionList,
 .moveList {
   display: flex;
   flex-wrap: wrap;

@@ -270,15 +270,6 @@ body:has(.analysisPage),
   padding-inline: var(--space-1);
 }
 
-.analysisMoveContent > .solutionOptions {
-  margin: 6px 8px 4px;
-}
-
-.analysisMoveContent > .inlineSolutionTree {
-  align-items: center;
-  padding: 4px 8px 8px;
-}
-
 .analysisMoveList {
   min-height: 0;
   max-height: none;

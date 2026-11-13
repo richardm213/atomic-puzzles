@@ -324,6 +324,7 @@ export const PuzzleReviewPage = () => {
               type="button"
               className={row.id === selectedId ? "active" : ""}
               onClick={() => selectQueuedPuzzle(row)}
+              disabled={saving}
             >
               <strong>
                 Puzzle {row.id === selectedId && puzzleIdInput ? puzzleIdInput : row.next_puzzle_id}
@@ -340,6 +341,7 @@ export const PuzzleReviewPage = () => {
                 <span>{new Date(selected.created_at).toLocaleString()}</span>
               </div>
               <PuzzleEditor
+                busy={saving}
                 beforeActions={<PuzzleStartingFenWarning fen={value.fen} />}
                 value={value}
                 onChange={changeValue}
@@ -409,7 +411,6 @@ export const PuzzleReviewPage = () => {
                           <input
                             type="text"
                             value={authorInput}
-                            disabled={saving}
                             onChange={(event) => setAuthorInput(event.target.value)}
                           />
                         </label>
@@ -420,7 +421,6 @@ export const PuzzleReviewPage = () => {
                             min={1}
                             step={1}
                             value={puzzleIdInput}
-                            disabled={saving}
                             onChange={(event) => setPuzzleIdInput(event.target.value)}
                           />
                         </label>
@@ -444,7 +444,7 @@ export const PuzzleReviewPage = () => {
               {error ? <p className="queueMessage error">{error}</p> : null}
               {isReviewer ? (
                 <div className="puzzleReviewDecisionRow">
-                  <fieldset className="puzzleReviewBonuses" disabled={saving}>
+                  <fieldset className="puzzleReviewBonuses">
                     <legend>Bonuses beyond the +5 base reward</legend>
                     <div className="puzzleReviewBonusOptions">
                       <label>
@@ -472,7 +472,6 @@ export const PuzzleReviewPage = () => {
                     <button
                       type="button"
                       className="queueDangerButton puzzleReviewRejectButton"
-                      disabled={saving}
                       onClick={() => void reject()}
                     >
                       <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
@@ -481,7 +480,6 @@ export const PuzzleReviewPage = () => {
                     <button
                       type="button"
                       className="queuePrimaryButton puzzleReviewApproveButton"
-                      disabled={saving}
                       onClick={() => void approve()}
                     >
                       <FontAwesomeIcon icon={faCheck} aria-hidden="true" />

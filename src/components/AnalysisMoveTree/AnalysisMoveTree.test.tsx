@@ -1,5 +1,11 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 
+import fixtures from "../../lib/chess/fixtures/transpositionPuzzles.json";
+import {
+  convertUciLineToSan,
+  parseSolutionUciLines,
+  startingPlyFromFen,
+} from "../../lib/chess/pgn";
 import { AnalysisContinuationChoices, AnalysisMoveTree } from "./AnalysisMoveTree";
 
 const lines = [
@@ -9,6 +15,34 @@ const lines = [
 ];
 
 describe("AnalysisMoveTree", () => {
+  it("highlights the visible continuation when navigating through nested transpositions", () => {
+    const puzzle = fixtures.find((fixture) => fixture.id === 1209)!;
+    const puzzleLines = parseSolutionUciLines(puzzle.fen, puzzle.solution).map((line) =>
+      convertUciLineToSan(puzzle.fen, line),
+    );
+    const alternate = puzzleLines.findIndex((line) => line[0] === "Qa7" && line[2] === "Qf2");
+    const onSelect = vi.fn();
+    const props = {
+      lines: puzzleLines,
+      moves: puzzleLines[alternate]!,
+      pinnedLineIndex: alternate,
+      initialFen: puzzle.fen,
+      initialPly: startingPlyFromFen(puzzle.fen),
+      onSelect,
+    };
+    const { rerender } = render(<AnalysisMoveTree {...props} currentPly={3} />);
+    for (const [ply, san] of [
+      [4, "Qxf2"],
+      [5, "Rf2"],
+      [4, "Qxf2"],
+      [3, "Qf2"],
+    ] as const) {
+      rerender(<AnalysisMoveTree {...props} currentPly={ply} />);
+      expect(screen.getByRole("button", { current: "step" })).toHaveTextContent(san);
+    }
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
   it("keeps longer alternatives next to their fork and navigates to their moves", () => {
     const onSelect = vi.fn();
     render(
@@ -48,19 +82,24 @@ describe("AnalysisMoveTree", () => {
     expect(within(choices).getAllByRole("button")).toHaveLength(2);
   });
 
-  it("can render variations in non-inline mode", () => {
-    const { container } = render(
+  it("places continuation choices after the moves and preserves option cycling", () => {
+    const onCycleOptions = vi.fn();
+    render(
       <AnalysisMoveTree
         lines={lines}
         moves={["Nf3"]}
         currentPly={1}
         inline={false}
         onSelect={vi.fn()}
-        onCycleOptions={vi.fn()}
+        onCycleOptions={onCycleOptions}
       />,
     );
 
-    expect(container.querySelector(".analysisTree")).toHaveClass("nonInline");
+    const moves = screen.getByRole("list", { name: "Analysis variations" });
+    const choices = screen.getByRole("group", { name: "Choose continuation" });
+    expect(moves.compareDocumentPosition(choices)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    fireEvent.click(within(choices).getByRole("button", { name: "Next continuation" }));
+    expect(onCycleOptions).toHaveBeenCalledWith("nextOption");
   });
 
   it("navigates on click and opens the annotation menu only from the context menu", () => {

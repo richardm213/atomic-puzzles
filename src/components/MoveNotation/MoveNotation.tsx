@@ -19,6 +19,7 @@ export const MoveNotation = ({
   onAnnotate,
   onDelete,
   assessments,
+  initialFen,
 }: {
   lines: string[][];
   moves: string[];
@@ -37,6 +38,7 @@ export const MoveNotation = ({
     ((lineIndex: number | undefined, moveIndex: number, annotation: string) => void) | undefined;
   onDelete?: ((lineIndex: number, moveIndex: number) => void) | undefined;
   assessments?: GameMoveAssessment[] | undefined;
+  initialFen?: string | undefined;
 }) => {
   if (reserveFirstRow && !lines.length && !moves.length && !previousMove) {
     return <div className="analysisTree" aria-hidden="true" />;
@@ -80,6 +82,7 @@ export const MoveNotation = ({
       }}
       onCycleOptions={onCycleOptions}
       assessments={assessments}
+      initialFen={initialFen}
       onDelete={onDelete}
       onAnnotate={onAnnotate}
     />

@@ -203,6 +203,7 @@ export const PuzzleSubmissionPage = () => {
                 className={!batchMode ? "active" : ""}
                 aria-pressed={!batchMode}
                 onClick={() => changeSubmissionMode(false)}
+                disabled={submitting}
               >
                 Single puzzle
               </button>
@@ -211,6 +212,7 @@ export const PuzzleSubmissionPage = () => {
                 className={batchMode ? "active" : ""}
                 aria-pressed={batchMode}
                 onClick={() => changeSubmissionMode(true)}
+                disabled={submitting}
               >
                 Puzzle batch
               </button>
@@ -218,6 +220,7 @@ export const PuzzleSubmissionPage = () => {
             {batchMode ? <p>Paste consecutive PGNs below, then review each puzzle.</p> : null}
           </div>
           <PuzzleEditor
+            busy={submitting}
             value={value}
             onChange={updateValue}
             resetKey={`${editorVersion}-${activeBatchIndex}`}
@@ -297,7 +300,6 @@ export const PuzzleSubmissionPage = () => {
                 <button
                   type="button"
                   className="queuePrimaryButton puzzleSubmitReviewButton"
-                  disabled={submitting}
                   onClick={() => void submit()}
                 >
                   <FontAwesomeIcon icon={faPaperPlane} aria-hidden="true" />

@@ -428,6 +428,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const moveContentRef = useRef<HTMLDivElement | null>(null);
   const [gameBoardState, setGameBoardState] = useState<ChessboardState | null>(null);
   const [puzzleBoardState, setPuzzleBoardState] = useState<ChessboardState | null>(null);
+  const [puzzleSaving, setPuzzleSaving] = useState(false);
   const [puzzleDraft, setPuzzleDraft] = useState<{
     fen: string;
     orientation: "white" | "black";
@@ -1313,6 +1314,7 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
   const moveNotation = (
     <MoveNotation
       lines={analysisLines}
+      initialFen={puzzleDraft?.fen}
       moves={moveList}
       currentPly={currentPly}
       initialPly={puzzleDraft ? startingPlyFromFen(rootFen) : 0}
@@ -1320,8 +1322,8 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
       inline={notationLayout === "inline"}
       onNavigate={navigateToPly}
       onSelectVariation={navigateToAnalysisMove}
-      onAnnotate={game && !puzzleDraft ? undefined : annotateMove}
-      onDelete={game && !puzzleDraft ? undefined : deleteMove}
+      onAnnotate={(game && !puzzleDraft) || puzzleSaving ? undefined : annotateMove}
+      onDelete={(game && !puzzleDraft) || puzzleSaving ? undefined : deleteMove}
       assessments={
         game && !puzzleDraft && gameComputerAnalysisEnabled ? gameAssessments : undefined
       }
@@ -1653,13 +1655,15 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
                   }
                   onPlayLine={playAtomicDbLine}
                   onHoverMove={setHoveredExplorerMoveUci}
-                  disabled={atomicDbLinePlaying || effectiveThreatMode}
+                  disabled={atomicDbLinePlaying || effectiveThreatMode || puzzleSaving}
                 />
               ) : null
             }
             moveContent={
               puzzleDraft ? (
                 <PuzzleComposer
+                  saving={puzzleSaving}
+                  onSavingChange={setPuzzleSaving}
                   publishesDirectly={publishesDirectly}
                   positionHistory={puzzleDraft.positionHistory}
                   {...(game
@@ -1774,6 +1778,8 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
           puzzleDraft
             ? {
                 puzzleId: "match-puzzle-draft",
+                linkTranspositions: true,
+                disabled: puzzleSaving,
                 fen: puzzleDraft.fen,
                 orientation,
                 coordinates: true,
@@ -1836,7 +1842,11 @@ export const AnalysisPage = ({ game, initialFen, initialMoves }: AnalysisPagePro
         {...(!game && atomicDbRequest ? { atomicDbRequest } : {})}
         document={
           puzzleDraft
-            ? { ...boardDocument, fen: { value: puzzleDraft.fen, readOnly: true, error: "" } }
+            ? {
+                ...boardDocument,
+                fen: { value: puzzleDraft.fen, readOnly: true, error: "" },
+                pgn: { ...boardDocument.pgn, readOnly: puzzleSaving },
+              }
             : boardDocument
         }
         showDocument={!game || Boolean(puzzleDraft)}

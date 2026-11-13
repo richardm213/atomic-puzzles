@@ -1,3 +1,5 @@
+import { convertUciLineToSan, parseSolutionUciLines } from "../shared/domain/chess/pgn";
+import transpositionFixtures from "../src/lib/chess/fixtures/transpositionPuzzles.json" with { type: "json" };
 import { expect, test } from "./fixtures";
 
 const queuePuzzle = {
@@ -305,4 +307,80 @@ test("tag popups close on the backdrop and dismiss only the topmost dialog", asy
   await expect(definition).toHaveCount(0);
   await tag.click();
   await expect(definition).toBeVisible();
+});
+
+test("recent puzzle editing links multiple transpositions while view mode keeps full PGN", async ({
+  page,
+}) => {
+  const fixture = transpositionFixtures.find((puzzle) => puzzle.id === 1209)!;
+  let stored = fixture.solution;
+  let finishSave: () => void = () => {
+    throw new Error("No save pending");
+  };
+  const response = () => ({
+    puzzle: {
+      ...queuePuzzle,
+      ...fixture,
+      solution: stored,
+      author: "admin",
+      tags: [],
+      deleted_at: null,
+    },
+    olderPuzzleId: null,
+    newerPuzzleId: null,
+    attempts: [],
+  });
+  await page.route("**/api/auth/session", (route) =>
+    route.fulfill({ json: { user: { username: "seaside_tiramisu" } } }),
+  );
+  await page.route("**/api/puzzles/admin", async (route) => {
+    const input = route.request().postDataJSON();
+    if (input.action === "tag-votes")
+      return route.fulfill({ json: { rows: [], nextCursor: null } });
+    if (input.action === "update") {
+      await new Promise<void>((resolve) => {
+        finishSave = resolve;
+      });
+      stored = input.solution;
+    }
+    return route.fulfill({ json: response() });
+  });
+  await page.route("**/api/puzzles/submit", (route) => route.fulfill({ json: { puzzleId: null } }));
+  await page.goto("/puzzles/recent");
+  const moves = page.getByRole("region", { name: "Solution moves" });
+  const jumps = moves.getByRole("button", { name: "Go to original continuation" });
+  await expect(moves.getByRole("button", { name: /Rf2/ })).toHaveCount(4);
+  await expect(jumps).toHaveCount(0);
+  await page.getByRole("button", { name: "Edit puzzle", exact: true }).click();
+  await expect(jumps).toHaveCount(3);
+  const followup = moves.getByRole("button", { name: /Rf2/ });
+  await expect(followup).toHaveCount(1);
+  await followup.click({ button: "right" });
+  await page.getByRole("menuitemcheckbox", { name: "Annotate with ?", exact: true }).click();
+  const pgn = page.getByRole("textbox", { name: "Solution PGN", exact: true });
+  await expect
+    .poll(async () =>
+      parseSolutionUciLines(fixture.fen, await pgn.inputValue()).map((line) =>
+        convertUciLineToSan(fixture.fen, line).at(-1),
+      ),
+    )
+    .toEqual(["Rf2?", "Rf2?", "Rf2?", "Rf2?"]);
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(pgn).toBeDisabled();
+  await expect(page.getByRole("textbox", { name: "Author", exact: true })).toBeDisabled();
+  await expect(page.getByRole("spinbutton", { name: "Puzzle ID", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Go", exact: true })).toBeDisabled();
+  await expect(page.getByRole("textbox", { name: "Explanation", exact: true })).toBeDisabled();
+  await page.keyboard.press("ArrowLeft");
+  await expect(moves.getByRole("button", { name: /Rf2\?/ })).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
+  finishSave();
+  await expect(jumps).toHaveCount(0);
+  await expect(moves.getByRole("button", { name: /Rf2\?/ })).toHaveCount(4);
+  expect(stored).not.toMatch(/→|transposition/i);
+  const savedLines = parseSolutionUciLines(fixture.fen, stored);
+  expect(savedLines).toHaveLength(4);
+  expect(savedLines.every((line) => line.at(-1)?.annotation === "?")).toBe(true);
 });

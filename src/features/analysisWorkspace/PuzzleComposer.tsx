@@ -55,6 +55,8 @@ export const PuzzleComposer = ({
   moveContentRef,
   onCancel,
   onAdded,
+  saving,
+  onSavingChange,
 }: {
   match?: { gameId: string; matchId: string };
   positionHistory: PuzzlePositionHistory;
@@ -65,6 +67,8 @@ export const PuzzleComposer = ({
   moveContentRef?: Ref<HTMLDivElement>;
   onCancel: () => void;
   onAdded: (result: PuzzleCreationResult) => void;
+  saving: boolean;
+  onSavingChange: (saving: boolean) => void;
 }) => {
   const queryClient = useQueryClient();
   const context = useQuery({
@@ -76,7 +80,6 @@ export const PuzzleComposer = ({
   const [explanation, setExplanation] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const cancelRef = useRef<HTMLButtonElement | null>(null);
   const explanationId = useId();
@@ -99,7 +102,7 @@ export const PuzzleComposer = ({
     event.preventDefault();
     if (!canSave || (match && !context.data) || savingRef.current) return;
     savingRef.current = true;
-    setSaving(true);
+    onSavingChange(true);
     setError("");
     const puzzle = { fen, solution, opaStyle, explanation, tags };
     try {
@@ -122,7 +125,7 @@ export const PuzzleComposer = ({
       setError(getErrorMessage(submitError, "Unable to add puzzle. Try again."));
     } finally {
       savingRef.current = false;
-      setSaving(false);
+      onSavingChange(false);
     }
   };
 

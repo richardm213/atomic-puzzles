@@ -14,11 +14,7 @@ import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "rea
 
 import { Chessboard } from "../../components/Chessboard/Chessboard";
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
-import {
-  continuationOptionsAt,
-  SolutionMoveTree,
-  SolutionPlaybackControls,
-} from "../../components/SolutionMoveNavigation/SolutionMoveNavigation";
+import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
 import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
@@ -35,6 +31,7 @@ import {
   splitSolutionMove,
   startingPlyFromFen,
 } from "../../lib/chess/pgn";
+import { synchronizeTranspositions } from "../../lib/chess/transpositions";
 import {
   ensurePuzzlePgnHeaders,
   parsePuzzlePgnInput,
@@ -104,6 +101,7 @@ type PuzzleEditorProps = {
   solutionPgnUnderBoard?: boolean;
   allowSolutionEditing?: boolean;
   readOnly?: boolean;
+  busy?: boolean;
   showExplanation?: boolean;
   showMetadataFields?: boolean;
   batchMode?: boolean;
@@ -140,6 +138,7 @@ export const PuzzleEditor = ({
   solutionPgnUnderBoard = false,
   allowSolutionEditing = false,
   readOnly = false,
+  busy = false,
   showExplanation = true,
   showMetadataFields = true,
   batchMode = false,
@@ -174,7 +173,7 @@ export const PuzzleEditor = ({
   const savedBoardLineRef = useRef("");
   const fixedFenRef = useRef<string | null>(value.solution.trim() ? initialPgnState.fen : null);
   const solutionInputId = useId();
-  const canEditSolution = allowSolutionEditing && !readOnly;
+  const canEditSolution = allowSolutionEditing && !readOnly && !busy;
   const solutionLocked = readOnly || (Boolean(value.solution.trim()) && !canEditSolution);
 
   const solutionMovetext = useMemo(() => {
@@ -267,12 +266,23 @@ export const PuzzleEditor = ({
         return;
       }
 
-      const normalized = validateParsedPuzzleSubmission(value, parsed);
+      const draftLines = parseSolutionUciLines(nextFen, parsed.solution).map((line) =>
+        convertUciLineToSan(nextFen, line),
+      );
+      const synced = synchronizeTranspositions(
+        nextFen,
+        draftLines,
+        canEditSolution && nextFen === appliedFen ? solutionLines : [],
+      );
+      const normalized = validateParsedPuzzleSubmission(value, {
+        ...parsed,
+        solution: serializeSanLinesToPgn(nextFen, synced),
+      });
       if (canEditSolution && fixedFenRef.current === null) {
         fixedFenRef.current = normalized.fen;
       }
       onChange(normalized);
-      setSolutionDraft(combinePgnHeadersAndMoves(nextHeaders, parsed.solution));
+      setSolutionDraft(combinePgnHeadersAndMoves(nextHeaders, normalized.solution));
       setAppliedFen(normalized.fen);
       setFenDraft(normalized.fen);
       setOrientation(orientationFromFen(normalized.fen));
@@ -348,6 +358,9 @@ export const PuzzleEditor = ({
       resetBoardHistory = false,
     }: { targetPly?: number; resetBoardHistory?: boolean } = {},
   ): void => {
+    const nextPly = targetPly ?? nextLines[targetLineIndex]?.length ?? 0;
+    const retainedMoves = nextLines[targetLineIndex]?.slice(0, nextPly) ?? [];
+    nextLines = synchronizeTranspositions(appliedFen, nextLines, solutionLines);
     const parsedDraft = parsePuzzlePgnInput(solutionDraft, appliedFen);
     const headers = ensurePuzzlePgnHeaders(parsedDraft.headerText, appliedFen);
 
@@ -369,21 +382,13 @@ export const PuzzleEditor = ({
       fen: appliedFen,
       solution: nextMovetext,
     });
-    const nextActiveLineIndex =
-      resetBoardHistory && targetPly !== undefined
-        ? pgnLineIndexForPrefix(
-            appliedFen,
-            nextDraft,
-            nextLines[targetLineIndex]?.slice(0, targetPly) ?? [],
-          )
-        : Math.min(targetLineIndex, nextLines.length - 1);
+    const nextActiveLineIndex = pgnLineIndexForPrefix(appliedFen, nextDraft, retainedMoves);
 
     if (fixedFenRef.current === null) fixedFenRef.current = appliedFen;
     setSolutionDraft(nextDraft);
     setEditorError("");
     setActiveLineIndex(nextActiveLineIndex);
     onChange(normalized);
-    const nextPly = targetPly ?? nextLines[nextActiveLineIndex]?.length ?? 0;
     setNavigation(
       resetBoardHistory
         ? buildBoardLoadNavigation({
@@ -430,8 +435,7 @@ export const PuzzleEditor = ({
             )
           : candidate,
       );
-      commitSolutionLines(nextLines, lineIndex);
-      setNavigation({ type: "solution", line: lineIndex, ply: moveIndex + 1 });
+      commitSolutionLines(nextLines, lineIndex, { targetPly: moveIndex + 1 });
     } catch (error) {
       setEditorError(getErrorMessage(error, "Unable to annotate move."));
     }
@@ -512,14 +516,6 @@ export const PuzzleEditor = ({
 
   const currentPly = boardPly(boardState);
   const moveCount = boardState?.lineMoves?.length ?? 0;
-  const currentMoves = useMemo(
-    () => boardState?.lineMoves?.slice(0, currentPly) ?? [],
-    [boardState?.lineMoves, currentPly],
-  );
-  const variationOptionList = useMemo(
-    () => continuationOptionsAt(solutionLines, currentMoves),
-    [currentMoves, solutionLines],
-  );
   const currentFen = boardState?.fen || appliedFen;
   const engine = useAtomicDbBoardAnalysis({
     currentFen,
@@ -544,6 +540,31 @@ export const PuzzleEditor = ({
     }
   };
 
+  const moveNotation = (
+    <MoveNotation
+      lines={solutionLines}
+      initialFen={readOnly ? undefined : appliedFen}
+      moves={boardState?.lineMoves ?? solutionLines[activeLineIndex] ?? []}
+      currentPly={currentPly}
+      pinnedLineIndex={activeLineIndex}
+      initialPly={startingPlyFromFen(appliedFen)}
+      inline
+      onNavigate={(ply) => navigateToMove(activeLineIndex, Math.max(0, ply - 1))}
+      onSelectVariation={navigateToMove}
+      onCycleOptions={navigate}
+      onAnnotate={
+        canEditSolution
+          ? (lineIndex, moveIndex, annotation) => {
+              if (lineIndex !== undefined) {
+                annotateSolutionMove(lineIndex, moveIndex, annotation);
+              }
+            }
+          : undefined
+      }
+      onDelete={canEditSolution ? deleteSolutionFromMove : undefined}
+    />
+  );
+
   const editorMovePanel = solutionLines.length ? (
     <section className="puzzleEditorMoves" aria-label="Solution moves">
       <div className="puzzleEditorMovesHeader">
@@ -565,7 +586,22 @@ export const PuzzleEditor = ({
               <FontAwesomeIcon icon={faTrashCan} aria-hidden="true" />
             </button>
           ) : null}
-          <SolutionPlaybackControls
+          <PlaybackButtons
+            className="solutionPlaybackControls"
+            ariaLabel="Line playback"
+            buttonClassName="solutionPlaybackButton"
+            labels={{
+              start: "Go to start of line",
+              previous: "Go to previous move",
+              next: "Go to next move",
+              end: "Go to end of line",
+            }}
+            titles={{
+              start: "Start (Arrow Up)",
+              previous: "Previous (Arrow Left)",
+              next: "Next (Arrow Right)",
+              end: "End (Arrow Down)",
+            }}
             canStart={currentPly > 0}
             canPrevious={currentPly > 0}
             canNext={currentPly < moveCount}
@@ -574,44 +610,13 @@ export const PuzzleEditor = ({
           />
         </div>
       </div>
-      <SolutionMoveTree
-        lines={solutionLines}
-        options={variationOptionList}
-        currentPly={currentPly}
-        initialPly={startingPlyFromFen(appliedFen)}
-        activeLineIndex={activeLineIndex}
-        onSelect={navigateToMove}
-      />
+      {moveNotation}
     </section>
   ) : null;
 
   const reviewMovePanel = (
     <section className="puzzleReviewMovePanel" aria-label="Solution moves">
-      {solutionLines.length ? (
-        <MoveNotation
-          lines={solutionLines}
-          moves={boardState?.lineMoves ?? solutionLines[activeLineIndex] ?? []}
-          currentPly={currentPly}
-          pinnedLineIndex={activeLineIndex}
-          initialPly={startingPlyFromFen(appliedFen)}
-          inline
-          onNavigate={(ply) => navigateToMove(activeLineIndex, Math.max(0, ply - 1))}
-          onSelectVariation={navigateToMove}
-          onCycleOptions={navigate}
-          onAnnotate={
-            canEditSolution
-              ? (lineIndex, moveIndex, annotation) => {
-                  if (lineIndex !== undefined) {
-                    annotateSolutionMove(lineIndex, moveIndex, annotation);
-                  }
-                }
-              : undefined
-          }
-          onDelete={canEditSolution ? deleteSolutionFromMove : undefined}
-        />
-      ) : (
-        <p>No solution moves.</p>
-      )}
+      {solutionLines.length ? moveNotation : <p>No solution moves.</p>}
     </section>
   );
 
@@ -686,9 +691,10 @@ export const PuzzleEditor = ({
   ) : null;
 
   return (
-    <div className="puzzleEditor">
+    <fieldset className="puzzleEditor" disabled={busy} aria-busy={busy}>
       <div className="puzzleEditorBoard">
         <Chessboard
+          disabled={busy}
           puzzleId={`puzzle-editor-${resetKey}`}
           fen={appliedFen}
           orientation={orientation}
@@ -855,6 +861,6 @@ export const PuzzleEditor = ({
         {beforeActions}
         {actions}
       </div>
-    </div>
+    </fieldset>
   );
 };
