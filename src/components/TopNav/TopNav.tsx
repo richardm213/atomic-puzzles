@@ -49,7 +49,6 @@ import {
   unreadNotificationCountQueryOptions,
 } from "../../lib/community/notificationQueries";
 import { markNotificationsRead, type UserNotification } from "../../lib/community/notifications";
-import { keyboardShortcutAria, keyboardShortcutHint } from "../../lib/keyboardShortcuts";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { getBrowserStorageItem, setBrowserStorageItem } from "../../utils/browserStorage";
 import { getErrorMessage } from "../../utils/errors";
@@ -58,6 +57,7 @@ import {
   PlayerCountryPicker,
   PlayerFlairPicker,
 } from "../PlayerSocialControls/PlayerSocialControls";
+import { EngineSettings } from "./EngineSettings";
 import { KeyboardShortcutSettings } from "./KeyboardShortcutSettings";
 import { NavBrandMark } from "./NavBrandMark";
 import { NavNotificationsPanel } from "./NavNotificationsPanel";
@@ -96,7 +96,9 @@ const setStoredProfileUsername = (username: string, profileUsername: string): vo
 
 export const TopNav = () => {
   const [openPanel, setOpenPanel] = useState<OpenPanel | null>(null);
-  const [settingsPage, setSettingsPage] = useState<"main" | "board" | "keyboard">("main");
+  const [settingsPage, setSettingsPage] = useState<"main" | "board" | "keyboard" | "engine">(
+    "main",
+  );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const topNavRef = useRef<HTMLElement | null>(null);
   const navDropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -144,7 +146,6 @@ export const TopNav = () => {
     ? getErrorMessage(notificationErrorValue, "Unable to update notifications.")
     : "";
   const {
-    keyboardShortcuts,
     theme,
     setTheme,
     colorMode,
@@ -201,16 +202,11 @@ export const TopNav = () => {
     setPuzzleAnalysisTarget,
     lichessLinkTarget,
     setLichessLinkTarget,
-    localAnalysisEngine,
-    setLocalAnalysisEngine,
-    showBestMoveArrow,
-    setShowBestMoveArrow,
     showCoinBalance,
     setShowCoinBalance,
     showCoinChangePopups,
     setShowCoinChangePopups,
   } = useAppSettings();
-  const bestMoveArrowShortcut = keyboardShortcutHint(keyboardShortcuts, "toggleBestMoveArrow");
   const normalizedAuthUsername = normalizeUsername(user?.username);
   const themeAccess = useMutation({
     mutationFn: checkRedCharcoalAccess,
@@ -782,6 +778,26 @@ export const TopNav = () => {
               {settingsPage === "keyboard" ? (
                 <KeyboardShortcutSettings onBack={() => setSettingsPage("main")} />
               ) : null}
+              {settingsPage === "engine" ? (
+                <div className="navSettingsBoardPage">
+                  <div className="navSettingsPageHeader">
+                    <button
+                      className="navSettingsBackButton"
+                      type="button"
+                      onClick={() => setSettingsPage("main")}
+                      aria-label="Back to site settings"
+                    >
+                      <FontAwesomeIcon icon={faChevronLeft} aria-hidden="true" />
+                    </button>
+                    <span>Engine settings</span>
+                  </div>
+                  <div className="navSettingsSection navSettingsStack">
+                    <EngineSettings
+                      practice={pathname === "/practice" || pathname.startsWith("/practice/")}
+                    />
+                  </div>
+                </div>
+              ) : null}
               {settingsPage === "board" ? (
                 <div className="navSettingsBoardPage">
                   <div className="navSettingsPageHeader">
@@ -1012,40 +1028,6 @@ export const TopNav = () => {
                     <option value="atomic-puzzles">Atomic Puzzles</option>
                   </select>
                 </div>
-                <div className="navSettingsField">
-                  <label className="navSettingsLabel" htmlFor="local-analysis-engine-select">
-                    Analysis engine
-                  </label>
-                  <select
-                    id="local-analysis-engine-select"
-                    value={localAnalysisEngine}
-                    onChange={(event) =>
-                      setLocalAnalysisEngine(
-                        event.target.value === "fairy-stockfish-14"
-                          ? "fairy-stockfish-14"
-                          : "atomic-stockfish",
-                      )
-                    }
-                  >
-                    <option value="atomic-stockfish">Atomic-Stockfish</option>
-                    <option value="fairy-stockfish-14">Fairy-Stockfish 14</option>
-                  </select>
-                </div>
-                <label className="navSettingsCheckbox navBestMoveArrowSetting">
-                  <span>Best move arrow</span>
-                  {bestMoveArrowShortcut ? (
-                    <kbd aria-hidden="true">{bestMoveArrowShortcut}</kbd>
-                  ) : null}
-                  <input
-                    type="checkbox"
-                    aria-keyshortcuts={keyboardShortcutAria(
-                      keyboardShortcuts,
-                      "toggleBestMoveArrow",
-                    )}
-                    checked={showBestMoveArrow}
-                    onChange={(event) => setShowBestMoveArrow(event.target.checked)}
-                  />
-                </label>
               </div>
               {pathname === "/rankings" || pathname === "/rankings/yearly" ? (
                 <div className="navSettingsSection navSettingsStack">
@@ -1282,6 +1264,14 @@ export const TopNav = () => {
                       onClick={() => setSettingsPage("board")}
                     >
                       <span>Board settings</span>
+                      <FontAwesomeIcon icon={faChevronRight} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="navSettingsPageLink"
+                      onClick={() => setSettingsPage("engine")}
+                    >
+                      <span>Engine settings</span>
                       <FontAwesomeIcon icon={faChevronRight} aria-hidden="true" />
                     </button>
                     <button

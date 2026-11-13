@@ -41,6 +41,10 @@ export const PRACTICE_SEARCH_LIMITS = [
   { timeMs: 2000, depth: 16 },
   { timeMs: 3500, depth: 20 },
   { timeMs: 6000, depth: 26 },
+  { timeMs: 7500, depth: 30 },
+  { timeMs: 9000, depth: 34 },
+  { timeMs: 10500, depth: 38 },
+  { timeMs: 12000, depth: 42 },
 ] as const;
 const bounded = (v: unknown, fallback: number, min: number, max: number): number =>
   typeof v === "number" && Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : fallback;
@@ -60,7 +64,7 @@ export const presetDefaults = (preset: PracticePreset): PracticeStyle => {
 export const normalizePracticeEngineSettings = (input: unknown): PracticeEngineSettings => {
   const raw = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
   const strength = Math.round(bounded(raw.strength, 9, 1, 12));
-  const speed = Math.round(bounded(raw.speed, 4, 1, 8));
+  const speed = Math.round(bounded(raw.speed, 4, 1, PRACTICE_SEARCH_LIMITS.length));
   const preset =
     typeof raw.preset === "string" && Object.hasOwn(PRACTICE_PRESETS, raw.preset)
       ? (raw.preset as PracticePreset)
@@ -105,3 +109,9 @@ export const handoffApplies = (
   handoff.prefix.every((move, i) => moves[i] === move);
 export const shouldUsePracticeEngine = (games: number, minGames: number): boolean =>
   games < minGames;
+
+export const DEFAULT_PRACTICE_MOVE_SETTINGS = {
+  engine: normalizePracticeEngineSettings(null),
+  opponentMode: "frequency" as const,
+  playerContinuation: "engine" as const,
+};

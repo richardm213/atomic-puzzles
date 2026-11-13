@@ -1,12 +1,19 @@
-import { useCallback } from "react";
+import {
+  createContext,
+  createElement,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useMemo,
+} from "react";
 import { z } from "zod";
 
 import { usePersistedState } from "../../hooks/usePersistedState";
 import {
+  DEFAULT_PRACTICE_MOVE_SETTINGS,
   normalizePracticeEngineSettings,
   type PracticeEngineSettings,
 } from "../../lib/practice/engineSettings";
-import { DEFAULT_PRACTICE_MOVE_SETTINGS } from "../../lib/practice/moveSource";
 
 const PRACTICE_SETTINGS_STORAGE_KEY = "atomic-puzzles.practice.settings";
 export const MAX_PRACTICE_PLAYERS = 8;
@@ -20,6 +27,7 @@ export type PlayerContinuation = "general" | "engine";
 
 type StoredPracticeSettings = {
   engine: PracticeEngineSettings;
+  opponentModel: "database" | "rechesster";
   side: PracticeSide;
   opponentMode: OpponentMode;
   opponentSource: OpponentSource;
@@ -37,6 +45,7 @@ type StoredPracticeSettings = {
 const DEFAULT_SETTINGS: StoredPracticeSettings = {
   ...DEFAULT_PRACTICE_MOVE_SETTINGS,
   side: "white",
+  opponentModel: "database",
   opponentSource: "general",
   opponentUsernames: [],
   allowMultiplePlayers: false,
@@ -79,6 +88,8 @@ const practiceSettingsSchema = z
 
     return {
       engine: normalizePracticeEngineSettings(value.engine),
+      opponentModel:
+        import.meta.env.DEV && value.opponentModel === "rechesster" ? "rechesster" : "database",
       side: value.side === "black" ? "black" : "white",
       opponentMode:
         value.opponentMode === "random" || value.opponentMode === "popular"
@@ -104,7 +115,7 @@ const practiceSettingsSchema = z
     };
   });
 
-export const usePracticeSettings = () => {
+const usePracticeSettingsState = () => {
   const [settings, setSettings] = usePersistedState<StoredPracticeSettings>(
     PRACTICE_SETTINGS_STORAGE_KEY,
     practiceSettingsSchema,
@@ -116,5 +127,19 @@ export const usePracticeSettings = () => {
     [setSettings],
   );
 
-  return { settings, setSettings, updateSettings };
+  return useMemo(
+    () => ({ settings, setSettings, updateSettings }),
+    [settings, setSettings, updateSettings],
+  );
+};
+
+const PracticeSettingsContext = createContext<ReturnType<typeof usePracticeSettingsState> | null>(
+  null,
+);
+export const PracticeSettingsProvider = ({ children }: { children: ReactNode }) =>
+  createElement(PracticeSettingsContext.Provider, { value: usePracticeSettingsState() }, children);
+export const usePracticeSettings = () => {
+  const settings = useContext(PracticeSettingsContext);
+  if (!settings) throw new Error("Practice settings require PracticeSettingsProvider");
+  return settings;
 };

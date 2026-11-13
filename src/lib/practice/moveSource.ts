@@ -8,17 +8,9 @@ import {
 } from "../../utils/openingExplorer";
 import { apiRequest } from "../api/postApi";
 import { atomicLegalMoveCount } from "../chess/pgn";
-import {
-  normalizePracticeEngineSettings,
-  PRACTICE_SEARCH_LIMITS,
-  type PracticeEngineSettings,
-} from "./engineSettings";
+import { PRACTICE_SEARCH_LIMITS, type PracticeEngineSettings } from "./engineSettings";
 
-export const DEFAULT_PRACTICE_MOVE_SETTINGS = {
-  engine: normalizePracticeEngineSettings(null),
-  opponentMode: "frequency" as const,
-  playerContinuation: "engine" as const,
-};
+export { DEFAULT_PRACTICE_MOVE_SETTINGS } from "./engineSettings";
 
 export const PRACTICE_AUTOMOVE_MIN_THINK_MS = 240;
 const fetchGeneralPracticeExplorerResponse = (fen: string, signal: AbortSignal) =>

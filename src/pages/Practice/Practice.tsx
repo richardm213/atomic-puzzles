@@ -63,6 +63,7 @@ import { useBoardMoveEditing } from "../../hooks/useBoardMoveEditing";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { readPersistedState, usePersistedState } from "../../hooks/usePersistedState";
+import { usePracticeReplica } from "../../hooks/usePracticeReplica";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { buildBoardLoadNavigation } from "../../lib/analysis/boardLoading";
 import { boardLineNavigation, getBoardMoveState } from "../../lib/analysis/boardState";
@@ -94,7 +95,6 @@ import { setBrowserStorageJson } from "../../utils/browserStorage";
 import { getErrorMessage } from "../../utils/errors";
 import { formatGameCount } from "../../utils/formatters";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
-import { PracticeEngineSettings } from "./PracticeEngineSettings";
 import { practicePath, practiceRouteParam, practiceUsernamesFromRoute } from "./practiceRoutes";
 import { usePracticeClocks } from "./usePracticeClocks";
 import {
@@ -298,7 +298,10 @@ export const PracticePage = () => {
   const currentTurn = boardState?.turn || "white";
   const gameFinished = terminalOutcome !== null;
   const opponentSide = oppositeSide(side);
-  const canUsePlayerSource = opponentSource === "general" || opponentUsernames.length > 0;
+  const isReplica = import.meta.env.DEV && settings.opponentModel === "rechesster";
+  const [replicaRetry, setReplicaRetry] = useState(0);
+  const canUsePlayerSource =
+    isReplica || opponentSource === "general" || opponentUsernames.length > 0;
   const practiceExplorerCacheKey = useMemo(
     () =>
       JSON.stringify({
@@ -352,7 +355,7 @@ export const PracticePage = () => {
     status,
     error,
   } = useOpeningExplorer({
-    enabled: !handoffActive,
+    enabled: !handoffActive && !isReplica,
     fen: currentFen,
     playerColor: opponentSide,
     showPerformance: opponentSource === "player" && showPerformance,
@@ -360,7 +363,8 @@ export const PracticePage = () => {
     cacheKey: practiceExplorerCacheKey,
   });
   const databaseExhausted = handoffActive || exhaustedFen === currentFen;
-  const engineFallbackReady = databaseExhausted && (handoffActive || status === "ready");
+  const engineFallbackReady =
+    !isReplica && databaseExhausted && (handoffActive || status === "ready");
   const engineMoveAnalysis = useAtomicDbAnalysis(
     currentFen,
     practiceEngineSearchOptions(
@@ -380,7 +384,8 @@ export const PracticePage = () => {
     !puzzleDraft &&
     currentPly === moveList.length &&
     !navigation &&
-    (currentTurn === opponentSide || ((handoffActive || status === "ready") && !pendingAutoMove))
+    (currentTurn === opponentSide ||
+      ((isReplica || handoffActive || status === "ready") && !pendingAutoMove))
       ? currentTurn
       : null;
   const {
@@ -390,11 +395,37 @@ export const PracticePage = () => {
     addIncrement: addPracticeIncrement,
   } = usePracticeClocks(clockMinutes, clockIncrementSeconds, runningSide);
   const clockExpired = expiredSide !== null;
+  const replicaError = usePracticeReplica({
+    enabled:
+      isReplica &&
+      !gamePaused &&
+      !gameFinished &&
+      !puzzleDraft &&
+      !expiredSide &&
+      !navigation &&
+      !pendingAutoMove &&
+      currentTurn === opponentSide &&
+      lastAutoFenRef.current !== currentFen,
+    fen: currentFen,
+    rootFen: practiceRootFen,
+    moves: currentMoves,
+    clockMs: clockEnabled ? remainingClockMs[opponentSide] : null,
+    timeControl: [clockMinutes * 60, clockIncrementSeconds],
+    exclude: alternateMoveRequestedRef.current
+      ? [...(triedMoveUcisByFenRef.current.get(currentFen) ?? [])]
+      : [],
+    retry: replicaRetry,
+    onMove: (uci) => {
+      lastAutoFenRef.current = currentFen;
+      setPendingAutoMove({ fen: currentFen, uci });
+    },
+  });
   const material = useMemo(() => materialCountFromFen(analysisFen), [analysisFen]);
   useEffect(() => {
     if (expiredSide) setGamePaused(true);
   }, [expiredSide]);
   const popupError =
+    replicaError ||
     (status === "error" ? "Could not load database moves. Try again." : "") ||
     (engineMoveAnalysis.status === "error" ? engineMoveAnalysis.error : "") ||
     randomPlayerError;
@@ -512,6 +543,11 @@ export const PracticePage = () => {
     clearTriedMoves();
   }, [clearAutoMoveState, clearTriedMoves]);
 
+  useEffect(() => {
+    resetOpponentMoveChoices();
+    setGamePaused(true);
+  }, [practiceEngine, settings.opponentModel, resetOpponentMoveChoices]);
+
   const resetPracticeClock = useCallback(
     (minutes = clockMinutes, pauseGame = true): void => {
       resetClocks(minutes);
@@ -522,6 +558,7 @@ export const PracticePage = () => {
 
   useEffect(() => {
     if (
+      isReplica ||
       !canUsePlayerSource ||
       status !== "ready" ||
       databaseExhausted ||
@@ -553,6 +590,7 @@ export const PracticePage = () => {
 
     return () => window.clearTimeout(timeout);
   }, [
+    isReplica,
     canUsePlayerSource,
     currentFen,
     currentTurn,
@@ -671,6 +709,7 @@ export const PracticePage = () => {
 
     if (gamePaused) {
       lastAutoFenRef.current = "";
+      setReplicaRetry((value) => value + 1);
       setSessionStarted(true);
       setGamePaused(false);
       return;
@@ -1018,13 +1057,13 @@ export const PracticePage = () => {
   };
 
   const showGeneralOpponent = (): void => {
-    updateSettings({ opponentSource: "general" });
+    updateSettings({ opponentSource: "general", opponentModel: "database" });
     navigateToPracticeOpponents([]);
     resetOpponentMoveChoices();
   };
 
   const showPlayerOpponent = (): void => {
-    updateSettings({ opponentSource: "player" });
+    updateSettings({ opponentSource: "player", opponentModel: "database" });
     navigateToPracticeOpponents(opponentUsernames);
     resetOpponentMoveChoices();
 
@@ -1035,6 +1074,7 @@ export const PracticePage = () => {
 
   const requestAlternateAutoMove = useCallback((): void => {
     alternateMoveRequestedRef.current = true;
+    setReplicaRetry((value) => value + 1);
     clearAutoMoveState();
 
     if (currentTurn !== opponentSide && canStepBack) {
@@ -1228,15 +1268,6 @@ export const PracticePage = () => {
         </div>
       </div>
 
-      <PracticeEngineSettings
-        value={practiceEngine}
-        onChange={(engine) => {
-          updateSettings({ engine });
-          clearAutoMoveState();
-          if (engine.minGames !== practiceEngine.minGames) setEngineHandoff(null);
-        }}
-      />
-
       <label className="practiceCheckbox">
         <span>Enable clock</span>
         <input
@@ -1248,7 +1279,6 @@ export const PracticePage = () => {
 
       {clockEnabled ? (
         <div className="practiceSettingGroup">
-          <span>Time control</span>
           <div className="practiceTimeControl" aria-label="Practice time control">
             <label>
               <span>Minutes</span>
@@ -1365,8 +1395,8 @@ export const PracticePage = () => {
           <button
             type="button"
             role="tab"
-            className={opponentSource === "general" ? "active" : ""}
-            aria-selected={opponentSource === "general"}
+            className={!isReplica && opponentSource === "general" ? "active" : ""}
+            aria-selected={!isReplica && opponentSource === "general"}
             onClick={showGeneralOpponent}
           >
             <FontAwesomeIcon icon={faBookOpen} />
@@ -1375,8 +1405,8 @@ export const PracticePage = () => {
           <button
             type="button"
             role="tab"
-            className={opponentSource === "player" ? "active" : ""}
-            aria-selected={opponentSource === "player"}
+            className={!isReplica && opponentSource === "player" ? "active" : ""}
+            aria-selected={!isReplica && opponentSource === "player"}
             title={`${selectedPlayerSummary} as ${opponentSide}`}
             onClick={showPlayerOpponent}
           >
@@ -1448,10 +1478,16 @@ export const PracticePage = () => {
       >
         <div className="practiceSessionControls" role="group" aria-label="Practice session">
           <div className="practiceHeaderTitle">
-            <h1>Opening Database Practice</h1>
+            <h1>{isReplica ? "Practice against Rechesster" : "Opening Database Practice"}</h1>
           </div>
           <div className="practiceStatus" aria-live="polite">
-            <strong>{totalGames ? `${formatGameCount(totalGames)} games` : "0 games"}</strong>
+            <strong>
+              {isReplica
+                ? "Rechesster"
+                : totalGames
+                  ? `${formatGameCount(totalGames)} games`
+                  : "0 games"}
+            </strong>
           </div>
 
           <PracticeMoveButtons
@@ -1464,8 +1500,12 @@ export const PracticePage = () => {
             }
             toggleTitle={`${gamePaused ? "Start or resume game" : "Pause game"}${pauseShortcutHint ? ` (${pauseShortcutHint})` : ""}`}
             toggleDisabled={!canRunPractice}
-            randomDisabled={Boolean(puzzleDraft) || randomPlayerLoading || !canChoosePracticePlayer}
-            differentDisabled={Boolean(puzzleDraft) || (!handoffActive && status !== "ready")}
+            randomDisabled={
+              isReplica || Boolean(puzzleDraft) || randomPlayerLoading || !canChoosePracticePlayer
+            }
+            differentDisabled={
+              Boolean(puzzleDraft) || (!isReplica && !handoffActive && status !== "ready")
+            }
             afterToggle={
               <button
                 type="button"

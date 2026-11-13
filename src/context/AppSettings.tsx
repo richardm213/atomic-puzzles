@@ -32,6 +32,7 @@ import {
   LOCAL_ANALYSIS_ENGINE_STORAGE_KEY,
   type LocalAnalysisEngine,
 } from "../lib/practice/localAnalysisEngine";
+import { PracticeSettingsProvider } from "../pages/Practice/usePracticeSettings";
 
 const STORAGE_KEYS = {
   siteAppearance: "atomic-puzzles.site-appearance",
@@ -741,7 +742,11 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     ],
   );
 
-  return <AppSettingsContext.Provider value={value}>{children}</AppSettingsContext.Provider>;
+  return (
+    <AppSettingsContext.Provider value={value}>
+      <PracticeSettingsProvider>{children}</PracticeSettingsProvider>
+    </AppSettingsContext.Provider>
+  );
 };
 
 export const useAppSettings = (): AppSettingsContextValue => {

@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+
 import {
   normalizePracticeEngineSettings,
   PRACTICE_PRESETS,
@@ -11,6 +13,24 @@ import {
 
 type Props = { value: Settings; onChange: (value: Settings) => void };
 export const PracticeEngineSettings = ({ value, onChange }: Props) => {
+  const [minGamesText, setMinGamesText] = useState(String(value.minGames));
+  const draft = useRef(minGamesText);
+  const latest = useRef({ value, onChange });
+  latest.current = { value, onChange };
+  useEffect(() => {
+    draft.current = String(value.minGames);
+    setMinGamesText(draft.current);
+  }, [value.minGames]);
+  useEffect(
+    () => () => {
+      if (!draft.current.trim())
+        latest.current.onChange(
+          normalizePracticeEngineSettings({ ...latest.current.value, minGames: 1 }),
+        );
+    },
+    [],
+  );
+
   const update = (patch: Partial<Settings>) =>
     onChange(normalizePracticeEngineSettings({ ...value, ...patch }));
   const advanced = (key: keyof PracticeAdvanced, number: number) => {
@@ -66,7 +86,7 @@ export const PracticeEngineSettings = ({ value, onChange }: Props) => {
         <input
           type="range"
           min="1"
-          max="8"
+          max={PRACTICE_SEARCH_LIMITS.length}
           value={value.speed}
           onChange={(e) => {
             const speed = Number(e.target.value);
@@ -74,11 +94,8 @@ export const PracticeEngineSettings = ({ value, onChange }: Props) => {
           }}
         />
         <span className="practiceEngineValue" aria-hidden="true">
-          {value.speed} / 8 · {value.maxThinkTimeMs / 1000}s max
+          {value.speed} / {PRACTICE_SEARCH_LIMITS.length} · {value.maxThinkTimeMs / 1000}s max
         </span>
-        <small>
-          1 is fastest. 8 searches deepest. Actual depth depends on the position and device.
-        </small>
       </label>
       <label>
         Switch to engine below this many games
@@ -86,8 +103,19 @@ export const PracticeEngineSettings = ({ value, onChange }: Props) => {
           type="number"
           min="1"
           max="10000"
-          value={value.minGames}
-          onChange={(e) => update({ minGames: Number(e.target.value) })}
+          value={minGamesText}
+          onChange={(event) => {
+            draft.current = event.target.value;
+            setMinGamesText(event.target.value);
+            if (event.target.value.trim()) update({ minGames: Number(event.target.value) });
+          }}
+          onBlur={() => {
+            if (!draft.current.trim()) {
+              draft.current = "1";
+              setMinGamesText("1");
+              update({ minGames: 1 });
+            }
+          }}
         />
       </label>
       <details>
@@ -123,10 +151,6 @@ export const PracticeEngineSettings = ({ value, onChange }: Props) => {
             </label>
           );
         })}
-        <small>
-          Errors use the same categories as game analysis. Unavailable categories fall back to
-          better moves.
-        </small>
         <label>
           Maximum think time (seconds)
           <input
