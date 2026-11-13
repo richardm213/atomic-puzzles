@@ -1,4 +1,3 @@
-import "../Rankings/Rankings.css";
 import "./PuzzleLeaderboard.css";
 
 import { faArrowDown, faArrowUp, faCircleInfo } from "@fortawesome/free-solid-svg-icons";

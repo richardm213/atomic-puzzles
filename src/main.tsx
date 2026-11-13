@@ -6,6 +6,8 @@ import "./theme/site-typography.css";
 import "./theme/site-layout.css";
 import "./theme/site-primitives.css";
 import "./index.css";
+// Shared route styles must load before page overrides, including during intent preloading.
+import "./pages/Rankings/Rankings.css";
 
 import React from "react";
 import ReactDOM from "react-dom/client";

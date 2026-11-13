@@ -5,6 +5,45 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/archive-data?**", (route) => route.fulfill({ json: [] }));
 });
 
+test("profile and rankings widths stay stable when navigation preloads other pages", async ({
+  page,
+}) => {
+  const preloadRankingsPage = async (label: string, moduleName: string) => {
+    const moduleResponse = page.waitForResponse((response) => {
+      const path = new URL(response.url()).pathname;
+      return path.startsWith(`/assets/${moduleName}-`) && path.endsWith(".js");
+    });
+    await page.getByRole("button", { name: "Rankings", exact: true }).hover();
+    await page.getByRole("menuitem", { name: label, exact: true }).hover();
+    await (await moduleResponse).finished();
+    await page.evaluate(async () => {
+      await Promise.all(
+        [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].map((link) =>
+          link.sheet
+            ? Promise.resolve()
+            : new Promise<void>((resolve) =>
+                link.addEventListener("load", () => resolve(), { once: true }),
+              ),
+        ),
+      );
+    });
+  };
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto("/@/e2e-player");
+  const profile = page.locator(".playerProfilePanel");
+  await expect(profile).toBeVisible();
+  const profileWidth = await profile.evaluate((panel) => panel.clientWidth);
+  await preloadRankingsPage("Monthly rankings", "Rankings");
+  await expect(profile).toHaveJSProperty("clientWidth", profileWidth);
+
+  await page.getByRole("menuitem", { name: "Monthly rankings", exact: true }).click();
+  const rankings = page.locator(".rankingsLeaderboardPanel");
+  await expect(rankings).toBeVisible();
+  const rankingsWidth = await rankings.evaluate((panel) => panel.clientWidth);
+  await preloadRankingsPage("Coin rankings", "CoinRankings");
+  await expect(rankings).toHaveJSProperty("clientWidth", rankingsWidth);
+});
+
 test("rankings support January 2016 as the earliest month", async ({ page }) => {
   const request = page.waitForRequest((request) => {
     const url = new URL(request.url());

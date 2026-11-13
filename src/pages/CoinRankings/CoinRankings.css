@@ -1,5 +1,3 @@
-@import "../Rankings/Rankings.css";
-
 .coinRankingsPanel {
   width: min(780px, 100%);
 }

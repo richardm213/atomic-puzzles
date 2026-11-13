@@ -1,15 +1,11 @@
-@import "../Rankings/Rankings.css";
-
-.recentMatchesPanel,
-.rankingsPanel.recentMatchesPanel {
+.recentMatchesPanel {
   box-sizing: border-box;
   width: min(900px, 100%);
   min-width: 0;
 }
 
 @media (min-width: 1600px) {
-  .recentMatchesPanel,
-  .rankingsPanel.recentMatchesPanel {
+  .recentMatchesPanel {
     width: min(1040px, 100%);
   }
 
@@ -19,8 +15,7 @@
 }
 
 @media (min-width: 2400px) {
-  .recentMatchesPanel,
-  .rankingsPanel.recentMatchesPanel {
+  .recentMatchesPanel {
     width: min(1120px, 100%);
   }
 }
@@ -322,8 +317,7 @@
 }
 
 @media (max-width: 640px) {
-  .recentMatchesPanel,
-  .rankingsPanel.recentMatchesPanel {
+  .recentMatchesPanel {
     width: calc(100vw - 28px);
     max-width: calc(100vw - 28px);
   }
