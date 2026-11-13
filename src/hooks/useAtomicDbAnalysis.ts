@@ -38,9 +38,15 @@ type AtomicDbAnalysisOptions = {
   plyCount?: number;
   suspended?: boolean;
   fallbackToEngine?: boolean;
+  engineThinkTimeMs?: number;
+  engineMaxDepth?: number;
+  candidateLimit?: number;
 };
 
-type RequestState = AtomicDbAnalysisState & { requestedFen: string | null };
+type RequestState = AtomicDbAnalysisState & {
+  requestedFen: string | null;
+  requestedOptions: string | null;
+};
 
 const MAX_LINE_COUNT = 5;
 const MAX_PLY_COUNT = 5;
@@ -51,7 +57,11 @@ const EMPTY_ANALYSIS: AtomicDbAnalysisState = {
   principalVariations: {},
   source: "atomicdb",
 };
-const INITIAL_STATE: RequestState = { ...EMPTY_ANALYSIS, requestedFen: null };
+const INITIAL_STATE: RequestState = {
+  ...EMPTY_ANALYSIS,
+  requestedFen: null,
+  requestedOptions: null,
+};
 
 const clampInteger = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, Math.floor(value)));
@@ -109,8 +119,20 @@ export const useAtomicDbAnalysis = (
     plyCount: requestedPlyCount = 5,
     suspended = false,
     fallbackToEngine = false,
+    engineThinkTimeMs,
+    engineMaxDepth,
+    candidateLimit = MAX_LINE_COUNT,
   }: AtomicDbAnalysisOptions = {},
 ): AtomicDbAnalysisState => {
+  const requestOptions = JSON.stringify([
+    atomicDbEnabled,
+    fallbackToEngine,
+    requestedLineCount,
+    requestedPlyCount,
+    engineThinkTimeMs,
+    engineMaxDepth,
+    candidateLimit,
+  ]);
   const [state, setState] = useState<RequestState>(INITIAL_STATE);
   const [engineFocusEpoch, setEngineFocusEpoch] = useState(0);
   const lastRequestAtRef = useRef<number | null>(null);
@@ -136,7 +158,7 @@ export const useAtomicDbAnalysis = (
 
     const controller = new AbortController();
     const assistanceEngine: LocalAnalysisEngine = "atomic-stockfish";
-    const requestedLines = clampInteger(requestedLineCount, 1, MAX_LINE_COUNT);
+    const requestedLines = clampInteger(requestedLineCount, 1, candidateLimit);
     const legalMoveCount = atomicLegalMoveCount(fen);
     const lineCount =
       legalMoveCount > 0 ? Math.min(requestedLines, legalMoveCount) : requestedLines;
@@ -159,6 +181,7 @@ export const useAtomicDbAnalysis = (
         setState({
           result: { fen, position },
           requestedFen: fen,
+          requestedOptions: requestOptions,
           status: "ready",
           error: "",
           principalVariations: lines,
@@ -172,6 +195,7 @@ export const useAtomicDbAnalysis = (
       setState({
         result: { fen, position },
         requestedFen: fen,
+        requestedOptions: requestOptions,
         status: "loading",
         error: "",
         principalVariations: cachedLinesFor(position),
@@ -183,6 +207,7 @@ export const useAtomicDbAnalysis = (
       setState((current) => ({
         ...current,
         requestedFen: fen,
+        requestedOptions: requestOptions,
         status: "loading",
         error: "",
         principalVariations: {},
@@ -199,6 +224,7 @@ export const useAtomicDbAnalysis = (
             setState({
               result: { fen, position: enginePosition(candidates) },
               requestedFen: fen,
+              requestedOptions: requestOptions,
               status,
               error: "",
               principalVariations: Object.fromEntries(
@@ -220,6 +246,11 @@ export const useAtomicDbAnalysis = (
           controller.signal,
           publishProgress,
           assistanceEngine,
+          {
+            ...(engineThinkTimeMs !== undefined ? { thinkTimeMs: engineThinkTimeMs } : {}),
+            ...(engineMaxDepth !== undefined ? { maxDepth: engineMaxDepth } : {}),
+            candidateLimit,
+          },
         );
         if (controller.signal.aborted) return;
         publishEngineCandidates(candidates, "ready");
@@ -229,6 +260,7 @@ export const useAtomicDbAnalysis = (
           setState({
             result: { fen, position: null },
             requestedFen: fen,
+            requestedOptions: requestOptions,
             status: "error",
             error: getErrorMessage(error, "Engine analysis failed."),
             principalVariations: {},
@@ -246,6 +278,7 @@ export const useAtomicDbAnalysis = (
       setState({
         result: { fen, position },
         requestedFen: fen,
+        requestedOptions: requestOptions,
         status: "loading",
         error: "",
         principalVariations: atomicDbLines,
@@ -298,6 +331,11 @@ export const useAtomicDbAnalysis = (
           controller.signal,
           (progressCandidates) => publishMixedCandidates(progressCandidates, "loading"),
           assistanceEngine,
+          {
+            ...(engineThinkTimeMs !== undefined ? { thinkTimeMs: engineThinkTimeMs } : {}),
+            ...(engineMaxDepth !== undefined ? { maxDepth: engineMaxDepth } : {}),
+            candidateLimit,
+          },
         );
         if (!controller.signal.aborted) publishMixedCandidates(candidates, "ready");
       } catch {
@@ -363,6 +401,7 @@ export const useAtomicDbAnalysis = (
       setState((current) => ({
         ...current,
         requestedFen: fen,
+        requestedOptions: requestOptions,
         status: "loading",
         error: "",
         principalVariations: {},
@@ -374,7 +413,7 @@ export const useAtomicDbAnalysis = (
       try {
         const bundle = await loadAtomicDbAnalysisBundle(
           fen,
-          lineCount,
+          Math.min(lineCount, MAX_LINE_COUNT),
           plyCount,
           controller.signal,
         );
@@ -391,6 +430,7 @@ export const useAtomicDbAnalysis = (
           setState((current) => ({
             ...current,
             requestedFen: fen,
+            requestedOptions: requestOptions,
             status: "error",
             error: getErrorMessage(error, "AtomicDB analysis failed."),
           }));
@@ -409,6 +449,10 @@ export const useAtomicDbAnalysis = (
     };
   }, [
     debounceMs,
+    requestOptions,
+    engineThinkTimeMs,
+    engineMaxDepth,
+    candidateLimit,
     enabled,
     atomicDbEnabled,
     fallbackToEngine,
@@ -421,13 +465,13 @@ export const useAtomicDbAnalysis = (
   ]);
 
   if (!enabled) return EMPTY_ANALYSIS;
-  if (state.requestedFen === fen) return state;
+  if (state.requestedFen === fen && state.requestedOptions === requestOptions) return state;
 
   // Effects run after render. Immediately expose the transition without discarding the last
   // settled result, which prevents the evaluation bar and move list from flashing empty.
   return {
     result: state.result,
-    status: state.result?.fen === fen ? "ready" : "loading",
+    status: "loading",
     error: "",
     principalVariations: state.principalVariations,
     source: useAtomicStockfishOnly ? "engine" : "atomicdb",

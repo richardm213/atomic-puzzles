@@ -634,3 +634,72 @@
     font-size: 11px;
   }
 }
+
+.practiceEngineSettings,
+.practiceEngineSettings details {
+  display: grid;
+  gap: 12px;
+}
+
+.practiceEngineSettings label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 10px;
+  align-items: center;
+  font-size: 14px;
+}
+
+.practiceEngineSettings label > input[type="range"],
+.practiceEngineSettings label > small,
+.practiceEngineSettings label > select {
+  grid-column: 1 / -1;
+}
+
+.practiceEngineSettings label > .practiceEngineValue {
+  grid-column: 2;
+  grid-row: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.practiceEngineSettings input,
+.practiceEngineSettings select {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 36px;
+  accent-color: var(--color-primary);
+}
+
+.practiceEngineSettings input[type="number"],
+.practiceEngineSettings select {
+  padding: 6px 8px;
+  color: var(--color-text);
+  background: var(--color-panel);
+  border: 1px solid var(--color-input-border);
+  border-radius: 6px;
+}
+
+.practiceEngineSettings input[type="number"] {
+  width: 80px;
+}
+
+.practiceEngineSettings small {
+  color: var(--color-muted);
+}
+
+.practiceEngineSettings summary {
+  cursor: pointer;
+  padding-block: 8px;
+  font-size: 14px;
+}
+
+.practiceEngineSettings details[open] > label {
+  margin-block: 10px;
+}
+
+@media (max-width: 600px) {
+  .practiceEngineSettings input,
+  .practiceEngineSettings select,
+  .practiceEngineSettings summary {
+    min-height: 44px;
+  }
+}

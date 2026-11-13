@@ -55,13 +55,24 @@ describe("useAtomicDbAnalysis", () => {
         atomicDbEnabled: false,
         debounceMs: 0,
         fallbackToEngine: true,
-        lineCount: 1,
+        lineCount: 20,
+        candidateLimit: 64,
+        engineThinkTimeMs: 150,
+        engineMaxDepth: 4,
       }),
     );
 
     await waitFor(() => expect(result.current.status).toBe("ready"));
     expect(fetchMock).not.toHaveBeenCalled();
     expect(analyzeWithEngineMock).toHaveBeenCalledOnce();
+    expect(analyzeWithEngineMock).toHaveBeenCalledWith(
+      fen,
+      20,
+      expect.any(AbortSignal),
+      expect.any(Function),
+      "atomic-stockfish",
+      { candidateLimit: 64, thinkTimeMs: 150, maxDepth: 4 },
+    );
     expect(result.current.source).toBe("engine");
   });
 
@@ -91,6 +102,7 @@ describe("useAtomicDbAnalysis", () => {
       expect.any(AbortSignal),
       expect.any(Function),
       "atomic-stockfish",
+      expect.objectContaining({ candidateLimit: 5 }),
     );
     expect(result.current.source).toBe("engine");
     expect(result.current.engine).toBe("atomic-stockfish");
@@ -132,6 +144,7 @@ describe("useAtomicDbAnalysis", () => {
       expect.any(AbortSignal),
       expect.any(Function),
       "atomic-stockfish",
+      expect.objectContaining({ candidateLimit: 5 }),
     );
     expect(result.current.source).toBe("engine");
     expect(result.current.result?.position?.moves[0]).toMatchObject({
@@ -171,6 +184,7 @@ describe("useAtomicDbAnalysis", () => {
       expect.any(AbortSignal),
       expect.any(Function),
       "atomic-stockfish",
+      expect.objectContaining({ candidateLimit: 5 }),
     );
     expect(result.current.source).toBe("engine");
     expect(result.current.result?.position?.moves[0]?.uci).toBe("d2d4");
@@ -213,6 +227,7 @@ describe("useAtomicDbAnalysis", () => {
       expect.any(AbortSignal),
       expect.any(Function),
       "atomic-stockfish",
+      expect.objectContaining({ candidateLimit: 5 }),
     );
     expect(result.current.result?.position?.moves).toHaveLength(2);
   });
@@ -277,6 +292,7 @@ describe("useAtomicDbAnalysis", () => {
       expect.any(AbortSignal),
       expect.any(Function),
       "atomic-stockfish",
+      expect.objectContaining({ candidateLimit: 5 }),
     );
     expect(result.current.source).toBe("mixed");
     expect(result.current.result?.position?.key).toBe("partial-position");
@@ -347,6 +363,7 @@ describe("useAtomicDbAnalysis", () => {
       expect.any(AbortSignal),
       expect.any(Function),
       "atomic-stockfish",
+      expect.objectContaining({ candidateLimit: 5 }),
     );
     expect(result.current.source).toBe("mixed");
     expect(result.current.engine).toBe("atomic-stockfish");
@@ -408,6 +425,7 @@ describe("useAtomicDbAnalysis", () => {
       expect.any(AbortSignal),
       expect.any(Function),
       "atomic-stockfish",
+      expect.objectContaining({ candidateLimit: 5 }),
     );
     expect(result.current.source).toBe("mixed");
     expect(result.current.result?.position?.moves).toEqual([
@@ -807,4 +825,45 @@ describe("useAtomicDbAnalysis", () => {
     await waitFor(() => expect(result.current.status).toBe("ready"));
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+});
+
+it("invalidates ready moves immediately when speed changes and aborts the superseded search", async () => {
+  const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  const signals: AbortSignal[] = [];
+  const completions: Array<
+    (candidates: Awaited<ReturnType<typeof analyzeFairyStockfishPosition>>) => void
+  > = [];
+  analyzeWithEngineMock.mockImplementation((_fen, _count, signal) => {
+    signals.push(signal!);
+    return new Promise((resolve) => completions.push(resolve));
+  });
+  const statuses: string[] = [];
+  const { result, rerender, unmount } = renderHook(
+    ({ time }) => {
+      const state = useAtomicDbAnalysis(fen, {
+        atomicDbEnabled: false,
+        fallbackToEngine: true,
+        engineThinkTimeMs: time,
+      });
+      statuses.push(state.status);
+      return state;
+    },
+    { initialProps: { time: 150 } },
+  );
+  await act(async () => {
+    completions[0]!([{ move: "e2e4", multipv: 1, scoreType: "cp", score: 10 }]);
+  });
+  await waitFor(() => expect(result.current.status).toBe("ready"));
+  const count = statuses.length;
+  rerender({ time: 6000 });
+  expect(statuses[count]).toBe("loading");
+  expect(signals[0]!.aborted).toBe(true);
+  expect(result.current.status).toBe("loading");
+  await act(async () => {
+    completions[1]!([{ move: "d2d4", multipv: 1, scoreType: "cp", score: 30 }]);
+  });
+  await waitFor(() => expect(result.current.result?.position?.bestMove).toBe("d2d4"));
+  unmount();
+  expect(signals[1]!.aborted).toBe(true);
+  analyzeWithEngineMock.mockReset();
 });

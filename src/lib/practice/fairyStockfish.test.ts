@@ -99,6 +99,15 @@ describe("chooseEngineCandidate", () => {
 });
 
 describe("parseEngineCandidate", () => {
+  it("retains practice candidates beyond the five display lines", () => {
+    expect(parseEngineCandidate("info depth 6 multipv 20 score cp -400 pv a2a4")).toMatchObject({
+      multipv: 20,
+      move: "a2a4",
+      score: -400,
+    });
+    expect(parseEngineCandidate("info depth 6 multipv 65 score cp -400 pv a2a4")).toBeNull();
+  });
+
   it("treats a missing multipv field as the primary line", () => {
     expect(
       parseEngineCandidate(

@@ -2,6 +2,10 @@ import { useCallback } from "react";
 import { z } from "zod";
 
 import { usePersistedState } from "../../hooks/usePersistedState";
+import {
+  normalizePracticeEngineSettings,
+  type PracticeEngineSettings,
+} from "../../lib/practice/engineSettings";
 
 const PRACTICE_SETTINGS_STORAGE_KEY = "atomic-puzzles.practice.settings";
 export const MAX_PRACTICE_PLAYERS = 8;
@@ -14,6 +18,7 @@ export type OpponentSource = "general" | "player";
 export type PlayerContinuation = "general" | "engine";
 
 type StoredPracticeSettings = {
+  engine: PracticeEngineSettings;
   side: PracticeSide;
   opponentMode: OpponentMode;
   opponentSource: OpponentSource;
@@ -29,6 +34,7 @@ type StoredPracticeSettings = {
 };
 
 const DEFAULT_SETTINGS: StoredPracticeSettings = {
+  engine: normalizePracticeEngineSettings(null),
   side: "white",
   opponentMode: "frequency",
   opponentSource: "general",
@@ -73,6 +79,7 @@ const practiceSettingsSchema = z
     );
 
     return {
+      engine: normalizePracticeEngineSettings(value.engine),
       side: value.side === "black" ? "black" : "white",
       opponentMode:
         value.opponentMode === "random" || value.opponentMode === "popular"

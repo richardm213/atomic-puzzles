@@ -73,8 +73,16 @@ import {
 import { apiRequest } from "../../lib/api/postApi";
 import { materialCountFromFen } from "../../lib/chess/materialCount";
 import { keyboardShortcutAction, keyboardShortcutHint } from "../../lib/keyboardShortcuts";
+import { choosePracticeEngineMove } from "../../lib/practice/engineSelection";
+import {
+  handoffApplies,
+  PRACTICE_SEARCH_LIMITS,
+  type PracticeHandoff,
+  shouldUsePracticeEngine,
+} from "../../lib/practice/engineSettings";
 import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
 import { serializeSanLinesToPgn, startingPlyFromFen } from "../../lib/puzzles/solutionPgn";
+import { atomicLegalMoveCount } from "../../lib/puzzles/solutionPgn";
 import {
   boardPly,
   type ChessboardState,
@@ -92,6 +100,7 @@ import {
   fetchExplorerApiResponse,
   mergeExplorerApiResponses,
 } from "../../utils/openingExplorer";
+import { PracticeEngineSettings } from "./PracticeEngineSettings";
 import { practicePath, practiceRouteParam, practiceUsernamesFromRoute } from "./practiceRoutes";
 import { usePracticeClocks } from "./usePracticeClocks";
 import {
@@ -116,6 +125,10 @@ const practiceBoardSchema = z.object({
   pgn: z.string(),
   line: z.number().int().nonnegative(),
   ply: z.number().int().nonnegative(),
+  engineHandoff: z
+    .object({ prefix: z.array(z.string()) })
+    .nullable()
+    .optional(),
 });
 const buildPracticePgn = (rootFen: string, moveText = ""): string =>
   [
@@ -150,6 +163,7 @@ const fetchPracticeExplorerResponse = async ({
   opponentUsernames,
   opponentSide,
   playerContinuation,
+  minGames,
   signal,
 }: {
   fen: string;
@@ -157,6 +171,7 @@ const fetchPracticeExplorerResponse = async ({
   opponentUsernames: string[];
   opponentSide: PracticeSide;
   playerContinuation: PlayerContinuation;
+  minGames: number;
   signal: AbortSignal;
 }): Promise<OpeningExplorerRequest> => {
   if (opponentSource === "general") {
@@ -181,7 +196,10 @@ const fetchPracticeExplorerResponse = async ({
     ),
   ).then(mergeExplorerApiResponses);
 
-  if (playerContinuation === "general" && playerResponse.moves.length === 0) {
+  if (
+    playerContinuation === "general" &&
+    playerResponse.moves.reduce((sum, move) => sum + move.games, 0) < minGames
+  ) {
     return {
       response: await fetchGeneralPracticeExplorerResponse(fen, signal),
     };
@@ -239,6 +257,7 @@ export const PracticePage = () => {
   });
   const { settings, setSettings, updateSettings } = usePracticeSettings();
   const {
+    engine: practiceEngine,
     side,
     opponentMode,
     opponentSource,
@@ -267,6 +286,7 @@ export const PracticePage = () => {
   const practicePanelRef = useRef<HTMLElement | null>(null);
   const movePanelRef = useRef<HTMLDivElement | null>(null);
   const lastAutoFenRef = useRef("");
+  const alternateMoveRequestedRef = useRef(false);
   const triedMoveUcisByFenRef = useRef<Map<string, Set<string>>>(new Map());
   const [restoredBoard] = useState(() =>
     readPersistedState(PRACTICE_BOARD_STORAGE_KEY, practiceBoardSchema),
@@ -298,6 +318,9 @@ export const PracticePage = () => {
     remember: rememberUsername,
     removeRecent: removeRecentUsername,
   } = useUsernamePicker("player");
+  const [engineHandoff, setEngineHandoff] = useState<PracticeHandoff | null>(
+    restoredBoard?.engineHandoff ?? null,
+  );
   const [exhaustedFen, setExhaustedFen] = useState<string | null>(null);
   const [movesOpen, setMovesOpen] = usePersistedState(MOVES_OPEN_STORAGE_KEY, z.boolean(), true);
   const explorerOpen = !puzzleDraft && !movesOpen;
@@ -338,6 +361,16 @@ export const PracticePage = () => {
     moveList,
     terminalOutcome,
   } = getBoardMoveState(boardState, practiceRootFen);
+  const handoffActive = handoffApplies(engineHandoff, currentMoves);
+  const currentMoveKey = currentMoves.join(" ");
+  useEffect(() => {
+    if (
+      !navigation &&
+      engineHandoff &&
+      !handoffApplies(engineHandoff, currentMoveKey ? currentMoveKey.split(" ") : [])
+    )
+      setEngineHandoff(null);
+  }, [currentMoveKey, engineHandoff, navigation]);
   const draftBoard = getBoardMoveState(draftBoardState, puzzleDraft?.fen ?? currentFen);
   const analysisFen = puzzleDraft ? draftBoard.currentFen : currentFen;
   const {
@@ -369,8 +402,16 @@ export const PracticePage = () => {
         opponentUsernames,
         opponentSide,
         playerContinuation,
+        minGames: practiceEngine.minGames,
       }),
-    [currentFen, opponentSide, opponentSource, opponentUsernames, playerContinuation],
+    [
+      currentFen,
+      opponentSide,
+      opponentSource,
+      opponentUsernames,
+      playerContinuation,
+      practiceEngine.minGames,
+    ],
   );
   const requestExplorer = useCallback(
     (signal: AbortSignal) => {
@@ -386,6 +427,7 @@ export const PracticePage = () => {
         opponentUsernames,
         opponentSide,
         playerContinuation,
+        minGames: practiceEngine.minGames,
         signal,
       });
     },
@@ -396,6 +438,7 @@ export const PracticePage = () => {
       opponentSource,
       opponentUsernames,
       playerContinuation,
+      practiceEngine.minGames,
     ],
   );
   const {
@@ -404,18 +447,16 @@ export const PracticePage = () => {
     status,
     error,
   } = useOpeningExplorer({
+    enabled: !handoffActive,
     fen: currentFen,
     playerColor: opponentSide,
     showPerformance: opponentSource === "player" && showPerformance,
     request: requestExplorer,
     cacheKey: practiceExplorerCacheKey,
   });
-  const databaseExhausted = exhaustedFen === currentFen;
-  const engineFallbackReady = databaseExhausted && status === "ready";
-  const engineMoveLineCount = Math.min(
-    5,
-    (triedMoveUcisByFenRef.current.get(currentFen)?.size ?? 0) + 1,
-  );
+  const databaseExhausted = handoffActive || exhaustedFen === currentFen;
+  const engineFallbackReady = databaseExhausted && (handoffActive || status === "ready");
+  const engineMoveLineCount = Math.min(64, Math.max(1, atomicLegalMoveCount(currentFen)));
   const engineMoveAnalysis = useAtomicDbAnalysis(currentFen, {
     enabled:
       engineFallbackReady &&
@@ -425,8 +466,11 @@ export const PracticePage = () => {
       lastAutoFenRef.current !== currentFen,
     debounceMs: 0,
     lineCount: engineMoveLineCount,
-    plyCount: 1,
+    plyCount: 5,
     fallbackToEngine: true,
+    candidateLimit: 64,
+    engineThinkTimeMs: practiceEngine.maxThinkTimeMs,
+    engineMaxDepth: PRACTICE_SEARCH_LIMITS[practiceEngine.speed - 1]!.depth,
   });
   const runningSide =
     clockEnabled &&
@@ -435,7 +479,7 @@ export const PracticePage = () => {
     !puzzleDraft &&
     currentPly === moveList.length &&
     !navigation &&
-    (currentTurn === opponentSide || (status === "ready" && !pendingAutoMove && !databaseExhausted))
+    (currentTurn === opponentSide || ((handoffActive || status === "ready") && !pendingAutoMove))
       ? currentTurn
       : null;
   const {
@@ -488,8 +532,18 @@ export const PracticePage = () => {
       pgn: practiceMoveText,
       line: activeLineIndex,
       ply: currentPly,
+      engineHandoff: handoffActive ? engineHandoff : null,
     });
-  }, [activeLineIndex, boardState, currentPly, navigation, practiceMoveText, practiceRootFen]);
+  }, [
+    activeLineIndex,
+    boardState,
+    currentPly,
+    navigation,
+    practiceMoveText,
+    practiceRootFen,
+    engineHandoff,
+    handoffActive,
+  ]);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -527,13 +581,15 @@ export const PracticePage = () => {
   );
 
   const recordTriedMove = useCallback((fen: string, uci: string): void => {
-    const triedMoves = triedMoveUcisByFenRef.current.get(fen) ?? new Set<string>();
-    triedMoves.add(uci);
-    triedMoveUcisByFenRef.current.set(fen, triedMoves);
+    triedMoveUcisByFenRef.current.clear();
+    triedMoveUcisByFenRef.current.set(fen, new Set([uci]));
+    alternateMoveRequestedRef.current = false;
   }, []);
 
   const getUntriedMoves = useCallback((fen: string, moves: PracticeMove[]): PracticeMove[] => {
-    const triedMoves = triedMoveUcisByFenRef.current.get(fen);
+    const triedMoves = alternateMoveRequestedRef.current
+      ? triedMoveUcisByFenRef.current.get(fen)
+      : undefined;
     if (!triedMoves?.size) return moves;
 
     return moves.filter((move) => !triedMoves.has(move.uci));
@@ -551,6 +607,7 @@ export const PracticePage = () => {
 
   const resetOpponentMoveChoices = useCallback((): void => {
     clearAutoMoveState();
+    setEngineHandoff(null);
     clearTriedMoves();
   }, [clearAutoMoveState, clearTriedMoves]);
 
@@ -576,11 +633,15 @@ export const PracticePage = () => {
       return;
     }
 
-    const autoMove = chooseOpponentMove(getUntriedMoves(currentFen, practiceMoves), opponentMode);
+    const games = practiceMoves.reduce((sum, move) => sum + Math.max(0, move.games), 0);
+    const autoMove = shouldUsePracticeEngine(games, practiceEngine.minGames)
+      ? null
+      : chooseOpponentMove(getUntriedMoves(currentFen, practiceMoves), opponentMode);
     if (!autoMove) {
       // The selected player -> optional general database chain is complete. The shared AtomicDB
       // analysis path takes over from here and falls back to Atomic-Stockfish when necessary.
       setExhaustedFen(currentFen);
+      setEngineHandoff({ prefix: [...currentMoves] });
       return;
     }
 
@@ -603,6 +664,8 @@ export const PracticePage = () => {
     opponentSource,
     pendingAutoMove,
     practiceMoves,
+    practiceEngine.minGames,
+    currentMoves,
     playerContinuation,
     status,
   ]);
@@ -625,10 +688,19 @@ export const PracticePage = () => {
       return;
     }
 
-    const excludedMoves = triedMoveUcisByFenRef.current.get(currentFen);
-    const uci = engineMoveAnalysis.result.position?.moves.find(
-      (move) => !excludedMoves?.has(move.uci),
-    )?.uci;
+    const excludedMoves = alternateMoveRequestedRef.current
+      ? triedMoveUcisByFenRef.current.get(currentFen)
+      : undefined;
+    const position = engineMoveAnalysis.result.position;
+    const uci = position
+      ? choosePracticeEngineMove(
+          currentFen,
+          position,
+          engineMoveAnalysis.principalVariations,
+          practiceEngine,
+          excludedMoves,
+        )
+      : null;
     if (!uci) return;
 
     lastAutoFenRef.current = currentFen;
@@ -638,6 +710,7 @@ export const PracticePage = () => {
     currentTurn,
     engineFallbackReady,
     engineMoveAnalysis,
+    practiceEngine,
     gamePaused,
     navigation,
     opponentSide,
@@ -824,6 +897,12 @@ export const PracticePage = () => {
       previousRouteOpponentsRef.current = routeOpponents;
 
       if (routeOpponentUsernames.length > 0) {
+        if (
+          opponentSource !== "player" ||
+          JSON.stringify(opponentUsernames.map((n) => n.toLowerCase())) !==
+            JSON.stringify(routeOpponentUsernames.map((n) => n.toLowerCase()))
+        )
+          setEngineHandoff(null);
         setSettings((current) => ({
           ...current,
           opponentSource: "player",
@@ -1052,6 +1131,7 @@ export const PracticePage = () => {
   };
 
   const requestAlternateAutoMove = useCallback((): void => {
+    alternateMoveRequestedRef.current = true;
     clearAutoMoveState();
 
     if (currentTurn !== opponentSide && canStepBack) {
@@ -1245,6 +1325,15 @@ export const PracticePage = () => {
         </div>
       </div>
 
+      <PracticeEngineSettings
+        value={practiceEngine}
+        onChange={(engine) => {
+          updateSettings({ engine });
+          clearAutoMoveState();
+          if (engine.minGames !== practiceEngine.minGames) setEngineHandoff(null);
+        }}
+      />
+
       <label className="practiceCheckbox">
         <span>Enable clock</span>
         <input
@@ -1400,7 +1489,8 @@ export const PracticePage = () => {
   ) : null;
 
   const pageStyle = {
-    "--analysis-board-size": "var(--board-user-size, min(516px, calc(100dvh - var(--nav-height) - 44px)))",
+    "--analysis-board-size":
+      "var(--board-user-size, min(516px, calc(100dvh - var(--nav-height) - 44px)))",
   } as CSSProperties;
 
   const boardStatus = (color: PracticeSide) => (
@@ -1416,7 +1506,11 @@ export const PracticePage = () => {
   );
 
   return (
-    <AnalysisWorkspaceLayout data-board-resize="practice" className="practicePage" style={pageStyle}>
+    <AnalysisWorkspaceLayout
+      data-board-resize="practice"
+      className="practicePage"
+      style={pageStyle}
+    >
       <Seo
         title={
           opponentSource === "player" && opponentUsernames.length === 1
@@ -1496,7 +1590,7 @@ export const PracticePage = () => {
                 type="button"
                 className="practiceAlternateMoveButton"
                 onClick={requestAlternateAutoMove}
-                disabled={Boolean(puzzleDraft) || status !== "ready"}
+                disabled={Boolean(puzzleDraft) || (!handoffActive && status !== "ready")}
                 aria-label="Choose a different opponent move"
               >
                 <FontAwesomeIcon icon={faShuffle} />

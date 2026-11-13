@@ -294,7 +294,7 @@ const ceiledCentipawns = (centipawns: number): number =>
 const winPercent = (centipawns: number): number =>
   100 * atomicWinChance(ceiledCentipawns(centipawns));
 
-type ReviewScore = { type: "cp"; value: number } | { type: "mate"; value: 1 | -1 };
+export type ReviewScore = { type: "cp"; value: number } | { type: "mate"; value: 1 | -1 };
 
 const reviewScoreForPosition = (position: StoredAtomicDbPosition): ReviewScore => {
   const outcome = terminalCentipawns(position.status, position.fen);
@@ -338,6 +338,12 @@ const reviewWinPercent = (score: ReviewScore): number => {
   if (outcome === -1) return 0;
   return 100 * atomicWinChance(score.value);
 };
+
+export const classifyPracticeMove = (
+  best: ReviewScore,
+  candidate: ReviewScore,
+): MoveClassification =>
+  classificationForLoss(Math.max(0, reviewWinPercent(best) - reviewWinPercent(candidate)));
 
 export const CLASSIFICATION_SYMBOLS: Record<MoveClassification, string> = {
   best: "✓",

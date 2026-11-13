@@ -2,11 +2,16 @@ import { readFileSync } from "node:fs";
 
 import { expect, test } from "./fixtures";
 
-test("practice plays the engine fallback move when the databases have no move", async ({
-  page,
-}) => {
+test("practice hands off below the game threshold and honors engine speed", async ({ page }) => {
   await page.route("**/api/opening-explorer?**", (route) =>
-    route.fulfill({ json: { moves: [], recentGames: [] } }),
+    route.fulfill({
+      json: {
+        moves: [
+          { uci: "d2d4", games: 4, whiteWins: 2, draws: 0, blackWins: 2, avgOpponentRating: null },
+        ],
+        recentGames: [],
+      },
+    }),
   );
   await page.route("**/api/atomicdb-analysis?**", (route) =>
     route.fulfill({ status: 404, json: { code: "position_not_found" } }),
@@ -37,10 +42,18 @@ test("practice plays the engine fallback move when the databases have no move", 
       `,
     }),
   );
+  const searchCommands: string[] = [];
+  await page.exposeFunction("recordEngineSearch", (command: string) =>
+    searchCommands.push(command),
+  );
   await page.addInitScript(() => {
     localStorage.setItem(
       "atomic-puzzles.practice.settings",
-      JSON.stringify({ side: "black", clockEnabled: false }),
+      JSON.stringify({
+        side: "black",
+        clockEnabled: false,
+        engine: { minGames: 5, strength: 12, speed: 1 },
+      }),
     );
   });
 
@@ -54,11 +67,24 @@ test("practice plays the engine fallback move when the databases have no move", 
   expect(await page.evaluate(() => window.crossOriginIsolated)).toBe(true);
   expect(await page.evaluate(() => typeof SharedArrayBuffer)).toBe("function");
 
+  await page.evaluate(() => {
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- called below with the original Worker receiver
+    const original = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function (message: unknown, ...args: unknown[]) {
+      const data = message as { command?: string };
+      if (data?.command?.startsWith("go "))
+        void (
+          window as unknown as { recordEngineSearch: (command: string) => void }
+        ).recordEngineSearch(data.command);
+      Reflect.apply(original, this, [message, ...args]);
+    };
+  });
   await page.getByRole("button", { name: "Start game", exact: true }).click();
   // The exported FEN proves the worker's move actually reached the board.
   await expect(page.getByRole("textbox", { name: "FEN", exact: true })).toHaveValue(
     /^rnbqkbnr\/pppppppp\/8\/8\/4P3\/8\/PPPP1PPP\/RNBQKBNR b /,
   );
+  expect(searchCommands).toContain("go movetime 150 depth 4");
 });
 
 test("practice keeps its PGN and position when creating puzzles or changing opponents", async ({
@@ -173,5 +199,93 @@ test("analysis and practice share material rows, with both practice clocks", asy
       expect(material!.height).toBeGreaterThan(0);
     }).toPass();
     await page.setViewportSize({ width: 1280, height: 900 });
+  }
+});
+
+test("engine handoff stays on the branch, rewinding restores the database, and settings fit mobile", async ({
+  page,
+}) => {
+  const requestedFens: string[] = [];
+  await page.route("**/api/opening-explorer?**", (route) => {
+    const fen = new URL(route.request().url()).searchParams.get("fen") ?? "";
+    requestedFens.push(fen);
+    const games = fen.includes("4P3") && fen.includes(" b ") ? 4 : 100;
+    return route.fulfill({
+      json: {
+        moves: [
+          { uci: "d2d4", games, whiteWins: games, blackWins: 0, draws: 0, avgOpponentRating: null },
+        ],
+        recentGames: [],
+      },
+    });
+  });
+  await page.route("**/api/atomicdb-analysis?**", (route) =>
+    route.fulfill({ status: 404, json: {} }),
+  );
+  await page.route("**/engines/atomic-stockfish/*/atomic-stockfish.worker.js", (route) =>
+    route.fulfill({
+      contentType: "text/javascript",
+      headers: { "cross-origin-embedder-policy": "require-corp" },
+      body: `const line = line => self.postMessage({type:"line",line}); let fen="";
+      self.onmessage=({data})=>{ if(data.type==="initialize") self.postMessage({type:"ready"});
+        if(data.type!=="command")return; const c=data.command;
+        if(c==="isready")line("readyok"); if(c.startsWith("position fen "))fen=c.slice(13);
+        if(c.startsWith("go ")){const move=fen.includes("5N2")?"b8c6":"e7e5";
+          line("info depth 4 multipv 1 score cp 0 pv "+move);line("bestmove "+move);}};`,
+    }),
+  );
+  await page.addInitScript(() => {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    localStorage.setItem(
+      "atomic-puzzles.practice.settings",
+      JSON.stringify({
+        side: "white",
+        clockEnabled: false,
+        engine: { strength: 12, speed: 1, minGames: 5 },
+      }),
+    );
+    if (!localStorage.getItem("atomic-puzzles.practice.board")) {
+      localStorage.setItem(
+        "atomic-puzzles.practice.board",
+        JSON.stringify({ fen, pgn: '[Variant "Atomic"]\n\n1. e4', line: 0, ply: 1 }),
+      );
+    }
+    localStorage.setItem("atomic-puzzles.practice.moves-open", "false");
+  });
+  await page.goto("/practice");
+  const fen = page.getByRole("textbox", { name: "FEN", exact: true });
+  await expect(fen).toHaveValue(/4P3.* b /);
+  await page.getByRole("button", { name: "Start game", exact: true }).click();
+  await expect(fen).toHaveValue(/4p3\/4P3.* w /);
+  const board = page.locator("cg-board");
+  const bounds = await board.boundingBox();
+  if (!bounds) throw Error("Practice board missing");
+  for (const square of ["g1", "f3"]) {
+    await page.mouse.click(
+      bounds.x + ((square.charCodeAt(0) - 97 + 0.5) * bounds.width) / 8,
+      bounds.y + ((8 - Number(square[1]) + 0.5) * bounds.height) / 8,
+    );
+  }
+  await expect(fen).toHaveValue(/2n5.*5N2.* w /);
+  expect(requestedFens.some((f) => f.includes("5N2"))).toBe(false);
+  await page.reload();
+  await expect(fen).toHaveValue(/2n5.*5N2.* w /);
+  expect(requestedFens.some((f) => f.includes("5N2"))).toBe(false);
+  await page.getByRole("button", { name: "Go to start", exact: true }).click();
+  await expect(fen).toHaveValue(/PPPPPPPP\/RNBQKBNR w /);
+  await expect.poll(() => requestedFens.some((f) => f.includes("PPPPPPPP/RNBQKBNR w "))).toBe(true);
+  await page.getByRole("button", { name: "Practice settings", exact: true }).click();
+  await expect(page.getByRole("slider", { name: /^Strength/ })).toBeVisible();
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    const threshold = page.getByRole("spinbutton", { name: /^Switch to engine/ });
+    await threshold.scrollIntoViewIfNeeded();
+    await expect(threshold).toBeVisible();
+    const rect = await threshold.boundingBox();
+    expect(rect!.x).toBeGreaterThanOrEqual(0);
+    expect(rect!.x + rect!.width).toBeLessThanOrEqual(width);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
   }
 });
