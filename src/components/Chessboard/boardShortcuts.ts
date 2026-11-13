@@ -72,6 +72,11 @@ export const useBoardShortcuts = (
 
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.defaultPrevented || event.isComposing) return;
+      if (
+        event.target instanceof Element &&
+        event.target.closest('[data-board-navigation="local"]')
+      )
+        return;
       const command = boardShortcutCommand(event, captureInteractive, settings);
       if (!command) return;
 

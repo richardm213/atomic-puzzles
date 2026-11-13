@@ -10,6 +10,7 @@ import {
   openingLineSans,
   type OpeningProgress,
 } from "../../../shared/domain/openings/repertoire";
+import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import { boardShortcutCommand } from "../../components/Chessboard/boardShortcuts";
 import {
   type AnnotationMenuPosition,
@@ -94,12 +95,38 @@ export const OpeningTree = ({
     else if (row.bottom > bounds.bottom) pane.scrollTop += row.bottom - bounds.bottom;
   }, [activePath, expanded]);
   const initialPly = startingPlyFromFen(document.startFen);
+  const navigate = (index: number, ply: number) => {
+    // Keep focus on a stable element when the selected option disappears.
+    panelRef.current?.focus({ preventScroll: true });
+    onNavigate(index, ply);
+  };
   const targetIndex = (node: IndexedSolutionMoveNode) =>
     [...node.lineIndexes].find((index) =>
       currentMoves.every((move, ply) => sans[index]?.[ply] === move),
     ) ??
     [...node.lineIndexes][0] ??
     0;
+  const ancestors = [tree];
+  for (const move of currentMoves) {
+    const child = ancestors.at(-1)!.children.get(move);
+    if (!child) break;
+    ancestors.push(child);
+  }
+  const current = ancestors.at(-1)!;
+  const ply = ancestors.length - 2;
+  const cycleOptions = (command: "previousOption" | "nextOption") => {
+    // Prefer the choices ahead; otherwise switch at the nearest earlier fork.
+    for (let depth = ancestors.length - 1; depth >= 0; depth--) {
+      const choices = [...ancestors[depth]!.children.values()];
+      if (choices.length < 2) continue;
+      const selected = ancestors[depth + 1];
+      const index = Math.max(0, selected ? choices.indexOf(selected) : 0);
+      const delta = command === "previousOption" ? -1 : 1;
+      const next = choices[(index + delta + choices.length) % choices.length]!;
+      navigate(targetIndex(next), depth);
+      return;
+    }
+  };
 
   const renderMove = ({ node, path, ply }: TreeMove, first: boolean) => {
     const index = targetIndex(node);
@@ -126,7 +153,7 @@ export const OpeningTree = ({
                   ? "Tertiary line"
                   : undefined
           }
-          onClick={() => onNavigate(index, ply)}
+          onClick={() => navigate(index, ply)}
           onContextMenu={(event) => {
             event.preventDefault();
             setMenu({ index, ply, position: annotationMenuPosition(event) });
@@ -185,39 +212,23 @@ export const OpeningTree = ({
       ref={panelRef}
       className="panel openingRepertoire"
       aria-label="Repertoire tree"
+      data-board-navigation="local"
       tabIndex={0}
       onPointerDownCapture={(event) => event.currentTarget.focus({ preventScroll: true })}
       onKeyDownCapture={(event) => {
-        if (training || tab !== "tree" || menu || event.nativeEvent.isComposing) return;
+        if (event.nativeEvent.isComposing) return;
         const command = boardShortcutCommand(event.nativeEvent, true, shortcuts);
         if (!command) return;
         // Own navigation while this panel has focus; the board must not handle it again.
         event.preventDefault();
         event.stopPropagation();
-        const ancestors = [tree];
-        for (const move of currentMoves) {
-          const child = ancestors.at(-1)!.children.get(move);
-          if (!child) break;
-          ancestors.push(child);
-        }
-        const current = ancestors.at(-1)!;
-        const ply = ancestors.length - 2;
+        if (training || tab !== "tree" || menu) return;
         if (command === "previous") {
-          if (ply >= 0) onNavigate(targetIndex(current), ply - 1);
+          if (ply >= 0) navigate(targetIndex(current), ply - 1);
         } else if (command === "next") {
           const next = current.children.values().next().value;
-          if (next) onNavigate(targetIndex(next), ply + 1);
-        } else {
-          // Switch alternatives at the nearest fork, including when deeper in its line.
-          for (let depth = ancestors.length - 2; depth >= 0; depth--) {
-            const siblings = [...ancestors[depth]!.children.values()];
-            if (siblings.length < 2) continue;
-            const index = siblings.indexOf(ancestors[depth + 1]!);
-            const next = siblings[index + (command === "previousOption" ? -1 : 1)];
-            if (next) onNavigate(targetIndex(next), depth);
-            break;
-          }
-        }
+          if (next) navigate(targetIndex(next), ply + 1);
+        } else if (command === "previousOption" || command === "nextOption") cycleOptions(command);
       }}
     >
       <header className="openingTreeHeader">
@@ -257,6 +268,14 @@ export const OpeningTree = ({
           <div className="openingTreeScroll" ref={scrollRef}>
             <ul className="openingTree">{render(tree, [], 0, 0)}</ul>
           </div>
+          <AnalysisContinuationChoices
+            lines={sans}
+            moves={currentMoves}
+            currentPly={currentMoves.length}
+            initialPly={initialPly}
+            onSelect={navigate}
+            onCycleOptions={cycleOptions}
+          />
         </>
       ) : null}
       {menu ? (

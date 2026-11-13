@@ -32,12 +32,10 @@ import {
   validateOpeningDocument,
   visibleOpeningLines,
 } from "../../../shared/domain/openings/repertoire";
-import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { buildBoardLoadNavigation } from "../../lib/analysis/boardLoading";
 import { boardPrefixNavigation, getBoardMoveState } from "../../lib/analysis/boardState";
-import { startingPlyFromFen } from "../../lib/chess/pgn";
 import { changeOpening, type OpeningCopy } from "../../lib/openings/api";
 import type { ChessboardState, SolutionNavigation } from "../../types/chessboard";
 import { getErrorMessage } from "../../utils/errors";
@@ -470,16 +468,6 @@ export const OpeningEditor = ({
             ),
             onPlayNavigation: queueNavigation,
             practiceSettings,
-            continuationChoices:
-              mode === "practice" ? null : (
-                <AnalysisContinuationChoices
-                  lines={visibleSans}
-                  moves={state.currentMoves}
-                  currentPly={state.currentPly}
-                  initialPly={startingPlyFromFen(doc.startFen)}
-                  onSelect={navigateRepertoire}
-                />
-              ),
             onNavigateHandled: () => {
               navigationRef.current = null;
               setNavigation(null);

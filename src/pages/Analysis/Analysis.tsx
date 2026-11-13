@@ -329,7 +329,6 @@ type EmbeddedAnalysisWorkspace = {
   training: boolean;
   boardAfter: ReactNode;
   moveActions?: ((lineIndex: number, moveIndex: number) => MoveMenuAction[]) | undefined;
-  continuationChoices?: ReactNode;
   leftPanel?: ReactNode;
   practiceSettings?: Pick<
     ReturnType<typeof usePracticeSettings>["settings"],
@@ -1707,11 +1706,7 @@ export const AnalysisPage = ({
             }
             {...(puzzleDraft ? {} : { moveContentRef })}
             explorer={openingExplorerPanel}
-            continuationChoices={
-              training || puzzleDraft
-                ? null
-                : (workspace?.continuationChoices ?? continuationChoices)
-            }
+            continuationChoices={training || puzzleDraft ? null : continuationChoices}
           />
 
           <AnalysisToolbar

@@ -161,6 +161,15 @@ test("builds a repertoire, saves it, and trains a branch without replaying its p
   await expect(tree.locator("button[aria-current='step']")).toHaveAccessibleName("2. Nc3");
   await page.keyboard.press("ArrowLeft");
   await expect(tree.locator("button[aria-current='step']")).toHaveAccessibleName("1... e5");
+  await tree
+    .getByRole("group", { name: "Choose continuation", exact: true })
+    .getByRole("button", { name: "Next continuation", exact: true })
+    .click();
+  await expect(tree.locator("button[aria-current='step']")).toHaveAccessibleName("2. Nc3");
+  await page.keyboard.press("ArrowUp");
+  await expect(tree.locator("button[aria-current='step']")).toHaveAccessibleName("2. Nf3");
+  await page.keyboard.press("ArrowLeft");
+  await expect(tree.locator("button[aria-current='step']")).toHaveAccessibleName("1... e5");
   const rightPanel = page.getByLabel("Analysis controls", { exact: true });
   await rightPanel.focus();
   await page.keyboard.press("ArrowLeft");
@@ -189,7 +198,7 @@ test("builds a repertoire, saves it, and trains a branch without replaying its p
   ).toBeVisible();
   await expect(rightPanel).toBeFocused();
   await tree.getByRole("button", { name: "1... e5", exact: true }).click();
-  await page
+  await tree
     .getByRole("group", { name: "Choose continuation", exact: true })
     .getByRole("button", { name: /Nc3$/ })
     .click();
