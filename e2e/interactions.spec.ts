@@ -91,7 +91,9 @@ test("board resizing supports dragging, keyboard adjustment, saved size, and res
   const resized = (await board.boundingBox())!.width;
   await page.reload();
   await expect.poll(async () => (await board.boundingBox())!.width).toBeCloseTo(resized, 0);
-  await grip.dblclick();
+  await page.getByRole("button", { name: "Open settings", exact: true }).click();
+  await page.getByRole("button", { name: "Board settings", exact: true }).click();
+  await page.getByRole("button", { name: "Reset size", exact: true }).click();
   await expect.poll(async () => (await board.boundingBox())!.width).toBeCloseTo(original, 0);
   await page.reload();
   await expect.poll(async () => (await board.boundingBox())!.width).toBeCloseTo(original, 0);

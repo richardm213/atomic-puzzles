@@ -1850,3 +1850,9 @@
 .navSettingsKeyboardPage .navSecondaryButton {
   min-height: 44px;
 }
+
+.navBoardResetActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

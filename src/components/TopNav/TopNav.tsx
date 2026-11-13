@@ -39,6 +39,7 @@ import {
 } from "../../features/profile/profileRatingModes";
 import { useNotificationNavigation } from "../../hooks/useNotificationNavigation";
 import { isBoardSoundSet, playBoardSound } from "../../lib/boardSounds/boardSounds";
+import { resetVisibleBoardSizes } from "../../lib/chess/boardSize";
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
 import { checkRedCharcoalAccess } from "../../lib/coins/coins";
@@ -900,13 +901,22 @@ export const TopNav = () => {
                         />
                       </label>
                     </div>
-                    <button
-                      type="button"
-                      className="navSecondaryButton"
-                      onClick={resetDisplaySettings}
-                    >
-                      Reset to defaults
-                    </button>
+                    <div className="navBoardResetActions">
+                      <button
+                        type="button"
+                        className="navSecondaryButton"
+                        onClick={resetDisplaySettings}
+                      >
+                        Reset to defaults
+                      </button>
+                      <button
+                        type="button"
+                        className="navSecondaryButton"
+                        onClick={resetVisibleBoardSizes}
+                      >
+                        Reset size
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : null}
