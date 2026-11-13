@@ -9,14 +9,16 @@ import {
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
+import { z } from "zod";
 
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import { normalizePuzzleMotifTags } from "../../lib/puzzles/puzzleMotifs";
 import {
   createEmptyPuzzleSubmission,
@@ -54,35 +56,48 @@ const formatDuration = (duration: number | null | undefined): string => {
   return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 };
 
-const Attempts = ({ rows }: { rows: PuzzleProgressWithUsernameRow[] }) => (
-  <section className="puzzleRecentAttempts" aria-labelledby="recent-attempts-heading">
-    <h2 id="recent-attempts-heading">Other attempts</h2>
-    {rows.length ? (
-      <ul>
-        {rows.map((attempt) => (
-          <li key={`${attempt.username}-${attempt.first_attempt_at}`}>
-            <PlayerLink username={attempt.username} variant="puzzles">
-              {attempt.username}
-            </PlayerLink>
-            <span className={attempt.puzzle_correct ? "correct" : "incorrect"}>
-              {attempt.puzzle_correct ? "Correct" : "Incorrect"}
-              {attempt.rated === false ? " · Unrated" : ""}
-            </span>
-            <span>{attempt.correct_move || attempt.incorrect_move || "—"}</span>
-            <time dateTime={attempt.first_attempt_at}>
-              {new Date(attempt.first_attempt_at).toLocaleString()}
-            </time>
-            <span>{formatDuration(attempt.first_attempt_duration_ms)}</span>
-          </li>
-        ))}
-      </ul>
-    ) : (
-      <p>No attempts yet.</p>
-    )}
-  </section>
-);
+const Attempts = ({ rows }: { rows: PuzzleProgressWithUsernameRow[] }) => {
+  const [open, setOpen] = usePersistedState(
+    "atomic-puzzles.recent-puzzles.attempts-open",
+    z.boolean(),
+    false,
+  );
+  return (
+    <details
+      className="puzzleRecentAttempts"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary>Other attempts</summary>
+      {rows.length ? (
+        <ul>
+          {rows.map((attempt) => (
+            <li key={`${attempt.username}-${attempt.first_attempt_at}`}>
+              <PlayerLink username={attempt.username} variant="puzzles">
+                {attempt.username}
+              </PlayerLink>
+              <span className={attempt.puzzle_correct ? "correct" : "incorrect"}>
+                {attempt.puzzle_correct ? "Correct" : "Incorrect"}
+                {attempt.rated === false ? " · Unrated" : ""}
+              </span>
+              <span>{attempt.correct_move || attempt.incorrect_move || "—"}</span>
+              <time dateTime={attempt.first_attempt_at}>
+                {new Date(attempt.first_attempt_at).toLocaleString()}
+              </time>
+              <span>{formatDuration(attempt.first_attempt_duration_ms)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No attempts yet.</p>
+      )}
+    </details>
+  );
+};
 
 export const PuzzleRecentPage = () => {
+  const { puzzleId: routePuzzleId } = useParams({ from: "/puzzles/recent/{-$puzzleId}" });
+  const navigate = useNavigate();
   const { isLoading: authLoading, user } = useAuth();
   const isAdmin = normalizeUsername(user?.username) === ADMIN;
   const [response, setResponse] = useState<AdminPuzzleResponse | null>(null);
@@ -97,7 +112,7 @@ export const PuzzleRecentPage = () => {
   const [error, setError] = useState("");
   const [editorRevision, setEditorRevision] = useState(0);
 
-  const applyResponse = (next: AdminPuzzleResponse): void => {
+  const applyResponse = useCallback((next: AdminPuzzleResponse): void => {
     setResponse(next);
     if (next.puzzle) {
       setValue(puzzleValue(next.puzzle));
@@ -107,35 +122,60 @@ export const PuzzleRecentPage = () => {
     }
     setEditing(false);
     setEditorRevision((current) => current + 1);
-  };
+  }, []);
 
-  const load = async (
-    puzzleId?: number,
-    direction: "latest" | "exact" | "older" | "newer" = "latest",
-  ): Promise<void> => {
-    setLoading(true);
+  const loadedPuzzleId = response?.puzzle?.id;
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
+    const puzzleId = routePuzzleId === undefined ? undefined : Number(routePuzzleId);
+    if (puzzleId !== undefined && (!Number.isSafeInteger(puzzleId) || puzzleId < 1)) {
+      setError("Enter a valid puzzle ID.");
+      setLoading(false);
+      return;
+    }
     setError("");
     setMessage("");
-    try {
-      const next = await fetchAdminPuzzle(puzzleId, direction);
-      if (!next.puzzle) throw new Error("Puzzle not found.");
-      applyResponse(next);
-    } catch (loadError) {
-      setError(getErrorMessage(loadError, "Unable to load puzzle."));
-    } finally {
+    if (loadedPuzzleId && (puzzleId === undefined || puzzleId === loadedPuzzleId)) {
+      if (routePuzzleId !== String(loadedPuzzleId)) {
+        void navigate({
+          to: "/puzzles/recent/{-$puzzleId}",
+          params: { puzzleId: String(loadedPuzzleId) },
+          replace: true,
+        });
+      }
       setLoading(false);
+      return;
     }
+    let current = true;
+    setLoading(true);
+    void fetchAdminPuzzle(puzzleId, puzzleId === undefined ? "latest" : "exact")
+      .then((next) => {
+        if (!current) return;
+        if (!next.puzzle) throw new Error("Puzzle not found.");
+        applyResponse(next);
+      })
+      .catch((loadError) => {
+        if (current) setError(getErrorMessage(loadError, "Unable to load puzzle."));
+      })
+      .finally(() => {
+        if (current) setLoading(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [applyResponse, authLoading, isAdmin, loadedPuzzleId, navigate, routePuzzleId]);
+
+  const selectPuzzle = (puzzleId: number | null | undefined): void => {
+    if (!puzzleId || loading || saving) return;
+    void navigate({ to: "/puzzles/recent/{-$puzzleId}", params: { puzzleId: String(puzzleId) } });
   };
 
-  useEffect(() => {
-    if (!authLoading && isAdmin) void load();
-    else if (!authLoading) setLoading(false);
-    // Load once after the authenticated identity resolves.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, isAdmin]);
-
   const resetDraft = (): void => {
-    if (!response?.puzzle || saving || loading) return;
+    if (!response?.puzzle) return;
     setValue(puzzleValue(response.puzzle));
     setAuthor(response.puzzle.author ?? "");
     setTags(normalizePuzzleMotifTags(response.puzzle.tags));
@@ -220,7 +260,7 @@ export const PuzzleRecentPage = () => {
               className="queueSecondaryButton"
               aria-label="Previous puzzle"
               disabled={loading || saving || !response?.olderPuzzleId}
-              onClick={() => void load(puzzle?.id, "older")}
+              onClick={() => selectPuzzle(response?.olderPuzzleId)}
             >
               <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
             </button>
@@ -232,17 +272,17 @@ export const PuzzleRecentPage = () => {
                   setError("Enter a valid puzzle ID.");
                   return;
                 }
-                void load(id, "exact");
+                selectPuzzle(id);
               }}
             >
               <label htmlFor="recent-puzzle-id">Puzzle ID</label>
               <input
                 id="recent-puzzle-id"
                 type="number"
-                disabled={saving || loading}
                 min={1}
                 step={1}
                 value={jumpId}
+                disabled={saving || loading}
                 onChange={(event) => setJumpId(event.target.value)}
               />
               <button type="submit" className="queueSecondaryButton" disabled={loading || saving}>
@@ -254,7 +294,7 @@ export const PuzzleRecentPage = () => {
               className="queueSecondaryButton"
               aria-label="Next puzzle"
               disabled={loading || saving || !response?.newerPuzzleId}
-              onClick={() => void load(puzzle?.id, "newer")}
+              onClick={() => selectPuzzle(response?.newerPuzzleId)}
             >
               <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
             </button>

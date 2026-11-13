@@ -384,3 +384,85 @@ test("recent puzzle editing links multiple transpositions while view mode keeps 
   expect(savedLines).toHaveLength(4);
   expect(savedLines.every((line) => line.at(-1)?.annotation === "?")).toBe(true);
 });
+
+test("recent puzzle URLs restore selection and ignore stale loads during history navigation", async ({
+  page,
+}) => {
+  const requests: Array<{ puzzleId?: number; direction: string }> = [];
+  let releaseOlder: (() => void) | undefined;
+  let delayOlder = true;
+  await page.route("**/api/auth/session", (route) =>
+    route.fulfill({ json: { user: { username: "seaside_tiramisu" } } }),
+  );
+  await page.route("**/api/puzzles/admin", async (route) => {
+    const input = route.request().postDataJSON();
+    if (input.action !== "get") return route.fulfill({ json: { rows: [], nextCursor: null } });
+    requests.push(input);
+    const id = input.puzzleId ?? 303;
+    if (id === 302 && delayOlder) {
+      delayOlder = false;
+      await new Promise<void>((resolve) => {
+        releaseOlder = resolve;
+      });
+    }
+    return route.fulfill({
+      json: {
+        puzzle: { ...queuePuzzle, id, author: "admin", tags: [], deleted_at: null },
+        olderPuzzleId: id > 301 ? id - 1 : null,
+        newerPuzzleId: id < 303 ? id + 1 : null,
+        attempts: [],
+      },
+    });
+  });
+  await page.route("**/api/puzzles/submit", (route) => route.fulfill({ json: { puzzleId: null } }));
+  await page.goto("/puzzles/recent");
+  const idInput = page.getByRole("spinbutton", { name: "Puzzle ID", exact: true });
+  await expect(page).toHaveURL(/\/puzzles\/recent\/303$/);
+  await expect(idInput).toHaveValue("303");
+  expect(requests).toHaveLength(1); // Canonicalizing the latest URL must not refetch it.
+  const attemptsToggle = page.getByText("Other attempts", { exact: true });
+  const attemptsContent = page.getByText("No attempts yet.", { exact: true });
+  await expect(attemptsContent).not.toBeVisible();
+  await attemptsToggle.click();
+  await expect(attemptsContent).toBeVisible();
+
+  await page.getByRole("button", { name: "Previous puzzle", exact: true }).click();
+  await expect(page).toHaveURL(/\/puzzles\/recent\/302$/);
+  await expect.poll(() => Boolean(releaseOlder)).toBe(true);
+  await expect(idInput).toBeDisabled();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/puzzles\/recent\/303$/);
+  const olderResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/puzzles/admin") &&
+      response.request().postDataJSON().puzzleId === 302,
+  );
+  releaseOlder!();
+  await olderResponse;
+  await expect(idInput).toHaveValue("303");
+  await expect(page.getByRole("button", { name: "Previous puzzle", exact: true })).toBeEnabled();
+
+  await page.getByRole("button", { name: "Previous puzzle", exact: true }).click();
+  await expect(idInput).toHaveValue("302");
+  await page.getByRole("button", { name: "Next puzzle", exact: true }).click();
+  await expect(page).toHaveURL(/\/puzzles\/recent\/303$/);
+  await expect(idInput).toHaveValue("303");
+  await idInput.fill("301");
+  await page.getByRole("button", { name: "Go", exact: true }).click();
+  await expect(page).toHaveURL(/\/puzzles\/recent\/301$/);
+  await page.reload();
+  await expect(idInput).toHaveValue("301");
+  await expect(attemptsContent).toBeVisible();
+  await attemptsToggle.click();
+  await expect(attemptsContent).not.toBeVisible();
+  await page.reload();
+  await expect(idInput).toHaveValue("301");
+  await expect(attemptsContent).not.toBeVisible();
+  expect(requests.at(-1)).toMatchObject({ direction: "exact", puzzleId: 301 });
+  await page.goBack();
+  await expect(page).toHaveURL(/\/puzzles\/recent\/303$/);
+  await expect(idInput).toHaveValue("303");
+  await page.goForward();
+  await expect(page).toHaveURL(/\/puzzles\/recent\/301$/);
+  await expect(idInput).toHaveValue("301");
+});

@@ -748,7 +748,7 @@ const puzzleReviewRoute = createRoute({
 
 const puzzleRecentRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/puzzles/recent",
+  path: "/puzzles/recent/{-$puzzleId}",
   component: AuthenticatedPuzzleRecentPage,
 });
 
