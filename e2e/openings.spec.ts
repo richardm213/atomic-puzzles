@@ -255,7 +255,6 @@ test("builds a repertoire, saves it, and trains a branch without replaying its p
   await page.getByRole("button", { name: "Practice a random opponent", exact: true }).click();
   await expect(page.getByRole("tab", { name: /TestOpponent/ })).toBeVisible();
   await page.getByRole("tab", { name: "General", exact: true }).click();
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("button", { name: "Submit puzzle", exact: true }).click();
   const composer = page.getByRole("form", { name: "Puzzle draft" });
   await expect(composer).toBeVisible();
@@ -288,7 +287,11 @@ test("builds a repertoire, saves it, and trains a branch without replaying its p
   await expect.poll(() => copy && Object.keys(copy.progress).length).toBe(3);
   await expect(page.locator(".openingUnderboard").getByRole("status")).toContainText("Caught up");
   expect(copy!.document.startFen).toBe(INITIAL_FEN);
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "Practice", exact: true, pressed: true }).click();
+  await expect(page.getByRole("button", { name: "Practice", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "General", exact: true }).click();
   await page.getByRole("button", { name: "Publish · 50 coins", exact: true }).click();

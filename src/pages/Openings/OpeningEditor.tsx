@@ -392,13 +392,10 @@ export const OpeningEditor = ({
   const boardControls = (
     <div className="openingUnderboard">
       <div className="openingActions" role="group" aria-label="Opening mode">
-        <button disabled={busy} aria-pressed={mode === "edit"} onClick={() => changeMode("edit")}>
-          Edit
-        </button>
         <button
           aria-pressed={mode === "practice"}
-          disabled={busy || dirty || !doc.lines.length}
-          onClick={() => changeMode("practice")}
+          disabled={busy || (mode === "edit" && (dirty || !doc.lines.length))}
+          onClick={() => changeMode(mode === "practice" ? "edit" : "practice")}
         >
           Practice
         </button>
