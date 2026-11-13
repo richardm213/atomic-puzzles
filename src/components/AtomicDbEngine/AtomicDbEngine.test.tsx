@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
 import type { AtomicDbAnalysisState } from "../../hooks/useAtomicDbAnalysis";
 import { parseAtomicDbResponse } from "../../utils/atomicDb";
 import { AtomicDbEngine, AtomicDbEngineControls, AtomicDbEvalBar } from "./AtomicDbEngine";
@@ -600,4 +601,40 @@ describe("AtomicDbEngine", () => {
       screen.queryByRole("button", { name: "Play variation through f6" }),
     ).not.toBeInTheDocument();
   });
+});
+
+it("uses the shared best-move shortcut without playing threat or disabled analysis lines", () => {
+  const onPlayLine = vi.fn();
+  const analysis: AtomicDbAnalysisState = {
+    status: "ready",
+    error: "",
+    principalVariations: {},
+    result: {
+      fen: STARTING_FEN,
+      position: parseAtomicDbResponse({
+        status: "UNKNOWN",
+        best_move: "e2e4",
+        score: 20,
+        point: 20,
+        moves: [{ uci: "e2e4", score: 20, point: 20 }],
+      }),
+    },
+  };
+  const props = {
+    fen: STARTING_FEN,
+    analysis,
+    settings: { enabled: true, lineCount: 1, showFollowUpMoves: true },
+    setSettings: vi.fn(),
+    onDisable: vi.fn(),
+    onHoverMove: vi.fn(),
+    onPlayLine,
+  };
+  const { rerender } = render(<AtomicDbAnalysisBlock {...props} />);
+  fireEvent.keyDown(window, { key: " " });
+  expect(onPlayLine).toHaveBeenCalledExactlyOnceWith(["e2e4"]);
+  rerender(<AtomicDbAnalysisBlock {...props} threatMode />);
+  fireEvent.keyDown(window, { key: " " });
+  rerender(<AtomicDbAnalysisBlock {...props} disabled />);
+  fireEvent.keyDown(window, { key: " " });
+  expect(onPlayLine).toHaveBeenCalledOnce();
 });

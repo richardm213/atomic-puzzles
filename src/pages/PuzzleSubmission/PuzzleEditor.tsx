@@ -709,6 +709,7 @@ export const PuzzleEditor = ({
           solutionNavigation={navigation}
           previewMove={hoveredEngineMove}
           engineMoves={showAnalysisEngine ? engine.engineMoves : undefined}
+          threatMove={showAnalysisEngine ? engine.threatMove : null}
           onNavigateHandled={finishNavigation}
           onStateChange={handleBoardState}
         />
@@ -740,8 +741,7 @@ export const PuzzleEditor = ({
         {showAnalysisEngine ? (
           <section className="puzzleReviewAnalysisPanel" aria-label="Position analysis and moves">
             <AtomicDbAnalysisBlock
-              fen={engine.fen}
-              analysis={engine.analysis}
+              {...engine.panelProps}
               settings={engineSettings}
               setSettings={setEngineSettings}
               onDisable={() => setHoveredEngineMove(null)}
@@ -750,7 +750,7 @@ export const PuzzleEditor = ({
               }
               onPlayLine={playEngineLine}
               onHoverMove={setHoveredEngineMove}
-              disabled={engine.variationPlaying}
+              disabled={engine.variationPlaying || engine.threatMode}
             />
             {reviewMovePanel}
           </section>

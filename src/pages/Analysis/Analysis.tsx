@@ -19,16 +19,11 @@ import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/A
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardClock } from "../../components/BoardClock/BoardClock";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
-import {
-  isTextEntryTarget,
-  shortcutIndexFromKeyboardEvent,
-} from "../../components/Chessboard/boardShortcuts";
 import type { MoveMenuAction } from "../../components/MoveAnnotationMenu/MoveAnnotationMenu";
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import { PracticeMoveButtons } from "../../components/PracticeMoveButtons/PracticeMoveButtons";
 import { Seo } from "../../components/Seo/Seo";
 import { UsernamePickerModal } from "../../components/UsernamePickerModal/UsernamePickerModal";
-import { useKeyboardShortcutSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import { AnalysisEngineExplorerPanels } from "../../features/analysisWorkspace/AnalysisEngineExplorerPanels";
 import { AnalysisToolbar } from "../../features/analysisWorkspace/AnalysisToolbar";
@@ -53,17 +48,18 @@ import {
   useWorkspaceViewport,
 } from "../../features/analysisWorkspace/useAnalysisWorkspaceLayout";
 import { analysisBoardStyle } from "../../features/analysisWorkspace/workspaceSizing";
-import { useAtomicDbAnalysis } from "../../hooks/useAtomicDbAnalysis";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardMoveEditing } from "../../hooks/useBoardMoveEditing";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { useGameAnalysis } from "../../hooks/useGameAnalysis";
+import { useMoveNotationLayout } from "../../hooks/useMoveNotationLayout";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { usePracticeOpponent } from "../../hooks/usePracticeOpponent";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
+import { useWorkspaceShortcuts } from "../../hooks/useWorkspaceShortcuts";
 import {
   buildBoardLoadNavigation,
   gamePlyFromHash,
@@ -80,7 +76,6 @@ import {
   serializeSanLinesToPgn,
   startingPlyFromFen,
 } from "../../lib/chess/pgn";
-import { keyboardShortcutAction } from "../../lib/keyboardShortcuts";
 import {
   DEFAULT_PRACTICE_MOVE_SETTINGS,
   fetchRandomPracticePlayer,
@@ -93,8 +88,6 @@ import {
   type SolutionNavigation,
 } from "../../types/chessboard";
 import { atomicDbPositionUrl, requestAtomicDbAnalysis } from "../../utils/atomicDb";
-import { selectSpacebarMove } from "../../utils/boardMoveSelection";
-import { threatFenFromFen } from "../../utils/chessNotation";
 import { getErrorMessage } from "../../utils/errors";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import {
@@ -118,7 +111,6 @@ type AtomicDbRequestStatus =
   { state: "idle" } | { state: "requested" } | { state: "error"; message: string };
 const MONTH_FILTER_PATTERN = /^\d{4}-\d{2}$/;
 const EXPLORER_SETTINGS_STORAGE_KEY = "atomic-puzzles.analysis.explorer-settings";
-const NOTATION_LAYOUT_STORAGE_KEY = "atomic-puzzles.analysis.notation-layout";
 const EXPLORER_OPEN_STORAGE_KEY = "atomic-puzzles.analysis.explorer-open";
 const GAME_EXPLORER_OPEN_STORAGE_KEY = "atomic-puzzles.games.explorer-open";
 const BOARD_STACK_QUERY = "(max-width: 560px)";
@@ -189,8 +181,6 @@ const isSingleColumnLayout = (): boolean =>
   typeof window !== "undefined" && window.matchMedia(BOARD_STACK_QUERY).matches;
 
 const defaultExplorerOpen = (): boolean => !isSingleColumnLayout();
-
-const notationLayoutSchema = z.enum(["inline", "non-inline"]);
 
 const validMonthFilter = (value: unknown): string => {
   const monthValue = String(value ?? "").trim();
@@ -349,7 +339,6 @@ export const AnalysisPage = ({
   const auth = useAuth();
   const publishesDirectly = isApprovedPuzzleCreator(auth.user?.username ?? "");
   const puzzleActionLabel = publishesDirectly ? "Create puzzle" : "Submit puzzle";
-  const keyboardShortcuts = useKeyboardShortcutSettings();
   const { _splat: fenPath, orientation: routeOrientation } = useParams({ strict: false });
   const handoffId = new URLSearchParams(
     typeof window === "undefined" ? "" : window.location.search,
@@ -420,11 +409,7 @@ export const AnalysisPage = ({
   const boardState = puzzleDraft ? puzzleBoardState : gameBoardState;
   const [atomicDbEngineSettings, setAtomicDbEngineSettings] = useAtomicDbEngineSettings();
   const { width: viewportWidth, stacked: singleColumnLayout } = useWorkspaceViewport();
-  const [notationLayout, setNotationLayout] = usePersistedState(
-    NOTATION_LAYOUT_STORAGE_KEY,
-    notationLayoutSchema,
-    "inline",
-  );
+  const [notationLayout, setNotationLayout] = useMoveNotationLayout();
   const [gameRootFen, setRootFen] = useState(routeFen);
   const rootFen = puzzleDraft?.fen ?? gameRootFen;
   const [gameOrientation, setOrientation] = useState<"white" | "black">(
@@ -510,7 +495,6 @@ export const AnalysisPage = ({
     removeRecent: removeRecentUsername,
   } = useUsernamePicker<UsernamePickerTarget>("player");
   const [hoveredExplorerMoveUci, setHoveredExplorerMoveUci] = useState<string | null>(null);
-  const [threatMode, setThreatMode] = useState(false);
   const [atomicDbRequestStatus, setAtomicDbRequestStatus] = useState<AtomicDbRequestStatus>({
     state: "idle",
   });
@@ -584,9 +568,14 @@ export const AnalysisPage = ({
   currentFenRef.current = currentFen;
   const {
     analysis: atomicDbAnalysis,
+    displayedAnalysis,
+    displayedFen: displayedAnalysisFen,
+    threatMode: effectiveThreatMode,
+    setThreatMode,
+    threatMove: threatMoveUci,
+    panelProps: analysisPanelProps,
     engineMoves,
     beginVariationPlayback,
-    fen: atomicDbFen,
     finishVariationPlayback,
     variationPlaying: atomicDbLinePlaying,
   } = useAtomicDbBoardAnalysis({
@@ -599,26 +588,6 @@ export const AnalysisPage = ({
     terminalOutcome,
     suspended: Boolean(game && gameAnalysis.isLoading),
   });
-  const threatFen = useMemo(
-    () => (terminalOutcome ? null : threatFenFromFen(currentFen)),
-    [currentFen, terminalOutcome],
-  );
-  const threatAnalysis = useAtomicDbAnalysis(threatFen ?? currentFen, {
-    debounceMs: 0,
-    enabled: positionAnalysisActive && threatMode && threatFen !== null && !atomicDbLinePlaying,
-    atomicDbEnabled: atomicDbEngineSettings.atomicDbEnabled !== false,
-    fallbackToEngine: true,
-    lineCount: atomicDbEngineSettings.lineCount,
-    plyCount: 5,
-    suspended: navigation !== null,
-  });
-  const effectiveThreatMode = threatMode && threatFen !== null;
-  const threatMoveUci =
-    effectiveThreatMode && threatAnalysis.result?.fen === threatFen
-      ? (threatAnalysis.result.position?.bestMove ?? null)
-      : null;
-  const displayedAnalysis = effectiveThreatMode ? threatAnalysis : atomicDbAnalysis;
-  const displayedAnalysisFen = effectiveThreatMode && threatFen ? threatFen : atomicDbFen;
   const atomicDbResultIsCurrent = atomicDbAnalysis.result?.fen === currentFen;
   const atomicDbPositionKey = atomicDbResultIsCurrent
     ? (atomicDbAnalysis.result?.position?.key ?? null)
@@ -1125,109 +1094,21 @@ export const AnalysisPage = ({
     setHoveredExplorerMoveUci(null);
   }, [currentFen, explorerOpen, explorerStatus, filtersOpen]);
 
-  useEffect(() => {
-    if (!positionAnalysisActive || threatFen === null) setThreatMode(false);
-  }, [positionAnalysisActive, threatFen]);
-
-  useEffect(() => {
-    if (training) return;
-    const handleAnalysisShortcut = (event: KeyboardEvent): void => {
-      const action = keyboardShortcutAction(event, keyboardShortcuts);
-      const shortcutIndex = shortcutIndexFromKeyboardEvent(event, keyboardShortcuts);
-      const isSpacebarShortcut = action === "playBestMove";
-      const isExplorerMoveShortcut = shortcutIndex !== null && !isSpacebarShortcut;
-      if (
-        !action ||
-        event.defaultPrevented ||
-        (![
-          "toggleExplorer",
-          "flipBoard",
-          "toggleFollowUps",
-          "toggleThreat",
-          "toggleGameAnalysis",
-        ].includes(action) &&
-          !isSpacebarShortcut &&
-          !isExplorerMoveShortcut)
-      )
-        return;
-
-      if (isTextEntryTarget(event.target)) return;
-
-      if (isSpacebarShortcut) {
-        // Reserve the playback shortcut even when no move is available.
-        event.preventDefault();
-        if (usernamePickerOpen || filtersOpen) return;
-
-        const move = selectSpacebarMove({
-          engineEnabled: positionAnalysisActive,
-          engineResult: atomicDbAnalysis.result,
-          engineStatus: atomicDbAnalysis.status,
-          databaseMoves: explorerMoves,
-          databaseStatus: explorerStatus,
-          fen: currentFen,
-        });
-        if (!move) return;
-
-        playExplorerMove(move);
-        return;
-      }
-
-      if (isExplorerMoveShortcut) {
-        if (usernamePickerOpen || filtersOpen || !explorerOpen || explorerStatus !== "ready") {
-          return;
-        }
-
-        const explorerMove = explorerMoves[shortcutIndex];
-        if (!explorerMove) return;
-
-        event.preventDefault();
-        playExplorerMove(explorerMove.uci);
-        return;
-      }
-
-      if (action === "toggleExplorer") {
-        if (!puzzleDraft) setExplorerOpen((open) => !open);
-      } else if (action === "toggleGameAnalysis") {
-        if (game && !puzzleDraft) {
-          event.preventDefault();
-          setGameComputerAnalysisEnabled((enabled) => !enabled);
-        }
-      } else if (action === "toggleFollowUps") {
-        setAtomicDbEngineSettings((current) => ({
-          ...current,
-          showFollowUpMoves: !current.showFollowUpMoves,
-        }));
-      } else if (action === "toggleThreat") {
-        if (positionAnalysisActive && threatFen !== null) {
-          setThreatMode((enabled) => !enabled);
-        }
-      } else {
-        flipBoard();
-      }
-    };
-
-    window.addEventListener("keydown", handleAnalysisShortcut, { capture: true });
-    return () => window.removeEventListener("keydown", handleAnalysisShortcut, { capture: true });
-  }, [
-    atomicDbAnalysis.result,
-    atomicDbAnalysis.status,
-    atomicDbEngineSettings.enabled,
-    currentFen,
-    explorerMoves,
+  useWorkspaceShortcuts({
+    enabled: !training,
+    blocked: usernamePickerOpen || filtersOpen,
+    engineEnabled: positionAnalysisActive,
+    moves: explorerMoves,
+    status: explorerStatus,
     explorerOpen,
-    explorerStatus,
-    filtersOpen,
-    flipBoard,
-    game,
-    positionAnalysisActive,
-    puzzleDraft,
-    setAtomicDbEngineSettings,
-    setExplorerOpen,
-    threatFen,
-    usernamePickerOpen,
-    keyboardShortcuts,
-    training,
-  ]);
+    onPlay: playExplorerMove,
+    onExplorer: () => {
+      if (!puzzleDraft) setExplorerOpen((open) => !open);
+    },
+    onGameAnalysis: () => {
+      if (game && !puzzleDraft) setGameComputerAnalysisEnabled((enabled) => !enabled);
+    },
+  });
 
   const boardStatus = (color: "white" | "black") => (
     <BoardClock
@@ -1634,8 +1515,7 @@ export const AnalysisPage = ({
                       </div>
                     ) : null
                   }
-                  fen={displayedAnalysisFen}
-                  analysis={displayedAnalysis}
+                  {...analysisPanelProps}
                   settings={atomicDbEngineSettings}
                   setSettings={setAtomicDbEngineSettings}
                   onDisable={() => {
@@ -1643,9 +1523,6 @@ export const AnalysisPage = ({
                     setThreatMode(false);
                   }}
                   onFlipBoard={flipBoard}
-                  onThreatModeChange={setThreatMode}
-                  threatAvailable={threatFen !== null}
-                  threatMode={effectiveThreatMode}
                   notationInline={notationLayout === "inline"}
                   onToggleNotation={() =>
                     setNotationLayout((current) => (current === "inline" ? "non-inline" : "inline"))
@@ -1757,7 +1634,7 @@ export const AnalysisPage = ({
           solutionNavigation: puzzleDraft ? null : (workspace?.navigation ?? navigation),
           previewMove: training ? null : hoveredExplorerMoveUci,
           threatMove: training ? null : threatMoveUci,
-          engineMoves: training || effectiveThreatMode ? null : engineMoves,
+          engineMoves: training ? undefined : engineMoves,
           analysisMarker:
             gameComputerAnalysisEnabled &&
             boardState?.view.line.source !== "custom" &&
@@ -1798,7 +1675,7 @@ export const AnalysisPage = ({
                 solutionNavigation: navigation,
                 previewMove: hoveredExplorerMoveUci,
                 threatMove: threatMoveUci,
-                engineMoves: effectiveThreatMode ? null : engineMoves,
+                engineMoves,
                 onNavigateHandled: handleNavigationHandled,
                 onStateChange: setPuzzleBoardState,
               }

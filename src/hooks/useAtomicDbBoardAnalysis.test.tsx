@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -6,6 +6,7 @@ import {
   replacePreloadedAtomicDbGamePositions,
 } from "../lib/atomicDb/analysisRepository";
 import { analyzeFairyStockfishPosition } from "../lib/practice/fairyStockfish";
+import { threatFenFromFen } from "../utils/chessNotation";
 import { useAtomicDbBoardAnalysis } from "./useAtomicDbBoardAnalysis";
 
 vi.mock("../lib/practice/fairyStockfish", () => ({
@@ -36,6 +37,8 @@ describe("useAtomicDbBoardAnalysis", () => {
       }),
     );
 
+    act(() => result.current.setThreatMode(true));
+    expect(result.current.threatMode).toBe(false);
     await waitFor(() => expect(result.current.analysis.status).toBe("idle"));
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -211,13 +214,14 @@ describe("useAtomicDbBoardAnalysis", () => {
       },
     ]);
 
-    const { result, rerender } = renderHook(({ currentFen, enabled }) =>
-      useAtomicDbBoardAnalysis({
-        currentFen,
-        enabled,
-        navigation: null,
-        lineCount: 1,
-      }),
+    const { result, rerender } = renderHook(
+      ({ currentFen, enabled }) =>
+        useAtomicDbBoardAnalysis({
+          currentFen,
+          enabled,
+          navigation: null,
+          lineCount: 1,
+        }),
       { initialProps: { currentFen: TABLEBASE_FEN, enabled: true } },
     );
 
@@ -233,5 +237,54 @@ describe("useAtomicDbBoardAnalysis", () => {
     expect(result.current.engineMoves).toBeNull();
     rerender({ currentFen: FEN, enabled: true });
     expect(result.current.engineMoves).toBeNull();
+  });
+
+  it("shares threat analysis and clears it when the engine is disabled", async () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    const threat = threatFenFromFen(fen)!;
+    replacePreloadedAtomicDbGamePositions(
+      [
+        [fen, "e2e4"],
+        [threat, "e7e5"],
+      ].map(([fen, uci]) => ({
+        fen: fen!,
+        complete: true,
+        principalVariations: {},
+        position: {
+          key: "cached",
+          outcome: "UNKNOWN" as const,
+          closure: null,
+          score: 20,
+          point: 20,
+          bestMove: uci!,
+          moves: [
+            {
+              uci: uci!,
+              outcome: "UNKNOWN" as const,
+              closure: null,
+              score: 20,
+              point: 20,
+              mate: null,
+              nodeBackedPlies: 5,
+            },
+          ],
+        },
+      })),
+    );
+    const { result, rerender } = renderHook(
+      ({ enabled }) =>
+        useAtomicDbBoardAnalysis({ currentFen: fen, enabled, navigation: null, lineCount: 1 }),
+      { initialProps: { enabled: true } },
+    );
+    await waitFor(() => expect(result.current.analysis.status).toBe("ready"));
+    act(() => result.current.panelProps.onThreatModeChange(true));
+    await waitFor(() => expect(result.current.threatMove).toBe("e7e5"));
+    expect(result.current.panelProps.fen).toBe(threat);
+    expect(result.current.engineMoves).toBeNull();
+    rerender({ enabled: false });
+    expect(result.current.threatMode).toBe(false);
+    expect(result.current.threatMove).toBeNull();
+    rerender({ enabled: true });
+    expect(result.current.threatMode).toBe(false);
   });
 });

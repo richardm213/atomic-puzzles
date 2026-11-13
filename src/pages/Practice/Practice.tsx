@@ -19,10 +19,6 @@ import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/A
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardClock } from "../../components/BoardClock/BoardClock";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
-import {
-  isTextEntryTarget,
-  shortcutIndexFromKeyboardEvent,
-} from "../../components/Chessboard/boardShortcuts";
 import { buildPgnHistory } from "../../components/Chessboard/pgnHistory";
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import type { OpeningDatabaseMove } from "../../components/OpeningDatabaseDisplay/OpeningDatabaseDisplay";
@@ -61,14 +57,16 @@ import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings
 import { useBoardDocument } from "../../hooks/useBoardDocument";
 import { useBoardMoveEditing } from "../../hooks/useBoardMoveEditing";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
+import { useMoveNotationLayout } from "../../hooks/useMoveNotationLayout";
 import { useOpeningExplorer } from "../../hooks/useOpeningExplorer";
 import { readPersistedState, usePersistedState } from "../../hooks/usePersistedState";
 import { usePracticeReplica } from "../../hooks/usePracticeReplica";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
+import { useWorkspaceShortcuts } from "../../hooks/useWorkspaceShortcuts";
 import { buildBoardLoadNavigation } from "../../lib/analysis/boardLoading";
 import { boardLineNavigation, getBoardMoveState } from "../../lib/analysis/boardState";
 import { materialCountFromFen } from "../../lib/chess/materialCount";
-import { keyboardShortcutAction, keyboardShortcutHint } from "../../lib/keyboardShortcuts";
+import { keyboardShortcutHint } from "../../lib/keyboardShortcuts";
 import { choosePracticeEngineMove } from "../../lib/practice/engineSelection";
 import {
   handoffApplies,
@@ -90,7 +88,7 @@ import {
   type SolutionNavigation,
 } from "../../types/chessboard";
 import { ATOMIC_DB_HOME_URL, atomicDbPositionUrl } from "../../utils/atomicDb";
-import { chooseDatabaseMove, selectSpacebarMove } from "../../utils/boardMoveSelection";
+import { chooseDatabaseMove } from "../../utils/boardMoveSelection";
 import { setBrowserStorageJson } from "../../utils/browserStorage";
 import { getErrorMessage } from "../../utils/errors";
 import { formatGameCount } from "../../utils/formatters";
@@ -230,6 +228,7 @@ export const PracticePage = () => {
   const [movesOpen, setMovesOpen] = usePersistedState(MOVES_OPEN_STORAGE_KEY, z.boolean(), true);
   const explorerOpen = !puzzleDraft && !movesOpen;
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [notationLayout, setNotationLayout] = useMoveNotationLayout();
   const alignedPanelHeight = useBoardAlignedPanelHeight(
     practicePanelRef,
     boardPanelRef,
@@ -280,9 +279,13 @@ export const PracticePage = () => {
   const analysisFen = puzzleDraft ? draftBoard.currentFen : currentFen;
   const {
     analysis: atomicDbAnalysis,
+    displayedAnalysis,
+    displayedFen,
+    panelProps: analysisPanelProps,
+    threatMode,
+    threatMove,
     engineMoves,
     beginVariationPlayback,
-    fen: atomicDbFen,
     finishVariationPlayback,
     variationPlaying: atomicDbLinePlaying,
   } = useAtomicDbBoardAnalysis({
@@ -1082,100 +1085,21 @@ export const PracticePage = () => {
     }
   }, [canStepBack, clearAutoMoveState, currentTurn, opponentSide, queueNavigation]);
 
-  useEffect(() => {
-    const handlePracticeShortcut = (event: KeyboardEvent): void => {
-      const action = keyboardShortcutAction(event, keyboardShortcuts);
-      const shortcutIndex = shortcutIndexFromKeyboardEvent(event, keyboardShortcuts);
-      const isSpacebarShortcut = action === "playBestMove";
-      const isMoveShortcut = shortcutIndex !== null && !isSpacebarShortcut;
-      if (
-        puzzleDraft ||
-        usernamePickerOpen ||
-        !action ||
-        event.defaultPrevented ||
-        (![
-          "pausePractice",
-          "toggleExplorer",
-          "flipBoard",
-          "toggleFollowUps",
-          "alternatePracticeMove",
-        ].includes(action) &&
-          !isSpacebarShortcut &&
-          !isMoveShortcut)
-      )
-        return;
-
-      if (isTextEntryTarget(event.target)) return;
-
-      if (isSpacebarShortcut) {
-        // Reserve the playback shortcut even when no move is available.
-        event.preventDefault();
-        if (settingsOpen) return;
-
-        const move = selectSpacebarMove({
-          engineEnabled: atomicDbEngineSettings.enabled,
-          engineResult: atomicDbAnalysis.result,
-          engineStatus: atomicDbAnalysis.status,
-          databaseMoves: practiceMoves,
-          databaseStatus: status,
-          fen: currentFen,
-        });
-        if (!move) return;
-
-        playPracticeMove(move);
-        return;
-      }
-
-      if (isMoveShortcut) {
-        if (movesOpen || settingsOpen || status !== "ready") return;
-
-        const move = practiceMoves[shortcutIndex];
-        if (!move) return;
-
-        event.preventDefault();
-        playPracticeMove(move.uci);
-        return;
-      }
-
-      event.preventDefault();
-      if (action === "toggleExplorer") {
-        setMovesOpen((open) => !open);
-        setSettingsOpen(false);
-      } else if (action === "toggleFollowUps") {
-        setAtomicDbEngineSettings((current) => ({
-          ...current,
-          showFollowUpMoves: !current.showFollowUpMoves,
-        }));
-      } else if (action === "pausePractice") {
-        toggleGamePaused();
-      } else if (action === "alternatePracticeMove") {
-        requestAlternateAutoMove();
-      } else {
-        flipPracticeSide();
-      }
-    };
-
-    window.addEventListener("keydown", handlePracticeShortcut, { capture: true });
-    return () => window.removeEventListener("keydown", handlePracticeShortcut, { capture: true });
-  }, [
-    atomicDbAnalysis.result,
-    atomicDbAnalysis.status,
-    atomicDbEngineSettings.enabled,
-    currentFen,
-    flipPracticeSide,
-    movesOpen,
-    playPracticeMove,
-    practiceMoves,
-    puzzleDraft,
-    requestAlternateAutoMove,
-    setAtomicDbEngineSettings,
-    setMovesOpen,
-    settingsOpen,
+  useWorkspaceShortcuts({
+    enabled: !puzzleDraft,
+    blocked: usernamePickerOpen || settingsOpen,
+    engineEnabled: atomicDbEngineSettings.enabled,
+    moves: practiceMoves,
     status,
-    toggleGamePaused,
-    usernamePickerOpen,
-    keyboardShortcuts,
-  ]);
+    explorerOpen: !movesOpen,
+    onPlay: playPracticeMove,
+    onExplorer: () => {
+      setMovesOpen((open) => !open);
+      setSettingsOpen(false);
+    },
+    onPause: toggleGamePaused,
+    onAlternate: requestAlternateAutoMove,
+  });
 
   const practiceSettingsContent = (
     <div className="analysisFilterPanel practiceSettingsPanel" id="practice-settings-panel">
@@ -1549,8 +1473,11 @@ export const PracticePage = () => {
                   />
                 ) : null
               }
-              fen={atomicDbFen}
-              analysis={atomicDbAnalysis}
+              {...analysisPanelProps}
+              notationInline={notationLayout === "inline"}
+              onToggleNotation={() =>
+                setNotationLayout((current) => (current === "inline" ? "non-inline" : "inline"))
+              }
               settings={atomicDbEngineSettings}
               setSettings={setAtomicDbEngineSettings}
               onDisable={() => setHoveredMoveUci(null)}
@@ -1570,7 +1497,7 @@ export const PracticePage = () => {
                 }
               }}
               onHoverMove={setHoveredMoveUci}
-              disabled={atomicDbLinePlaying || puzzleSaving}
+              disabled={atomicDbLinePlaying || threatMode || puzzleSaving}
             />
           }
           moveContent={
@@ -1612,7 +1539,7 @@ export const PracticePage = () => {
                 moves={moveList}
                 currentPly={currentPly}
                 pinnedLineIndex={activeLineIndex}
-                inline
+                inline={notationLayout === "inline"}
                 onNavigate={navigateToPly}
                 onSelectVariation={navigateToAnalysisMove}
                 {...moveEditing}
@@ -1685,6 +1612,7 @@ export const PracticePage = () => {
           solutionNavigation: puzzleDraft ? null : navigation,
           previewMove: hoveredMoveUci,
           engineMoves,
+          threatMove,
           onNavigateHandled: handleNavigationHandled,
           onStateChange: handleBoardStateChange,
         }}
@@ -1704,6 +1632,7 @@ export const PracticePage = () => {
                 solutionNavigation: draftNavigation,
                 previewMove: hoveredMoveUci,
                 engineMoves,
+                threatMove,
                 onNavigateHandled: () => {
                   finishVariationPlayback();
                   setDraftNavigation(null);
@@ -1714,8 +1643,9 @@ export const PracticePage = () => {
         }
         boardOverlay={
           <AtomicDbEvalBar
-            fen={atomicDbFen}
-            analysis={atomicDbAnalysis}
+            fen={displayedFen}
+            analysis={displayedAnalysis}
+            threatMode={threatMode}
             enabled={atomicDbEngineSettings.enabled}
             orientation={puzzleDraft?.orientation ?? side}
           />

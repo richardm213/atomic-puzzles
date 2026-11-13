@@ -8,8 +8,8 @@ import { useEffect, useRef, useState } from "react";
 import { useKeyboardShortcutSettings } from "../../context/AppSettings";
 import type { AtomicDbAnalysisState } from "../../hooks/useAtomicDbAnalysis";
 import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
+import { useBoardActionShortcuts } from "../../hooks/useBoardActionShortcuts";
 import {
-  keyboardShortcutAction,
   keyboardShortcutAria,
   keyboardShortcutHint,
 } from "../../lib/keyboardShortcuts";
@@ -22,7 +22,6 @@ import {
   getAtomicDbMoveEvaluation,
 } from "../../utils/atomicDb";
 import { numberedSanLineFromUci } from "../../utils/chessNotation";
-import { isTextEntryTarget } from "../Chessboard/boardShortcuts";
 
 type AtomicDbEngineProps = {
   fen: string;
@@ -149,24 +148,23 @@ export const AtomicDbEngineControls = ({
     };
   }, [settingsOpen]);
 
-  useEffect(() => {
-    const toggleFromKeyboard = (event: KeyboardEvent): void => {
-      if (
-        event.defaultPrevented ||
-        keyboardShortcutAction(event, keyboardShortcuts) !== "toggleEngine" ||
-        isTextEntryTarget(event.target)
-      ) {
-        return;
-      }
-
-      event.preventDefault();
+  useBoardActionShortcuts({
+    toggleEngine: () => {
       setSettings((current) => ({ ...current, enabled: !current.enabled }));
       onDisable();
-    };
-
-    window.addEventListener("keydown", toggleFromKeyboard);
-    return () => window.removeEventListener("keydown", toggleFromKeyboard);
-  }, [onDisable, setSettings, keyboardShortcuts]);
+    },
+    toggleFollowUps: () =>
+      setSettings((current) => ({ ...current, showFollowUpMoves: !current.showFollowUpMoves })),
+    ...(onFlipBoard ? { flipBoard: onFlipBoard } : {}),
+    ...(onThreatModeChange
+      ? {
+          toggleThreat: () => {
+            if (!settings.enabled || !threatAvailable) return false;
+            onThreatModeChange(!threatMode);
+          },
+        }
+      : {}),
+  });
 
   return (
     <div className="atomicDbHeaderControls" aria-label="Position analysis controls">

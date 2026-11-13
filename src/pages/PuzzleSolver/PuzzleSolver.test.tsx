@@ -494,6 +494,13 @@ describe("PuzzleSolverPage solution options", () => {
     render(<PuzzleSolverPage />);
 
     await waitFor(() => expect(screen.getByTestId("mock-board")).toBeInTheDocument());
+    expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(false);
+    for (const key of ["l", "x", "a", " "]) fireEvent.keyDown(window, { key });
+    expect(
+      screen.queryByRole("button", { name: "Toggle position analysis" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Threat mode" })).not.toBeInTheDocument();
+    expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(false);
     expect(mocks.loadPuzzleSolverIndex).toHaveBeenCalledOnce();
     expect(mocks.loadPuzzlesById).toHaveBeenCalled();
     expect(mocks.loadPuzzlesById.mock.calls[0]?.[0]).toHaveLength(4);

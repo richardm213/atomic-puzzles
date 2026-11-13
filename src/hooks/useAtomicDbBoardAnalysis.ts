@@ -1,9 +1,10 @@
 import { isNormal, kingCastlesTo, makeSquare } from "chessops";
 import { castlingSide } from "chessops/chess";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { createAtomicPosition, moveFromUci } from "../lib/chess/pgn";
 import type { SolutionNavigation } from "../types/chessboard";
+import { threatFenFromFen } from "../utils/chessNotation";
 import type { AtomicDbAnalysisState } from "./useAtomicDbAnalysis";
 import { useAtomicDbAnalysis } from "./useAtomicDbAnalysis";
 
@@ -28,6 +29,24 @@ export const useAtomicDbBoardAnalysis = ({
   terminalOutcome?: "white" | "black" | "draw" | null;
   suspended?: boolean;
 }) => {
+  const [requestedThreatMode, setRequestedThreatMode] = useState(false);
+  const threatFen = useMemo(
+    () => (terminalOutcome ? null : threatFenFromFen(currentFen)),
+    [currentFen, terminalOutcome],
+  );
+  const threatAvailable = enabled && !suspended && threatFen !== null;
+  const threatMode = threatAvailable && requestedThreatMode;
+  const setThreatMode = useCallback(
+    (next: boolean | ((current: boolean) => boolean)) => {
+      setRequestedThreatMode(
+        (current) => threatAvailable && (typeof next === "function" ? next(current) : next),
+      );
+    },
+    [threatAvailable],
+  );
+  useEffect(() => {
+    if (!threatAvailable) setRequestedThreatMode(false);
+  }, [threatAvailable]);
   const variationStartFenRef = useRef<string | null>(null);
   const variationPlaying = navigation?.type === "line";
   const navigationPending = navigation !== null;
@@ -40,8 +59,21 @@ export const useAtomicDbBoardAnalysis = ({
     plyCount: showFollowUpMoves ? PRINCIPAL_VARIATION_PLIES : 1,
     suspended: navigationPending || suspended,
     fallbackToEngine: enabled,
-    enabled: enabled && terminalOutcome === null,
+    enabled: enabled && !threatMode && terminalOutcome === null,
   });
+  const threatAnalysis = useAtomicDbAnalysis(threatFen ?? currentFen, {
+    enabled: threatMode && !variationPlaying,
+    debounceMs: 0,
+    atomicDbEnabled,
+    fallbackToEngine: threatMode,
+    lineCount,
+    plyCount: showFollowUpMoves ? PRINCIPAL_VARIATION_PLIES : 1,
+    suspended: navigationPending || suspended,
+  });
+  const threatMove =
+    threatMode && !navigationPending && threatAnalysis.result?.fen === threatFen
+      ? (threatAnalysis.result.position?.bestMove ?? null)
+      : null;
   const terminalAnalysis = useMemo<AtomicDbAnalysisState | null>(() => {
     if (!terminalOutcome) return null;
     const outcome =
@@ -72,7 +104,8 @@ export const useAtomicDbBoardAnalysis = ({
 
   const position = analysis.result?.fen === currentFen ? analysis.result.position : null;
   const engineMoves = useMemo(() => {
-    if (!enabled || navigationPending || suspended || terminalOutcome || !position) return null;
+    if (!enabled || threatMode || navigationPending || suspended || terminalOutcome || !position)
+      return null;
     try {
       const currentPosition = createAtomicPosition(currentFen);
       const rankedMoves = new Set(position.moves.map((move) => move.uci));
@@ -93,7 +126,16 @@ export const useAtomicDbBoardAnalysis = ({
     } catch {
       return null;
     }
-  }, [currentFen, enabled, lineCount, navigationPending, position, suspended, terminalOutcome]);
+  }, [
+    currentFen,
+    enabled,
+    threatMode,
+    lineCount,
+    navigationPending,
+    position,
+    suspended,
+    terminalOutcome,
+  ]);
 
   const beginVariationPlayback = useCallback((): void => {
     variationStartFenRef.current = currentFen;
@@ -104,6 +146,19 @@ export const useAtomicDbBoardAnalysis = ({
 
   return {
     analysis: terminalAnalysis ?? analysis,
+    displayedAnalysis: threatMode ? threatAnalysis : (terminalAnalysis ?? analysis),
+    displayedFen: threatMode && threatFen ? threatFen : terminalAnalysis ? currentFen : fen,
+    threatFen,
+    threatMode,
+    setThreatMode,
+    threatMove,
+    panelProps: {
+      fen: threatMode && threatFen ? threatFen : terminalAnalysis ? currentFen : fen,
+      analysis: threatMode ? threatAnalysis : (terminalAnalysis ?? analysis),
+      threatMode,
+      threatAvailable,
+      onThreatModeChange: setThreatMode,
+    },
     engineMoves,
     beginVariationPlayback,
     fen: terminalAnalysis ? currentFen : fen,

@@ -375,6 +375,23 @@ describe("Chessboard orchestration", () => {
     ]);
   });
 
+  it("never reveals engine or threat hints or enables hint shortcuts during puzzle solving", () => {
+    mocks.showBestMoveArrow = true;
+    renderBoard({
+      analysisMode: false,
+      solution: "1. e4 e5",
+      showSolution: false,
+      engineMoves: ["e2e4"],
+      threatMove: "e7e5",
+      previewMove: "d2d4",
+    });
+    expect(mocks.setAutoShapes).toHaveBeenLastCalledWith([]);
+    mocks.setShowBestMoveArrow.mockClear();
+    for (const key of ["a", "l", "x"]) fireEvent.keyDown(window, { key });
+    expect(mocks.setShowBestMoveArrow).not.toHaveBeenCalled();
+    expect(mocks.setAutoShapes).toHaveBeenLastCalledWith([]);
+  });
+
   it("keeps the player color movable and plays a premove after the opponent replies", () => {
     const boardProps: ComponentProps<typeof Chessboard> = {
       puzzleId: "practice",

@@ -20,6 +20,7 @@ import {
 } from "../../../shared/domain/puzzles/attemptPgn";
 import type { PuzzleIntro } from "../../../shared/domain/puzzles/gameHistory";
 import { useAppSettings } from "../../context/AppSettings";
+import { useBoardActionShortcuts } from "../../hooks/useBoardActionShortcuts";
 import { playBoardMoveSound } from "../../lib/boardSounds/boardSounds";
 import {
   convertUciLineToSan,
@@ -34,7 +35,6 @@ import {
   type UciSolutionLine,
 } from "../../lib/chess/pgn";
 import { lichessAnalysisGlyphSvg } from "../../lib/gameAnalysis/lichessAnalysisGlyph";
-import { keyboardShortcutAction } from "../../lib/keyboardShortcuts";
 import {
   type AttemptResolved,
   type BoardLineRef,
@@ -57,7 +57,7 @@ import {
 import { resolvePlayback } from "./boardPlayback";
 import { BoardPromotionPicker } from "./BoardPromotionPicker";
 import { BoardResizeHandle } from "./BoardResizeHandle";
-import { isTextEntryTarget, useBoardShortcuts } from "./boardShortcuts";
+import { useBoardShortcuts } from "./boardShortcuts";
 import { buildBoardStyle, buildPieceStyle } from "./boardStyle";
 import { buildPgnHistory } from "./pgnHistory";
 import {
@@ -224,7 +224,6 @@ const ChessboardComponent = ({
     showBoardCoordinates,
     showBestMoveArrow,
     setShowBestMoveArrow,
-    keyboardShortcuts,
     enableBoardPremoves,
     boardSoundsEnabled,
     boardSoundSet,
@@ -1256,27 +1255,13 @@ const ChessboardComponent = ({
     cgRef.current?.set({ premovable: { enabled: effectivePremovesEnabled } });
   }, [disabled, effectivePremovesEnabled]);
 
-  const supportsEngineArrows = engineMoves !== undefined;
-  useEffect(() => {
-    if (!supportsEngineArrows) return;
-    const toggleEngineArrows = (event: KeyboardEvent): void => {
-      if (
-        event.defaultPrevented ||
-        event.repeat ||
-        event.isComposing ||
-        isTextEntryTarget(event.target) ||
-        (event.target instanceof Element &&
-          event.target.closest("dialog, [role='dialog'], [role='textbox']")) ||
-        keyboardShortcutAction(event, keyboardShortcuts) !== "toggleBestMoveArrow"
-      ) {
-        return;
-      }
-      event.preventDefault();
-      setShowBestMoveArrow((current) => !current);
-    };
-    window.addEventListener("keydown", toggleEngineArrows);
-    return () => window.removeEventListener("keydown", toggleEngineArrows);
-  }, [keyboardShortcuts, setShowBestMoveArrow, supportsEngineArrows]);
+  const analysisHintsAllowed = analysisMode || !solution.trim();
+  useBoardActionShortcuts(
+    {
+      toggleBestMoveArrow: () => setShowBestMoveArrow((current) => !current),
+    },
+    analysisHintsAllowed && engineMoves !== undefined,
+  );
 
   useEffect(() => {
     const markerUci = analysisMarker?.uci.trim().toLowerCase() ?? "";
@@ -1292,18 +1277,28 @@ const ChessboardComponent = ({
             } satisfies DrawShape,
           ]
         : [];
-    const preview = threatMove
-      ? previewMoveShape(threatMove, "threat")
-      : previewMoveShape(previewMove, "paleBlue");
+    const preview = !analysisHintsAllowed
+      ? []
+      : threatMove
+        ? previewMoveShape(threatMove, "threat")
+        : previewMoveShape(previewMove, "paleBlue");
     const engineArrows =
-      !preview.length && showBestMoveArrow && !disabled && engineMoves
+      analysisHintsAllowed && !preview.length && showBestMoveArrow && !disabled && engineMoves
         ? [
             ...engineMoves.slice(1).flatMap((move) => previewMoveShape(move, "otherEngineMove")),
             ...previewMoveShape(engineMoves[0], "bestMove"),
           ]
         : [];
     cgRef.current?.setAutoShapes([...engineArrows, ...preview, ...marker]);
-  }, [analysisMarker, disabled, engineMoves, previewMove, showBestMoveArrow, threatMove]);
+  }, [
+    analysisHintsAllowed,
+    analysisMarker,
+    disabled,
+    engineMoves,
+    previewMove,
+    showBestMoveArrow,
+    threatMove,
+  ]);
 
   useEffect(() => {
     if (!showSolution) return;
