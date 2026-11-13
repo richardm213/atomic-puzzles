@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-export const MOVE_ANNOTATIONS = ["?"] as const;
+const MOVE_ANNOTATIONS = ["!", "?"] as const;
 
 export type AnnotationMenuPosition = { left: number; top: number; bottom: number };
 
@@ -93,7 +93,11 @@ export const MoveAnnotationMenu = ({
                   onSelect(checked ? "" : annotation);
                   onClose();
                 }}
-                title={checked ? `Remove ${annotation} annotation` : `Annotate with ${annotation}`}
+                title={
+                  checked
+                    ? `Remove ${annotation} annotation`
+                    : `Annotate with ${annotation}${annotation === "!" ? " (good move)" : ""}`
+                }
               >
                 <span aria-hidden="true">{annotation}</span>
               </button>
