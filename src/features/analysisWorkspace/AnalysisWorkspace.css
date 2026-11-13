@@ -124,17 +124,13 @@ body:has(.analysisPage),
   font-size: 16px;
 }
 
-.analysisFenBox {
+.analysisTextBox {
   min-width: 0;
-  padding: 6px 8px;
   display: grid;
   gap: 6px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-panel-strong) 82%, transparent);
 }
 
-.analysisFenBox span {
+.analysisTextBox > span {
   color: var(--color-subtle);
   font-size: 11px;
   font-weight: 650;
@@ -373,24 +369,6 @@ body:has(.analysisPage),
     color-mix(in srgb, var(--color-primary) 68%, var(--color-panel-strong))
   );
   color: var(--color-on-primary);
-}
-
-.analysisPgnBox {
-  min-width: 0;
-  padding: 6px 8px;
-  display: grid;
-  gap: 6px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-panel-strong) 78%, transparent);
-}
-
-.analysisPgnBox span {
-  color: var(--color-subtle);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .analysisBoardColumn {

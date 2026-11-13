@@ -75,18 +75,13 @@
 .shareExportDocumentRow {
   grid-column: 1 / -1;
   min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-ui);
-  background: color-mix(in srgb, var(--color-panel-strong) 84%, transparent);
   display: grid;
   grid-template-rows: auto minmax(0, auto);
 }
 
 .shareExportDocumentHeader {
   min-height: 38px;
-  padding: 3px 5px 3px 12px;
-  border-bottom: 1px solid var(--color-border);
+  padding: 3px 5px 3px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -104,8 +99,8 @@
   min-height: 52px;
   max-height: 180px;
   padding: 12px;
-  border: 0;
-  border-radius: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
   background: color-mix(in srgb, var(--color-panel-deep) 18%, transparent);
   color: var(--color-text);
   font: 12.5px/1.55 var(--font-mono);
