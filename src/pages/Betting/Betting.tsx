@@ -997,8 +997,8 @@ export const BettingPage = () => {
                       const state = predictionStateByMarketId.get(definition.id);
                       const yesAsk = state?.book.yes.asks[0]?.priceCents;
                       const noAsk = state?.book.no.asks[0]?.priceCents;
-                      const isResolved = state?.market.status === "resolved";
-                      if (isResolved) {
+                      const isCompleted = state !== undefined && state.market.status !== "open";
+                      if (isCompleted) {
                         const userProfit = personalPredictionPnlByMarketId.get(definition.id);
                         const resolvedOutcome = state.market.outcome ?? "no";
                         const settlementPrice = state.market.settlementPriceCents;

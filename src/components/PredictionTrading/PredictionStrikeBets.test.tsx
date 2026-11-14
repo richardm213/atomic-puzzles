@@ -11,6 +11,7 @@ import {
 import {
   predictionMarketBatchQueryOptions,
   predictionMarketCatalogQueryOptions,
+  predictionPriceHistoryQueryOptions,
 } from "../../lib/predictionMarkets/predictionMarketQueries";
 import { PredictionStrikeBets } from "./PredictionStrikeBets";
 
@@ -31,8 +32,19 @@ it.each(["resolved", "open"] as const)(
         this.setAttribute("open", "");
       },
     });
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, refetchOnMount: false } },
+    });
     const definition = { id: "strike", username: "rabbier", countryCode: "US" };
+    const end = Date.parse("2026-11-08T12:00:00Z");
+    for (const period of ["all", "1h"] as const) {
+      client.setQueryData(predictionPriceHistoryQueryOptions("strike", period).queryKey, {
+        start: end - 3_600_000,
+        end,
+        points: [{ time: end - 1000, open: 40, high: 60, low: 40, close: 60, quantity: 12 }],
+        settlement: { time: end, price: 100 },
+      });
+    }
     client.setQueryData(allTournamentBetsQueryOptions().queryKey, []);
     client.setQueryData(allPredictionPositionsQueryOptions().queryKey, [
       {
@@ -104,6 +116,10 @@ it.each(["resolved", "open"] as const)(
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "View bets on rabbier" }));
     const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("tab", { name: "P&L" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     if (status === "open") {
       expect(within(dialog).queryByRole("table")).not.toBeInTheDocument();
       expect(within(dialog).getByText("This strike is still pending.")).toBeInTheDocument();
@@ -124,6 +140,32 @@ it.each(["resolved", "open"] as const)(
       await user.click(within(costHeader).getByRole("button"));
       expect(costHeader).toHaveAttribute("aria-sort", "ascending");
       expect(within(dialog).getAllByRole("row")[1]).not.toHaveTextContent("big_buyer");
+      const pnlTab = within(dialog).getByRole("tab", { name: "P&L" });
+      pnlTab.focus();
+      await user.keyboard("{ArrowRight}");
+      expect(within(dialog).getByRole("tab", { name: "Price chart" })).toHaveFocus();
+      const chart = within(dialog).getByRole("slider", { name: "Inspect price history" });
+      expect(chart).toHaveAttribute("aria-valuetext", expect.stringContaining("100 cents"));
+      chart.focus();
+      await user.keyboard("{Home}");
+      expect(chart).toHaveAttribute(
+        "aria-valuetext",
+        expect.stringContaining("60 cents, 12 contracts"),
+      );
+      await user.click(within(dialog).getByRole("button", { name: "No" }));
+      const noChart = within(dialog).getByRole("slider");
+      noChart.focus();
+      await user.keyboard("{Home}");
+      expect(noChart).toHaveAttribute(
+        "aria-valuetext",
+        expect.stringContaining("40 cents, 12 contracts"),
+      );
+      await user.click(within(dialog).getByRole("button", { name: "1 hr" }));
+      expect(within(dialog).getByRole("button", { name: "1 hr" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      await user.click(within(dialog).getByRole("tab", { name: "P&L" }));
       await user.click(within(dialog).getByRole("button", { name: "P&L" }));
       expect(within(dialog).getAllByRole("row")[1]).toHaveTextContent("big_buyer");
       await user.click(within(dialog).getByRole("button", { name: "Bettor" }));
@@ -132,6 +174,8 @@ it.each(["resolved", "open"] as const)(
     }
     fireEvent(dialog, new Event("close"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "View bets on rabbier" }));
+    expect(screen.getByRole("tab", { name: "P&L" })).toHaveAttribute("aria-selected", "true");
     client.clear();
   },
 );

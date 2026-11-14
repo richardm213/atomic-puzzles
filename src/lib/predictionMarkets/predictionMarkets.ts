@@ -323,10 +323,13 @@ export const predictionHistoryPositionSchema = z
     market_id: z.string(),
     username: z.string(),
     outcome: z.enum(["yes", "no"]),
-    quantity: z.number().positive(),
+    quantity: z.number().nonnegative(),
     reserved_quantity: z.number().nonnegative(),
     average_price_cents: z.number().nullable(),
     updated_at: z.string(),
+    closed_cost_coins: z.number().nonnegative().optional(),
+    closed_proceeds_coins: z.number().nonnegative().optional(),
+    fees_coins: z.number().nonnegative().optional(),
   })
   .transform((position) => ({
     marketId: position.market_id,
@@ -336,6 +339,13 @@ export const predictionHistoryPositionSchema = z
     reservedQuantity: position.reserved_quantity,
     averagePriceCents: position.average_price_cents,
     updatedAt: position.updated_at,
+    ...(position.closed_cost_coins === undefined
+      ? {}
+      : {
+          closedCost: position.closed_cost_coins,
+          closedProceeds: position.closed_proceeds_coins ?? 0,
+          fees: position.fees_coins ?? 0,
+        }),
   }));
 
 export type PredictionHistoryPosition = z.infer<typeof predictionHistoryPositionSchema>;
@@ -403,6 +413,7 @@ const marketStateSchema = z.object({
     }),
     fills: z.array(fillSchema),
     positions: z.array(positionSchema).transform(netPredictionPositions),
+    historyPositions: z.array(predictionHistoryPositionSchema).optional(),
     orders: z.array(orderSchema),
   }),
 });

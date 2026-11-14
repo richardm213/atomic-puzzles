@@ -65,7 +65,7 @@ export const buildPredictionBook = (orders: PredictionBookOrder[], now = new Dat
   };
 };
 
-export const calculatePredictionPositionCost = (
+export const calculatePredictionPositionHistory = (
   fills: PredictionPositionFill[],
   username: string,
   initialPositions?: Partial<Record<"yes" | "no", { quantity: number; costCents: number }>>,
@@ -76,14 +76,22 @@ export const calculatePredictionPositionCost = (
     no: { quantity: 0, costCents: 0, ...initialPositions?.no },
   };
 
+  const closed = {
+    yes: { costCents: 0, proceedsCents: 0, quantity: 0 },
+    no: { costCents: 0, proceedsCents: 0, quantity: 0 },
+  };
   const addPosition = (outcome: "yes" | "no", quantity: number, priceCents: number) => {
     const position = positions[outcome];
     const oppositePosition = positions[oppositeOutcome(outcome)];
     const offsetQuantity = Math.min(quantity, oppositePosition.quantity);
 
     if (offsetQuantity > 0) {
-      oppositePosition.costCents -=
-        (oppositePosition.costCents / oppositePosition.quantity) * offsetQuantity;
+      const cost = (oppositePosition.costCents / oppositePosition.quantity) * offsetQuantity;
+      const realized = closed[oppositeOutcome(outcome)];
+      realized.costCents += cost + priceCents * offsetQuantity;
+      realized.proceedsCents += 100 * offsetQuantity;
+      realized.quantity += 2 * offsetQuantity;
+      oppositePosition.costCents -= cost;
       oppositePosition.quantity -= offsetQuantity;
       if (oppositePosition.quantity === 0) oppositePosition.costCents = 0;
     }
@@ -97,12 +105,16 @@ export const calculatePredictionPositionCost = (
   if (initialOffsetQuantity > 0) {
     for (const outcome of ["yes", "no"] as const) {
       const position = positions[outcome];
-      position.costCents -= (position.costCents / position.quantity) * initialOffsetQuantity;
+      const cost = (position.costCents / position.quantity) * initialOffsetQuantity;
+      closed.yes.costCents += cost;
+      closed.yes.quantity += initialOffsetQuantity;
+      position.costCents -= cost;
       position.quantity -= initialOffsetQuantity;
       if (position.quantity === 0) position.costCents = 0;
     }
   }
 
+  closed.yes.proceedsCents += initialOffsetQuantity * 100;
   for (const fill of [...fills].sort(
     (left, right) => left.created_at.localeCompare(right.created_at) || left.id - right.id,
   )) {
@@ -115,7 +127,11 @@ export const calculatePredictionPositionCost = (
 
     if (fill.seller_username === normalizedUsername && position.quantity > 0) {
       const soldQuantity = Math.min(fill.quantity, position.quantity);
-      position.costCents -= (position.costCents / position.quantity) * soldQuantity;
+      const cost = (position.costCents / position.quantity) * soldQuantity;
+      closed[fill.outcome].costCents += cost;
+      closed[fill.outcome].proceedsCents += fill.price_cents * soldQuantity;
+      closed[fill.outcome].quantity += soldQuantity;
+      position.costCents -= cost;
       position.quantity -= soldQuantity;
       if (position.quantity === 0) position.costCents = 0;
     }
@@ -123,14 +139,27 @@ export const calculatePredictionPositionCost = (
 
   return {
     yes: {
+      closed: closed.yes,
       quantity: positions.yes.quantity,
       averagePriceCents:
         positions.yes.quantity > 0 ? positions.yes.costCents / positions.yes.quantity : null,
     },
     no: {
+      closed: closed.no,
       quantity: positions.no.quantity,
       averagePriceCents:
         positions.no.quantity > 0 ? positions.no.costCents / positions.no.quantity : null,
     },
   };
+};
+
+export const calculatePredictionPositionCost = (
+  ...args: Parameters<typeof calculatePredictionPositionHistory>
+) => {
+  const history = calculatePredictionPositionHistory(...args);
+  const cost = ({ quantity, averagePriceCents }: typeof history.yes) => ({
+    quantity,
+    averagePriceCents,
+  });
+  return { yes: cost(history.yes), no: cost(history.no) };
 };

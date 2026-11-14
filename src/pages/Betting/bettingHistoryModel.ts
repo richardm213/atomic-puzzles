@@ -16,6 +16,7 @@ export type BetHistoryEntry = TournamentBet & {
   predictionSelectionLabel?: string | undefined;
   predictionSelectionCountryCode?: string | undefined;
   predictionMarketTitle?: string | undefined;
+  realizedPnl?: number;
 };
 
 export const predictionPnlByMarketId = (
@@ -23,8 +24,9 @@ export const predictionPnlByMarketId = (
 ): ReadonlyMap<string, number> => {
   const pnlByMarketId = new Map<string, number>();
   for (const bet of bets) {
-    if (bet.kind !== "prediction" || bet.status === "open") continue;
-    const pnl = bet.payout - bet.totalCost;
+    if (bet.kind !== "prediction") continue;
+    const pnl = bet.status === "open" ? (bet.realizedPnl ?? 0) : bet.payout - bet.totalCost;
+    if (bet.status === "open" && pnl === 0) continue;
     pnlByMarketId.set(bet.marketId, (pnlByMarketId.get(bet.marketId) ?? 0) + pnl);
   }
   for (const [marketId, pnl] of pnlByMarketId) {
@@ -108,8 +110,19 @@ export const buildBetHistory = ({
     if (!predictionMarket || position.averagePriceCents === null) return [];
     const { definition, title } = predictionMarket;
     const state = stateByMarketId.get(position.marketId);
-    const totalCost = roundCoins((position.averagePriceCents * position.quantity) / 100);
-    if (totalCost < minimumPositionCost) return [];
+    const remainingCost = roundCoins((position.averagePriceCents * position.quantity) / 100);
+    const closedCost = position.closedCost ?? 0;
+    const closedProceeds = position.closedProceeds ?? 0;
+    const fees = position.fees ?? 0;
+    const totalCost = roundCoins(remainingCost + closedCost + fees);
+    if (totalCost < minimumPositionCost && closedCost === 0 && fees === 0) return [];
+    const settlement = predictionSettlement(
+      state,
+      position.outcome,
+      position.quantity,
+      remainingCost,
+    );
+    if (position.quantity === 0) settlement.status = "settled";
     const hasNamedOutcomes = Boolean(definition.outcomeLabels);
     return [
       {
@@ -118,11 +131,13 @@ export const buildBetHistory = ({
         username: position.username,
         selection: definition.username,
         priceCents: Math.round(position.averagePriceCents),
-        stake: totalCost,
-        fee: 0,
+        stake: roundCoins(remainingCost + closedCost),
+        fee: fees,
         totalCost,
-        potentialPayout: position.quantity,
-        ...predictionSettlement(state, position.outcome, position.quantity, totalCost),
+        potentialPayout: position.quantity + closedProceeds,
+        ...settlement,
+        payout: settlement.payout + closedProceeds,
+        realizedPnl: roundCoins(closedProceeds - closedCost - fees),
         placedAt: position.updatedAt,
         kind: "prediction",
         historyKey: `prediction-position:${position.marketId}:${position.username.toLowerCase()}:${position.outcome}`,

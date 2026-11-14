@@ -2,6 +2,133 @@ import type { WebSocketRoute } from "@playwright/test";
 
 import { expect, test } from "./fixtures";
 
+test("completed strike opens on P&L and loads chart history only when selected", async ({
+  page,
+}) => {
+  let completedStatus: "resolved" | "closed" = "resolved";
+  const marketId = "awc-2026-champion-natso";
+  const periods: string[] = [];
+  const end = Date.parse("2026-11-14T12:00:00Z");
+  await page.routeWebSocket(/\/realtime\/v1\/websocket/, (socket) => socket.close());
+  await page.route("**/api/coins", (route) =>
+    route.fulfill({ json: { result: { balance: 200, dailyClaimAvailable: false } } }),
+  );
+  const position = {
+    market_id: marketId,
+    username: "e2e-player",
+    outcome: "yes",
+    quantity: 5,
+    reserved_quantity: 0,
+    average_price_cents: 20,
+    closed_cost_coins: 1,
+    closed_proceeds_coins: 3,
+    fees_coins: 0.15,
+    updated_at: new Date(end).toISOString(),
+  };
+  await page.route("**/api/betting", (route) => {
+    const body = route.request().postDataJSON();
+    if (["markets", "bets", "allBets"].includes(body.action))
+      return route.fulfill({ json: { result: [] } });
+    if (body.action === "predictionPositions")
+      return route.fulfill({ json: { result: [position] } });
+    if (body.action === "exchangeMarkets")
+      return route.fulfill({
+        json: {
+          result: [
+            {
+              id: marketId,
+              group_id: "awc-2026-champion",
+              group_path: "/betting/awc-2026-champion",
+              group_title: "Who will win 2026 AWC",
+              group_description: "",
+              group_order: 1,
+              display_name: "natso",
+              country_code: "NL",
+              starting_chance: 30,
+              display_order: 1,
+              outcome_yes_label: null,
+              outcome_no_label: null,
+              outcome_yes_country_code: null,
+              outcome_no_country_code: null,
+            },
+          ],
+        },
+      });
+    if (body.action === "exchangeMarketBatch")
+      return route.fulfill({
+        json: {
+          result: [
+            {
+              market: {
+                id: marketId,
+                question: "Who will win?",
+                resolution_rules: "Official results.",
+                resolution_source_url: "https://lichess.org/team/atomic-wc",
+                closes_at: new Date(end).toISOString(),
+                status: completedStatus,
+                outcome: completedStatus === "resolved" ? "yes" : null,
+                resolved_at: completedStatus === "resolved" ? new Date(end).toISOString() : null,
+                settlement_price_cents: null,
+                settlement_reference_fill_id: null,
+              },
+              book: { yes: { bids: [], asks: [] }, no: { bids: [], asks: [] } },
+              fills: [],
+              positions: [position],
+              historyPositions: [position],
+              orders: [],
+            },
+          ],
+        },
+      });
+    if (body.action === "exchangePriceHistory") {
+      expect(body.marketId).toBe(marketId);
+      periods.push(body.period);
+      return route.fulfill({
+        json: {
+          result: {
+            start: end - 3_600_000,
+            end,
+            points: [{ time: end - 1000, open: 40, high: 60, low: 40, close: 60, quantity: 12 }],
+            settlement: { time: end, price: 100 },
+          },
+        },
+      });
+    }
+    return route.fulfill({ status: 400, json: { error: "Unexpected fixture request" } });
+  });
+  await page.goto("/betting/awc-2026-champion");
+  await page.getByRole("button", { name: "View bets on natso", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "natso", exact: true });
+  await expect(dialog.getByRole("table")).toContainText("+5.85");
+  expect(periods).toEqual([]);
+  await dialog.getByRole("tab", { name: "Price chart", exact: true }).click();
+  const chart = dialog.getByRole("slider", { name: "Inspect price history" });
+  await expect(chart).toHaveAttribute("aria-valuetext", /100 cents/);
+  await chart.focus();
+  await page.keyboard.press("Home");
+  await expect(chart).toHaveAttribute("aria-valuetext", /60 cents, 12 contracts/);
+  await dialog.getByRole("button", { name: "1 hr", exact: true }).click();
+  await expect.poll(() => periods).toEqual(["all", "1h"]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(chart).toBeVisible();
+  expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole("button", { name: "View bets on natso", exact: true }).click();
+  await expect(dialog.getByRole("tab", { name: "P&L", exact: true })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  completedStatus = "closed";
+  await page.reload();
+  await page.getByRole("button", { name: "View bets on natso", exact: true }).click();
+  await expect(dialog.getByRole("table")).toContainText("+1.85");
+  await expect(dialog.getByRole("tab", { name: "P&L", exact: true })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+});
+
 test("live book updates render promptly and missed events recover without idle book downloads", async ({
   page,
 }) => {

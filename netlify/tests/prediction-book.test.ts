@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildPredictionBook,
   calculatePredictionPositionCost,
+  calculatePredictionPositionHistory,
   type PredictionBookOrder,
   type PredictionPositionFill,
 } from "../features/betting/predictionBook";
@@ -79,7 +80,7 @@ describe("prediction order-book normalization", () => {
       created_at: `2026-10-27T00:00:0${id}Z`,
       ...overrides,
     });
-    const positions = calculatePredictionPositionCost(
+    const positions = calculatePredictionPositionHistory(
       [
         fill(1, {}),
         fill(2, { price_cents: 40 }),
@@ -109,12 +110,20 @@ describe("prediction order-book normalization", () => {
       "trader",
     );
 
-    expect(positions.yes).toEqual({ quantity: 12, averagePriceCents: 35 });
-    expect(positions.no).toEqual({ quantity: 0, averagePriceCents: null });
+    expect(positions.yes).toEqual({
+      quantity: 12,
+      averagePriceCents: 35,
+      closed: { costCents: 640, proceedsCents: 500, quantity: 16 },
+    });
+    expect(positions.no).toEqual({
+      quantity: 0,
+      averagePriceCents: null,
+      closed: { costCents: 0, proceedsCents: 0, quantity: 0 },
+    });
   });
 
   it("closes an opposite position before opening the remainder", () => {
-    const positions = calculatePredictionPositionCost(
+    const positions = calculatePredictionPositionHistory(
       [
         {
           id: 1,
@@ -131,7 +140,19 @@ describe("prediction order-book normalization", () => {
       { yes: { quantity: 500, costCents: 10_000 } },
     );
 
-    expect(positions.yes).toEqual({ quantity: 0, averagePriceCents: null });
-    expect(positions.no).toEqual({ quantity: 100, averagePriceCents: 60 });
+    expect(positions.yes).toEqual({
+      quantity: 0,
+      averagePriceCents: null,
+      closed: { costCents: 40000, proceedsCents: 50000, quantity: 1000 },
+    });
+    expect(positions.no).toEqual({
+      quantity: 100,
+      averagePriceCents: 60,
+      closed: { costCents: 0, proceedsCents: 0, quantity: 0 },
+    });
+    expect(calculatePredictionPositionCost([], "trader")).toEqual({
+      yes: { quantity: 0, averagePriceCents: null },
+      no: { quantity: 0, averagePriceCents: null },
+    });
   });
 });

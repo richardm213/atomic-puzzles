@@ -1,0 +1,259 @@
+.predictionPriceChart {
+  --chart-axis-space: 52px;
+  min-width: 0;
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.predictionChartControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.predictionChartChoices {
+  display: flex;
+  gap: var(--space-1);
+  max-width: 100%;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-ui);
+  background: var(--color-surface-inset);
+}
+
+.predictionChartChoices button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.predictionChartChoices button:hover {
+  background: var(--color-table-hover);
+  color: var(--color-heading);
+}
+
+.predictionChartChoices button[aria-pressed="true"] {
+  border-color: var(--color-accent-soft-border);
+  background: var(--color-accent-soft-bg-strong);
+  color: var(--color-accent-soft-text);
+}
+
+.predictionChartReadout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 100px;
+  padding-block: var(--space-5);
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.predictionChartQuote,
+.predictionChartTrade {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.predictionChartQuote > strong {
+  color: var(--color-heading);
+  font-size: 44px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.predictionChartQuote strong > span {
+  margin-inline-start: var(--space-1);
+  color: var(--color-muted);
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.predictionChartTrade {
+  justify-items: end;
+  text-align: right;
+}
+
+.predictionChartTrade strong {
+  color: var(--color-heading);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.predictionChartTrade strong > span {
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.predictionChartPlot {
+  position: relative;
+  height: clamp(170px, calc(100svh - 540px), 280px);
+  margin-block: var(--space-3) var(--space-5);
+  margin-inline-end: var(--chart-axis-space);
+  touch-action: pan-y;
+  cursor: crosshair;
+}
+
+.predictionChartPlot:focus-visible {
+  outline: 2px solid var(--color-primary-soft);
+  outline-offset: 8px;
+}
+
+.predictionChartPlot svg,
+.predictionChartVolume svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.predictionChartScale {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.predictionChartScale span {
+  position: absolute;
+  left: calc(100% + 12px);
+  transform: translateY(-50%);
+  color: var(--color-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.predictionChartGrid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+  stroke-dasharray: 2 5;
+  vector-effect: non-scaling-stroke;
+}
+
+.predictionChartArea {
+  fill: var(--color-primary-soft);
+  opacity: 0.07;
+}
+
+.predictionChartLine,
+.predictionChartSettlement {
+  fill: none;
+  stroke: var(--color-primary-soft);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.predictionChartSettlement {
+  stroke-dasharray: 5 5;
+  opacity: 0.7;
+}
+
+.predictionChartCursor {
+  stroke: var(--color-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+  opacity: 0.55;
+  vector-effect: non-scaling-stroke;
+}
+
+.predictionChartDot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--color-panel-strong);
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary-soft) 20%, transparent);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.predictionChartPriceTag {
+  position: absolute;
+  left: calc(100% + 6px);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-accent-soft-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-panel-strong);
+  color: var(--color-primary-soft);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.predictionChartVolumeLabel,
+.predictionChartDates {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-inline-end: var(--chart-axis-space);
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.predictionChartVolumeLabel {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.predictionChartVolume {
+  height: 56px;
+  margin-block: var(--space-2) var(--space-3);
+  margin-inline-end: var(--chart-axis-space);
+}
+
+.predictionChartVolume rect {
+  fill: var(--color-primary-soft);
+  opacity: 0.3;
+}
+
+.predictionChartVolume rect[data-selected="true"] {
+  opacity: 0.85;
+}
+
+@media (max-width: 560px) {
+  .predictionPriceChart {
+    padding-inline: 0;
+  }
+
+  .predictionChartControls {
+    align-items: stretch;
+  }
+
+  .predictionChartChoices button {
+    padding-inline: var(--space-2);
+  }
+
+  .predictionChartReadout {
+    gap: var(--space-2);
+  }
+
+  .predictionChartTrade strong > span {
+    display: block;
+    margin-top: var(--space-1);
+  }
+
+  .predictionChartPlot {
+    height: 220px;
+  }
+
+  .predictionChartDates > :nth-child(2) {
+    display: none;
+  }
+}

@@ -37,9 +37,13 @@ export const PredictionResolvedMarket = ({
       : displayedSettlementPriceCents;
   const visiblePnl = pnl !== undefined && Math.abs(pnl) >= 0.005 ? pnl : undefined;
   const outcomeLabel =
-    settlementPriceCents === null
-      ? predictionOutcomeLabel(definition, outcome)
-      : `Settled ${settlementPriceCents}¢`;
+    state.market.status !== "resolved"
+      ? state.market.status === "refunded"
+        ? "Refunded"
+        : "Closed"
+      : settlementPriceCents === null
+        ? predictionOutcomeLabel(definition, outcome)
+        : `Settled ${settlementPriceCents}¢`;
 
   return (
     <div className="predictionSharedResolvedMarket">
@@ -71,7 +75,7 @@ export const PredictionResolvedMarket = ({
       </span>
       <span
         className={`predictionSharedResolvedSide predictionSharedResolvedSide--${
-          settlementPriceCents === null ? outcome : "price"
+          state.market.status === "resolved" && settlementPriceCents === null ? outcome : "price"
         }`}
       >
         {outcomeLabel}

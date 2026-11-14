@@ -5,7 +5,7 @@ import type {
   PredictionMarketGroup,
   PredictionMarketState,
 } from "../../lib/predictionMarkets/predictionMarkets";
-import { buildBetHistory } from "./bettingHistoryModel";
+import { buildBetHistory, predictionPnlByMarketId } from "./bettingHistoryModel";
 
 const group: PredictionMarketGroup = {
   id: "awc-2026-champion",
@@ -122,6 +122,62 @@ const tournamentBet = (id: number, marketId: string): TournamentBet => ({
 });
 
 describe("buildBetHistory", () => {
+  it("keeps realized sales and fees in live and final P&L, including fully exited traders", () => {
+    const positions = [
+      {
+        marketId: "champion-player",
+        username: "partial",
+        outcome: "yes" as const,
+        quantity: 5,
+        reservedQuantity: 0,
+        averagePriceCents: 20,
+        closedCost: 1,
+        closedProceeds: 3,
+        fees: 0.15,
+        updatedAt: "2026-10-05T00:00:00Z",
+      },
+      {
+        marketId: "champion-player",
+        username: "exited",
+        outcome: "no" as const,
+        quantity: 0,
+        reservedQuantity: 0,
+        averagePriceCents: 40,
+        closedCost: 0.4,
+        closedProceeds: 0.6,
+        fees: 0.02,
+        updatedAt: "2026-10-05T00:00:00Z",
+      },
+    ];
+    const historyFor = (market: PredictionMarketState["market"]) =>
+      buildBetHistory({
+        tournamentBets: [],
+        predictionPositions: positions,
+        predictionMarketGroups: [group],
+        predictionMarketStates: [{ ...state, market }],
+      });
+    const live = historyFor({ ...state.market, status: "open", outcome: null, resolvedAt: null });
+    expect(live).toHaveLength(2);
+    expect(live.find((bet) => bet.username === "partial")).toMatchObject({
+      totalCost: 2.15,
+      payout: 3,
+      potentialPayout: 8,
+      realizedPnl: 1.85,
+      status: "open",
+    });
+    expect(live.find((bet) => bet.username === "exited")).toMatchObject({
+      status: "settled",
+      totalCost: 0.42,
+      payout: 0.6,
+    });
+    expect(predictionPnlByMarketId(live).get("champion-player")).toBeCloseTo(2.03);
+    const resolved = historyFor(state.market);
+    expect(resolved.find((bet) => bet.username === "partial")?.payout).toBe(8);
+    expect(predictionPnlByMarketId(resolved).get("champion-player")).toBeCloseTo(6.03);
+    const lost = historyFor({ ...state.market, outcome: "no" });
+    expect(predictionPnlByMarketId(lost).get("champion-player")).toBeCloseTo(1.03);
+  });
+
   it("uses the current position quantity, cost basis, and update date", () => {
     expect(
       buildBetHistory({

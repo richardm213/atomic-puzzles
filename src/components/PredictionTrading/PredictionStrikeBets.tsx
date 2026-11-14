@@ -18,6 +18,7 @@ import { BetHistoryTable } from "../../pages/Betting/BettingHistory";
 import { buildBetHistory } from "../../pages/Betting/bettingHistoryModel";
 import { getErrorMessage } from "../../utils/errors";
 import { InlineState } from "../InlineState/InlineState";
+import { PredictionPriceChart } from "./PredictionPriceChart";
 
 const StrikeBetList = ({ definition }: { definition: PredictionMarketDefinition }) => {
   const positions = useQuery({ ...allPredictionPositionsQueryOptions(), refetchInterval: 15_000 });
@@ -30,7 +31,7 @@ const StrikeBetList = ({ definition }: { definition: PredictionMarketDefinition 
   if (positions.isPending || legacy.isPending || catalog.isPending || states.isPending) {
     return <p role="status">Loading bets…</p>;
   }
-  if (!states.data?.some((state) => ["resolved", "refunded"].includes(state.market.status))) {
+  if (!states.data?.some((state) => state.market.status !== "open")) {
     return <InlineState kind="empty">This strike is still pending.</InlineState>;
   }
   const bets = buildBetHistory({
@@ -50,6 +51,10 @@ const StrikeBetList = ({ definition }: { definition: PredictionMarketDefinition 
       );
       return {
         ...bet,
+        // A closed strike has no settlement payout yet. Show profit already realized.
+        ...(bet.status === "open"
+          ? { status: "settled" as const, payout: bet.totalCost + (bet.realizedPnl ?? 0) }
+          : {}),
         priceCents: Math.round((position?.averagePriceCents ?? bet.priceCents) * 10) / 10,
       };
     })
@@ -81,6 +86,7 @@ export const PredictionStrikeBets = ({
   className?: string;
 }) => {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"pnl" | "chart">("pnl");
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const title = definition.outcomeLabels
@@ -99,6 +105,7 @@ export const PredictionStrikeBets = ({
         aria-haspopup="dialog"
         aria-label={`View bets on ${title}`}
         onClick={() => {
+          setTab("pnl");
           setOpen(true);
         }}
       >
@@ -122,8 +129,48 @@ export const PredictionStrikeBets = ({
                   ×
                 </button>
               </header>
-              <div className="predictionStrikeBetsBody">
-                <StrikeBetList definition={definition} />
+              <div className="predictionStrikeTabs" role="tablist" aria-label="Strike details">
+                {(["pnl", "chart"] as const).map((entry) => (
+                  <button
+                    type="button"
+                    key={entry}
+                    role="tab"
+                    id={`${titleId}-${entry}`}
+                    aria-selected={tab === entry}
+                    aria-controls={`${titleId}-panel`}
+                    tabIndex={tab === entry ? 0 : -1}
+                    onClick={() => setTab(entry)}
+                    onKeyDown={(event) => {
+                      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      const next =
+                        event.key === "Home"
+                          ? "pnl"
+                          : event.key === "End"
+                            ? "chart"
+                            : entry === "pnl"
+                              ? "chart"
+                              : "pnl";
+                      setTab(next);
+                      document.getElementById(`${titleId}-${next}`)?.focus();
+                    }}
+                  >
+                    {entry === "pnl" ? "P&L" : "Price chart"}
+                  </button>
+                ))}
+              </div>
+              <div
+                className="predictionStrikeBetsBody"
+                id={`${titleId}-panel`}
+                role="tabpanel"
+                aria-labelledby={`${titleId}-${tab}`}
+              >
+                {tab === "pnl" ? (
+                  <StrikeBetList definition={definition} />
+                ) : (
+                  <PredictionPriceChart definition={definition} />
+                )}
               </div>
             </dialog>,
             document.body,

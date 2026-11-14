@@ -1,5 +1,11 @@
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
+import { z } from "zod";
 
+import {
+  type PredictionHistoryPeriod,
+  predictionPriceHistorySchema,
+} from "../../../shared/domain/predictionHistory";
+import { postApi } from "../api/postApi";
 import {
   fetchPredictionMarketGroups,
   fetchPredictionMarkets,
@@ -8,6 +14,26 @@ import {
 } from "./predictionMarkets";
 
 export const predictionMarketQueryRoot = ["prediction-market"] as const;
+export const predictionPriceHistoryQueryOptions = (
+  marketId: string,
+  period: PredictionHistoryPeriod,
+) =>
+  queryOptions({
+    queryKey: [...predictionMarketQueryRoot, "price-history", marketId, period],
+    queryFn: async () => {
+      const response = await postApi(
+        "/api/betting",
+        { action: "exchangePriceHistory", marketId, period },
+        {
+          schema: z.object({ result: predictionPriceHistorySchema }),
+          errorMessage: "Unable to load price history.",
+          invalidMessage: "The market returned invalid price history.",
+        },
+      );
+      return response.result;
+    },
+    staleTime: 60_000,
+  });
 export const predictionMarketCatalogQueryOptions = () =>
   queryOptions({
     queryKey: [...predictionMarketQueryRoot, "catalog"] as const,

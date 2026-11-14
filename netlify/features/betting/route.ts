@@ -6,6 +6,11 @@ import {
   MAX_PREDICTION_ORDER_QUANTITY,
   MIN_BET_AMOUNT,
 } from "../../../shared/domain/betting";
+import {
+  buildPredictionPriceHistory,
+  predictionHistoryDuration,
+  predictionHistoryPeriodSchema,
+} from "../../../shared/domain/predictionHistory";
 import { voteValueSchema } from "../../../shared/domain/voting";
 import {
   authenticateRequest,
@@ -19,7 +24,7 @@ import { HttpError } from "../../platform/errors";
 import { parseJsonBody } from "../../platform/validation";
 import {
   buildPredictionBook,
-  calculatePredictionPositionCost,
+  calculatePredictionPositionHistory,
   type PredictionBookOrder,
   type PredictionPositionFill,
 } from "./predictionBook";
@@ -36,6 +41,11 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("markets") }),
   z.object({ action: z.literal("exchangeMarkets") }),
   z.object({ action: z.literal("predictionPositions") }),
+  z.object({
+    action: z.literal("exchangePriceHistory"),
+    marketId: exchangeMarketIdSchema,
+    period: predictionHistoryPeriodSchema.default("all"),
+  }),
   z.object({ action: z.literal("bets") }),
   z.object({ action: z.literal("allBets") }),
   z.object({ action: z.literal("suggestions") }),
@@ -313,23 +323,11 @@ const loadPredictionMarketStates = async (
   const markets = (marketResult.data ?? []) as unknown as ExchangeMarketRow[];
   const bookOrders = (bookOrdersResult.data ?? []) as unknown as ExchangeOrderRow[];
   const recentFills = (fillsResult.data ?? []) as unknown as ExchangeFillRow[];
-  let positions: ExchangePositionRow[] = [];
+  let historyPositions: PredictionHistoryRow[] = [];
   let userOrders: ExchangeOrderRow[] = [];
-  let positionFills: ExchangeFillRow[] = [];
-  let legacyCredits: LegacyPositionCreditRow[] = [];
   if (username) {
-    const [
-      positionsResult,
-      userOrdersResult,
-      boughtFillsResult,
-      soldFillsResult,
-      legacyCreditsResult,
-    ] = await Promise.all([
-      supabase
-        .from("prediction_positions")
-        .select("market_id,outcome,quantity,reserved_quantity,updated_at")
-        .in("market_id", marketIds)
-        .eq("username", username),
+    const [history, orders] = await Promise.all([
+      loadAllPredictionPositions(supabase, marketIds, username),
       supabase
         .from("prediction_orders")
         .select(exchangeOrderColumns)
@@ -337,105 +335,35 @@ const loadPredictionMarketStates = async (
         .eq("username", username)
         .order("created_at", { ascending: false })
         .limit(5_000),
-      supabase
-        .from("prediction_fills")
-        .select(exchangeFillColumns)
-        .in("market_id", marketIds)
-        .eq("buyer_username", username)
-        .order("created_at", { ascending: true })
-        .order("id", { ascending: true })
-        .limit(10_000),
-      supabase
-        .from("prediction_fills")
-        .select(exchangeFillColumns)
-        .in("market_id", marketIds)
-        .eq("seller_username", username)
-        .order("created_at", { ascending: true })
-        .order("id", { ascending: true })
-        .limit(10_000),
-      supabase
-        .from("prediction_legacy_position_credits")
-        .select("market_id,outcome,quantity,price_cents")
-        .in("market_id", marketIds)
-        .eq("username", username),
     ]);
-    if (positionsResult.error)
-      throw new Error(`Unable to load prediction positions: ${positionsResult.error.message}`);
-    if (userOrdersResult.error)
-      throw new Error(`Unable to load your prediction orders: ${userOrdersResult.error.message}`);
-    if (boughtFillsResult.error || soldFillsResult.error)
-      throw new Error(
-        `Unable to load prediction position history: ${boughtFillsResult.error?.message ?? soldFillsResult.error?.message}`,
-      );
-    if (legacyCreditsResult.error)
-      throw new Error(
-        `Unable to load legacy prediction positions: ${legacyCreditsResult.error.message}`,
-      );
-    positions = positionsResult.data ?? [];
-    userOrders = (userOrdersResult.data ?? []) as unknown as ExchangeOrderRow[];
-    const boughtFills = (boughtFillsResult.data ?? []) as unknown as ExchangeFillRow[];
-    const soldFills = (soldFillsResult.data ?? []) as unknown as ExchangeFillRow[];
-    legacyCredits = legacyCreditsResult.data ?? [];
-    positionFills = [
-      ...new Map([...boughtFills, ...soldFills].map((fill) => [fill.id, fill])).values(),
-    ];
+    if (orders.error)
+      throw new Error(`Unable to load your prediction orders: ${orders.error.message}`);
+    historyPositions = history;
+    userOrders = (orders.data ?? []) as unknown as ExchangeOrderRow[];
   }
-
   const bookOrdersByMarket = groupByMarketId(bookOrders);
   const recentFillsByMarket = groupByMarketId(recentFills);
-  const positionFillsByMarket = groupByMarketId(positionFills);
-  const positionsByMarket = groupByMarketId(positions);
+  const positionsByMarket = groupByMarketId(historyPositions);
   const userOrdersByMarket = groupByMarketId(userOrders);
-  const legacyCreditsByMarket = groupByMarketId(legacyCredits);
-
   return markets.map((market) => {
-    const marketId = market.id;
-    const marketBookOrders = bookOrdersByMarket.get(marketId) ?? [];
-    const marketPositionFills = positionFillsByMarket.get(marketId) ?? [];
-    const marketRecentFills = (recentFillsByMarket.get(marketId) ?? []).slice(0, 100);
-    const marketLegacyCredits = legacyCreditsByMarket.get(marketId) ?? [];
-    const initialPositions = Object.fromEntries(
-      (["yes", "no"] as const).map((outcome) => {
-        const credits = marketLegacyCredits.filter((credit) => credit.outcome === outcome);
-        return [
-          outcome,
-          {
-            quantity: credits.reduce((total, credit) => total + credit.quantity, 0),
-            costCents: credits.reduce(
-              (total, credit) => total + credit.quantity * credit.price_cents,
-              0,
-            ),
-          },
-        ];
-      }),
-    );
-    const positionCosts = username
-      ? calculatePredictionPositionCost(marketPositionFills, username, initialPositions)
-      : null;
+    const marketRecentFills = (recentFillsByMarket.get(market.id) ?? []).slice(0, 100);
+    const history = positionsByMarket.get(market.id) ?? [];
     return {
       market:
         market.exchange_volume_coins === undefined
           ? {
               ...market,
               exchange_volume_coins: marketRecentFills.reduce(
-                (total, fill) => total + (fill.price_cents * fill.quantity) / 100,
+                (sum, fill) => sum + (fill.price_cents * fill.quantity) / 100,
                 0,
               ),
             }
           : market,
-      book: buildPredictionBook(marketBookOrders),
+      book: buildPredictionBook(bookOrdersByMarket.get(market.id) ?? []),
       fills: marketRecentFills,
-      positions: (positionsByMarket.get(marketId) ?? []).map((position) => {
-        const cost = positionCosts?.[position.outcome];
-        return {
-          ...position,
-          average_price_cents:
-            cost?.quantity === position.quantity && cost.quantity > 0
-              ? cost.averagePriceCents
-              : null,
-        };
-      }),
-      orders: userOrdersByMarket.get(marketId) ?? [],
+      positions: history.filter((position) => position.quantity > 0),
+      historyPositions: history,
+      orders: userOrdersByMarket.get(market.id) ?? [],
     };
   });
 };
@@ -487,107 +415,194 @@ const loadAllTournamentBets = async (supabase: ReturnType<typeof createServerSup
   return data ?? [];
 };
 
-const loadAllPredictionPositions = async (supabase: ReturnType<typeof createServerSupabase>) => {
-  const [positionsResult, settlementsResult, fillsResult, legacyCreditsResult] = await Promise.all([
-    supabase
+type PredictionHistoryRow = PublicPredictionPositionRow & {
+  average_price_cents: number | null;
+  closed_cost_coins: number;
+  closed_proceeds_coins: number;
+  fees_coins: number;
+};
+
+type RowQuery = {
+  range: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{
+    data: unknown[] | null;
+    error: { message: string } | null;
+  }>;
+};
+
+// PostgREST caps each response. Never silently lose older trades or sold-out positions.
+const readPredictionRows = async (query: () => RowQuery, label: string) => {
+  const rows: unknown[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const result = await query().range(offset, offset + 999);
+    if (result.error) throw new Error(`Unable to load ${label}: ${result.error.message}`);
+    rows.push(...(result.data ?? []));
+    if (!result.data || result.data.length < 1000) return rows;
+  }
+};
+
+const loadAllPredictionPositions = async (
+  supabase: ReturnType<typeof createServerSupabase>,
+  marketIds?: readonly string[],
+  username?: string,
+): Promise<PredictionHistoryRow[]> => {
+  const positionQuery = () => {
+    let query = supabase
       .from("prediction_positions")
       .select("market_id,username,outcome,quantity,reserved_quantity,updated_at")
       .gt("quantity", 0)
       .neq("username", "prediction_admin")
-      .order("updated_at", { ascending: false })
-      .limit(10_000),
-    supabase
+      .order("market_id")
+      .order("username")
+      .order("outcome");
+    if (marketIds) query = query.in("market_id", [...marketIds]);
+    if (username) query = query.eq("username", username);
+    return query;
+  };
+  const settlementQuery = () => {
+    let query = supabase
       .from("prediction_position_settlements")
       .select("market_id,username,outcome,quantity,position_updated_at")
-      .order("resolved_at", { ascending: false })
-      .limit(10_000),
-    supabase
-      .from("prediction_fills")
-      .select(exchangeFillColumns)
-      .order("created_at", { ascending: true })
-      .order("id", { ascending: true })
-      .limit(10_000),
-    supabase
+      .neq("username", "prediction_admin")
+      .order("market_id")
+      .order("username")
+      .order("outcome");
+    if (marketIds) query = query.in("market_id", [...marketIds]);
+    if (username) query = query.eq("username", username);
+    return query;
+  };
+  const fillQuery = () => {
+    let query = supabase.from("prediction_fills").select(exchangeFillColumns).order("id");
+    if (marketIds) query = query.in("market_id", [...marketIds]);
+    if (username) query = query.or(`buyer_username.eq.${username},seller_username.eq.${username}`);
+    return query;
+  };
+  const creditQuery = () => {
+    let query = supabase
       .from("prediction_legacy_position_credits")
-      .select("market_id,username,outcome,quantity,price_cents")
-      .limit(10_000),
+      .select("market_id,username,outcome,quantity,price_cents,credited_at")
+      .order("source_bet_id");
+    if (marketIds) query = query.in("market_id", [...marketIds]);
+    if (username) query = query.eq("username", username);
+    return query;
+  };
+  const feeQuery = () => {
+    let query = supabase
+      .from("coin_transactions")
+      .select("username,amount,metadata,created_at")
+      .eq("reason", "prediction_trade_fee")
+      .neq("username", "prediction_admin")
+      .order("id");
+    if (marketIds) query = query.in("metadata->>marketId", [...marketIds]);
+    if (username) query = query.eq("username", username);
+    return query;
+  };
+  const [rawPositions, rawSettlements, rawFills, rawCredits, rawFees] = await Promise.all([
+    readPredictionRows(positionQuery, "prediction positions"),
+    readPredictionRows(settlementQuery, "settled prediction positions"),
+    readPredictionRows(fillQuery, "prediction trades"),
+    readPredictionRows(creditQuery, "legacy prediction positions"),
+    readPredictionRows(feeQuery, "prediction trading fees"),
   ]);
-  if (positionsResult.error)
-    throw new Error(`Unable to load prediction positions: ${positionsResult.error.message}`);
-  if (settlementsResult.error)
-    throw new Error(
-      `Unable to load settled prediction positions: ${settlementsResult.error.message}`,
-    );
-  if (fillsResult.error)
-    throw new Error(`Unable to load prediction position history: ${fillsResult.error.message}`);
-  if (legacyCreditsResult.error)
-    throw new Error(
-      `Unable to load legacy prediction positions: ${legacyCreditsResult.error.message}`,
-    );
-
-  const fillsByMarket = groupByMarketId((fillsResult.data ?? []) as unknown as ExchangeFillRow[]);
-  const legacyByOwner = new Map<string, LegacyPositionCreditRow[]>();
-  for (const credit of (legacyCreditsResult.data ?? []) as PublicLegacyPositionCreditRow[]) {
-    const key = `${credit.market_id}:${credit.username}`;
-    const credits = legacyByOwner.get(key);
-    if (credits) credits.push(credit);
-    else legacyByOwner.set(key, [credit]);
-  }
-
-  const settlements = (settlementsResult.data ?? []) as PredictionPositionSettlementRow[];
-  const settledKeys = new Set(
-    settlements.map((position) => `${position.market_id}:${position.username}:${position.outcome}`),
-  );
-  const positions: PublicPredictionPositionRow[] = [
-    ...settlements.map((position) => ({
-      market_id: position.market_id,
-      username: position.username,
-      outcome: position.outcome,
-      quantity: position.quantity,
+  const fills = rawFills as ExchangeFillRow[];
+  const credits = rawCredits as (PublicLegacyPositionCreditRow & { credited_at: string })[];
+  const fees = rawFees as {
+    username: string;
+    amount: number;
+    metadata: { marketId?: string };
+    created_at: string;
+  }[];
+  const settlements = rawSettlements as PredictionPositionSettlementRow[];
+  const positions = new Map<string, PublicPredictionPositionRow>();
+  const key = (market: string, owner: string) => `${market}:${owner}`;
+  for (const position of rawPositions as PublicPredictionPositionRow[])
+    positions.set(`${key(position.market_id, position.username)}:${position.outcome}`, position);
+  for (const position of settlements)
+    positions.set(`${key(position.market_id, position.username)}:${position.outcome}`, {
+      ...position,
       reserved_quantity: 0,
       updated_at: position.position_updated_at,
-    })),
-    ...((positionsResult.data ?? []) as PublicPredictionPositionRow[]).filter(
-      (position) =>
-        !settledKeys.has(`${position.market_id}:${position.username}:${position.outcome}`),
-    ),
-  ];
-
-  const costsByOwner = new Map<string, ReturnType<typeof calculatePredictionPositionCost>>();
-  return positions.map((position) => {
-    const ownerKey = `${position.market_id}:${position.username}`;
-    let costs = costsByOwner.get(ownerKey);
-    if (!costs) {
-      const credits = legacyByOwner.get(ownerKey) ?? [];
-      const initialPositions = Object.fromEntries(
-        (["yes", "no"] as const).map((outcome) => {
-          const outcomeCredits = credits.filter((credit) => credit.outcome === outcome);
-          return [
-            outcome,
-            {
-              quantity: outcomeCredits.reduce((total, credit) => total + credit.quantity, 0),
-              costCents: outcomeCredits.reduce(
-                (total, credit) => total + credit.quantity * credit.price_cents,
-                0,
-              ),
-            },
-          ];
-        }),
-      );
-      costs = calculatePredictionPositionCost(
-        fillsByMarket.get(position.market_id) ?? [],
-        position.username,
-        initialPositions,
-      );
-      costsByOwner.set(ownerKey, costs);
+    });
+  const owners = new Map<string, { marketId: string; username: string }>();
+  const addOwner = (marketId: string, owner: string | null) => {
+    if (owner && owner !== "prediction_admin" && (!username || owner === username))
+      owners.set(key(marketId, owner), { marketId, username: owner });
+  };
+  for (const position of positions.values()) addOwner(position.market_id, position.username);
+  for (const fill of fills) {
+    addOwner(fill.market_id, fill.buyer_username);
+    addOwner(fill.market_id, fill.seller_username);
+  }
+  for (const credit of credits) addOwner(credit.market_id, credit.username);
+  for (const fee of fees) if (fee.metadata?.marketId) addOwner(fee.metadata.marketId, fee.username);
+  const fillsByMarket = groupByMarketId(fills);
+  const history: PredictionHistoryRow[] = [];
+  for (const owner of owners.values()) {
+    const ownerCredits = credits.filter(
+      (credit) => credit.market_id === owner.marketId && credit.username === owner.username,
+    );
+    const ownerFills = (fillsByMarket.get(owner.marketId) ?? []).filter(
+      (fill) => fill.buyer_username === owner.username || fill.seller_username === owner.username,
+    );
+    const ownerFees = fees.filter(
+      (fee) => fee.metadata?.marketId === owner.marketId && fee.username === owner.username,
+    );
+    const initial = Object.fromEntries(
+      (["yes", "no"] as const).map((outcome) => {
+        const entries = ownerCredits.filter((credit) => credit.outcome === outcome);
+        return [
+          outcome,
+          {
+            quantity: entries.reduce((sum, credit) => sum + credit.quantity, 0),
+            costCents: entries.reduce(
+              (sum, credit) => sum + credit.quantity * credit.price_cents,
+              0,
+            ),
+          },
+        ];
+      }),
+    );
+    const costs = calculatePredictionPositionHistory(ownerFills, owner.username, initial);
+    let remainingFees = -ownerFees.reduce((sum, fee) => sum + Number(fee.amount), 0);
+    const updatedAt =
+      [
+        ...ownerFills.map((fill) => fill.created_at),
+        ...ownerCredits.map((credit) => credit.credited_at),
+        ...ownerFees.map((fee) => fee.created_at),
+      ]
+        .sort()
+        .at(-1) ?? new Date(0).toISOString();
+    for (const outcome of ["yes", "no"] as const) {
+      const position = positions.get(`${key(owner.marketId, owner.username)}:${outcome}`);
+      const cost = costs[outcome];
+      if (!position && cost.closed.quantity === 0 && !(outcome === "no" && remainingFees > 0))
+        continue;
+      history.push({
+        market_id: owner.marketId,
+        username: owner.username,
+        outcome,
+        quantity: position?.quantity ?? 0,
+        reserved_quantity: position?.reserved_quantity ?? 0,
+        updated_at:
+          position?.updated_at && position.updated_at > updatedAt ? position.updated_at : updatedAt,
+        average_price_cents:
+          position && position.quantity > 0
+            ? cost.quantity === position.quantity
+              ? cost.averagePriceCents
+              : null
+            : cost.closed.quantity > 0
+              ? cost.closed.costCents / cost.closed.quantity
+              : 0,
+        closed_cost_coins: cost.closed.costCents / 100,
+        closed_proceeds_coins: cost.closed.proceedsCents / 100,
+        fees_coins: remainingFees,
+      });
+      remainingFees = 0;
     }
-    const cost = costs[position.outcome];
-    return {
-      ...position,
-      average_price_cents:
-        cost.quantity === position.quantity && cost.quantity > 0 ? cost.averagePriceCents : null,
-    };
-  });
+  }
+  return history;
 };
 
 export const bettingRoute = async (event: FunctionEvent) => {
@@ -612,9 +627,46 @@ export const bettingRoute = async (event: FunctionEvent) => {
       input.action === "predictionPositions" ||
       input.action === "allBets" ||
       input.action === "suggestions" ||
-      input.action === "exchangeMarketBatch",
+      input.action === "exchangeMarketBatch" ||
+      input.action === "exchangePriceHistory",
   );
   const supabase = createServerSupabase("Tournament betting service");
+
+  if (input.action === "exchangePriceHistory") {
+    const result = await supabase
+      .from("prediction_markets")
+      .select("id,status,resolved_at,outcome,settlement_price_cents")
+      .eq("id", input.marketId)
+      .maybeSingle();
+    if (result.error) throw new Error(`Unable to load this market: ${result.error.message}`);
+    if (!result.data) throw new HttpError(404, "This market is unavailable.");
+    const market = result.data;
+    const end = market.resolved_at ? Date.parse(market.resolved_at) : Date.now();
+    const duration = predictionHistoryDuration[input.period];
+    const fills = await readPredictionRows(() => {
+      let query = supabase
+        .from("prediction_fills")
+        .select("id,outcome,price_cents,quantity,pair_key,created_at")
+        .eq("market_id", input.marketId)
+        .lte("created_at", new Date(end).toISOString())
+        .order("id");
+      if (duration) query = query.gte("created_at", new Date(end - duration).toISOString());
+      return query;
+    }, "price history");
+    return identityResponse(identity, 200, {
+      result: buildPredictionPriceHistory(
+        fills as ExchangeFillRow[],
+        end,
+        input.period,
+        market.status === "resolved"
+          ? {
+              time: end,
+              price: market.settlement_price_cents ?? (market.outcome === "yes" ? 100 : 0),
+            }
+          : null,
+      ),
+    });
+  }
 
   if (input.action === "bootstrap") {
     const [markets, exchangeMarkets, allBets, allPredictionPositions] = await Promise.all([

@@ -29,6 +29,152 @@ describe("betting function", () => {
     vi.unstubAllEnvs();
   });
 
+  it("paginates public chart trades and scopes time ranges to the selected resolved market", async () => {
+    const end = Date.parse("2026-11-14T12:00:00Z");
+    const fills = Array.from({ length: 1001 }, (_, id) => ({
+      id,
+      outcome: "yes",
+      price_cents: 40,
+      quantity: 1,
+      pair_key: null,
+      created_at: new Date(end - 1000).toISOString(),
+    }));
+    const eq = vi.fn();
+    const gte = vi.fn();
+    const lte = vi.fn();
+    const range = vi.fn(async (from: number, to: number) => ({
+      data: fills.slice(from, to + 1),
+      error: null,
+    }));
+    mocks.createClient.mockReturnValue({
+      from: (table: string) => {
+        const query = {
+          select: () => query,
+          order: () => query,
+          eq: (...args: unknown[]) => {
+            eq(table, ...args);
+            return query;
+          },
+          gte: (...args: unknown[]) => {
+            gte(...args);
+            return query;
+          },
+          lte: (...args: unknown[]) => {
+            lte(...args);
+            return query;
+          },
+          range,
+          maybeSingle: async () => ({
+            data: {
+              status: "resolved",
+              resolved_at: new Date(end).toISOString(),
+              outcome: "no",
+              settlement_price_cents: 25,
+            },
+            error: null,
+          }),
+        };
+        return query;
+      },
+    });
+    const response = await handler({
+      httpMethod: "POST",
+      headers: {},
+      body: JSON.stringify({
+        action: "exchangePriceHistory",
+        marketId: "selected-strike",
+        period: "1h",
+      }),
+    });
+    expect(response.statusCode).toBe(200);
+    expect(eq).toHaveBeenCalledWith("prediction_markets", "id", "selected-strike");
+    expect(eq).toHaveBeenCalledWith("prediction_fills", "market_id", "selected-strike");
+    expect(gte).toHaveBeenCalledWith("created_at", new Date(end - 3_600_000).toISOString());
+    expect(lte).toHaveBeenCalledWith("created_at", new Date(end).toISOString());
+    expect(range.mock.calls).toEqual([
+      [0, 999],
+      [1000, 1999],
+    ]);
+    expect(JSON.parse(response.body).result).toMatchObject({
+      end,
+      settlement: { time: end, price: 25 },
+      points: [{ quantity: 1001 }],
+    });
+  });
+
+  it("retains fully sold-out traders and counts their fees once in public position history", async () => {
+    const rows: Record<string, unknown[]> = {
+      prediction_positions: [],
+      prediction_position_settlements: [],
+      prediction_legacy_position_credits: [],
+      prediction_fills: [
+        {
+          id: 1,
+          market_id: "strike",
+          outcome: "yes",
+          price_cents: 20,
+          quantity: 10,
+          buyer_username: "trader",
+          seller_username: "prediction_admin",
+          pair_key: null,
+          created_at: "2026-11-14T00:00:00Z",
+        },
+        {
+          id: 2,
+          market_id: "strike",
+          outcome: "yes",
+          price_cents: 60,
+          quantity: 10,
+          buyer_username: "prediction_admin",
+          seller_username: "trader",
+          pair_key: null,
+          created_at: "2026-11-14T01:00:00Z",
+        },
+      ],
+      coin_transactions: [
+        {
+          username: "trader",
+          amount: -0.1,
+          metadata: { marketId: "strike" },
+          created_at: "2026-11-14T01:00:00Z",
+        },
+      ],
+    };
+    mocks.createClient.mockReturnValue({
+      from: (table: string) => {
+        const query = {
+          select: () => query,
+          order: () => query,
+          gt: () => query,
+          neq: () => query,
+          eq: () => query,
+          range: async (from: number, to: number) => ({
+            data: (rows[table] ?? []).slice(from, to + 1),
+            error: null,
+          }),
+        };
+        return query;
+      },
+    });
+    const response = await handler({
+      httpMethod: "POST",
+      headers: {},
+      body: JSON.stringify({ action: "predictionPositions" }),
+    });
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).result).toEqual([
+      expect.objectContaining({
+        username: "trader",
+        market_id: "strike",
+        outcome: "yes",
+        quantity: 0,
+        closed_cost_coins: 2,
+        closed_proceeds_coins: 6,
+        fees_coins: 0.1,
+      }),
+    ]);
+  });
+
   it("returns the public AWC 2026 markets in bracket order", async () => {
     const roundOrder = vi.fn(async () => ({
       data: [{ id: "awc2026-wb-r1-m2", player_one: "maracker", player_two: "rabbier" }],
@@ -317,6 +463,10 @@ describe("betting function", () => {
         select: () => query,
         in: () => query,
         eq: () => query,
+        neq: () => query,
+        gt: () => query,
+        or: () => query,
+        range: () => query,
         order: () => query,
         limit: () => query,
         then: (resolve: (value: typeof result) => unknown) => Promise.resolve(resolve(result)),

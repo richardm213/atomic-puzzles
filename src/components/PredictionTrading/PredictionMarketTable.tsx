@@ -77,8 +77,8 @@ export const PredictionMarketTable = ({
   >
     {sortPredictionMarketsByChance(definitions, states).map((definition) => {
       const state = states.get(definition.id);
-      const isResolved = state?.market.status === "resolved";
-      const isExpanded = expandedMarketId === definition.id && !isResolved;
+      const isCompleted = state !== undefined && state.market.status !== "open";
+      const isExpanded = expandedMarketId === definition.id && !isCompleted;
       const chance = predictionYesChance(definition, state);
       const selectedMarket = activeMarketId === definition.id;
       const resolvedPnl = resolvedPnlByMarketId?.get(definition.id);
@@ -87,11 +87,11 @@ export const PredictionMarketTable = ({
       return (
         <div
           className={`predictionSharedMarketRow${
-            selectedMarket && !isResolved ? " predictionSharedMarketRow--active" : ""
-          }${isResolved ? " predictionSharedMarketRow--resolved" : ""}`}
+            selectedMarket && !isCompleted ? " predictionSharedMarketRow--active" : ""
+          }${isCompleted ? " predictionSharedMarketRow--resolved" : ""}`}
           key={definition.id}
         >
-          {isResolved ? (
+          {isCompleted ? (
             <PredictionResolvedMarket
               definition={definition}
               density={density}
@@ -128,7 +128,7 @@ export const PredictionMarketTable = ({
             </div>
           )}
 
-          {!isResolved ? (
+          {!isCompleted ? (
             <span
               className="predictionSharedMarketPrices"
               aria-label={`${definition.username} outcome`}
