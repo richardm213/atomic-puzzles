@@ -413,6 +413,13 @@ export type PredictionMarketState = z.infer<typeof marketStateSchema>["result"];
 export type PredictionOrder = PredictionMarketState["orders"][number];
 export type PredictionPosition = PredictionMarketState["positions"][number];
 
+export const availablePredictionContracts = (positions: readonly PredictionPosition[] = []) => {
+  const available: Record<PredictionOutcome, number> = { yes: 0, no: 0 };
+  for (const position of positions)
+    available[position.outcome] += Math.max(0, position.quantity - position.reservedQuantity);
+  return available;
+};
+
 export const predictionYesChance = (
   definition: PredictionMarketDefinition,
   state: PredictionMarketState | undefined,

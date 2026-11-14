@@ -305,3 +305,120 @@ test("live book updates render promptly and missed events recover without idle b
     JSON.stringify({ realtimeMs, missedEventRecoveryMs: recoveryMs, idleBookDownloads: 0 }),
   );
 });
+
+test("betting order-book ticket sells only unreserved owned shares", async ({ page }) => {
+  const marketId = "awc-2026-champion-natso";
+  let quantity = 8;
+  const orders: unknown[] = [];
+  const state = () => ({
+    market: {
+      id: marketId,
+      question: "Who will win AWC?",
+      resolution_rules: "Official results.",
+      resolution_source_url: "https://lichess.org/team/atomic-wc",
+      closes_at: "2099-12-31T00:00:00Z",
+      status: "open",
+      outcome: null,
+      settlement_price_cents: null,
+      settlement_reference_fill_id: null,
+      resolved_at: null,
+    },
+    book: {
+      yes: { bids: [], asks: [{ priceCents: 30, quantity: 100 }] },
+      no: { bids: [{ priceCents: 40, quantity: 100 }], asks: [] },
+    },
+    positions: [
+      {
+        outcome: "no",
+        quantity,
+        reserved_quantity: 3,
+        average_price_cents: 20,
+        updated_at: "2026-11-01T00:00:00Z",
+      },
+    ],
+    orders: [],
+    fills: [],
+  });
+  await page.routeWebSocket(/\/realtime\/v1\/websocket/, (socket) => socket.close());
+  await page.route("**/api/coins", (route) =>
+    route.fulfill({ json: { result: { balance: 200, dailyClaimAvailable: false } } }),
+  );
+  await page.route("**/api/betting", (route) => {
+    const body = route.request().postDataJSON();
+    if (["markets", "bets", "allBets", "predictionPositions"].includes(body.action))
+      return route.fulfill({ json: { result: [] } });
+    if (body.action === "exchangeMarkets")
+      return route.fulfill({
+        json: {
+          result: [
+            {
+              id: marketId,
+              group_id: "awc-2026-champion",
+              group_path: "/betting/awc-2026-champion",
+              group_title: "Who will win 2026 AWC",
+              group_description: "",
+              group_order: 1,
+              display_name: "natso",
+              country_code: "NL",
+              starting_chance: 30,
+              display_order: 1,
+              outcome_yes_label: null,
+              outcome_no_label: null,
+              outcome_yes_country_code: null,
+              outcome_no_country_code: null,
+            },
+          ],
+        },
+      });
+    if (body.action === "exchangeMarketBatch")
+      return route.fulfill({ json: { result: [state()] } });
+    if (body.action === "placeExchangeOrder") {
+      orders.push(body);
+      quantity = 3;
+      return route.fulfill({
+        json: { result: { orderId: 10, balance: 201.96, marketId, state: state() } },
+      });
+    }
+    return route.fulfill({ status: 400, json: { error: "Unexpected fixture request" } });
+  });
+  await page.goto("/betting?view=markets&market=champion");
+  await page.getByRole("button", { name: "Order book view", exact: true }).click();
+  await page
+    .getByLabel("natso outcome", { exact: true })
+    .getByRole("button", { name: /Yes/ })
+    .click();
+  const sides = page.getByRole("group", { name: "Order side", exact: true });
+  await sides.getByRole("button", { name: "Sell", exact: true }).click();
+  await expect(
+    page.getByRole("group", { name: "Prediction outcome" }).getByRole("button", { name: /No/ }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("group", { name: "Prediction outcome" }).getByRole("button", { name: /Yes/ }),
+  ).toBeDisabled();
+  const contracts = page.getByRole("spinbutton", { name: "Contracts", exact: true });
+  await expect(contracts).toHaveValue("5");
+  await page.getByRole("spinbutton", { name: /Limit price/ }).fill("40");
+  const submit = page.getByRole("button", { name: "Sell No · 40¢", exact: true });
+  await contracts.fill("6");
+  await expect(submit).toBeDisabled();
+  await contracts.fill("5");
+  await expect(page.getByText("1.96 coins", { exact: true })).toBeVisible();
+  await submit.click();
+  await expect.poll(() => orders.length).toBe(1);
+  expect(orders[0]).toMatchObject({
+    action: "placeExchangeOrder",
+    marketId,
+    outcome: "no",
+    side: "sell",
+    priceCents: 40,
+    quantity: 5,
+  });
+  await expect(sides.getByRole("button", { name: "Sell", exact: true })).toHaveCount(0);
+  await expect(page.getByText("Prediction order placed.", { exact: true })).toBeVisible();
+  await page.goto("/betting/awc-2026-champion");
+  await page
+    .getByLabel("natso outcome", { exact: true })
+    .getByRole("button", { name: /Yes/ })
+    .click();
+  await expect(sides.getByRole("button", { name: "Sell", exact: true })).toHaveCount(0);
+});

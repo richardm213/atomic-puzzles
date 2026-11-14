@@ -19,6 +19,7 @@ import { PredictionPrice } from "../../components/PredictionTrading/PredictionPr
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
+import { usePredictionOrderSide } from "../../hooks/usePredictionOrderSide";
 import {
   AWC_NOT_TO_WIN_MARKET_ID,
   findCurrentTournamentOpponent,
@@ -174,33 +175,29 @@ export const PredictionMarketPage = () => {
   const estimatedSellProceeds = Math.max(0, sellQuote.proceedsCoins - estimatedTakerFee);
   const immediateBuyQuantity = buyQuote.filledQuantity;
   const buyAction = immediateBuyQuantity > 0 ? "Buy" : "Bid";
-  const positionsByOutcome = {
-    yes: marketState?.positions.find((entry) => entry.outcome === "yes"),
-    no: marketState?.positions.find((entry) => entry.outcome === "no"),
-  };
-  const ownedByOutcome = {
-    yes: positionsByOutcome.yes?.quantity ?? 0,
-    no: positionsByOutcome.no?.quantity ?? 0,
-  } satisfies Record<PredictionOutcome, number>;
-  const availableByOutcome = {
-    yes: ownedByOutcome.yes - (positionsByOutcome.yes?.reservedQuantity ?? 0),
-    no: ownedByOutcome.no - (positionsByOutcome.no?.reservedQuantity ?? 0),
-  } satisfies Record<PredictionOutcome, number>;
-  const availableContracts = availableByOutcome[outcome];
-  const ownsSellableContracts = availableByOutcome.yes >= 1 || availableByOutcome.no >= 1;
-  const canSell = isAuthenticated && ownsSellableContracts;
-  const hasSellInventory =
-    side === "buy" ||
-    (isAuthenticated && validQuantity && quantity <= availableContracts && availableContracts > 0);
+  const {
+    availableByOutcome,
+    availableContracts,
+    canSell,
+    hasSellInventory,
+    selectSide,
+    selectOutcome,
+  } = usePredictionOrderSide({
+    positions: marketState?.positions,
+    isAuthenticated,
+    side,
+    outcome,
+    quantityInput,
+    onSideChange: setSide,
+    onSelectionChange: () => setSuccessMessage(""),
+    onOutcomeChange: setOutcome,
+    onQuantityChange: setQuantityInput,
+  });
   const marketOpen =
     marketState?.market.status === "open" && Date.parse(marketState.market.closesAt) > Date.now();
   const marketGroupOpen = marketStates.some(
     (state) => state.market.status === "open" && Date.parse(state.market.closesAt) > Date.now(),
   );
-
-  useEffect(() => {
-    if (side === "sell" && !canSell) setSide("buy");
-  }, [canSell, side]);
 
   const askPrices = useMemo(() => {
     if (!marketState) return { yes: undefined, no: undefined };
@@ -338,29 +335,6 @@ export const PredictionMarketPage = () => {
       priceCents: price,
       quantity,
     });
-  };
-
-  const selectSide = (nextSide: PredictionOrderSide) => {
-    setSide(nextSide);
-    setSuccessMessage("");
-    if (nextSide !== "sell") return;
-
-    const nextOutcome =
-      availableByOutcome[outcome] >= 1 ? outcome : availableByOutcome.yes >= 1 ? "yes" : "no";
-    const sellableQuantity = Math.floor(availableByOutcome[nextOutcome]);
-    setOutcome(nextOutcome);
-    if (!validQuantity || quantity > sellableQuantity) {
-      setQuantityInput(String(sellableQuantity));
-    }
-  };
-
-  const selectOutcome = (nextOutcome: PredictionOutcome) => {
-    setOutcome(nextOutcome);
-    if (side !== "sell") return;
-    const sellableQuantity = Math.floor(availableByOutcome[nextOutcome]);
-    if (!validQuantity || quantity > sellableQuantity) {
-      setQuantityInput(String(sellableQuantity));
-    }
   };
 
   const startOrderFromBook = (

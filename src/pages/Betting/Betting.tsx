@@ -19,6 +19,7 @@ import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/Rout
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { usePersistedState } from "../../hooks/usePersistedState";
+import { usePredictionOrderSide } from "../../hooks/usePredictionOrderSide";
 import {
   AWC_NOT_TO_WIN_MARKET_ID,
   type BettingMarket,
@@ -54,18 +55,21 @@ import {
 } from "../../lib/predictionMarkets/predictionMarketQueries";
 import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predictionMarketRealtime";
 import {
+  availablePredictionContracts,
   formatPredictionChance,
   MAX_PREDICTION_ORDER_QUANTITY,
   placePredictionOrder,
   predictionBuyOrderCost,
   predictionMarketVolume,
   type PredictionOrder,
+  type PredictionOrderSide,
   type PredictionOutcome,
   predictionOutcomeCountryCode,
   predictionOutcomeLabel,
   predictionOutcomes,
   predictionTakerFee,
   quotePredictionBuy,
+  quotePredictionSell,
   sortPredictionMarketsByChance,
   suggestedPredictionPrice,
 } from "../../lib/predictionMarkets/predictionMarkets";
@@ -185,6 +189,7 @@ export const BettingPage = () => {
     orders: PredictionOrder[];
   } | null>(null);
   const [predictionPriceInput, setPredictionPriceInput] = useState("50");
+  const [predictionSide, setPredictionSide] = useState<PredictionOrderSide>("buy");
   const [predictionQuantityInput, setPredictionQuantityInput] = useState("10");
   const [predictionStakeInput, setPredictionStakeInput] = useState("");
   const [predictionStakeTouched, setPredictionStakeTouched] = useState(false);
@@ -413,6 +418,24 @@ export const BettingPage = () => {
     predictionQuantity >= 1 &&
     predictionQuantity <= MAX_PREDICTION_ORDER_QUANTITY;
   const selectedPredictionOutcome = predictionSelection?.outcome ?? "yes";
+  const {
+    availableByOutcome: availableContracts,
+    canSell,
+    hasSellInventory,
+    selectSide: selectPredictionSide,
+    selectOutcome: selectPredictionOutcome,
+  } = usePredictionOrderSide({
+    positions: selectedPredictionState?.positions,
+    isAuthenticated,
+    side: predictionSide,
+    outcome: selectedPredictionOutcome,
+    quantityInput: predictionQuantityInput,
+    onSideChange: setPredictionSide,
+    onSelectionChange: () => setSuccessMessage(""),
+    onOutcomeChange: (outcome) =>
+      setPredictionSelection((current) => (current ? { ...current, outcome } : null)),
+    onQuantityChange: setPredictionQuantityInput,
+  });
   const selectedPredictionSportsbookPrice =
     selectedPredictionState?.book[selectedPredictionOutcome].asks[0]?.priceCents;
   useEffect(() => {
@@ -433,6 +456,15 @@ export const BettingPage = () => {
     validPredictionPrice ? predictionPrice : 0,
   );
   const predictionEstimatedProfit = predictionQuantity - predictionEstimatedTotal;
+  const predictionSellQuote = quotePredictionSell(
+    selectedPredictionState?.book[selectedPredictionOutcome].bids ?? [],
+    validPredictionPrice ? predictionPrice : 100,
+    validPredictionQuantity ? predictionQuantity : 0,
+  );
+  const predictionSellProceeds = Math.max(
+    0,
+    predictionSellQuote.proceedsCoins - predictionTakerFee(predictionSellQuote.proceedsCoins),
+  );
   const predictionStake = Number(predictionStakeInput);
   const predictionSportsbookStakeLimit = validPredictionPrice
     ? Math.min(MAX_BET_STAKE, predictionPrice * 100)
@@ -474,6 +506,7 @@ export const BettingPage = () => {
     groupId: string | undefined,
     marketPlayer: string,
     outcome: PredictionOutcome,
+    side: PredictionOrderSide = "buy",
   ) => {
     const definition = predictionMarkets.find(
       (candidate) => candidate.username.toLowerCase() === marketPlayer.toLowerCase(),
@@ -486,7 +519,7 @@ export const BettingPage = () => {
       username,
       currentOpponent: currentAwcOpponent,
       outcome,
-      side: "buy",
+      side,
     });
   };
   const predictionRestrictionTitle = (
@@ -503,6 +536,7 @@ export const BettingPage = () => {
         selectedPredictionGroup?.id,
         selectedPredictionDefinition.username,
         selectedPredictionOutcome,
+        predictionSide,
       )
     : null;
   const marketGroups = useMemo(() => {
@@ -716,7 +750,9 @@ export const BettingPage = () => {
     marketId: string,
     outcome: PredictionOutcome,
     suggestedPrice: number,
+    side: PredictionOrderSide = "buy",
   ) => {
+    setPredictionSide(side);
     setPredictionSelection({ marketId, outcome });
     setExpandedPredictionMarketId(marketId);
     setExpandedPredictionOutcome(outcome);
@@ -747,6 +783,7 @@ export const BettingPage = () => {
       !predictionSelection ||
       !validPredictionPrice ||
       !validPredictionQuantity ||
+      !hasSellInventory ||
       selectedPredictionRestriction ||
       !selectedPredictionOpen
     )
@@ -754,7 +791,7 @@ export const BettingPage = () => {
     placePredictionMutation.mutate({
       marketId: predictionSelection.marketId,
       outcome: predictionSelection.outcome,
-      side: "buy",
+      side: predictionSide,
       priceCents: predictionPrice,
       quantity: predictionQuantity,
     });
@@ -1142,10 +1179,23 @@ export const BettingPage = () => {
                                 })
                               }
                               onSelect={(side, priceCents, quantity) => {
-                                choosePredictionOutcome(definition.id, outcome, priceCents);
-                                if (side === "ask") {
-                                  setPredictionQuantityInput(String(quantity));
-                                }
+                                const available = availablePredictionContracts(state.positions)[
+                                  outcome
+                                ];
+                                const orderSide = side === "bid" && available >= 1 ? "sell" : "buy";
+                                choosePredictionOutcome(
+                                  definition.id,
+                                  outcome,
+                                  priceCents,
+                                  orderSide,
+                                );
+                                setPredictionQuantityInput(
+                                  String(
+                                    orderSide === "sell"
+                                      ? Math.min(quantity, Math.floor(available))
+                                      : quantity,
+                                  ),
+                                );
                               }}
                             />
                           )}
@@ -1401,26 +1451,46 @@ export const BettingPage = () => {
                         density="compact"
                         idPrefix="prediction-betting-order"
                         outcome={predictionSelection.outcome}
+                        side={predictionSide}
+                        showSell={canSell}
+                        onSideChange={selectPredictionSide}
+                        outcomeDisabled={(entry) =>
+                          (predictionSide === "sell" && availableContracts[entry] < 1) ||
+                          Boolean(
+                            predictionRestrictionFor(
+                              selectedPredictionGroup?.id,
+                              selectedPredictionDefinition.username,
+                              entry,
+                              predictionSide,
+                            ),
+                          )
+                        }
                         outcomePrices={{
                           yes: selectedPredictionState?.book.yes.asks[0]?.priceCents,
                           no: selectedPredictionState?.book.no.asks[0]?.priceCents,
                         }}
                         quantityInput={predictionQuantityInput}
                         priceInput={predictionPriceInput}
-                        primaryLabel="Cost"
+                        primaryLabel={predictionSide === "sell" ? "Proceeds" : "Cost"}
                         primaryValue={
                           validPredictionPrice && validPredictionQuantity
-                            ? `${formatCoinValue(predictionEstimatedTotal)} coins`
+                            ? `${formatCoinValue(predictionSide === "sell" ? predictionSellProceeds : predictionEstimatedTotal)} coins`
                             : "—"
                         }
-                        secondaryLabel="Max payout"
+                        secondaryLabel={
+                          predictionSide === "sell" ? "Available contracts" : "Max payout"
+                        }
                         secondaryValue={
-                          validPredictionQuantity
-                            ? `${predictionQuantity.toLocaleString()} coins`
-                            : "—"
+                          predictionSide === "sell"
+                            ? availableContracts[selectedPredictionOutcome].toLocaleString()
+                            : validPredictionQuantity
+                              ? `${predictionQuantity.toLocaleString()} coins`
+                              : "—"
                         }
                         secondaryNote={
-                          validPredictionPrice && validPredictionQuantity ? (
+                          predictionSide === "buy" &&
+                          validPredictionPrice &&
+                          validPredictionQuantity ? (
                             <span
                               className={
                                 predictionEstimatedProfit >= 0 ? "isPositive" : "isNegative"
@@ -1431,17 +1501,21 @@ export const BettingPage = () => {
                             </span>
                           ) : undefined
                         }
-                        onOutcomeChange={(entry) =>
-                          choosePredictionOutcome(
-                            selectedPredictionDefinition.id,
-                            entry,
-                            suggestedPredictionPrice(
-                              selectedPredictionDefinition,
-                              selectedPredictionState,
-                              entry,
+                        onOutcomeChange={(entry) => {
+                          selectPredictionOutcome(entry);
+                          setPredictionPriceInput(
+                            String(
+                              predictionSide === "sell"
+                                ? (selectedPredictionState?.book[entry].bids[0]?.priceCents ??
+                                    predictionPrice)
+                                : suggestedPredictionPrice(
+                                    selectedPredictionDefinition,
+                                    selectedPredictionState,
+                                    entry,
+                                  ),
                             ),
-                          )
-                        }
+                          );
+                        }}
                         onQuantityChange={setPredictionQuantityInput}
                         onPriceChange={setPredictionPriceInput}
                       />
@@ -1500,6 +1574,7 @@ export const BettingPage = () => {
                         disabled={
                           !validPredictionPrice ||
                           !validPredictionQuantity ||
+                          !hasSellInventory ||
                           Boolean(selectedPredictionRestriction) ||
                           !selectedPredictionOpen ||
                           placePredictionMutation.isPending
@@ -1507,7 +1582,7 @@ export const BettingPage = () => {
                       >
                         {placePredictionMutation.isPending
                           ? "Placing order…"
-                          : `${predictionBuyQuote.filledQuantity > 0 ? "Buy" : "Bid"} ${selectedPredictionOutcome === "yes" ? "Yes" : "No"} · ${validPredictionPrice ? `${predictionPrice}¢` : "—"}`}
+                          : `${predictionSide === "sell" ? "Sell" : predictionBuyQuote.filledQuantity > 0 ? "Buy" : "Bid"} ${selectedPredictionOutcome === "yes" ? "Yes" : "No"} · ${validPredictionPrice ? `${predictionPrice}¢` : "—"}`}
                       </button>
                     ) : (
                       <button
