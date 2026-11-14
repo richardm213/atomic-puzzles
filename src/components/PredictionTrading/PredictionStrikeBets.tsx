@@ -15,7 +15,10 @@ import {
 } from "../../lib/predictionMarkets/predictionMarketQueries";
 import type { PredictionMarketDefinition } from "../../lib/predictionMarkets/predictionMarkets";
 import { BetHistoryTable } from "../../pages/Betting/BettingHistory";
-import { buildBetHistory } from "../../pages/Betting/bettingHistoryModel";
+import {
+  buildBetHistory,
+  predictionStrikeBetsByBettor,
+} from "../../pages/Betting/bettingHistoryModel";
 import { getErrorMessage } from "../../utils/errors";
 import { InlineState } from "../InlineState/InlineState";
 import { PredictionPriceChart } from "./PredictionPriceChart";
@@ -34,31 +37,28 @@ const StrikeBetList = ({ definition }: { definition: PredictionMarketDefinition 
   if (!states.data?.some((state) => state.market.status !== "open")) {
     return <InlineState kind="empty">This strike is still pending.</InlineState>;
   }
-  const bets = buildBetHistory({
-    tournamentBets: legacy.data ?? [],
-    predictionPositions: positions.data ?? [],
-    predictionMarketGroups: catalog.data ?? [],
-    predictionMarketStates: states.data ?? [],
-    minimumPositionCost: 0,
-  })
-    .filter((bet) => bet.marketId === definition.id)
-    .map((bet) => {
-      const position = positions.data?.find(
-        (position) =>
-          position.marketId === bet.marketId &&
-          position.username === bet.username &&
-          position.outcome === bet.predictionOutcome,
-      );
-      return {
-        ...bet,
-        // A closed strike has no settlement payout yet. Show profit already realized.
-        ...(bet.status === "open"
-          ? { status: "settled" as const, payout: bet.totalCost + (bet.realizedPnl ?? 0) }
-          : {}),
-        priceCents: Math.round((position?.averagePriceCents ?? bet.priceCents) * 10) / 10,
-      };
+  const bets = predictionStrikeBetsByBettor(
+    buildBetHistory({
+      tournamentBets: legacy.data ?? [],
+      predictionPositions: positions.data ?? [],
+      predictionMarketGroups: catalog.data ?? [],
+      predictionMarketStates: states.data ?? [],
+      minimumPositionCost: 0,
     })
-    .sort((left, right) => right.totalCost - left.totalCost);
+      .filter((bet) => bet.marketId === definition.id)
+      .map((bet) => {
+        const position = positions.data?.find(
+          (position) =>
+            position.marketId === bet.marketId &&
+            position.username === bet.username &&
+            position.outcome === bet.predictionOutcome,
+        );
+        return {
+          ...bet,
+          priceCents: Math.round((position?.averagePriceCents ?? bet.priceCents) * 10) / 10,
+        };
+      }),
+  );
   return (
     <BetHistoryTable
       bets={bets}

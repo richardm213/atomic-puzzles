@@ -233,10 +233,17 @@ export const BetHistoryTable = ({
                       : undefined;
               const selectionContents = (
                 <>
-                  <BetHistoryUsername
-                    username={isPrediction ? selectionLabel.toLowerCase() : selectionLabel}
-                  />
-                  {isPrediction && bet.predictionOutcome && !bet.predictionSelectionLabel ? (
+                  {bet.mixedPredictionOutcomes ? (
+                    "Both sides"
+                  ) : (
+                    <BetHistoryUsername
+                      username={isPrediction ? selectionLabel.toLowerCase() : selectionLabel}
+                    />
+                  )}
+                  {isPrediction &&
+                  !bet.mixedPredictionOutcomes &&
+                  bet.predictionOutcome &&
+                  !bet.predictionSelectionLabel ? (
                     <span className="betHistoryOutcome">
                       · {bet.predictionOutcome === "yes" ? "Yes" : "No"}
                     </span>
@@ -251,13 +258,15 @@ export const BetHistoryTable = ({
                 >
                   <th className="betHistorySelection" scope="row">
                     <span className="betHistoryPlayer">
-                      <img
-                        src={countryCodeToFlagUrl(countryCode)}
-                        alt={countryCode ? `${countryCode} flag` : "Country unavailable"}
-                        crossOrigin="anonymous"
-                        loading="lazy"
-                        decoding="async"
-                      />
+                      {!bet.mixedPredictionOutcomes ? (
+                        <img
+                          src={countryCodeToFlagUrl(countryCode)}
+                          alt={countryCode ? `${countryCode} flag` : "Country unavailable"}
+                          crossOrigin="anonymous"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : null}
                       <strong>
                         {shareable ? (
                           <button
@@ -289,8 +298,14 @@ export const BetHistoryTable = ({
                   ) : null}
                   <td className="betHistoryNumber" data-label={priceLabel}>
                     <strong>
-                      {formatCoinValue(bet.priceCents)}
-                      <span className="betHistoryPriceSuffix">%</span>
+                      {bet.mixedPredictionOutcomes ? (
+                        "—"
+                      ) : (
+                        <>
+                          {formatCoinValue(bet.priceCents)}
+                          <span className="betHistoryPriceSuffix">%</span>
+                        </>
+                      )}
                     </strong>
                   </td>
                   <td className="betHistoryNumber" data-label="Cost">

@@ -25,12 +25,20 @@ test("completed strike opens on P&L and loads chart history only when selected",
     fees_coins: 0.15,
     updated_at: new Date(end).toISOString(),
   };
+  const soldOppositePosition = {
+    ...position,
+    outcome: "no",
+    quantity: 0,
+    closed_cost_coins: 2,
+    closed_proceeds_coins: 5,
+    fees_coins: 0,
+  };
   await page.route("**/api/betting", (route) => {
     const body = route.request().postDataJSON();
     if (["markets", "bets", "allBets"].includes(body.action))
       return route.fulfill({ json: { result: [] } });
     if (body.action === "predictionPositions")
-      return route.fulfill({ json: { result: [position] } });
+      return route.fulfill({ json: { result: [position, soldOppositePosition] } });
     if (body.action === "exchangeMarkets")
       return route.fulfill({
         json: {
@@ -74,7 +82,7 @@ test("completed strike opens on P&L and loads chart history only when selected",
               book: { yes: { bids: [], asks: [] }, no: { bids: [], asks: [] } },
               fills: [],
               positions: [position],
-              historyPositions: [position],
+              historyPositions: [position, soldOppositePosition],
               orders: [],
             },
           ],
@@ -99,7 +107,8 @@ test("completed strike opens on P&L and loads chart history only when selected",
   await page.goto("/betting/awc-2026-champion");
   await page.getByRole("button", { name: "View bets on natso", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "natso", exact: true });
-  await expect(dialog.getByRole("table")).toContainText("+5.85");
+  await expect(dialog.getByRole("table")).toContainText("+8.85");
+  await expect(dialog.getByRole("row").filter({ hasText: "e2e-player" })).toHaveCount(1);
   expect(periods).toEqual([]);
   await dialog.getByRole("tab", { name: "Price chart", exact: true }).click();
   const chart = dialog.getByRole("slider", { name: "Inspect price history" });
@@ -122,7 +131,7 @@ test("completed strike opens on P&L and loads chart history only when selected",
   completedStatus = "closed";
   await page.reload();
   await page.getByRole("button", { name: "View bets on natso", exact: true }).click();
-  await expect(dialog.getByRole("table")).toContainText("+1.85");
+  await expect(dialog.getByRole("table")).toContainText("+4.85");
   await expect(dialog.getByRole("tab", { name: "P&L", exact: true })).toHaveAttribute(
     "aria-selected",
     "true",

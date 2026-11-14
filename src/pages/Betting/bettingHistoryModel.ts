@@ -17,6 +17,31 @@ export type BetHistoryEntry = TournamentBet & {
   predictionSelectionCountryCode?: string | undefined;
   predictionMarketTitle?: string | undefined;
   realizedPnl?: number;
+  mixedPredictionOutcomes?: boolean;
+};
+
+// Strike summaries show a bettor's complete trading result, across both outcomes.
+export const predictionStrikeBetsByBettor = (
+  bets: readonly BetHistoryEntry[],
+): BetHistoryEntry[] => {
+  const grouped = new Map<string, BetHistoryEntry>();
+  for (const bet of bets) {
+    const key = `${bet.marketId}:${bet.username.toLowerCase()}`;
+    const payout = bet.status === "open" ? bet.totalCost + (bet.realizedPnl ?? 0) : bet.payout;
+    const previous = grouped.get(key);
+    if (!previous) {
+      grouped.set(key, { ...bet, status: "settled", payout });
+      continue;
+    }
+    previous.mixedPredictionOutcomes =
+      previous.mixedPredictionOutcomes || previous.predictionOutcome !== bet.predictionOutcome;
+    previous.stake += bet.stake;
+    previous.fee += bet.fee;
+    previous.totalCost += bet.totalCost;
+    previous.payout += payout;
+    previous.potentialPayout += bet.potentialPayout;
+  }
+  return [...grouped.values()].sort((left, right) => right.totalCost - left.totalCost);
 };
 
 export const predictionPnlByMarketId = (
