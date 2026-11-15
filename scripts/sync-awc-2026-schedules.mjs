@@ -268,7 +268,10 @@ export async function syncSchedules({ posts, rows, publish, now = Date.now() }) 
     };
     const result = publish ? await publish(update) : "dry-run";
     updates.push({ ...update, result });
-    lines.push(`- ${result}: ${row.p1} vs ${row.p2} · ${update.scheduledAt} · ${update.sourceUrl}`);
+    const expiry = result === "applied" ? " · prediction_admin orders expire at kickoff" : "";
+    lines.push(
+      `- ${result}: ${row.p1} vs ${row.p2} · ${update.scheduledAt}${expiry} · ${update.sourceUrl}`,
+    );
   }
   return { lines, updates, reports };
 }
@@ -362,6 +365,7 @@ async function run() {
     rows,
     publish: live
       ? async (update) => {
+          // The schedule RPC also synchronizes the related admin order expirations atomically.
           const outcome = await api("rpc/apply_awc_2026_schedule", {
             p_fixture_id: update.fixtureId,
             p_p1: update.p1,

@@ -1,89 +1,104 @@
--- A match anywhere in the AWC field can change every championship price.
--- Only admin liquidity is capped; filled positions and other users' orders are preserved.
+-- Scheduling worker and manual kickoff edits share one atomic expiry rule.
 begin;
 
-create or replace function public.next_awc_2026_kickoff()
+drop trigger if exists prediction_orders_cap_awc_champion_expiry on public.prediction_orders;
+drop trigger if exists tournament_matches_refresh_awc_champion_expiry on public.tournament_matches;
+drop function if exists public.cap_awc_champion_admin_quote_expiry();
+drop function if exists public.refresh_awc_champion_admin_quote_expiry();
+drop function if exists public.next_awc_2026_kickoff();
+
+create or replace function public.awc_2026_market_kickoff(p_market_id text)
 returns timestamptz
-language sql
-stable
+language sql stable
 set search_path = ''
 as $$
-  select min(scheduled_at)
-  from public.tournament_matches
-  where tournament = 'awc2026'
-    and scheduled_at > now()
-    and played_on is null
-    and coalesce(match_id, '') = ''
-    and coalesce(s1, 0) = 0 and coalesce(s2, 0) = 0;
+  select min(f.scheduled_at)
+  from public.tournament_matches f
+  join public.prediction_markets m on m.id = p_market_id and (
+    m.id = 'awc2026-' || f.id
+    or (m.group_id = 'awc-2026-champion' and lower(btrim(m.display_name)) in
+      (lower(btrim(f.p1)), lower(btrim(f.p2))))
+  )
+  where f.tournament = 'awc2026' and f.scheduled_at is not null
+    and f.played_on is null and coalesce(f.match_id, '') = ''
+    and coalesce(f.outcome_type, '') = ''
+    and coalesce(f.s1, 0) = 0 and coalesce(f.s2, 0) = 0;
 $$;
 
-create or replace function public.cap_awc_champion_admin_quote_expiry()
+create or replace function public.cap_awc_scheduled_admin_order_expiry()
 returns trigger
-language plpgsql
-security definer
+language plpgsql security definer
 set search_path = ''
 as $$
-declare
-  kickoff timestamptz;
+declare kickoff timestamptz;
 begin
   if new.username = 'prediction_admin'
-    and new.market_id like 'awc-2026-champion-%'
     and new.status in ('open', 'partial') and new.remaining_quantity > 0 then
-    kickoff := public.next_awc_2026_kickoff();
-    if kickoff is not null then
-      new.expires_at := least(new.expires_at, kickoff);
-    end if;
+    kickoff := public.awc_2026_market_kickoff(new.market_id);
+    if kickoff is not null then new.expires_at := least(new.expires_at, kickoff); end if;
   end if;
   return new;
 end;
 $$;
 
-create or replace function public.refresh_awc_champion_admin_quote_expiry()
-returns trigger
-language plpgsql
-security definer
+create or replace function public.sync_awc_2026_admin_order_expiry(p_fixture_id text)
+returns table(order_id bigint, market_id text, previous_expires_at timestamptz, expires_at timestamptz)
+language sql security definer
 set search_path = ''
 as $$
-declare
-  kickoff timestamptz;
+  with eligible as materialized (
+    select o.id, o.expires_at as previous_expiry,
+      public.awc_2026_market_kickoff(m.id) as kickoff
+    from public.tournament_matches f
+    join public.prediction_markets m on m.status = 'open' and (
+      m.id = 'awc2026-' || f.id
+      or (m.group_id = 'awc-2026-champion' and lower(btrim(m.display_name)) in
+        (lower(btrim(f.p1)), lower(btrim(f.p2))))
+    )
+    join public.prediction_orders o on o.market_id = m.id
+    where f.tournament = 'awc2026' and f.id = p_fixture_id and f.scheduled_at > now()
+      and f.played_on is null and coalesce(f.match_id, '') = ''
+      and coalesce(f.outcome_type, '') = '' and coalesce(f.s1, 0) = 0 and coalesce(f.s2, 0) = 0
+      and o.username = 'prediction_admin' and o.status in ('open', 'partial')
+      and o.remaining_quantity > 0 and (o.expires_at is null or o.expires_at > now())
+    for update of o
+  )
+  update public.prediction_orders o set expires_at = e.kickoff, updated_at = now()
+  from eligible e where o.id = e.id and e.kickoff is not null
+    and o.expires_at is distinct from e.kickoff
+  returning o.id, o.market_id, e.previous_expiry, o.expires_at;
+$$;
+
+create or replace function public.refresh_awc_scheduled_admin_order_expiry()
+returns trigger
+language plpgsql security definer
+set search_path = ''
+as $$
 begin
   if new.tournament = 'awc2026' then
-    kickoff := public.next_awc_2026_kickoff();
-    if kickoff is not null then
-      update public.prediction_orders
-      set expires_at = kickoff, updated_at = now()
-      where username = 'prediction_admin'
-        and market_id like 'awc-2026-champion-%'
-        and status in ('open', 'partial') and remaining_quantity > 0
-        and (expires_at is null or expires_at > kickoff);
-    end if;
+    perform public.sync_awc_2026_admin_order_expiry(new.id);
   end if;
   return new;
 end;
 $$;
 
-drop trigger if exists prediction_orders_cap_awc_champion_expiry on public.prediction_orders;
-create trigger prediction_orders_cap_awc_champion_expiry
-before insert or update of market_id, username, expires_at, status
-on public.prediction_orders
-for each row execute function public.cap_awc_champion_admin_quote_expiry();
+drop trigger if exists prediction_orders_cap_awc_scheduled_expiry on public.prediction_orders;
+create trigger prediction_orders_cap_awc_scheduled_expiry
+before insert or update of market_id, username, expires_at, status on public.prediction_orders
+for each row execute function public.cap_awc_scheduled_admin_order_expiry();
 
-drop trigger if exists tournament_matches_refresh_awc_champion_expiry on public.tournament_matches;
-create trigger tournament_matches_refresh_awc_champion_expiry
+drop trigger if exists tournament_matches_refresh_awc_scheduled_expiry on public.tournament_matches;
+create trigger tournament_matches_refresh_awc_scheduled_expiry
 after insert or update of scheduled_at on public.tournament_matches
-for each row execute function public.refresh_awc_champion_admin_quote_expiry();
+for each row execute function public.refresh_awc_scheduled_admin_order_expiry();
 
-revoke all on function public.next_awc_2026_kickoff(),
-  public.cap_awc_champion_admin_quote_expiry(),
-  public.refresh_awc_champion_admin_quote_expiry() from public, anon, authenticated;
-grant execute on function public.next_awc_2026_kickoff() to service_role;
+revoke all on function public.awc_2026_market_kickoff(text),
+  public.cap_awc_scheduled_admin_order_expiry(), public.sync_awc_2026_admin_order_expiry(text),
+  public.refresh_awc_scheduled_admin_order_expiry() from public, anon, authenticated;
+grant execute on function public.sync_awc_2026_admin_order_expiry(text) to service_role;
 
-update public.prediction_orders
-set expires_at = public.next_awc_2026_kickoff(), updated_at = now()
-where username = 'prediction_admin'
-  and market_id like 'awc-2026-champion-%'
-  and status in ('open', 'partial') and remaining_quantity > 0
-  and public.next_awc_2026_kickoff() is not null
-  and (expires_at is null or expires_at > public.next_awc_2026_kickoff());
-
+-- Only currently active quotes are changed: expired/cancelled orders are never revived.
+select changed.* from public.tournament_matches f
+cross join lateral public.sync_awc_2026_admin_order_expiry(f.id) changed
+where f.tournament = 'awc2026' and f.scheduled_at > now();
 commit;

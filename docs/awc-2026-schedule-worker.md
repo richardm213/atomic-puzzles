@@ -7,11 +7,17 @@ from page 18 through its current last page. It runs at **00:17, 04:17, 08:17,
 run disables the workflow. The script and database credential independently reject
 publishing after the cutoff. GitHub can delay scheduled runs.
 
-This worker only changes `tournament_matches.scheduled_at` for a uniquely matched,
-unplayed `awc2026` fixture. The deployed bracket and linked countdown page already
-read that field. It cannot publish scores, advancement, archived match IDs, tour
-points, market resolutions, payouts, or bettor notifications. Existing kickoff
-triggers can still shorten admin quote expirations, as designed.
+This worker changes `tournament_matches.scheduled_at` for a uniquely matched,
+unplayed `awc2026` fixture. In the same transaction, a database trigger sets active
+`prediction_admin` order expirations to kickoff for that match market and the two
+players' AWC 2026 championship markets. Explicit reschedules update those expirations
+too; expired or cancelled quotes are never revived. Other users' orders and
+unscheduled players are left alone. New admin orders are also capped at their
+related kickoff, preserving an explicitly earlier expiration.
+
+The deployed bracket and linked countdown page already read `scheduled_at`. The
+worker cannot publish scores, advancement, archived match IDs, tour points, market
+resolutions, payouts, or bettor notifications.
 
 The older **AWC 2026 forum sync** workflow remains disabled. Do not enable it as
 part of operating this scheduling worker.
@@ -39,7 +45,8 @@ solely to disable this workflow at the end of its one-month window.
 ## Credentials and installation
 
 Apply `supabase/awc_2026_schedule_worker.sql` in **Firefox**, using the current
-Supabase project. Generate a fresh 32-byte hexadecimal token; save it as GitHub
+Supabase project, followed by `supabase/awc_champion_quote_expiry.sql` for the shared
+order-expiration triggers. Generate a fresh 32-byte hexadecimal token; save it as GitHub
 secret `AWC_SCHEDULE_TOKEN`. Store the lowercase SHA-256 hash of the token's text
 (no newline) in Vault as `awc_2026_schedule_worker_sha256`. Do not reuse the older
 bracket/result token.
@@ -86,3 +93,8 @@ publishing, replay, explicit rescheduling, stale announcements, concurrent edits
 completed-match protection, wrong players, and credential separation. Execute them
 in Firefox with the worker token supplied locally as `awc.test_worker_token`;
 the transaction rolls back its test fixture and receipt.
+
+`supabase/tests/awc_scheduled_order_expiry.sql` verifies the scheduling trigger,
+rescheduling in both directions, related championship quotes, new-quote caps,
+idempotency, and preservation of unrelated, user-owned, filled, and expired orders.
+Run it in Firefox; all test data and changes roll back.
