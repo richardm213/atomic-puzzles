@@ -1,6 +1,5 @@
 import "./PredictionTrading.css";
 
-import { formatCoinValue } from "../../lib/coins/coinDisplay";
 import type {
   PredictionMarketDefinition,
   PredictionMarketState,
@@ -8,6 +7,7 @@ import type {
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { predictionOutcomeLabel } from "../../lib/predictionMarkets/predictionMarkets";
 import { PredictionMarketIdentity } from "./PredictionMarketIdentity";
+import { PredictionMarketPnl } from "./PredictionMarketPnl";
 import { PredictionPositionHoldings } from "./PredictionPositionHoldings";
 import { PredictionStrikeBets } from "./PredictionStrikeBets";
 
@@ -52,19 +52,7 @@ export const PredictionResolvedMarket = ({
           <PredictionMarketIdentity definition={definition} density={density} />
         </PredictionStrikeBets>
         {visiblePnl !== undefined ? (
-          <span
-            className={`predictionSharedMarketPnl${
-              visiblePnl > 0
-                ? " predictionSharedMarketPnl--profit"
-                : " predictionSharedMarketPnl--loss"
-            }`}
-            aria-label={`Your profit: ${visiblePnl > 0 ? "+" : ""}${formatCoinValue(
-              visiblePnl,
-            )} coins`}
-          >
-            {visiblePnl > 0 ? "+" : ""}
-            {formatCoinValue(visiblePnl)} coins
-          </span>
+          <PredictionMarketPnl value={visiblePnl} />
         ) : showHoldings && pnl === undefined ? (
           <PredictionPositionHoldings
             definition={definition}

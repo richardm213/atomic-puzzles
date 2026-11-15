@@ -5,7 +5,7 @@ import { expect, test } from "./fixtures";
 test("completed strike opens on P&L and loads chart history only when selected", async ({
   page,
 }) => {
-  let completedStatus: "resolved" | "closed" = "resolved";
+  let completedStatus: "resolved" | "closed" | "open" = "resolved";
   const marketId = "awc-2026-champion-natso";
   const periods: string[] = [];
   const end = Date.parse("2026-11-14T12:00:00Z");
@@ -72,7 +72,8 @@ test("completed strike opens on P&L and loads chart history only when selected",
                 question: "Who will win?",
                 resolution_rules: "Official results.",
                 resolution_source_url: "https://lichess.org/team/atomic-wc",
-                closes_at: new Date(end).toISOString(),
+                closes_at:
+                  completedStatus === "open" ? "2099-12-31T00:00:00Z" : new Date(end).toISOString(),
                 status: completedStatus,
                 outcome: completedStatus === "resolved" ? "yes" : null,
                 resolved_at: completedStatus === "resolved" ? new Date(end).toISOString() : null,
@@ -136,6 +137,15 @@ test("completed strike opens on P&L and loads chart history only when selected",
     "aria-selected",
     "true",
   );
+  completedStatus = "open";
+  position.quantity = 0;
+  await page.reload();
+  await expect(page.getByLabel("Your profit: +4.85 coins", { exact: true })).toBeVisible();
+  await page.goto("/betting?view=markets&market=champion");
+  for (const view of ["Sportsbook view", "Order book view"]) {
+    await page.getByRole("button", { name: view, exact: true }).click();
+    await expect(page.getByLabel("Your profit: +4.85 coins", { exact: true })).toBeVisible();
+  }
 });
 
 test("live book updates render promptly and missed events recover without idle book downloads", async ({

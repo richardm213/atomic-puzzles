@@ -11,6 +11,7 @@ import { InlineState } from "../../components/InlineState/InlineState";
 import { PredictionOrderEditor } from "../../components/PredictionOrderEditor/PredictionOrderEditor";
 import { BettingAccountSummary } from "../../components/PredictionTrading/BettingAccountSummary";
 import { PredictionMarketGroupHeader } from "../../components/PredictionTrading/PredictionMarketGroupHeader";
+import { PredictionMarketPnl } from "../../components/PredictionTrading/PredictionMarketPnl";
 import { PredictionMarketTable } from "../../components/PredictionTrading/PredictionMarketTable";
 import { PredictionOrderBook } from "../../components/PredictionTrading/PredictionOrderBook";
 import { PredictionOrderComposer } from "../../components/PredictionTrading/PredictionOrderComposer";
@@ -42,7 +43,7 @@ import {
   bettingQueryKeys,
   tournamentBetsQueryOptions,
 } from "../../lib/betting/bettingQueries";
-import { formatCoinValue } from "../../lib/coins/coinDisplay";
+import { formatCoinValue, formatCoinVolume } from "../../lib/coins/coinDisplay";
 import { coinSummaryQueryOptions, updateCachedCoinBalance } from "../../lib/coins/coinQueries";
 import {
   tournamentBracketQueryOptions,
@@ -991,15 +992,15 @@ export const BettingPage = () => {
                       pnl={activePredictionGroupPnl}
                       showExplainer={false}
                       title={activePredictionGroup.title}
-                      volume={formatCoinValue(activePredictionVolume)}
+                      volume={formatCoinVolume(activePredictionVolume)}
                     />
                     {sortedActivePredictionMarkets.map((definition) => {
                       const state = predictionStateByMarketId.get(definition.id);
                       const yesAsk = state?.book.yes.asks[0]?.priceCents;
                       const noAsk = state?.book.no.asks[0]?.priceCents;
+                      const userProfit = personalPredictionPnlByMarketId.get(definition.id);
                       const isCompleted = state !== undefined && state.market.status !== "open";
                       if (isCompleted) {
-                        const userProfit = personalPredictionPnlByMarketId.get(definition.id);
                         const resolvedOutcome = state.market.outcome ?? "no";
                         const settlementPrice = state.market.settlementPriceCents;
                         const invertChampionOutcome =
@@ -1112,6 +1113,9 @@ export const BettingPage = () => {
                               );
                             })}
                           </div>
+                          {isAuthenticated && state ? (
+                            <PredictionMarketPnl value={userProfit} positions={state.positions} />
+                          ) : null}
                         </article>
                       );
                     })}
@@ -1135,7 +1139,7 @@ export const BettingPage = () => {
                           path={group.path}
                           pnl={activePredictionGroupPnl}
                           title={group.title}
-                          volume={formatCoinValue(activePredictionVolume)}
+                          volume={formatCoinVolume(activePredictionVolume)}
                         />
                         <PredictionMarketTable
                           activeMarketId={predictionSelection?.marketId}
@@ -1144,7 +1148,7 @@ export const BettingPage = () => {
                           expandedMarketId={expandedPredictionMarketId}
                           expandedOutcome={expandedPredictionOutcome}
                           isAuthenticated={isAuthenticated}
-                          resolvedPnlByMarketId={personalPredictionPnlByMarketId}
+                          pnlByMarketId={personalPredictionPnlByMarketId}
                           states={predictionStateByMarketId}
                           selectedOutcome={predictionSelection?.outcome}
                           onToggleMarket={(definition) => togglePredictionStrike(definition.id)}

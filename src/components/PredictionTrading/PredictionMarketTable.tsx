@@ -16,6 +16,7 @@ import {
   suggestedPredictionPrice,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { PredictionMarketIdentity } from "./PredictionMarketIdentity";
+import { PredictionMarketPnl } from "./PredictionMarketPnl";
 import { PredictionPendingOrders } from "./PredictionPendingOrders";
 import { PredictionPositionHoldings } from "./PredictionPositionHoldings";
 import { PredictionPrice } from "./PredictionPrice";
@@ -50,7 +51,7 @@ type PredictionMarketTableProps = {
     outcome: PredictionOutcome,
   ) => ReactNode;
   selectedOutcome?: PredictionOutcome | undefined;
-  resolvedPnlByMarketId?: ReadonlyMap<PredictionMarketId, number>;
+  pnlByMarketId?: ReadonlyMap<PredictionMarketId, number>;
   states: ReadonlyMap<PredictionMarketId, PredictionMarketState>;
 };
 
@@ -66,7 +67,7 @@ export const PredictionMarketTable = ({
   onToggleMarket,
   outcomeAvailability,
   renderExpandedContent,
-  resolvedPnlByMarketId,
+  pnlByMarketId,
   selectedOutcome,
   states,
 }: PredictionMarketTableProps) => (
@@ -81,7 +82,7 @@ export const PredictionMarketTable = ({
       const isExpanded = expandedMarketId === definition.id && !isCompleted;
       const chance = predictionYesChance(definition, state);
       const selectedMarket = activeMarketId === definition.id;
-      const resolvedPnl = resolvedPnlByMarketId?.get(definition.id);
+      const pnl = pnlByMarketId?.get(definition.id);
       const drawerId = `prediction-market-table-${definition.id}`;
 
       return (
@@ -95,7 +96,7 @@ export const PredictionMarketTable = ({
             <PredictionResolvedMarket
               definition={definition}
               density={density}
-              pnl={resolvedPnl}
+              pnl={pnl}
               showHoldings={isAuthenticated}
               state={state}
             />
@@ -111,11 +112,16 @@ export const PredictionMarketTable = ({
                 <span className="predictionSharedMarketIdentity">
                   <PredictionMarketIdentity definition={definition} density={density} />
                   {isAuthenticated ? (
-                    <PredictionPositionHoldings
-                      definition={definition}
-                      density={density}
-                      positions={state?.positions ?? []}
-                    />
+                    <>
+                      <PredictionPositionHoldings
+                        definition={definition}
+                        density={density}
+                        positions={state?.positions ?? []}
+                      />
+                      {state ? (
+                        <PredictionMarketPnl value={pnl} positions={state.positions} />
+                      ) : null}
+                    </>
                   ) : null}
                 </span>
                 <span className="predictionSharedMarketChance">

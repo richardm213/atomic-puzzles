@@ -27,7 +27,7 @@ import {
   predictionOrderRestrictionMessage,
 } from "../../lib/betting/betting";
 import { allTournamentBetsQueryOptions } from "../../lib/betting/bettingQueries";
-import { formatCoinBalance } from "../../lib/coins/coinDisplay";
+import { formatCoinVolume } from "../../lib/coins/coinDisplay";
 import { updateCachedCoinBalance } from "../../lib/coins/coinQueries";
 import { tournamentBracketQueryOptions } from "../../lib/matches/tournamentQueries";
 import {
@@ -525,7 +525,7 @@ export const PredictionMarketPage = () => {
               {marketState ? (
                 <span>Closes {formatLocalDateTime(marketState.market.closesAt)}</span>
               ) : null}
-              <span>Volume {formatCoinBalance(marketVolume)} coins</span>
+              <span>Volume {formatCoinVolume(marketVolume)} coins</span>
               {personalMarketPnl !== null ? (
                 <PredictionMarketRoi value={personalMarketPnl} />
               ) : null}
@@ -564,7 +564,7 @@ export const PredictionMarketPage = () => {
                       toggleOutcome(definition.id, nextOutcome)
                     }
                     renderExpandedContent={() => activeMarketPanel}
-                    resolvedPnlByMarketId={personalMarketPnlById}
+                    pnlByMarketId={personalMarketPnlById}
                   />
                 </section>
 
