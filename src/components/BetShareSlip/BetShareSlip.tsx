@@ -30,12 +30,15 @@ export const BetShareSlip = ({
   const [sharing, setSharing] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [error, setError] = useState("");
-  const selection =
-    bet.predictionSelectionLabel ??
-    (bet.predictionOutcome
-      ? `${bet.predictionOutcome === "yes" ? "Yes" : "No"} · ${bet.selection}`
-      : bet.selection);
-  const odds = `${bet.priceCents.toLocaleString(undefined, { maximumFractionDigits: 1 })}% chance`;
+  const selection = bet.mixedPredictionOutcomes
+    ? `${bet.selection} · Both sides`
+    : (bet.predictionSelectionLabel ??
+      (bet.predictionOutcome
+        ? `${bet.predictionOutcome === "yes" ? "Yes" : "No"} · ${bet.selection}`
+        : bet.selection));
+  const odds = bet.mixedPredictionOutcomes
+    ? "Mixed prices"
+    : `${bet.priceCents.toLocaleString(undefined, { maximumFractionDigits: 1 })}% chance`;
   const cost = `${bet.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} coins`;
   const payout = bet.status === "open" ? bet.potentialPayout : bet.payout;
   const payoutLabel = bet.status === "open" ? "To win" : "Paid out";

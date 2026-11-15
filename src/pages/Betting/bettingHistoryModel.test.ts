@@ -122,6 +122,73 @@ const tournamentBet = (id: number, marketId: string): TournamentBet => ({
 });
 
 describe("buildBetHistory", () => {
+  it("merges both outcomes per bettor and strike without losing open status, realized returns, or settlement totals", () => {
+    const closed = {
+      marketId: "champion-player",
+      username: "buyer",
+      outcome: "yes" as const,
+      quantity: 0,
+      reservedQuantity: 0,
+      averagePriceCents: 40,
+      closedCost: 4,
+      closedProceeds: 6,
+      fees: 0.1,
+      updatedAt: "2026-10-06T00:00:00Z",
+    };
+    const remaining = {
+      ...closed,
+      outcome: "no" as const,
+      quantity: 10,
+      averagePriceCents: 60,
+      closedCost: 0,
+      closedProceeds: 0,
+      fees: 0,
+      updatedAt: "2026-10-05T00:00:00Z",
+    };
+    const build = (market: PredictionMarketState["market"], exited = false) =>
+      buildBetHistory({
+        tournamentBets: [],
+        predictionPositions: [
+          closed,
+          exited ? { ...remaining, quantity: 0, closedCost: 6, closedProceeds: 9 } : remaining,
+          { ...remaining, username: "someone-else" },
+          { ...remaining, marketId: "awc-r16-natso-crepuscular" },
+        ],
+        predictionMarketGroups: [group, roundOf16Group],
+        predictionMarketStates: [{ ...state, market }, roundOf16State],
+      });
+    const live = build({ ...state.market, status: "open", outcome: null, resolvedAt: null });
+    expect(live).toHaveLength(3);
+    const summary = live.find(
+      (bet) => bet.username === "buyer" && bet.marketId === "champion-player",
+    )!;
+    expect(summary).toMatchObject({
+      status: "open",
+      mixedPredictionOutcomes: true,
+      totalCost: 10.1,
+      payout: 6,
+      potentialPayout: 16,
+      realizedPnl: 1.9,
+      placedAt: "2026-10-06T00:00:00Z",
+    });
+    expect(predictionPnlByMarketId([summary]).get("champion-player")).toBeCloseTo(1.9);
+    const settled = build({ ...state.market, outcome: "no" }).find(
+      (bet) => bet.historyKey === summary.historyKey,
+    )!;
+    expect(settled).toMatchObject({ status: "settled", payout: 16, totalCost: 10.1 });
+    expect(predictionPnlByMarketId([settled]).get("champion-player")).toBeCloseTo(5.9);
+    const exited = build(
+      { ...state.market, status: "open", outcome: null, resolvedAt: null },
+      true,
+    ).find((bet) => bet.historyKey === summary.historyKey)!;
+    expect(exited).toMatchObject({
+      status: "settled",
+      payout: 15,
+      totalCost: 10.1,
+      realizedPnl: 4.9,
+    });
+  });
+
   it("keeps realized sales and fees in live and final P&L, including fully exited traders", () => {
     const positions = [
       {

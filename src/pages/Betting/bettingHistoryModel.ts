@@ -20,17 +20,24 @@ export type BetHistoryEntry = TournamentBet & {
   mixedPredictionOutcomes?: boolean;
 };
 
-// Strike summaries show a bettor's complete trading result, across both outcomes.
+// One history entry per bettor and strike, including trades on both outcomes.
 export const predictionStrikeBetsByBettor = (
   bets: readonly BetHistoryEntry[],
+  { realizedOnly = false }: { realizedOnly?: boolean } = {},
 ): BetHistoryEntry[] => {
   const grouped = new Map<string, BetHistoryEntry>();
   for (const bet of bets) {
     const key = `${bet.marketId}:${bet.username.toLowerCase()}`;
-    const payout = bet.status === "open" ? bet.totalCost + (bet.realizedPnl ?? 0) : bet.payout;
+    const payout =
+      realizedOnly && bet.status === "open" ? bet.totalCost + (bet.realizedPnl ?? 0) : bet.payout;
     const previous = grouped.get(key);
     if (!previous) {
-      grouped.set(key, { ...bet, status: "settled", payout });
+      grouped.set(key, {
+        ...bet,
+        status: realizedOnly ? "settled" : bet.status,
+        payout,
+        historyKey: `prediction-position:${key}`,
+      });
       continue;
     }
     previous.mixedPredictionOutcomes =
@@ -40,6 +47,16 @@ export const predictionStrikeBetsByBettor = (
     previous.totalCost += bet.totalCost;
     previous.payout += payout;
     previous.potentialPayout += bet.potentialPayout;
+    previous.realizedPnl = (previous.realizedPnl ?? 0) + (bet.realizedPnl ?? 0);
+    previous.status = realizedOnly
+      ? "settled"
+      : previous.status === "open" || bet.status === "open"
+        ? "open"
+        : previous.status === bet.status
+          ? previous.status
+          : "settled";
+    previous.settledAt = previous.status === "open" ? null : (previous.settledAt ?? bet.settledAt);
+    if (Date.parse(bet.placedAt) > Date.parse(previous.placedAt)) previous.placedAt = bet.placedAt;
   }
   return [...grouped.values()].sort((left, right) => right.totalCost - left.totalCost);
 };
@@ -176,7 +193,7 @@ export const buildBetHistory = ({
     ];
   });
 
-  return [...standardBets, ...predictionBets].sort(
+  return [...standardBets, ...predictionStrikeBetsByBettor(predictionBets)].sort(
     (left, right) => Date.parse(right.placedAt) - Date.parse(left.placedAt),
   );
 };

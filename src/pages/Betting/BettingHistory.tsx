@@ -209,7 +209,9 @@ export const BetHistoryTable = ({
             {sortedBets.map((bet, index) => {
               const isPrediction = bet.kind === "prediction";
               const market = markets.find((candidate) => candidate.id === bet.marketId);
-              const selectionLabel = bet.predictionSelectionLabel ?? bet.selection;
+              const selectionLabel = bet.mixedPredictionOutcomes
+                ? "Both sides"
+                : (bet.predictionSelectionLabel ?? bet.selection);
               const round =
                 !isPrediction && market?.marketKind !== "outright"
                   ? (market?.roundName ?? "AWC 2026")
@@ -352,11 +354,13 @@ export const BetHistoryTable = ({
         <BetShareSlip
           bet={sharedBet}
           countryCode={
-            sharedBet.predictionSelectionCountryCode ??
-            countryByPlayer[
-              (sharedBet.predictionSelectionLabel ?? sharedBet.selection).toLowerCase()
-            ] ??
-            ""
+            sharedBet.mixedPredictionOutcomes
+              ? ""
+              : (sharedBet.predictionSelectionCountryCode ??
+                countryByPlayer[
+                  (sharedBet.predictionSelectionLabel ?? sharedBet.selection).toLowerCase()
+                ] ??
+                "")
           }
           marketTitle={
             sharedBet.predictionMarketTitle ??

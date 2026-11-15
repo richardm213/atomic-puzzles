@@ -228,6 +228,12 @@ test("completed strike opens on P&L and loads chart history only when selected",
     await page.getByRole("button", { name: view, exact: true }).click();
     await expect(page.getByLabel("Your profit: +4.85 coins", { exact: true })).toBeVisible();
   }
+  await page.goto("/betting?view=mine");
+  await page.getByRole("combobox", { name: "Display", exact: true }).selectOption("pnl");
+  const myBets = page.getByRole("table");
+  await expect(myBets.getByRole("row")).toHaveCount(2);
+  await expect(myBets).toContainText("Both sides");
+  await expect(myBets).toContainText("+4.85");
 });
 
 test("live book updates render promptly and missed events recover without idle book downloads", async ({

@@ -58,6 +58,7 @@ const StrikeBetList = ({ definition }: { definition: PredictionMarketDefinition 
           priceCents: Math.round((position?.averagePriceCents ?? bet.priceCents) * 10) / 10,
         };
       }),
+    { realizedOnly: true },
   );
   return (
     <BetHistoryTable
