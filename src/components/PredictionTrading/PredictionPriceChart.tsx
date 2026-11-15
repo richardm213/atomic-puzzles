@@ -102,6 +102,7 @@ const PricePlot = ({
       high: history.settlement.price,
       low: history.settlement.price,
       close: history.settlement.price,
+      price: history.settlement.price,
       quantity: 0,
       settlement: true,
     });
@@ -115,7 +116,7 @@ const PricePlot = ({
   const totalVolume = history.points.reduce((sum, point) => sum + point.quantity, 0);
   const firstTrade = history.points[0]!;
   const lastTrade = history.points.at(-1)!;
-  const tradeLine = history.points.map((point) => `${x(point.time)},${y(point.close)}`).join(" ");
+  const tradeLine = history.points.map((point) => `${x(point.time)},${y(point.price)}`).join(" ");
   const inspectPointer = (event: PointerEvent<HTMLDivElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
     const time =
@@ -131,7 +132,7 @@ const PricePlot = ({
       <div className="predictionChartReadout" aria-live="polite">
         <div className="predictionChartQuote">
           <strong>
-            {price(selected.close)}
+            {price(selected.price)}
             <span>¢</span>
           </strong>
           <time dateTime={new Date(selected.time).toISOString()}>{dateTime(selected.time)}</time>
@@ -142,8 +143,7 @@ const PricePlot = ({
               {selected.quantity.toLocaleString()} <span>contracts traded</span>
             </strong>
             <span>
-              High {outcome === "yes" ? selected.high : 100 - selected.low}¢ · Low{" "}
-              {outcome === "yes" ? selected.low : 100 - selected.high}¢
+              {`High ${outcome === "yes" ? selected.high : 100 - selected.low}¢ · Low ${outcome === "yes" ? selected.low : 100 - selected.high}¢`}
             </span>
           </div>
         ) : null}
@@ -156,7 +156,7 @@ const PricePlot = ({
         aria-valuemin={0}
         aria-valuemax={points.length - 1}
         aria-valuenow={inspected}
-        aria-valuetext={`${dateTime(selected.time)}, ${price(selected.close)} cents, ${selected.settlement ? "settlement" : `${selected.quantity} contracts traded`}`}
+        aria-valuetext={`${dateTime(selected.time)}, ${price(selected.price)} cents, ${selected.settlement ? "settlement" : `${selected.quantity} contracts traded`}`}
         onPointerMove={inspectPointer}
         onPointerDown={inspectPointer}
         onKeyDown={(event) => {
@@ -202,7 +202,7 @@ const PricePlot = ({
             <line
               className="predictionChartSettlement"
               x1={x(lastTrade.time)}
-              y1={y(lastTrade.close)}
+              y1={y(lastTrade.price)}
               x2="1000"
               y2={y(history.settlement.price)}
             />
@@ -218,20 +218,20 @@ const PricePlot = ({
             className="predictionChartCursor"
             x1="0"
             x2="1000"
-            y1={y(selected.close)}
-            y2={y(selected.close)}
+            y1={y(selected.price)}
+            y2={y(selected.price)}
           />
         </svg>
         <span
           className="predictionChartDot"
-          style={{ left: `${x(selected.time) / 10}%`, top: `${y(selected.close) / 2}%` }}
+          style={{ left: `${x(selected.time) / 10}%`, top: `${y(selected.price) / 2}%` }}
         />
         <span
           className="predictionChartPriceTag"
-          style={{ top: `${y(selected.close) / 2}%` }}
+          style={{ top: `${y(selected.price) / 2}%` }}
           aria-hidden="true"
         >
-          {price(selected.close)}¢
+          {price(selected.price)}¢
         </span>
       </div>
       <div className="predictionChartVolumeLabel">

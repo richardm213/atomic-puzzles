@@ -41,7 +41,9 @@ it.each(["resolved", "closed", "open"] as const)(
       client.setQueryData(predictionPriceHistoryQueryOptions("strike", period).queryKey, {
         start: end - 3_600_000,
         end,
-        points: [{ time: end - 1000, open: 40, high: 60, low: 40, close: 60, quantity: 12 }],
+        points: [
+          { time: end - 1000, open: 40, high: 60, low: 40, close: 60, price: 55, quantity: 12 },
+        ],
         settlement: { time: end, price: 100 },
       });
     }
@@ -168,7 +170,7 @@ it.each(["resolved", "closed", "open"] as const)(
       await user.keyboard("{Home}");
       expect(chart).toHaveAttribute(
         "aria-valuetext",
-        expect.stringContaining("60 cents, 12 contracts"),
+        expect.stringContaining("55 cents, 12 contracts"),
       );
       await user.click(within(dialog).getByRole("button", { name: "No" }));
       const noChart = within(dialog).getByRole("slider");
@@ -176,7 +178,7 @@ it.each(["resolved", "closed", "open"] as const)(
       await user.keyboard("{Home}");
       expect(noChart).toHaveAttribute(
         "aria-valuetext",
-        expect.stringContaining("40 cents, 12 contracts"),
+        expect.stringContaining("45 cents, 12 contracts"),
       );
       await user.click(within(dialog).getByRole("button", { name: "1 hr" }));
       expect(within(dialog).getByRole("button", { name: "1 hr" })).toHaveAttribute(

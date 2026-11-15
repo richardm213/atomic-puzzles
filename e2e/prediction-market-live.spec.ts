@@ -177,7 +177,9 @@ test("completed strike opens on P&L and loads chart history only when selected",
           result: {
             start: end - 3_600_000,
             end,
-            points: [{ time: end - 1000, open: 40, high: 60, low: 40, close: 60, quantity: 12 }],
+            points: [
+              { time: end - 1000, open: 40, high: 60, low: 40, close: 60, price: 60, quantity: 12 },
+            ],
             settlement: { time: end, price: 100 },
           },
         },

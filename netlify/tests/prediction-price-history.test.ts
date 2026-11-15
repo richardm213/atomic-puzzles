@@ -33,9 +33,41 @@ it("normalizes complementary prices and aggregates trade volume once within reso
     start: end - 3_600_000,
     end,
     settlement,
-    points: [{ time: end - 1000, open: 40, high: 55, low: 40, close: 50, quantity: 17 }],
+    points: [{ time: end - 1000, open: 40, high: 55, low: 40, close: 50, price: 40, quantity: 17 }],
   });
   const all = buildPredictionPriceHistory(fills, end, "all", settlement);
   expect(all.start).toBe(end - 2 * 3_600_000);
   expect(all.points.reduce((sum, point) => sum + point.quantity, 0)).toBe(24);
+});
+
+it("selects cumulative volume leaders independently per interval and breaks ties by the most recent trade", () => {
+  const end = Date.parse("2026-11-14T12:00:00Z");
+  const trades = [
+    [-59_000, 40, 7],
+    [-58_000, 60, 10],
+    [-57_000, 40, 6],
+    [-56_000, 75, 1],
+    [-55_000, 75, 1],
+    [-54_000, 75, 1],
+    [-29_000, 20, 8],
+    [-28_000, 30, 8],
+    [-27_000, 20, 1],
+    [-26_000, 30, 1],
+    [-25_000, 50, 1],
+  ] as const;
+  const fills = trades
+    .map(([offset, price, quantity], index) => ({
+      id: index + 1,
+      created_at: new Date(end + offset).toISOString(),
+      outcome: "yes" as const,
+      price_cents: price,
+      quantity,
+      pair_key: null,
+    }))
+    .reverse();
+  const history = buildPredictionPriceHistory(fills, end, "1h", null);
+  expect(history.points).toEqual([
+    expect.objectContaining({ price: 40, close: 75, quantity: 26 }),
+    expect.objectContaining({ price: 30, close: 50, quantity: 19 }),
+  ]);
 });
