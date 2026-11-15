@@ -64,6 +64,7 @@ security definer
 set search_path = public
 as $$
 declare
+  analysis_cost constant numeric(18, 6) := 1;
   normalized_username text := lower(btrim(coalesce(p_username, '')));
   normalized_game_id text := btrim(coalesce(p_game_id, ''));
   existing public.game_analyses%rowtype;
@@ -84,15 +85,15 @@ begin
     game_id, requested_by, initial_fen, moves, position_fens, total_positions, cost
   ) values (
     normalized_game_id, normalized_username, btrim(p_initial_fen), p_moves, p_position_fens,
-    jsonb_array_length(p_position_fens), 1
+    jsonb_array_length(p_position_fens), analysis_cost
   ) on conflict (game_id) do nothing;
   get diagnostics inserted_count = row_count;
 
   if inserted_count = 1 then
     current_balance := public.apply_coin_transaction(
-      normalized_username, -1::numeric, 'game_analysis',
+      normalized_username, -analysis_cost, 'game_analysis',
       'game-analysis:' || normalized_game_id || ':1',
-      jsonb_build_object('gameId', normalized_game_id, 'cost', 1), now()
+      jsonb_build_object('gameId', normalized_game_id, 'cost', analysis_cost), now()
     );
   else
     select * into existing
@@ -102,14 +103,14 @@ begin
 
     if existing.status = 'failed' then
       current_balance := public.apply_coin_transaction(
-        normalized_username, -1::numeric, 'game_analysis',
+        normalized_username, -analysis_cost, 'game_analysis',
         'game-analysis:' || normalized_game_id || ':' || (existing.charge_attempt + 1)::text,
-        jsonb_build_object('gameId', normalized_game_id, 'cost', 1, 'retry', true), now()
+        jsonb_build_object('gameId', normalized_game_id, 'cost', analysis_cost, 'retry', true), now()
       );
     end if;
 
     update public.game_analyses
-    set status = 'queued', requested_by = normalized_username, cost = 1,
+    set status = 'queued', requested_by = normalized_username, cost = analysis_cost,
       charge_attempt = charge_attempt + 1, error = null, retry_count = 0,
       next_check_at = now(), updated_at = now()
     where game_id = normalized_game_id and status = 'failed';
