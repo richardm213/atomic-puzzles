@@ -172,7 +172,7 @@ const tokenizeSolution = (solution: string): string[] =>
   solution
     .replace(/\[[^\]]*\]|\{[^}]*\}|;[^\r\n]*|\$\d+/g, " ")
     // Copied Chess.com moves can split the piece from its origin qualifier: N 1c3.
-    .replace(/\b([NBRQK])\s+(?=[a-h1-8])/g, "$1")
+    .replace(/(^|[\s.(])([NBRQK])\s+(?=[a-h1-8])/g, "$1$2")
     .match(/\(|\)|[^\s()]+/g) ?? [];
 
 const compareVariationOrder = (left: ParsedSolutionLine, right: ParsedSolutionLine): number => {

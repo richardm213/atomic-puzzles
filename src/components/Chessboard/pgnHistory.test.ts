@@ -16,6 +16,21 @@ describe("buildPgnHistory", () => {
     });
   });
 
+  it("does not join a promotion piece to the following move number", () => {
+    const result = buildPgnHistory(
+      "7r/p5k1/2p5/7p/3P2pP/5bP1/PP3p1K/2R1R3 b - - 1 26",
+      "26... f1=Q 27. Re7+ Kf8",
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.history.plies.slice(1).map((ply) => ply.uci)).toEqual([
+        "f2f1q",
+        "e1e7",
+        "g7f8",
+      ]);
+    }
+  });
+
   it.each(["1. e4 e5 (1... c5) 2. Nf3", "e2e4 e7e5 (c7c5) g1f3"])(
     "loads the mainline and variations from SAN or UCI: %s",
     (pgn) => {
