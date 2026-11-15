@@ -2,6 +2,86 @@ import type { WebSocketRoute } from "@playwright/test";
 
 import { expect, test } from "./fixtures";
 
+test("side bets have their own route and secondary markets stay in the dropdown", async ({
+  page,
+}) => {
+  const groups = [
+    ["awc-2026-side-bets", "2026 AWC Side Bets"],
+    ["awc-2026-round-of-16", "AWC 2026 Round of 16"],
+    ["november-atomic-shield-2026", "November Atomic Shield"],
+    ["awc-2027-champion", "Who will win 2027 AWC"],
+  ];
+  const catalog = groups.map(([id, title], index) => ({
+    id: `${id}-strike`,
+    group_id: id,
+    group_path: `/betting/${id}`,
+    group_title: title,
+    group_description: "",
+    group_order: index,
+    display_name: "Will there be Armageddon?",
+    country_code: "",
+    starting_chance: null,
+    display_order: 1,
+    outcome_yes_label: null,
+    outcome_no_label: null,
+    outcome_yes_country_code: null,
+    outcome_no_country_code: null,
+  }));
+  await page.routeWebSocket(/\/realtime\/v1\/websocket/, (socket) => socket.close());
+  await page.route("**/api/coins", (route) =>
+    route.fulfill({ json: { result: { balance: 200, dailyClaimAvailable: false } } }),
+  );
+  await page.route("**/api/betting", (route) => {
+    const body = route.request().postDataJSON();
+    if (["markets", "bets", "allBets", "predictionPositions"].includes(body.action))
+      return route.fulfill({ json: { result: [] } });
+    if (body.action === "exchangeMarkets") return route.fulfill({ json: { result: catalog } });
+    if (body.action === "exchangeMarketBatch")
+      return route.fulfill({
+        json: {
+          result: body.marketIds.map((id: string) => ({
+            market: {
+              id,
+              question: "Will there be Armageddon?",
+              resolution_rules: "Official AWC results.",
+              resolution_source_url: "https://lichess.org/team/atomic-wc",
+              closes_at: "2099-01-01T00:00:00Z",
+              status: "open",
+              outcome: null,
+              resolved_at: null,
+              settlement_price_cents: null,
+              settlement_reference_fill_id: null,
+            },
+            book: { yes: { bids: [], asks: [] }, no: { bids: [], asks: [] } },
+            fills: [],
+            positions: [],
+            historyPositions: [],
+            orders: [],
+          })),
+        },
+      });
+    return route.fulfill({ status: 400, json: { error: "Unexpected fixture request" } });
+  });
+  await page.goto("/betting");
+  await page.getByRole("button", { name: "2026 AWC Side Bets", exact: true }).click();
+  await expect(page.getByText("2026 AWC Side Bets", { exact: true })).toHaveCount(2);
+  const other = page.getByRole("combobox", { name: "Other markets", exact: true });
+  for (const category of ["AWC Round of 16", "Shield", "AWC 2027"]) {
+    await expect(page.getByRole("button", { name: category, exact: true })).toHaveCount(0);
+    await other.selectOption(category);
+    await expect(other).toHaveValue(category);
+  }
+  await page.reload();
+  await expect(other).toHaveValue("AWC 2027");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await other.selectOption("AWC Round of 16");
+  await expect(other).toHaveValue("AWC Round of 16");
+  await page.goto("/betting/awc-2026-side-bets");
+  await expect(
+    page.getByRole("heading", { name: "2026 AWC Side Bets", exact: true }),
+  ).toBeVisible();
+});
+
 test("completed strike opens on P&L and loads chart history only when selected", async ({
   page,
 }) => {

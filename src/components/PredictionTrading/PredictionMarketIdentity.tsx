@@ -23,14 +23,16 @@ export const PredictionMarketIdentity = ({
   if (!definition.outcomeLabels) {
     return (
       <span className={`predictionSharedIdentity predictionSharedIdentity--${density}`}>
-        <img
-          src={countryCodeToFlagUrl(definition.countryCode)}
-          alt=""
-          crossOrigin="anonymous"
-          loading="lazy"
-          decoding="async"
-          aria-hidden="true"
-        />
+        {definition.countryCode ? (
+          <img
+            src={countryCodeToFlagUrl(definition.countryCode)}
+            alt=""
+            crossOrigin="anonymous"
+            loading="lazy"
+            decoding="async"
+            aria-hidden="true"
+          />
+        ) : null}
         <strong title={definition.username}>{definition.username}</strong>
       </span>
     );

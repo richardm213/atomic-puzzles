@@ -390,7 +390,7 @@ const loadExchangeMarketCatalog = async (supabase: ReturnType<typeof createServe
     .order("group_order", { ascending: true })
     .order("display_order", { ascending: true });
   if (error) throw new Error(`Unable to load prediction market catalog: ${error.message}`);
-  return (data ?? []).filter((market) => market.group_id !== "awc-2027-champion");
+  return data ?? [];
 };
 
 const loadTournamentMarkets = async (supabase: ReturnType<typeof createServerSupabase>) => {

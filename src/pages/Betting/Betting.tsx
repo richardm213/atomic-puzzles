@@ -96,19 +96,25 @@ const predictionMarketCategories = [
   "AWC Quarterfinals",
   "AWC Losers 1",
   "2026 AWC Champion",
+  "2026 AWC Side Bets",
   "AWC Round of 16",
   "Ban",
   "Shield",
+  "AWC 2027",
 ] as const;
+const otherMarketCategories: readonly string[] = ["AWC Round of 16", "Shield", "AWC 2027", "Ban"];
 const predictionGroupIdByCategory: Record<PredictionMarketCategory, string> = {
   "AWC Quarterfinals": "awc-2026-quarterfinals",
   "AWC Losers 1": "awc-2026-losers-round-1",
   "AWC Round of 16": "awc-2026-round-of-16",
   "2026 AWC Champion": "awc-2026-champion",
+  "2026 AWC Side Bets": "awc-2026-side-bets",
+  "AWC 2027": "awc-2027-champion",
   Ban: "ban-2026",
   Shield: "november-atomic-shield-2026",
 };
-const isAwcWinnerCategory = (category: string): boolean => category === "2026 AWC Champion";
+const isAwcWinnerCategory = (category: string): boolean =>
+  category === "2026 AWC Champion" || category === "AWC 2027";
 const winnerNoMarketId = AWC_NOT_TO_WIN_MARKET_ID;
 const marketCategorySlug = (category: string): string => {
   const normalizedCategory = category
@@ -349,7 +355,10 @@ export const BettingPage = () => {
           ),
     [marketCategory, openMarkets, winnerPosition],
   );
-  const predictionMarketOnlyCategory = marketCategory === "Shield" || marketCategory === "Ban";
+  const predictionMarketOnlyCategory =
+    marketCategory === "Shield" ||
+    marketCategory === "Ban" ||
+    marketCategory === "2026 AWC Side Bets";
   const activePredictionDisplayMode: PredictionDisplayMode = predictionMarketOnlyCategory
     ? "market"
     : predictionDisplayMode;
@@ -906,16 +915,33 @@ export const BettingPage = () => {
           >
             <div className="bettingMarketColumn">
               <div className="bettingCategories" aria-label="Market categories">
-                {marketCategories.map((category) => (
-                  <button
-                    type="button"
-                    aria-pressed={marketCategory === category}
-                    onClick={() => selectMarketCategory(category)}
-                    key={category}
-                  >
-                    {category}
-                  </button>
-                ))}
+                {marketCategories
+                  .filter((category) => !otherMarketCategories.includes(category))
+                  .map((category) => (
+                    <button
+                      type="button"
+                      aria-pressed={marketCategory === category}
+                      onClick={() => selectMarketCategory(category)}
+                      key={category}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                <select
+                  aria-label="Other markets"
+                  data-active={otherMarketCategories.includes(marketCategory)}
+                  value={otherMarketCategories.includes(marketCategory) ? marketCategory : ""}
+                  onChange={(event) => selectMarketCategory(event.target.value)}
+                >
+                  <option value="" disabled>
+                    Other markets
+                  </option>
+                  {otherMarketCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
               </div>
               {activePredictionGroup && !predictionMarketOnlyCategory ? (
                 <div className="bettingPredictionViewControl">
