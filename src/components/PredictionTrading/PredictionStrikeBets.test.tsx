@@ -63,21 +63,12 @@ it.each(["resolved", "closed", "open"] as const)(
         username: "big_buyer",
         outcome: "yes",
         quantity: 100,
-        reservedQuantity: 0,
-        averagePriceCents: 40,
-        updatedAt: "2026-11-07T00:00:00Z",
-      },
-      {
-        marketId: "strike",
-        username: "big_buyer",
-        outcome: "no",
-        quantity: 0,
-        reservedQuantity: 0,
-        averagePriceCents: 40,
         closedCost: 20,
         closedProceeds: 25,
         fees: 0.5,
-        updatedAt: "2026-11-08T00:00:00Z",
+        reservedQuantity: 0,
+        averagePriceCents: 40,
+        updatedAt: "2026-11-07T00:00:00Z",
       },
       {
         marketId: "other",
@@ -144,14 +135,14 @@ it.each(["resolved", "closed", "open"] as const)(
       ).not.toBeInTheDocument();
       expect(within(dialog).getByText("buyer")).toBeInTheDocument();
       expect(within(dialog).getAllByRole("row")[1]).toHaveTextContent("big_buyer");
-      expect(within(dialog).getByText("35.3")).toBeInTheDocument();
+      expect(within(dialog).getByText("35.25")).toBeInTheDocument();
       expect(within(dialog).getByText(status === "resolved" ? "+0.65" : "0")).toBeInTheDocument();
       const buyerRows = within(dialog)
         .getAllByRole("row")
         .filter((row) => row.textContent?.includes("big_buyer"));
       expect(buyerRows).toHaveLength(1);
       expect(buyerRows[0]).toHaveTextContent(status === "resolved" ? "+64.5" : "+4.5");
-      expect(buyerRows[0]).toHaveTextContent("Both sides");
+      expect(buyerRows[0]).not.toHaveTextContent("Both sides");
       expect(within(dialog).queryByText("unrelated")).not.toBeInTheDocument();
       expect(within(dialog).queryByText("Champion")).not.toBeInTheDocument();
       expect(within(dialog).queryByText("coins")).not.toBeInTheDocument();

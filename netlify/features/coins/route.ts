@@ -53,6 +53,7 @@ type PredictionPositionRow = {
 };
 type LegacyPositionCreditRow = {
   credited_at: string;
+  fee_coins?: number;
   source_bet_id: number;
   market_id: string;
   username: string;
@@ -170,7 +171,7 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
   const unsettledMarketIds = unsettledMarkets.map((market) => market.id);
 
   if (unsettledMarketIds.length > 0) {
-    const [positions, fills, legacyCredits, nettings] = await Promise.all([
+    const [positions, fills, legacyCredits, nettings, receipts] = await Promise.all([
       loadAllLeaderboardRows<PredictionPositionRow>((from, to) => {
         const query = supabase
           .from("prediction_positions")
@@ -188,7 +189,7 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
         const query = supabase
           .from("prediction_fills")
           .select(
-            "id,market_id,outcome,price_cents,quantity,buyer_username,seller_username,pair_key,created_at",
+            "id,market_id,outcome,price_cents,quantity,buyer_username,seller_username,pair_key,maker_order_id,taker_order_id,created_at",
           );
         if (username) query.or(`buyer_username.eq.${username},seller_username.eq.${username}`);
         return query.in("market_id", unsettledMarketIds).order("id").range(from, to);
@@ -196,7 +197,9 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
       loadAllLeaderboardRows<LegacyPositionCreditRow>((from, to) => {
         const query = supabase
           .from("prediction_legacy_position_credits")
-          .select("source_bet_id,market_id,username,outcome,quantity,price_cents,credited_at");
+          .select(
+            "source_bet_id,market_id,username,outcome,quantity,price_cents,credited_at,...tournament_bets(fee_coins:fee)",
+          );
         if (username) query.eq("username", username);
         return query.in("market_id", unsettledMarketIds).order("source_bet_id").range(from, to);
       }, "Unable to load coin rankings: legacy prediction positions could not be read."),
@@ -210,6 +213,24 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
         },
         "Unable to load coin rankings: prediction redemptions could not be read.",
       ),
+      loadAllLeaderboardRows<{
+        username: string;
+        amount: number;
+        reason: string;
+        metadata: Record<string, unknown>;
+      }>((from, to) => {
+        const query = supabase
+          .from("coin_transactions")
+          .select("username,amount,reason,metadata")
+          .in("reason", [
+            "prediction_trade_fee",
+            "prediction_order_reserve",
+            "prediction_trade_credit",
+          ])
+          .in("metadata->>marketId", unsettledMarketIds);
+        if (username) query.eq("username", username);
+        return query.order("id").range(from, to);
+      }, "Unable to load coin rankings: trading costs could not be read."),
     ]);
 
     const fillsByOwner = new Map<string, LeaderboardPredictionFill[]>();
@@ -238,6 +259,13 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
       rows.push(netting);
       nettingsByOwner.set(key, rows);
     }
+    const receiptsByOwner = new Map<string, typeof receipts>();
+    for (const receipt of receipts) {
+      const key = `${String(receipt.metadata.marketId)}:${receipt.username}`;
+      const rows = receiptsByOwner.get(key) ?? [];
+      rows.push(receipt);
+      receiptsByOwner.set(key, rows);
+    }
     const costsByMarketAndUser = new Map<
       string,
       ReturnType<typeof replayPredictionPosition>["positions"]
@@ -254,6 +282,7 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
           fills: fillsByOwner.get(ownerKey) ?? [],
           credits: creditsByOwner.get(ownerKey) ?? [],
           nettings: nettingsByOwner.get(ownerKey) ?? [],
+          receipts: receiptsByOwner.get(ownerKey) ?? [],
         }).positions;
         costsByMarketAndUser.set(ownerKey, costs);
       }

@@ -161,3 +161,60 @@
     font-size: 16px;
   }
 }
+
+.predictionHistoryBack {
+  min-height: 44px;
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-inset);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.predictionHistoryBack:hover {
+  background: var(--color-table-hover);
+}
+
+.predictionTraderHistoryTable {
+  white-space: nowrap;
+}
+
+.predictionTraderHistoryTable caption {
+  padding-bottom: var(--space-3);
+  color: var(--color-heading);
+  font-weight: 600;
+  text-align: left;
+}
+
+.predictionTraderHistoryTable th,
+.predictionTraderHistoryTable td {
+  font-size: 14px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.predictionTraderHistoryTable [data-pnl="1"] {
+  color: var(--color-success);
+}
+
+.predictionTraderHistoryTable [data-pnl="-1"] {
+  color: var(--color-danger);
+}
+
+.predictionTraderHistoryTable [data-outcome="yes"] {
+  color: var(--color-market-yes);
+}
+
+.predictionTraderHistoryTable [data-outcome="no"] {
+  color: var(--color-market-no);
+}
+
+@media (max-width: 760px) {
+  .predictionTraderHistoryTable th,
+  .predictionTraderHistoryTable td {
+    font-size: 16px;
+  }
+}

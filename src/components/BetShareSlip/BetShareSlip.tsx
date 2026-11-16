@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useAppSettings } from "../../context/AppSettings";
-import type { BetHistoryEntry } from "../../pages/Betting/bettingHistoryModel";
+import {
+  type BetHistoryEntry,
+  betHistoryPnl,
+  betHistoryReturn,
+} from "../../pages/Betting/bettingHistoryModel";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { formatPricePercentageValue } from "../../utils/formatters";
@@ -38,7 +42,7 @@ export const BetShareSlip = ({
       : bet.selection);
   const odds = `${formatPricePercentageValue(bet.priceCents)}% chance`;
   const cost = `${bet.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} coins`;
-  const payout = bet.status === "open" ? bet.potentialPayout : bet.payout;
+  const payout = betHistoryReturn(bet);
   const payoutLabel = bet.status === "open" ? "To win" : "Paid out";
   const payoutText = `${payout.toLocaleString(undefined, { maximumFractionDigits: 0 })} coins`;
   const description = `${marketTitle}. ${selection}${countryCode ? ` (${countryCode})` : ""}. Odds ${odds}. Cost ${cost}. ${payoutLabel} ${payoutText}.`;
@@ -236,10 +240,9 @@ export const BetShareSlip = ({
           context.font = `${weight} ${--size}px ${font}`;
         }
         context.fillStyle =
-          i === 2 && (bet.status === "won" || (bet.status === "settled" && payout > bet.totalCost))
+          i === 2 && bet.status !== "open" && betHistoryPnl(bet) > 0
             ? color("--color-payout-profit")
-            : i === 2 &&
-                (bet.status === "lost" || (bet.status === "settled" && payout < bet.totalCost))
+            : i === 2 && bet.status !== "open" && betHistoryPnl(bet) < 0
               ? color("--color-payout-loss")
               : heading;
         context.fillText(value!, 384, y);

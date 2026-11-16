@@ -10,6 +10,7 @@ import {
   type PredictionPositionCredit,
   type PredictionPositionFill,
   type PredictionPositionNetting,
+  predictionTradingFee,
   replayPredictionPosition,
 } from "../../../shared/domain/predictionAccounting";
 import {
@@ -17,6 +18,10 @@ import {
   predictionHistoryDuration,
   predictionHistoryPeriodSchema,
 } from "../../../shared/domain/predictionHistory";
+import {
+  buildPredictionTraderHistory,
+  type PredictionHistoryReceipt,
+} from "../../../shared/domain/predictionTraderHistory";
 import { voteValueSchema } from "../../../shared/domain/voting";
 import {
   authenticateRequest,
@@ -42,6 +47,18 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("markets") }),
   z.object({ action: z.literal("exchangeMarkets") }),
   z.object({ action: z.literal("predictionPositions") }),
+  z.object({
+    action: z.literal("exchangeTraderHistory"),
+    marketId: exchangeMarketIdSchema,
+    username: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .min(1)
+      .max(100)
+      .regex(/^[a-z0-9_-]+$/)
+      .refine((username) => username !== "prediction_admin", "Select a bettor."),
+  }),
   z.object({
     action: z.literal("exchangePriceHistory"),
     marketId: exchangeMarketIdSchema,
@@ -222,6 +239,8 @@ const exchangeFillColumns = [
   "buyer_username",
   "seller_username",
   "pair_key",
+  "maker_order_id",
+  "taker_order_id",
   "created_at",
 ].join(",");
 
@@ -473,7 +492,9 @@ const loadAllPredictionPositions = async (
   const creditQuery = () => {
     let query = supabase
       .from("prediction_legacy_position_credits")
-      .select("market_id,username,outcome,quantity,price_cents,credited_at")
+      .select(
+        "market_id,username,outcome,quantity,price_cents,credited_at,...tournament_bets(fee_coins:fee)",
+      )
       .order("source_bet_id");
     if (marketIds) query = query.in("market_id", [...marketIds]);
     if (username) query = query.eq("username", username);
@@ -482,8 +503,13 @@ const loadAllPredictionPositions = async (
   const feeQuery = () => {
     let query = supabase
       .from("coin_transactions")
-      .select("username,amount,metadata,created_at")
-      .eq("reason", "prediction_trade_fee")
+      .select("username,amount,reason,metadata,created_at")
+      .in("reason", [
+        "prediction_trade_fee",
+        "tournament_bet",
+        "prediction_order_reserve",
+        "prediction_trade_credit",
+      ])
       .neq("username", "prediction_admin")
       .order("id");
     if (marketIds) query = query.in("metadata->>marketId", [...marketIds]);
@@ -503,7 +529,7 @@ const loadAllPredictionPositions = async (
     fills: PredictionPositionFill[];
     credits: PredictionPositionCredit[];
     nettings: PredictionPositionNetting[];
-    fees: number;
+    receipts: { reason: string; amount: number; metadata: Record<string, unknown> }[];
     feeDate: string;
     reserved: Partial<Record<"yes" | "no", number>>;
   };
@@ -521,7 +547,7 @@ const loadAllPredictionPositions = async (
         fills: [],
         credits: [],
         nettings: [],
-        fees: 0,
+        receipts: [],
         feeDate: "",
         reserved: {},
       };
@@ -548,14 +574,17 @@ const loadAllPredictionPositions = async (
   for (const fee of rawFees as {
     username: string;
     amount: number;
-    metadata: { marketId?: string };
+    reason: string;
+    metadata: { marketId?: string; fee?: number };
     created_at: string;
   }[]) {
     if (!fee.metadata.marketId) continue;
     const owner = ownerFor(fee.metadata.marketId, fee.username);
     if (owner) {
-      owner.fees -= Number(fee.amount);
-      if (fee.created_at > owner.feeDate) owner.feeDate = fee.created_at;
+      if (fee.reason === "tournament_bet" && owner.credits.length === 0) continue;
+      owner.receipts.push(fee);
+      if (predictionTradingFee(fee) !== 0 && fee.created_at > owner.feeDate)
+        owner.feeDate = fee.created_at;
     }
   }
   const history: PredictionHistoryRow[] = [];
@@ -575,7 +604,8 @@ const loadAllPredictionPositions = async (
           ? "no"
           : replay.lastOutcome;
     const position = replay.positions[outcome];
-    if (position.quantity === 0 && replay.closed.quantity === 0 && owner.fees === 0) continue;
+    if (position.quantity === 0 && replay.closed.quantity === 0 && replay.unallocatedFees === 0)
+      continue;
     history.push({
       market_id: owner.marketId,
       username: owner.username,
@@ -591,7 +621,7 @@ const loadAllPredictionPositions = async (
             : 0,
       closed_cost_coins: replay.closed.costCents / 100,
       closed_proceeds_coins: replay.closed.proceedsCents / 100,
-      fees_coins: owner.fees,
+      fees_coins: replay.unallocatedFees,
     });
   }
   return history;
@@ -620,9 +650,90 @@ export const bettingRoute = async (event: FunctionEvent) => {
       input.action === "allBets" ||
       input.action === "suggestions" ||
       input.action === "exchangeMarketBatch" ||
+      input.action === "exchangeTraderHistory" ||
       input.action === "exchangePriceHistory",
   );
   const supabase = createServerSupabase("Tournament betting service");
+
+  if (input.action === "exchangeTraderHistory") {
+    const { marketId, username } = input;
+    const [market, fills, credits, nettings] = await Promise.all([
+      supabase
+        .from("prediction_markets")
+        .select("id,status,resolved_at,outcome,settlement_price_cents")
+        .eq("id", marketId)
+        .maybeSingle(),
+      readPredictionRows(
+        () =>
+          supabase
+            .from("prediction_fills")
+            .select(exchangeFillColumns)
+            .eq("market_id", marketId)
+            .or(`buyer_username.eq.${username},seller_username.eq.${username}`)
+            .order("id"),
+        "trader fills",
+      ),
+      readPredictionRows(
+        () =>
+          supabase
+            .from("prediction_legacy_position_credits")
+            .select(
+              "source_bet_id,outcome,quantity,price_cents,credited_at,...tournament_bets(fee_coins:fee)",
+            )
+            .eq("market_id", marketId)
+            .eq("username", username)
+            .order("source_bet_id"),
+        "converted bets",
+      ),
+      readPredictionRows(
+        () =>
+          supabase
+            .from("prediction_position_nettings")
+            .select("id,quantity,created_at")
+            .eq("market_id", marketId)
+            .eq("username", username)
+            .order("id"),
+        "trader redemptions",
+      ),
+    ]);
+    if (market.error) throw new Error(`Unable to load this market: ${market.error.message}`);
+    if (!market.data) throw new HttpError(404, "This market is unavailable.");
+    const legacyCredits = credits as (PredictionPositionCredit & { source_bet_id: number })[];
+    const legacySources = legacyCredits.map(
+      (credit) => `tournament-bet-payout:${credit.source_bet_id}`,
+    );
+    const receipts = await readPredictionRows(() => {
+      let query = supabase
+        .from("coin_transactions")
+        .select("id,amount,reason,source_key,metadata,created_at")
+        .eq("username", username)
+        .in("reason", [
+          "prediction_trade_fee",
+          "tournament_bet",
+          "prediction_market_payout",
+          "prediction_reconciliation",
+          "tournament_bet_payout",
+          "prediction_order_reserve",
+          "prediction_order_refund",
+          "prediction_trade_credit",
+        ])
+        .order("id");
+      query = legacySources.length
+        ? query.or(`metadata->>marketId.eq.${marketId},source_key.in.(${legacySources.join(",")})`)
+        : query.eq("metadata->>marketId", marketId);
+      return query;
+    }, "trader cash receipts");
+    return identityResponse(identity, 200, {
+      result: buildPredictionTraderHistory({
+        username,
+        market: market.data,
+        fills: fills as PredictionPositionFill[],
+        credits: legacyCredits,
+        nettings: nettings as PredictionPositionNetting[],
+        receipts: receipts as PredictionHistoryReceipt[],
+      }),
+    });
+  }
 
   if (input.action === "exchangePriceHistory") {
     const result = await supabase

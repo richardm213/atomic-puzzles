@@ -99,26 +99,18 @@ test("completed strike opens on P&L and loads chart history only when selected",
     outcome: "yes",
     quantity: 5,
     reserved_quantity: 0,
-    average_price_cents: 20,
-    closed_cost_coins: 1,
-    closed_proceeds_coins: 3,
-    fees_coins: 0.15,
-    updated_at: new Date(end).toISOString(),
-  };
-  const soldOppositePosition = {
-    ...position,
-    outcome: "no",
-    quantity: 0,
-    closed_cost_coins: 2,
-    closed_proceeds_coins: 5,
+    average_price_cents: 20.75,
+    closed_cost_coins: 3.1125,
+    closed_proceeds_coins: 8,
     fees_coins: 0,
+    updated_at: new Date(end).toISOString(),
   };
   await page.route("**/api/betting", (route) => {
     const body = route.request().postDataJSON();
     if (["markets", "bets", "allBets"].includes(body.action))
       return route.fulfill({ json: { result: [] } });
     if (body.action === "predictionPositions")
-      return route.fulfill({ json: { result: [position, soldOppositePosition] } });
+      return route.fulfill({ json: { result: [position] } });
     if (body.action === "exchangeMarkets")
       return route.fulfill({
         json: {
@@ -142,6 +134,46 @@ test("completed strike opens on P&L and loads chart history only when selected",
           ],
         },
       });
+    if (body.action === "exchangeTraderHistory") {
+      expect(body.marketId).toBe(marketId);
+      expect(body.username).toBe("e2e-player");
+      return route.fulfill({
+        json: {
+          result: [
+            {
+              id: "buy:1",
+              createdAt: new Date(end - 2000).toISOString(),
+              action: "buy",
+              outcome: "yes",
+              averagePriceCents: 20.75,
+              quantity: 20,
+              pnlChange: 0,
+              runningPnl: 0,
+            },
+            {
+              id: "sell:2",
+              createdAt: new Date(end - 1000).toISOString(),
+              action: "sell",
+              outcome: "yes",
+              averagePriceCents: 53.333333,
+              quantity: 15,
+              pnlChange: 4.8875,
+              runningPnl: 4.8875,
+            },
+            {
+              id: "receipt:4",
+              createdAt: new Date(end).toISOString(),
+              action: "settlement",
+              outcome: "yes",
+              averagePriceCents: 100,
+              quantity: 5,
+              pnlChange: 3.9625,
+              runningPnl: 8.85,
+            },
+          ],
+        },
+      });
+    }
     if (body.action === "exchangeMarketBatch")
       return route.fulfill({
         json: {
@@ -163,7 +195,7 @@ test("completed strike opens on P&L and loads chart history only when selected",
               book: { yes: { bids: [], asks: [] }, no: { bids: [], asks: [] } },
               fills: [],
               positions: [position],
-              historyPositions: [position, soldOppositePosition],
+              historyPositions: [position],
               orders: [],
             },
           ],
@@ -193,6 +225,24 @@ test("completed strike opens on P&L and loads chart history only when selected",
   await expect(dialog.getByRole("table")).toContainText("+8.85");
   await expect(dialog.getByRole("row").filter({ hasText: "e2e-player" })).toHaveCount(1);
   expect(periods).toEqual([]);
+  const bettorRow = dialog.getByRole("row").filter({ hasText: "e2e-player" });
+  await bettorRow.getByRole("cell").last().click();
+  const transactions = dialog.getByRole("table", { name: "Transactions for e2e-player" });
+  await expect(
+    transactions.getByRole("columnheader", { name: "Running P&L", exact: true }),
+  ).toBeVisible();
+  await expect(transactions.getByRole("row")).toHaveCount(4);
+  await expect(transactions.getByRole("row").last()).toContainText("+8.85");
+  await dialog.getByRole("button", { name: "← P&L", exact: true }).click();
+  const transactionButton = dialog.getByRole("button", {
+    name: "View transactions for e2e-player",
+    exact: true,
+  });
+  await expect(transactionButton).toBeFocused();
+  await transactionButton.press("Enter");
+  await expect(transactions).toBeVisible();
+  await dialog.getByRole("button", { name: "← P&L", exact: true }).click();
+
   await dialog.getByRole("tab", { name: "Price chart", exact: true }).click();
   const chart = dialog.getByRole("slider", { name: "Inspect price history" });
   await expect(chart).toHaveAttribute("aria-valuetext", /100 cents/);
@@ -214,13 +264,15 @@ test("completed strike opens on P&L and loads chart history only when selected",
   completedStatus = "closed";
   await page.reload();
   await page.getByRole("button", { name: "View bets on natso", exact: true }).click();
-  await expect(dialog.getByRole("table")).toContainText("+4.85");
+  await expect(dialog.getByRole("table")).toContainText("+4.89");
   await expect(dialog.getByRole("tab", { name: "P&L", exact: true })).toHaveAttribute(
     "aria-selected",
     "true",
   );
   completedStatus = "open";
   position.quantity = 0;
+  position.closed_cost_coins = 4.15;
+  position.closed_proceeds_coins = 9;
   await page.reload();
   await expect(page.getByLabel("Your profit: +4.85 coins", { exact: true })).toBeVisible();
   await page.goto("/betting?view=markets&market=champion");
@@ -229,6 +281,7 @@ test("completed strike opens on P&L and loads chart history only when selected",
     await expect(page.getByLabel("Your profit: +4.85 coins", { exact: true })).toBeVisible();
   }
   await page.goto("/betting?view=mine");
+  await page.getByRole("combobox", { name: "Status", exact: true }).selectOption("all");
   await page.getByRole("combobox", { name: "Display", exact: true }).selectOption("pnl");
   const myBets = page.getByRole("table");
   await expect(myBets.getByRole("row")).toHaveCount(2);

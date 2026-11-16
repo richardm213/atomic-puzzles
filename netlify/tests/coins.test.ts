@@ -194,6 +194,7 @@ describe("coins function", () => {
       data: [
         {
           id: 10,
+          taker_order_id: 7,
           market_id: "market-1",
           outcome: "yes",
           price_cents: 50,
@@ -230,6 +231,7 @@ describe("coins function", () => {
           outcome: "yes",
           quantity: 100,
           price_cents: 50,
+          fee_coins: 2,
         },
       ],
       error: null,
@@ -255,6 +257,25 @@ describe("coins function", () => {
         }),
       }),
     }));
+    const selectReceipts = () => ({
+      in: () => ({
+        in: () => ({
+          order: () => ({
+            range: async () => ({
+              data: [
+                {
+                  username: "bettor",
+                  reason: "prediction_order_reserve",
+                  amount: -51,
+                  metadata: { marketId: "market-1", orderId: 7, fee: 1 },
+                },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    });
     const from = vi.fn((table: string) => ({
       select:
         table === "coin_accounts"
@@ -269,7 +290,9 @@ describe("coins function", () => {
                   ? selectFills
                   : table === "prediction_position_nettings"
                     ? selectNettings
-                    : selectCredits,
+                    : table === "coin_transactions"
+                      ? selectReceipts
+                      : selectCredits,
     }));
     mocks.createClient.mockReturnValue({ from });
 
@@ -287,7 +310,7 @@ describe("coins function", () => {
     expect(filterOpenBets).toHaveBeenCalledWith("status", "open");
     expect(filterUnsettledMarkets).toHaveBeenCalledWith("status", ["open", "closed"]);
     expect(JSON.parse(response.body).result).toEqual([
-      { username: "bettor", netWorth: 1325, balance: 850, inBets: 475 },
+      { username: "bettor", netWorth: 1327.25, balance: 850, inBets: 477.25 },
       { username: "saver", netWorth: 1200, balance: 1200, inBets: 0 },
     ]);
   });

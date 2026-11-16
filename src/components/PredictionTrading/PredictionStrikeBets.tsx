@@ -15,15 +15,19 @@ import {
 } from "../../lib/predictionMarkets/predictionMarketQueries";
 import type { PredictionMarketDefinition } from "../../lib/predictionMarkets/predictionMarkets";
 import { BetHistoryTable } from "../../pages/Betting/BettingHistory";
-import {
-  buildBetHistory,
-  predictionStrikeBetsByBettor,
-} from "../../pages/Betting/bettingHistoryModel";
+import { buildBetHistory } from "../../pages/Betting/bettingHistoryModel";
 import { getErrorMessage } from "../../utils/errors";
 import { InlineState } from "../InlineState/InlineState";
 import { PredictionPriceChart } from "./PredictionPriceChart";
+import { PredictionTraderHistory } from "./PredictionTraderHistory";
 
-const StrikeBetList = ({ definition }: { definition: PredictionMarketDefinition }) => {
+const StrikeBetList = ({
+  definition,
+  onSelectBettor,
+}: {
+  definition: PredictionMarketDefinition;
+  onSelectBettor: (username: string) => void;
+}) => {
   const positions = useQuery({ ...allPredictionPositionsQueryOptions(), refetchInterval: 15_000 });
   const legacy = useQuery(allTournamentBetsQueryOptions());
   const catalog = useQuery(predictionMarketCatalogQueryOptions());
@@ -37,29 +41,14 @@ const StrikeBetList = ({ definition }: { definition: PredictionMarketDefinition 
   if (!states.data?.some((state) => state.market.status !== "open")) {
     return <InlineState kind="empty">This strike is still pending.</InlineState>;
   }
-  const bets = predictionStrikeBetsByBettor(
-    buildBetHistory({
-      tournamentBets: legacy.data ?? [],
-      predictionPositions: positions.data ?? [],
-      predictionMarketGroups: catalog.data ?? [],
-      predictionMarketStates: states.data ?? [],
-      minimumPositionCost: 0,
-    })
-      .filter((bet) => bet.marketId === definition.id)
-      .map((bet) => {
-        const position = positions.data?.find(
-          (position) =>
-            position.marketId === bet.marketId &&
-            position.username === bet.username &&
-            position.outcome === bet.predictionOutcome,
-        );
-        return {
-          ...bet,
-          priceCents: Math.round((position?.averagePriceCents ?? bet.priceCents) * 10) / 10,
-        };
-      }),
-    { realizedOnly: true },
-  );
+  const bets = buildBetHistory({
+    tournamentBets: legacy.data ?? [],
+    predictionPositions: positions.data ?? [],
+    predictionMarketGroups: catalog.data ?? [],
+    predictionMarketStates: states.data ?? [],
+    minimumPositionCost: 0,
+    realizedOnly: true,
+  }).filter((bet) => bet.marketId === definition.id);
   return (
     <BetHistoryTable
       bets={bets}
@@ -73,6 +62,7 @@ const StrikeBetList = ({ definition }: { definition: PredictionMarketDefinition 
       showMarket={false}
       showUnits={false}
       sortable
+      onSelectBet={(bet) => onSelectBettor(bet.username)}
     />
   );
 };
@@ -87,6 +77,7 @@ export const PredictionStrikeBets = ({
   className?: string;
 }) => {
   const [open, setOpen] = useState(false);
+  const [selectedBettor, setSelectedBettor] = useState<string | null>(null);
   const [tab, setTab] = useState<"pnl" | "chart">("pnl");
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -106,6 +97,7 @@ export const PredictionStrikeBets = ({
         aria-haspopup="dialog"
         aria-label={`View bets on ${title}`}
         onClick={() => {
+          setSelectedBettor(null);
           setTab("pnl");
           setOpen(true);
         }}
@@ -140,7 +132,10 @@ export const PredictionStrikeBets = ({
                     aria-selected={tab === entry}
                     aria-controls={`${titleId}-panel`}
                     tabIndex={tab === entry ? 0 : -1}
-                    onClick={() => setTab(entry)}
+                    onClick={() => {
+                      setSelectedBettor(null);
+                      setTab(entry);
+                    }}
                     onKeyDown={(event) => {
                       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
                       event.preventDefault();
@@ -153,6 +148,7 @@ export const PredictionStrikeBets = ({
                             : entry === "pnl"
                               ? "chart"
                               : "pnl";
+                      setSelectedBettor(null);
                       setTab(next);
                       document.getElementById(`${titleId}-${next}`)?.focus();
                     }}
@@ -168,7 +164,25 @@ export const PredictionStrikeBets = ({
                 aria-labelledby={`${titleId}-${tab}`}
               >
                 {tab === "pnl" ? (
-                  <StrikeBetList definition={definition} />
+                  selectedBettor ? (
+                    <PredictionTraderHistory
+                      definition={definition}
+                      username={selectedBettor}
+                      onBack={() => {
+                        const username = selectedBettor;
+                        setSelectedBettor(null);
+                        requestAnimationFrame(() =>
+                          dialog.current
+                            ?.querySelector<HTMLButtonElement>(
+                              `button[aria-label="View transactions for ${username}"]`,
+                            )
+                            ?.focus(),
+                        );
+                      }}
+                    />
+                  ) : (
+                    <StrikeBetList definition={definition} onSelectBettor={setSelectedBettor} />
+                  )
                 ) : (
                   <PredictionPriceChart definition={definition} />
                 )}

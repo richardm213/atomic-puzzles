@@ -9,17 +9,42 @@ export type PredictionPositionFill = {
   seller_username: string | null;
   pair_key: string | null;
   created_at: string;
+  maker_order_id?: number;
+  taker_order_id?: number;
 };
 export type PredictionPositionCredit = {
   outcome: PredictionOutcome;
   quantity: number;
   price_cents: number;
   credited_at: string;
+  fee_coins?: number;
 };
 export type PredictionPositionNetting = { id: number; quantity: number; created_at: string };
+export type PredictionPositionEvent = {
+  id: string;
+  createdAt: string;
+  action: "buy" | "sell";
+  outcome: PredictionOutcome | null;
+  averagePriceCents: number;
+  quantity: number;
+  pnlChange: number;
+};
 
 export const isPredictionPairRedemption = (fill: PredictionPositionFill): boolean =>
   fill.pair_key !== null && fill.seller_username !== null;
+
+export const predictionTradingFee = (receipt: {
+  reason: string;
+  amount: number;
+  metadata: { fee?: unknown } | null;
+}): number =>
+  receipt.reason === "prediction_trade_fee"
+    ? -receipt.amount
+    : ["tournament_bet", "prediction_order_reserve", "prediction_trade_credit"].includes(
+          receipt.reason,
+        ) && typeof receipt.metadata?.fee === "number"
+      ? receipt.metadata.fee
+      : 0;
 
 // Replay the actual redemptions, rather than pretending that historical opposite buys
 // were netted before the database supported netting. That can erase shares sold later.
@@ -28,13 +53,48 @@ export const replayPredictionPosition = ({
   fills,
   credits = [],
   nettings = [],
+  onTransaction,
+  receipts = [],
 }: {
   username: string;
   fills: readonly PredictionPositionFill[];
   credits?: readonly PredictionPositionCredit[];
   nettings?: readonly PredictionPositionNetting[];
+  onTransaction?: (event: PredictionPositionEvent) => void;
+  receipts?: readonly {
+    reason: string;
+    amount: number;
+    metadata: Record<string, unknown> | null;
+  }[];
 }) => {
+  const transactions: PredictionPositionEvent[] = [];
   const owner = username.toLowerCase();
+  const feesByOrder = new Map<number, number>();
+  let totalTradeFees = 0;
+  for (const receipt of receipts) {
+    if (receipt.reason === "tournament_bet") continue; // Included in converted credits' cost.
+    const fee = predictionTradingFee(receipt);
+    totalTradeFees += fee;
+    const orderId = receipt.metadata?.orderId;
+    if (typeof orderId === "number")
+      feesByOrder.set(orderId, (feesByOrder.get(orderId) ?? 0) + fee);
+  }
+  const weights = new Map<number, number>();
+  for (const fill of fills) {
+    if (
+      fill.taker_order_id === undefined ||
+      !(
+        fill.seller_username?.toLowerCase() === owner ||
+        (fill.buyer_username.toLowerCase() === owner && !isPredictionPairRedemption(fill))
+      )
+    )
+      continue;
+    weights.set(
+      fill.taker_order_id,
+      (weights.get(fill.taker_order_id) ?? 0) + fill.quantity * fill.price_cents,
+    );
+  }
+  let allocatedFees = 0;
   const positions = { yes: { quantity: 0, costCents: 0 }, no: { quantity: 0, costCents: 0 } };
   const closed = { quantity: 0, costCents: 0, proceedsCents: 0 };
   let lastOutcome: PredictionOutcome = "yes";
@@ -67,9 +127,9 @@ export const replayPredictionPosition = ({
       value,
     })),
   ].sort((a, b) => a.time.localeCompare(b.time) || a.priority - b.priority || a.id - b.id);
-  const buy = (outcome: PredictionOutcome, quantity: number, price: number) => {
+  const buy = (outcome: PredictionOutcome, quantity: number, price: number, fee = 0) => {
     positions[outcome].quantity += quantity;
-    positions[outcome].costCents += quantity * price;
+    positions[outcome].costCents += quantity * price + fee * 100;
     lastOutcome = outcome;
   };
   const remove = (outcome: PredictionOutcome, quantity: number) => {
@@ -93,25 +153,104 @@ export const replayPredictionPosition = ({
     while (group.index < group.rows.length) {
       const net = group.rows[group.index]!;
       if (net.quantity > Math.min(positions.yes.quantity, positions.no.quantity) + 0.000001) break;
-      closed.costCents += remove("yes", net.quantity) + remove("no", net.quantity);
+      const costs = { yes: remove("yes", net.quantity), no: remove("no", net.quantity) };
+      const cost = costs.yes + costs.no;
+      closed.costCents += cost;
       closed.proceedsCents += net.quantity * 100;
       closed.quantity += net.quantity * 2;
       group.index++;
+      // An opposite purchase closes the existing side at the complementary price.
+      // Keep only its excess as a buy, rather than showing a third trading action.
+      let remaining = net.quantity;
+      for (let index = transactions.length - 1; index >= 0 && remaining > 1e-8; index--) {
+        const purchase = transactions[index]!;
+        if (purchase.createdAt !== time) break;
+        if (purchase.action === "sell" || purchase.quantity === 0 || purchase.outcome === null)
+          continue;
+        const quantity = Math.min(remaining, purchase.quantity);
+        const outcome = purchase.outcome === "yes" ? "no" : "yes";
+        purchase.quantity -= quantity;
+        remaining -= quantity;
+        transactions.splice(index, 0, {
+          id: `sell:${net.id}:${index}`,
+          createdAt: time,
+          action: "sell",
+          outcome,
+          averagePriceCents: 100 - purchase.averagePriceCents,
+          quantity,
+          pnlChange: ((net.quantity - cost / 100) * quantity) / net.quantity,
+        });
+      }
+      // Historical migrations closed both already-held sides in one cash payment.
+      // Its actual average is 50¢ across the two contracts, not an invented quote
+      // for either selection. Preserve those earlier buys and record one sale.
+      if (remaining > 1e-8)
+        transactions.push({
+          id: `sell:${net.id}:both`,
+          createdAt: time,
+          action: "sell",
+          outcome: null,
+          averagePriceCents: 50,
+          quantity: remaining * 2,
+          pnlChange: ((net.quantity - cost / 100) * remaining) / net.quantity,
+        });
     }
   };
   for (const event of events) {
     updatedAt = event.time;
-    if (event.kind === "credit")
-      buy(event.value.outcome, event.value.quantity, event.value.price_cents);
-    else if (event.kind === "fill") {
+    if (event.kind === "credit") {
+      buy(
+        event.value.outcome,
+        event.value.quantity,
+        event.value.price_cents,
+        event.value.fee_coins ?? 0,
+      );
+      transactions.push({
+        id: `convert:${event.id}`,
+        createdAt: event.time,
+        action: "buy",
+        outcome: event.value.outcome,
+        averagePriceCents:
+          event.value.price_cents + ((event.value.fee_coins ?? 0) * 100) / event.value.quantity,
+        quantity: event.value.quantity,
+        pnlChange: 0,
+      });
+    } else if (event.kind === "fill") {
       const fill = event.value;
-      if (fill.buyer_username.toLowerCase() === owner && !isPredictionPairRedemption(fill))
-        buy(fill.outcome, fill.quantity, fill.price_cents);
+      const fee =
+        fill.taker_order_id === undefined
+          ? 0
+          : ((feesByOrder.get(fill.taker_order_id) ?? 0) * fill.quantity * fill.price_cents) /
+            (weights.get(fill.taker_order_id) || 1);
+      if (fill.buyer_username.toLowerCase() === owner && !isPredictionPairRedemption(fill)) {
+        buy(fill.outcome, fill.quantity, fill.price_cents, fee);
+        allocatedFees += fee;
+        transactions.push({
+          id: `buy:${fill.id}`,
+          createdAt: event.time,
+          action: "buy",
+          outcome: fill.outcome,
+          averagePriceCents: fill.price_cents + (fee * 100) / fill.quantity,
+          quantity: fill.quantity,
+          pnlChange: 0,
+        });
+      }
       if (fill.seller_username?.toLowerCase() === owner) {
-        closed.costCents += remove(fill.outcome, fill.quantity);
-        closed.proceedsCents += fill.price_cents * fill.quantity;
+        const cost = remove(fill.outcome, fill.quantity);
+        closed.costCents += cost;
+        closed.proceedsCents += fill.price_cents * fill.quantity - fee * 100;
+        allocatedFees += fee;
         closed.quantity += fill.quantity;
         lastOutcome = fill.outcome;
+        transactions.push({
+          id: `sell:${fill.id}`,
+          createdAt: event.time,
+          action: "sell",
+          outcome: fill.outcome,
+          averagePriceCents: fill.price_cents - (fee * 100) / fill.quantity,
+          quantity: fill.quantity,
+          pnlChange: (fill.price_cents * fill.quantity - cost) / 100 - fee,
+        });
       }
     }
     // A single order can fill at several prices in one transaction. Its rows share
@@ -121,5 +260,14 @@ export const replayPredictionPosition = ({
     if (event.kind === "net" && group && group.index !== group.rows.length)
       throw new Error(`Prediction history is missing contracts for a recorded redemption.`);
   }
-  return { positions, closed, lastOutcome, updatedAt };
+  for (const transaction of transactions)
+    if (transaction.quantity > 1e-8) onTransaction?.(transaction);
+  const remainder = totalTradeFees - allocatedFees;
+  return {
+    positions,
+    closed,
+    lastOutcome,
+    updatedAt,
+    unallocatedFees: Math.abs(remainder) < 1e-8 ? 0 : remainder,
+  };
 };

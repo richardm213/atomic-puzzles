@@ -351,27 +351,6 @@ export const predictionHistoryPositionSchema = z
 
 export type PredictionHistoryPosition = z.infer<typeof predictionHistoryPositionSchema>;
 
-type ParsedPredictionPosition = z.infer<typeof positionSchema>;
-
-export const netPredictionPositions = (
-  positions: ParsedPredictionPosition[],
-): ParsedPredictionPosition[] => {
-  const yes = positions.find((position) => position.outcome === "yes");
-  const no = positions.find((position) => position.outcome === "no");
-  const offsetQuantity = Math.min(yes?.quantity ?? 0, no?.quantity ?? 0);
-
-  return positions
-    .map((position) => ({
-      ...position,
-      quantity: Math.max(0, position.quantity - offsetQuantity),
-      reservedQuantity: Math.min(
-        position.reservedQuantity,
-        Math.max(0, position.quantity - offsetQuantity),
-      ),
-    }))
-    .filter((position) => position.quantity > 0);
-};
-
 const marketStateSchema = z.object({
   result: z.object({
     market: z
@@ -413,7 +392,7 @@ const marketStateSchema = z.object({
       no: z.object({ bids: z.array(levelSchema), asks: z.array(levelSchema) }),
     }),
     fills: z.array(fillSchema),
-    positions: z.array(positionSchema).transform(netPredictionPositions),
+    positions: z.array(positionSchema).max(1, "Expected one net position per market"),
     historyPositions: z.array(predictionHistoryPositionSchema).optional(),
     orders: z.array(orderSchema),
   }),
@@ -490,7 +469,7 @@ export const formatPredictionAveragePrice = (
   cents: number | null | undefined,
 ): string | undefined => {
   if (cents === null || cents === undefined) return undefined;
-  const price = Number.isInteger(cents) ? cents.toFixed(0) : cents.toFixed(1);
+  const price = cents.toLocaleString(undefined, { maximumFractionDigits: 2 });
   return `${price}¢`;
 };
 

@@ -137,7 +137,8 @@ describe("BettingHistory", () => {
       predictionSelectionLabel: status,
       stake: 295,
       fee: 5,
-      totalCost: 300,
+      totalCost: status === "open" ? 150 : 300,
+      pnl: status === "open" ? 300 : status === "won" ? 150 : status === "refunded" ? 0 : -300,
       potentialPayout: 600,
       payout: status === "won" ? 450 : status === "refunded" ? 300 : 0,
     }));
@@ -159,6 +160,11 @@ describe("BettingHistory", () => {
         allBetsError={null}
       />,
     );
+    expect(screen.getByLabelText("Status")).toHaveValue("open");
+    expect(screen.queryByRole("row", { name: /won/i })).not.toBeInTheDocument();
+    const currentPosition = screen.getByRole("row", { name: /open/i });
+    expect(within(currentPosition).getByText("150")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Status"), "all");
     expect(screen.getByRole("columnheader", { name: "Status" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "P&L" })).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("Display"), "return");

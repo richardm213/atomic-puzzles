@@ -5,7 +5,6 @@ import {
   formatPredictionChance,
   formatPredictionShares,
   isPendingPredictionOrder,
-  netPredictionPositions,
   predictionBuyOrderCost,
   predictionMarketCatalogRowSchema,
   predictionMarketGroupsFromRows,
@@ -43,7 +42,7 @@ describe("formatPredictionChance", () => {
 describe("formatPredictionAveragePrice", () => {
   it("formats whole and fractional position cost bases", () => {
     expect(formatPredictionAveragePrice(90)).toBe("90¢");
-    expect(formatPredictionAveragePrice(33.333333)).toBe("33.3¢");
+    expect(formatPredictionAveragePrice(33.333333)).toBe("33.33¢");
     expect(formatPredictionAveragePrice(null)).toBeUndefined();
   });
 });
@@ -152,37 +151,6 @@ describe("formatPredictionShares", () => {
     expect(formatPredictionShares(501)).toBe("501");
     expect(formatPredictionShares(12.5)).toBe("12.5");
     expect(formatPredictionShares(12.345)).toBe("12.35");
-  });
-});
-
-describe("netPredictionPositions", () => {
-  it("presents opposing contracts as one net position", () => {
-    expect(
-      netPredictionPositions([
-        {
-          outcome: "yes",
-          quantity: 500,
-          reservedQuantity: 0,
-          averagePriceCents: 20,
-          updatedAt: "2026-11-04T00:00:00Z",
-        },
-        {
-          outcome: "no",
-          quantity: 600,
-          reservedQuantity: 0,
-          averagePriceCents: 60,
-          updatedAt: "2026-11-04T00:00:01Z",
-        },
-      ]),
-    ).toEqual([
-      {
-        outcome: "no",
-        quantity: 100,
-        reservedQuantity: 0,
-        averagePriceCents: 60,
-        updatedAt: "2026-11-04T00:00:01Z",
-      },
-    ]);
   });
 });
 

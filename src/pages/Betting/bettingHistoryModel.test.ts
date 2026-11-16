@@ -122,37 +122,26 @@ const tournamentBet = (id: number, marketId: string): TournamentBet => ({
 });
 
 describe("buildBetHistory", () => {
-  it("merges both outcomes per bettor and strike without losing open status, realized returns, or settlement totals", () => {
-    const closed = {
+  it("uses the server's net position without mixing sold shares into current cost", () => {
+    const position = {
       marketId: "champion-player",
       username: "buyer",
-      outcome: "yes" as const,
-      quantity: 0,
+      outcome: "no" as const,
+      quantity: 10,
       reservedQuantity: 0,
-      averagePriceCents: 40,
+      averagePriceCents: 60,
       closedCost: 4,
       closedProceeds: 6,
       fees: 0.1,
       updatedAt: "2026-10-06T00:00:00Z",
     };
-    const remaining = {
-      ...closed,
-      outcome: "no" as const,
-      quantity: 10,
-      averagePriceCents: 60,
-      closedCost: 0,
-      closedProceeds: 0,
-      fees: 0,
-      updatedAt: "2026-10-05T00:00:00Z",
-    };
     const build = (market: PredictionMarketState["market"], exited = false) =>
       buildBetHistory({
         tournamentBets: [],
         predictionPositions: [
-          closed,
-          exited ? { ...remaining, quantity: 0, closedCost: 6, closedProceeds: 9 } : remaining,
-          { ...remaining, username: "someone-else" },
-          { ...remaining, marketId: "awc-r16-natso-crepuscular" },
+          exited ? { ...position, quantity: 0, closedCost: 10, closedProceeds: 15 } : position,
+          { ...position, username: "someone-else" },
+          { ...position, marketId: "awc-r16-natso-crepuscular" },
         ],
         predictionMarketGroups: [group, roundOf16Group],
         predictionMarketStates: [{ ...state, market }, roundOf16State],
@@ -165,18 +154,17 @@ describe("buildBetHistory", () => {
     expect(summary).toMatchObject({
       status: "open",
       predictionOutcome: "no",
-      positionQuantity: 10,
-      totalCost: 10.1,
+      totalCost: 6,
       payout: 6,
       potentialPayout: 16,
       realizedPnl: 1.9,
-      placedAt: "2026-10-06T00:00:00Z",
+      pnl: 5.9,
     });
     expect(predictionPnlByMarketId([summary]).get("champion-player")).toBeCloseTo(1.9);
     const settled = build({ ...state.market, outcome: "no" }).find(
       (bet) => bet.historyKey === summary.historyKey,
     )!;
-    expect(settled).toMatchObject({ status: "settled", payout: 16, totalCost: 10.1 });
+    expect(settled).toMatchObject({ status: "won", payout: 16, totalCost: 6, pnl: 5.9 });
     expect(predictionPnlByMarketId([settled]).get("champion-player")).toBeCloseTo(5.9);
     const exited = build(
       { ...state.market, status: "open", outcome: null, resolvedAt: null },
@@ -185,8 +173,9 @@ describe("buildBetHistory", () => {
     expect(exited).toMatchObject({
       status: "settled",
       payout: 15,
-      totalCost: 10.1,
+      totalCost: 0,
       realizedPnl: 4.9,
+      pnl: 4.9,
     });
   });
 
@@ -227,7 +216,7 @@ describe("buildBetHistory", () => {
     const live = historyFor({ ...state.market, status: "open", outcome: null, resolvedAt: null });
     expect(live).toHaveLength(2);
     expect(live.find((bet) => bet.username === "partial")).toMatchObject({
-      totalCost: 2.15,
+      totalCost: 1,
       payout: 3,
       potentialPayout: 8,
       realizedPnl: 1.85,
@@ -235,7 +224,7 @@ describe("buildBetHistory", () => {
     });
     expect(live.find((bet) => bet.username === "exited")).toMatchObject({
       status: "settled",
-      totalCost: 0.42,
+      totalCost: 0,
       payout: 0.6,
     });
     expect(predictionPnlByMarketId(live).get("champion-player")).toBeCloseTo(2.03);

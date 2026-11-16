@@ -5,6 +5,7 @@ import {
   type PredictionHistoryPeriod,
   predictionPriceHistorySchema,
 } from "../../../shared/domain/predictionHistory";
+import { predictionTraderHistorySchema } from "../../../shared/domain/predictionTraderHistory";
 import { postApi } from "../api/postApi";
 import {
   fetchPredictionMarketGroups,
@@ -14,6 +15,23 @@ import {
 } from "./predictionMarkets";
 
 export const predictionMarketQueryRoot = ["prediction-market"] as const;
+export const predictionTraderHistoryQueryOptions = (marketId: string, username: string) =>
+  queryOptions({
+    queryKey: [...predictionMarketQueryRoot, "trader-history", marketId, username],
+    queryFn: async () => {
+      const response = await postApi(
+        "/api/betting",
+        { action: "exchangeTraderHistory", marketId, username },
+        {
+          schema: z.object({ result: predictionTraderHistorySchema }),
+          errorMessage: "Unable to load transactions.",
+          invalidMessage: "Invalid transaction history.",
+        },
+      );
+      return response.result;
+    },
+    staleTime: 15_000,
+  });
 export const predictionPriceHistoryQueryOptions = (
   marketId: string,
   period: PredictionHistoryPeriod,

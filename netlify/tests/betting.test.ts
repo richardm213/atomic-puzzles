@@ -29,6 +29,106 @@ describe("betting function", () => {
     vi.unstubAllEnvs();
   });
 
+  it("loads public trader history scoped to the strike and player and rejects filter injection", async () => {
+    const eq = vi.fn();
+    const or = vi.fn();
+    const rows: Record<string, unknown[]> = {
+      prediction_fills: [
+        {
+          id: 1,
+          outcome: "yes",
+          price_cents: 40,
+          quantity: 10,
+          taker_order_id: 1,
+          buyer_username: "trader",
+          seller_username: "maker",
+          pair_key: null,
+          created_at: "2026-11-01T00:00:00Z",
+        },
+      ],
+      prediction_legacy_position_credits: [],
+      prediction_position_nettings: [],
+      coin_transactions: [
+        {
+          id: 1,
+          reason: "prediction_trade_fee",
+          amount: -0.08,
+          source_key: "fee:1",
+          metadata: { orderId: 1 },
+          created_at: "2026-11-01T00:00:00Z",
+        },
+        {
+          id: 2,
+          reason: "prediction_market_payout",
+          amount: 10,
+          source_key: "payout:1",
+          metadata: { outcome: "yes", contracts: 10 },
+          created_at: "2026-11-02T00:00:00Z",
+        },
+      ],
+    };
+    mocks.createClient.mockReturnValue({
+      from: (table: string) => {
+        const query = {
+          select: () => query,
+          order: () => query,
+          in: () => query,
+          eq: (...args: unknown[]) => {
+            eq(table, ...args);
+            return query;
+          },
+          or: (...args: unknown[]) => {
+            or(table, ...args);
+            return query;
+          },
+          maybeSingle: async () => ({
+            data: {
+              status: "resolved",
+              outcome: "yes",
+              resolved_at: "2026-11-02T00:00:00Z",
+              settlement_price_cents: null,
+            },
+            error: null,
+          }),
+          range: async () => ({ data: rows[table] ?? [], error: null }),
+        };
+        return query;
+      },
+    });
+    const result = await handler({
+      httpMethod: "POST",
+      headers: {},
+      body: JSON.stringify({
+        action: "exchangeTraderHistory",
+        marketId: "test-market",
+        username: "Trader",
+      }),
+    });
+    expect(result.statusCode).toBe(200);
+    const history = JSON.parse(result.body).result;
+    expect(history.at(-1)).toMatchObject({ action: "settlement", quantity: 10, runningPnl: 5.92 });
+    expect(history[0]).not.toHaveProperty("source_key");
+    expect(eq).toHaveBeenCalledWith("prediction_fills", "market_id", "test-market");
+    expect(or).toHaveBeenCalledWith(
+      "prediction_fills",
+      "buyer_username.eq.trader,seller_username.eq.trader",
+    );
+    expect(eq).toHaveBeenCalledWith("coin_transactions", "username", "trader");
+    expect(eq).toHaveBeenCalledWith("coin_transactions", "metadata->>marketId", "test-market");
+    mocks.createClient.mockClear();
+    const invalid = await handler({
+      httpMethod: "POST",
+      headers: {},
+      body: JSON.stringify({
+        action: "exchangeTraderHistory",
+        marketId: "test-market",
+        username: "trader,username.neq.other",
+      }),
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(mocks.createClient).not.toHaveBeenCalled();
+  });
+
   it("paginates public chart trades and scopes time ranges to the selected resolved market", async () => {
     const end = Date.parse("2026-11-14T12:00:00Z");
     const fills = Array.from({ length: 1001 }, (_, id) => ({
@@ -143,6 +243,7 @@ describe("betting function", () => {
         {
           username: "trader",
           amount: -0.1,
+          reason: "prediction_trade_fee",
           metadata: { marketId: "strike" },
           created_at: "2026-11-14T01:00:00Z",
         },
@@ -180,6 +281,7 @@ describe("betting function", () => {
           gt: () => query,
           neq: () => query,
           eq: () => query,
+          in: () => query,
           range: async (from: number, to: number) => ({
             data: (rows[table] ?? []).slice(from, to + 1),
             error: null,

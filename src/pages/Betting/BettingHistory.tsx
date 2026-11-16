@@ -16,8 +16,8 @@ import {
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { getErrorMessage } from "../../utils/errors";
-import { formatLocalDateTime, formatPricePercentageValue } from "../../utils/formatters";
-import type { BetHistoryEntry } from "./bettingHistoryModel";
+import { formatLocalDateTime } from "../../utils/formatters";
+import { type BetHistoryEntry, betHistoryPnl, betHistoryReturn } from "./bettingHistoryModel";
 
 const abbreviateRound = (roundName: string): string => {
   const normalizedRound = roundName.trim().toLowerCase();
@@ -91,7 +91,7 @@ const betSortValue = (bet: BetHistoryEntry, column: BetSortColumn): string | num
     case "cost":
       return bet.totalCost;
     case "pnl":
-      return (bet.status === "open" ? bet.potentialPayout : bet.payout) - bet.totalCost;
+      return betHistoryPnl(bet);
   }
 };
 
@@ -107,6 +107,7 @@ export const BetHistoryTable = ({
   showMarket = true,
   sortable = false,
   showUnits = true,
+  onSelectBet,
 }: {
   bets: BetHistoryEntry[];
   markets: BettingMarket[];
@@ -119,6 +120,7 @@ export const BetHistoryTable = ({
   showMarket?: boolean;
   sortable?: boolean;
   showUnits?: boolean;
+  onSelectBet?: (bet: BetHistoryEntry) => void;
 }) => {
   const [sharedBet, setSharedBet] = useState<BetHistoryEntry | null>(null);
   const table = useRef<HTMLTableElement>(null);
@@ -140,24 +142,31 @@ export const BetHistoryTable = ({
     : bets;
   useEffect(() => {
     const element = table.current;
-    if (!shareable || !element) return;
+    if ((!shareable && !onSelectBet) || !element) return;
     const openRow = (event: MouseEvent) => {
       const target = event.target;
       if (!(target instanceof Element) || target.closest("a, button, input, select")) return;
-      const row = target.closest<HTMLElement>("tr[data-share-index]");
+      const row = target.closest<HTMLElement>("tr[data-bet-index]");
       if (!row) return;
-      const bet = sortedBets[Number(row.dataset.shareIndex)];
+      const bet = sortedBets[Number(row.dataset.betIndex)];
       if (bet) {
+        if (onSelectBet) {
+          onSelectBet(bet);
+          return;
+        }
         row.querySelector<HTMLButtonElement>(".betHistorySlipTrigger")?.focus();
         setSharedBet(bet);
       }
     };
     element.addEventListener("click", openRow);
     return () => element.removeEventListener("click", openRow);
-  }, [shareable, sortedBets]);
+  }, [shareable, sortedBets, onSelectBet]);
   const columnHeader = (column: BetSortColumn, label: string) => (
     <th
       scope="col"
+      title={
+        column === "cost" ? "Cost of the shares still held, including purchase fees." : undefined
+      }
       aria-sort={sortable ? (sort.column === column ? sort.direction : "none") : undefined}
     >
       {sortable ? (
@@ -218,8 +227,8 @@ export const BetHistoryTable = ({
                 bet.predictionSelectionCountryCode ??
                 countryByPlayer[selectionLabel.toLowerCase()] ??
                 "";
-              const payout = bet.status === "open" ? bet.potentialPayout : bet.payout;
-              const pnl = Math.round((payout - bet.totalCost) * 100) / 100 || 0;
+              const payout = betHistoryReturn(bet);
+              const pnl = Math.round(betHistoryPnl(bet) * 100) / 100 || 0;
               const showPnl = returnDisplay === "pnl";
               const result =
                 bet.status === "open"
@@ -246,8 +255,22 @@ export const BetHistoryTable = ({
               return (
                 <tr
                   key={bet.historyKey ?? `${bet.kind ?? "tournament"}-${bet.id}`}
-                  className={shareable ? "betHistoryShareRow" : undefined}
-                  data-share-index={shareable ? index : undefined}
+                  className={shareable || onSelectBet ? "betHistoryShareRow" : undefined}
+                  data-bet-index={shareable || onSelectBet ? index : undefined}
+                  tabIndex={onSelectBet ? 0 : undefined}
+                  onKeyDown={
+                    onSelectBet
+                      ? (event) => {
+                          if (
+                            event.target !== event.currentTarget ||
+                            !["Enter", " "].includes(event.key)
+                          )
+                            return;
+                          event.preventDefault();
+                          onSelectBet(bet);
+                        }
+                      : undefined
+                  }
                 >
                   <th className="betHistorySelection" scope="row">
                     <span className="betHistoryPlayer">
@@ -259,12 +282,16 @@ export const BetHistoryTable = ({
                         decoding="async"
                       />
                       <strong>
-                        {shareable ? (
+                        {shareable || onSelectBet ? (
                           <button
                             type="button"
                             className="betHistorySlipTrigger"
-                            aria-label={`Share bet on ${selectionLabel} by ${bet.username}`}
-                            onClick={() => setSharedBet(bet)}
+                            aria-label={
+                              onSelectBet
+                                ? `View transactions for ${bet.username}`
+                                : `Share bet on ${selectionLabel} by ${bet.username}`
+                            }
+                            onClick={() => (onSelectBet ? onSelectBet(bet) : setSharedBet(bet))}
                           >
                             {selectionContents}
                           </button>
@@ -289,7 +316,7 @@ export const BetHistoryTable = ({
                   ) : null}
                   <td className="betHistoryNumber" data-label={priceLabel}>
                     <strong>
-                      {formatPricePercentageValue(bet.priceCents)}
+                      {formatCoinValue(bet.priceCents)}
                       <span className="betHistoryPriceSuffix">%</span>
                     </strong>
                   </td>
@@ -380,26 +407,16 @@ type HistoryFilters = {
   status: string;
 };
 
-const defaultHistoryFilters = (view: BettingHistoryProps["view"]): HistoryFilters => ({
-  bettor: "",
-  market: "all",
-  status: view === "all" ? "open" : "all",
-});
-
 const historyFiltersFromSearch = (
   view: BettingHistoryProps["view"],
   search: string,
 ): HistoryFilters => {
-  const defaults = defaultHistoryFilters(view);
   const searchParams = new URLSearchParams(search);
   const requestedStatus = searchParams.get("status");
   return {
-    bettor: view === "all" ? (searchParams.get("bettor") ?? defaults.bettor) : "",
-    market: searchParams.get("strike") ?? defaults.market,
-    status:
-      requestedStatus && historyStatusFilters.has(requestedStatus)
-        ? requestedStatus
-        : defaults.status,
+    bettor: view === "all" ? (searchParams.get("bettor") ?? "") : "",
+    market: searchParams.get("strike") ?? "all",
+    status: requestedStatus && historyStatusFilters.has(requestedStatus) ? requestedStatus : "open",
   };
 };
 

@@ -17,60 +17,13 @@ export type BetHistoryEntry = TournamentBet & {
   predictionSelectionCountryCode?: string | undefined;
   predictionMarketTitle?: string | undefined;
   realizedPnl?: number;
-  positionQuantity?: number;
+  pnl?: number;
 };
 
-// One history entry per bettor and strike, including trades on both outcomes.
-export const predictionStrikeBetsByBettor = (
-  bets: readonly BetHistoryEntry[],
-  { realizedOnly = false }: { realizedOnly?: boolean } = {},
-): BetHistoryEntry[] => {
-  const grouped = new Map<string, BetHistoryEntry>();
-  for (const bet of bets) {
-    const key = `${bet.marketId}:${bet.username.toLowerCase()}`;
-    const payout =
-      realizedOnly && bet.status === "open" ? bet.totalCost + (bet.realizedPnl ?? 0) : bet.payout;
-    const previous = grouped.get(key);
-    if (!previous) {
-      grouped.set(key, {
-        ...bet,
-        status: realizedOnly ? "settled" : bet.status,
-        payout,
-        historyKey: `prediction-position:${key}`,
-      });
-      continue;
-    }
-    const selected =
-      (bet.positionQuantity ?? 0) > 0
-        ? bet
-        : (previous.positionQuantity ?? 0) > 0
-          ? previous
-          : Date.parse(bet.placedAt) > Date.parse(previous.placedAt)
-            ? bet
-            : previous;
-    previous.predictionOutcome = selected.predictionOutcome;
-    previous.predictionSelectionLabel = selected.predictionSelectionLabel;
-    previous.predictionSelectionCountryCode = selected.predictionSelectionCountryCode;
-    previous.priceCents = selected.priceCents;
-    previous.positionQuantity = (previous.positionQuantity ?? 0) + (bet.positionQuantity ?? 0);
-    previous.stake += bet.stake;
-    previous.fee += bet.fee;
-    previous.totalCost += bet.totalCost;
-    previous.payout += payout;
-    previous.potentialPayout += bet.potentialPayout;
-    previous.realizedPnl = (previous.realizedPnl ?? 0) + (bet.realizedPnl ?? 0);
-    previous.status = realizedOnly
-      ? "settled"
-      : previous.status === "open" || bet.status === "open"
-        ? "open"
-        : previous.status === bet.status
-          ? previous.status
-          : "settled";
-    previous.settledAt = previous.status === "open" ? null : (previous.settledAt ?? bet.settledAt);
-    if (Date.parse(bet.placedAt) > Date.parse(previous.placedAt)) previous.placedAt = bet.placedAt;
-  }
-  return [...grouped.values()].sort((left, right) => right.totalCost - left.totalCost);
-};
+export const betHistoryReturn = (bet: BetHistoryEntry): number =>
+  bet.status === "open" ? bet.potentialPayout : bet.payout;
+export const betHistoryPnl = (bet: BetHistoryEntry): number =>
+  bet.pnl ?? betHistoryReturn(bet) - bet.totalCost;
 
 export const predictionPnlByMarketId = (
   bets: readonly BetHistoryEntry[],
@@ -78,7 +31,7 @@ export const predictionPnlByMarketId = (
   const pnlByMarketId = new Map<string, number>();
   for (const bet of bets) {
     if (bet.kind !== "prediction") continue;
-    const pnl = bet.status === "open" ? (bet.realizedPnl ?? 0) : bet.payout - bet.totalCost;
+    const pnl = bet.status === "open" ? (bet.realizedPnl ?? 0) : betHistoryPnl(bet);
     if (bet.status === "open" && pnl === 0) continue;
     pnlByMarketId.set(bet.marketId, (pnlByMarketId.get(bet.marketId) ?? 0) + pnl);
   }
@@ -134,12 +87,14 @@ export const buildBetHistory = ({
   predictionMarketGroups,
   predictionMarketStates,
   minimumPositionCost = 1,
+  realizedOnly = false,
 }: {
   tournamentBets: TournamentBet[];
   predictionPositions: PredictionHistoryPosition[];
   predictionMarketGroups: PredictionMarketGroup[];
   predictionMarketStates: PredictionMarketState[];
   minimumPositionCost?: number;
+  realizedOnly?: boolean;
 }): BetHistoryEntry[] => {
   const stateByMarketId = new Map(predictionMarketStates.map((state) => [state.market.id, state]));
   const predictionMarketById = new Map<
@@ -167,8 +122,7 @@ export const buildBetHistory = ({
     const closedCost = position.closedCost ?? 0;
     const closedProceeds = position.closedProceeds ?? 0;
     const fees = position.fees ?? 0;
-    const totalCost = roundCoins(remainingCost + closedCost + fees);
-    if (totalCost < minimumPositionCost && closedCost === 0 && fees === 0) return [];
+    if (remainingCost < minimumPositionCost && closedCost === 0 && fees === 0) return [];
     const settlement = predictionSettlement(
       state,
       position.outcome,
@@ -176,6 +130,16 @@ export const buildBetHistory = ({
       remainingCost,
     );
     if (position.quantity === 0) settlement.status = "settled";
+    const realizedPnl = roundCoins(closedProceeds - closedCost - fees);
+    const isResolved = state?.market.status === "resolved" || state?.market.status === "refunded";
+    const pnl = roundCoins(
+      realizedPnl +
+        (isResolved
+          ? settlement.payout - remainingCost
+          : realizedOnly
+            ? 0
+            : position.quantity - remainingCost),
+    );
     const hasNamedOutcomes = Boolean(definition.outcomeLabels);
     return [
       {
@@ -183,19 +147,20 @@ export const buildBetHistory = ({
         marketId: definition.id,
         username: position.username,
         selection: definition.username,
-        priceCents: Math.round(position.averagePriceCents),
-        stake: roundCoins(remainingCost + closedCost),
+        priceCents: position.averagePriceCents,
+        stake: remainingCost,
         fee: fees,
-        totalCost,
+        totalCost: remainingCost,
         potentialPayout: position.quantity + closedProceeds,
         ...settlement,
+        ...(realizedOnly ? { status: "settled" as const } : {}),
         payout: settlement.payout + closedProceeds,
-        realizedPnl: roundCoins(closedProceeds - closedCost - fees),
+        realizedPnl,
+        pnl,
         placedAt: position.updatedAt,
         kind: "prediction",
-        historyKey: `prediction-position:${position.marketId}:${position.username.toLowerCase()}:${position.outcome}`,
+        historyKey: `prediction-position:${position.marketId}:${position.username.toLowerCase()}`,
         predictionOutcome: position.outcome,
-        positionQuantity: position.quantity,
         predictionSelectionLabel: hasNamedOutcomes
           ? predictionOutcomeLabel(definition, position.outcome)
           : undefined,
@@ -205,7 +170,7 @@ export const buildBetHistory = ({
     ];
   });
 
-  return [...standardBets, ...predictionStrikeBetsByBettor(predictionBets)].sort(
+  return [...standardBets, ...predictionBets].sort(
     (left, right) => Date.parse(right.placedAt) - Date.parse(left.placedAt),
   );
 };

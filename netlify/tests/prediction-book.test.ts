@@ -122,13 +122,20 @@ describe("prediction order-book normalization", () => {
       const result = replayPredictionPosition({
         username: "trader",
         credits: [
-          { outcome: "yes", quantity: 1000, price_cents: 20, credited_at: "2026-11-01T00:00:00Z" },
+          {
+            outcome: "yes",
+            quantity: 1000,
+            price_cents: 20,
+            fee_coins: 20,
+            credited_at: "2026-11-01T00:00:00Z",
+          },
         ],
         fills: [
           ...(sellFirst
             ? [
                 {
                   id: 1,
+                  taker_order_id: 1,
                   outcome: "yes" as const,
                   price_cents: 40,
                   quantity: 1000,
@@ -141,6 +148,7 @@ describe("prediction order-book normalization", () => {
             : []),
           {
             id: 2,
+            taker_order_id: 2,
             outcome: "no",
             price_cents: 60,
             quantity: 2000,
@@ -150,13 +158,19 @@ describe("prediction order-book normalization", () => {
             created_at: "2026-11-03T00:00:00Z",
           },
         ],
+        receipts: [
+          { reason: "prediction_order_reserve", amount: -1224, metadata: { orderId: 2, fee: 24 } },
+          ...(sellFirst
+            ? [{ reason: "prediction_trade_credit", amount: 392, metadata: { orderId: 1, fee: 8 } }]
+            : []),
+        ],
         nettings: sellFirst ? [] : [{ id: 1, quantity: 1000, created_at: "2026-11-03T00:00:00Z" }],
       });
       expect(result.positions).toEqual({
         yes: { quantity: 0, costCents: 0 },
-        no: { quantity: sellFirst ? 2000 : 1000, costCents: sellFirst ? 120000 : 60000 },
+        no: { quantity: sellFirst ? 2000 : 1000, costCents: sellFirst ? 122400 : 61200 },
       });
-      expect(result.closed.proceedsCents).toBe(sellFirst ? 40000 : 100000);
+      expect(result.closed.proceedsCents).toBe(sellFirst ? 39200 : 100000);
     },
   );
 
