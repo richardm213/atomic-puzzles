@@ -316,7 +316,10 @@ export const BetHistoryTable = ({
                   ) : null}
                   <td className="betHistoryNumber" data-label={priceLabel}>
                     <strong>
-                      {formatCoinValue(bet.priceCents)}
+                      {bet.priceCents.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                       <span className="betHistoryPriceSuffix">%</span>
                     </strong>
                   </td>
