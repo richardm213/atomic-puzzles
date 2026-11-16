@@ -431,24 +431,14 @@ export const CoinRankingsPage = () => {
                       setTransactionPage(1);
                     }}
                   >
-                    Clear
+                    Clear player
                   </button>
                 ) : null}
               </div>
             </form>
 
             <fieldset className="coinTransactionFilters">
-              <legend>
-                Show transactions
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateCategories(selectedCategories.length <= 2 ? allTransactionCategories : [])
-                  }
-                >
-                  {selectedCategories.length <= 2 ? "Select all" : "Clear all"}
-                </button>
-              </legend>
+              <legend>Show transactions</legend>
               <div>
                 {transactionFilters.map((filter) => (
                   <label key={filter.key}>
@@ -460,6 +450,14 @@ export const CoinRankingsPage = () => {
                     {filter.label}
                   </label>
                 ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateCategories(selectedCategories.length <= 2 ? allTransactionCategories : [])
+                  }
+                >
+                  {selectedCategories.length <= 2 ? "Select all" : "Clear all"}
+                </button>
               </div>
             </fieldset>
 

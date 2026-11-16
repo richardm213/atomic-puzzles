@@ -149,7 +149,7 @@ test("coin transaction URLs preserve the selected tab and player through reload 
   await expect.poll(() => players.at(-1)).toBe("maracker");
   await page.reload();
   await expect(player).toHaveValue("maracker");
-  await page.getByRole("button", { name: "Clear", exact: true }).click();
+  await page.getByRole("button", { name: "Clear player", exact: true }).click();
   await expect(page).toHaveURL(/\/rankings\/coins\?view=transactions$/);
   await expect(player).toHaveValue("");
   await page.goBack();
@@ -165,6 +165,7 @@ test("coin transaction URLs preserve the selected tab and player through reload 
   await expect(player).toHaveValue("maracker");
   await page.getByRole("button", { name: "Clear all", exact: true }).click();
   await expect(page.getByRole("checkbox", { checked: true })).toHaveCount(0);
+  await expect(player).toHaveValue("maracker");
   await page.reload();
   await expect(page.getByRole("checkbox", { checked: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Select all", exact: true })).toBeVisible();
@@ -176,4 +177,5 @@ test("coin transaction URLs preserve the selected tab and player through reload 
   await page.getByRole("checkbox", { name: "Puzzle solves", exact: true }).uncheck();
   await page.getByRole("button", { name: "Select all", exact: true }).click();
   await expect(page.getByRole("checkbox", { checked: false })).toHaveCount(0);
+  await expect(player).toHaveValue("maracker");
 });

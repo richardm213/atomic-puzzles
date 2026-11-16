@@ -215,11 +215,6 @@
 }
 
 .coinTransactionFilters legend {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  width: 100%;
   margin-bottom: var(--space-2);
   color: var(--color-subtle);
   font-size: 12px;
