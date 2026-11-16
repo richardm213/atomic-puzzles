@@ -684,6 +684,13 @@ const puzzleLeaderboardRoute = createRoute({
 const coinRankingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/rankings/coins",
+  validateSearch: (search: Record<string, unknown>) => ({
+    view: search.view === "transactions" ? ("transactions" as const) : undefined,
+    player:
+      typeof search.player === "string" && /^[a-z0-9_-]{1,100}$/i.test(search.player.trim())
+        ? search.player.trim().toLowerCase()
+        : undefined,
+  }),
   loader: ({ context }) => {
     void import("./lib/coins/coinQueries").then(({ coinRankingsQueryOptions }) =>
       context.queryClient.prefetchQuery(coinRankingsQueryOptions()),

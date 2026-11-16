@@ -1,7 +1,7 @@
 import "./CoinRankings.css";
 
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { DataTable } from "../../components/DataTable/DataTable";
@@ -210,10 +210,26 @@ const readSavedFilters = (): TransactionCategory[] => {
 
 export const CoinRankingsPage = () => {
   const queryClient = useQueryClient();
-  const [view, setView] = useState<CoinView>("rankings");
+  const navigate = useNavigate({ from: "/rankings/coins" });
+  const search = useSearch({ from: "/rankings/coins" });
+  const view = search.view ?? "rankings";
+  const usernameFilter = search.player ?? "";
+  const setView = (next: CoinView) =>
+    void navigate({
+      search: (previous) => ({ ...previous, view: next === "transactions" ? next : undefined }),
+      resetScroll: false,
+    });
+  const setUsernameFilter = (player: string) =>
+    void navigate({
+      search: (previous) => ({ ...previous, player: player || undefined }),
+      resetScroll: false,
+    });
   const [transactionPage, setTransactionPage] = useState(1);
-  const [usernameDraft, setUsernameDraft] = useState("");
-  const [usernameFilter, setUsernameFilter] = useState("");
+  const [usernameDraft, setUsernameDraft] = useState(usernameFilter);
+  useEffect(() => {
+    setUsernameDraft(usernameFilter);
+    setTransactionPage(1);
+  }, [usernameFilter]);
   const [selectedCategories, setSelectedCategories] =
     useState<TransactionCategory[]>(readSavedFilters);
   const selectedReasons = useMemo(

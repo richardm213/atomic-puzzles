@@ -113,3 +113,54 @@ test("yearly rankings show a yearly result without a current RD column", async (
   await expect(page.getByRole("combobox", { name: "Month" })).toHaveCount(0);
   await expect(page.getByLabel("Bullet eligibility")).toContainText(/250\+ games.*\b60\b/);
 });
+
+test("coin transaction URLs preserve the selected tab and player through reload and back", async ({
+  page,
+}) => {
+  const players: (string | undefined)[] = [];
+  await page.route("**/api/coins", (route) => {
+    const body = route.request().postDataJSON();
+    if (body.action === "transactions") {
+      players.push(body.username);
+      return route.fulfill({
+        json: {
+          result: [],
+          pagination: { page: 1, pageSize: 50, total: 0, totalPages: 1 },
+        },
+      });
+    }
+    return route.fulfill({ json: { result: [] } });
+  });
+  await page.goto("/rankings/coins?view=transactions&player=wolfram_ep");
+  const player = page.getByRole("textbox", { name: "Player", exact: true });
+  await expect(page.getByRole("tab", { name: "Transactions", exact: true })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(player).toHaveValue("wolfram_ep");
+  await expect.poll(() => players.at(-1)).toBe("wolfram_ep");
+  await player.fill("Maracker");
+  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await expect(page).toHaveURL(
+    (url) =>
+      url.searchParams.get("view") === "transactions" &&
+      url.searchParams.get("player") === "maracker",
+  );
+  await expect.poll(() => players.at(-1)).toBe("maracker");
+  await page.reload();
+  await expect(player).toHaveValue("maracker");
+  await page.getByRole("button", { name: "Clear", exact: true }).click();
+  await expect(page).toHaveURL(/\/rankings\/coins\?view=transactions$/);
+  await expect(player).toHaveValue("");
+  await page.goBack();
+  await expect(player).toHaveValue("maracker");
+  await page.getByRole("tab", { name: "Rankings", exact: true }).click();
+  await expect(page).toHaveURL(/\/rankings\/coins\?player=maracker$/);
+  await page.getByRole("tab", { name: "Transactions", exact: true }).click();
+  await expect(page).toHaveURL(
+    (url) =>
+      url.searchParams.get("view") === "transactions" &&
+      url.searchParams.get("player") === "maracker",
+  );
+  await expect(player).toHaveValue("maracker");
+});
