@@ -95,18 +95,18 @@ const defaultMarketCategory = "AWC Semifinals";
 const predictionMarketCategories = [
   "AWC Semifinals",
   "AWC Quarterfinals",
-  "AWC Losers 1",
+  "Nov Shield",
   "2026 AWC Champion",
   "2026 AWC Side Bets",
   "AWC Round of 16",
   "Ban",
-  "Shield",
+  "AWC Losers 1",
   "AWC 2027",
 ] as const;
 const otherMarketCategories: readonly string[] = [
   "AWC Quarterfinals",
   "AWC Round of 16",
-  "Shield",
+  "AWC Losers 1",
   "AWC 2027",
   "Ban",
 ];
@@ -119,7 +119,7 @@ const predictionGroupIdByCategory: Record<PredictionMarketCategory, string> = {
   "2026 AWC Side Bets": "awc-2026-side-bets",
   "AWC 2027": "awc-2027-champion",
   Ban: "ban-2026",
-  Shield: "november-atomic-shield-2026",
+  "Nov Shield": "november-atomic-shield-2026",
 };
 const isAwcWinnerCategory = (category: string): boolean =>
   category === "2026 AWC Champion" || category === "AWC 2027";
@@ -141,6 +141,7 @@ const marketCategoryFromSearch = (
   const requestedMarket = new URLSearchParams(search).get("market") ?? "";
   if (requestedMarket === "markets") return "Ban";
   if (requestedMarket === "champion") return "2026 AWC Champion";
+  if (requestedMarket === "shield") return "Nov Shield";
   return (
     categories.find((category) => marketCategorySlug(category) === requestedMarket) ??
     defaultMarketCategory
@@ -364,7 +365,7 @@ export const BettingPage = () => {
     [marketCategory, openMarkets, winnerPosition],
   );
   const predictionMarketOnlyCategory =
-    marketCategory === "Shield" ||
+    marketCategory === "Nov Shield" ||
     marketCategory === "Ban" ||
     marketCategory === "2026 AWC Side Bets";
   const activePredictionDisplayMode: PredictionDisplayMode = predictionMarketOnlyCategory

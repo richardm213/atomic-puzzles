@@ -66,7 +66,13 @@ test("side bets have their own route and secondary markets stay in the dropdown"
   await page.getByRole("button", { name: "2026 AWC Side Bets", exact: true }).click();
   await expect(page.getByText("2026 AWC Side Bets", { exact: true })).toHaveCount(2);
   const other = page.getByRole("combobox", { name: "Other markets", exact: true });
-  for (const category of ["AWC Round of 16", "Shield", "AWC 2027"]) {
+  const shield = page.getByRole("button", { name: "Nov Shield", exact: true });
+  await shield.click();
+  await expect(shield).toHaveAttribute("aria-pressed", "true");
+  await expect(other.getByRole("option", { name: "Nov Shield", exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(shield).toHaveAttribute("aria-pressed", "true");
+  for (const category of ["AWC Round of 16", "AWC Losers 1", "AWC 2027"]) {
     await expect(page.getByRole("button", { name: category, exact: true })).toHaveCount(0);
     await other.selectOption(category);
     await expect(other).toHaveValue(category);
