@@ -32,14 +32,8 @@ export type RawMatchLike = {
 
 export type RawMatchSourceFields = Pick<RawMatchLike, "source">;
 
-export type MappedGameSummary = {
-  id: string;
-  index: number;
-  resultLabel: string;
-  scoreAAfter: number;
-  scoreBAfter: number;
-  timeControl?: string;
-};
+export type { MappedGameSummary } from "../../../shared/domain/matchScores";
+import type { MappedGameSummary } from "../../../shared/domain/matchScores";
 
 export type MatchCardData = {
   matchId: string;

@@ -1,23 +1,13 @@
 import { matchSourceFromValues, sourceValueFromValues } from "./filters";
 import {
   findRatingDataForPlayer,
-  type NormalizedGame,
   normalizedRatingsFromMatch,
   optionalRatingNumber,
-  winnerToFullWord,
 } from "./transforms";
-import type { MappedGameSummary, RawMatchLike, RawMatchSourceFields } from "./types";
+import type { RawMatchLike, RawMatchSourceFields } from "./types";
 
+export { type MatchGameSummary, summarizeMatchGames } from "../../../shared/domain/matchScores";
 export type { MappedGameSummary } from "./types";
-
-export type MatchGameSummary = {
-  scoreA: number;
-  scoreB: number;
-  playerAWins: number;
-  playerBWins: number;
-  draws: number;
-  mappedGames: MappedGameSummary[];
-};
 
 export type PlayerRatingsForMatch = {
   playerABeforeRating: number | null;
@@ -35,70 +25,6 @@ export const sourceValueFromMatch = (match: RawMatchSourceFields | null | undefi
 
 export const sourceKeyFromMatch = (match: RawMatchSourceFields | null | undefined) =>
   matchSourceFromValues(match?.source);
-
-export const summarizeMatchGames = (
-  games: NormalizedGame[],
-  playerA: string,
-  playerB: string,
-): MatchGameSummary => {
-  const playerALower = String(playerA).toLowerCase();
-  let scoreA = 0;
-  let scoreB = 0;
-  let playerAWins = 0;
-  let playerBWins = 0;
-  let draws = 0;
-
-  const mappedGames = games.map((game, index): MappedGameSummary => {
-    const white = String(game?.white ?? "").toLowerCase();
-    const black = String(game?.black ?? "").toLowerCase();
-    const winner = winnerToFullWord(game?.winner);
-    let resultLabel = "draw";
-
-    if (winner === "white") {
-      if (white === playerALower) {
-        scoreA += 1;
-        playerAWins += 1;
-        resultLabel = playerA;
-      } else {
-        scoreB += 1;
-        playerBWins += 1;
-        resultLabel = playerB;
-      }
-    } else if (winner === "black") {
-      if (black === playerALower) {
-        scoreA += 1;
-        playerAWins += 1;
-        resultLabel = playerA;
-      } else {
-        scoreB += 1;
-        playerBWins += 1;
-        resultLabel = playerB;
-      }
-    } else {
-      scoreA += 0.5;
-      scoreB += 0.5;
-      draws += 1;
-    }
-
-    return {
-      id: String(game?.id ?? "—"),
-      index,
-      resultLabel,
-      scoreAAfter: scoreA,
-      scoreBAfter: scoreB,
-      ...(game.timeControl ? { timeControl: game.timeControl } : {}),
-    };
-  });
-
-  return {
-    scoreA,
-    scoreB,
-    playerAWins,
-    playerBWins,
-    draws,
-    mappedGames,
-  };
-};
 
 export const ratingsForPlayers = (
   match: RawMatchLike | null | undefined,

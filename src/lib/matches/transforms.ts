@@ -15,16 +15,8 @@ export type RatingEntry = RatingFields;
 
 export type RatingsByPlayer = RawRatingsByPlayer;
 
-const winnerCodeLookup: Record<string, string> = {
-  w: "white",
-  b: "black",
-  d: "draw",
-};
-
-export const winnerToFullWord = (winner: unknown): WinnerWord => {
-  const winnerValue = String(winner ?? "").toLowerCase();
-  return winnerCodeLookup[winnerValue] ?? winnerValue;
-};
+export { winnerToFullWord } from "../../../shared/domain/matchScores";
+import { winnerToFullWord } from "../../../shared/domain/matchScores";
 
 export const normalizedPlayersFromMatch = (match: RawMatchLike | null | undefined): string[] => {
   if (Array.isArray(match?.players)) return match.players;
