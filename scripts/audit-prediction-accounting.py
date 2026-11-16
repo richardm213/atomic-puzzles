@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only audit of every prediction settlement. Export guarded correction SQL for Firefox."""
+"""Read-only audit of every prediction settlement, including signed legacy payout reversals."""
 from __future__ import annotations
 import argparse
 import json
@@ -12,7 +12,7 @@ from pathlib import Path
 
 ZERO = Decimal(0)
 SCALE = Decimal('0.000001')
-VERSION = 'prediction-accounting-v1'
+VERSION = 'prediction-accounting-v2'
 TABLES = ('prediction_markets', 'prediction_fills', 'prediction_positions',
           'prediction_position_nettings', 'prediction_legacy_position_credits',
           'tournament_bets', 'tournament_betting_markets')
@@ -50,6 +50,44 @@ def load_live():
         '(reason.like.prediction_*,reason.like.tournament_bet*)'})
     return data
 
+def legacy_bet_id(row):
+    metadata = row.get('metadata') or {}
+    if metadata.get('betId') is not None:
+        return str(metadata['betId'])
+    source = metadata.get('reverses') or row['source_key']
+    for prefix in ('tournament-bet-payout:', 'tournament-bet-payout-reversal:', 'tournament-bet-refund:'):
+        if source.startswith(prefix):
+            return source.removeprefix(prefix)
+    return None
+
+def audit_trade_fees(data):
+    paid = defaultdict(lambda: ZERO)
+    for row in data['coin_transactions']:
+        metadata = row.get('metadata') or {}
+        if row['reason'] == 'prediction_trade_fee':
+            fee = -number(row['amount'])
+        elif row['reason'] in ('prediction_order_reserve', 'prediction_trade_credit'):
+            fee = number(metadata.get('fee', 0))
+        else:
+            continue
+        if fee and metadata.get('orderId') is not None:
+            paid[metadata.get('marketId'), row['username'], metadata['orderId']] += fee
+    by_order = defaultdict(list)
+    for fill in data['prediction_fills']:
+        if fill.get('taker_order_id') is not None:
+            by_order[fill['taker_order_id']].append(fill)
+    errors = []
+    for (market, username, order), actual in paid.items():
+        fills = [fill for fill in by_order[order] if fill['seller_username'] == username or (
+            fill['buyer_username'] == username and not (fill['pair_key'] and fill['seller_username']))]
+        if not fills:  # Old resets deleted their fills; do not invent execution data.
+            continue
+        expected = sum((money(number(fill['quantity']) * number(fill['price_cents']) / 100 * Decimal('0.02')) for fill in fills), ZERO)
+        if abs(expected - actual) > SCALE:
+            errors.append({'marketId': market, 'username': username, 'orderId': order,
+                           'expected': expected, 'actual': actual})
+    return errors
+
 def audit(data):
     markets = {row['id']: row for row in data['prediction_markets']}
     quantities = defaultdict(lambda: {'yes': ZERO, 'no': ZERO})
@@ -79,11 +117,11 @@ def audit(data):
         if row['source_key'].startswith('prediction-position-net:'):
             net_cash[key] += amount
         if row['reason'] == 'tournament_bet_payout':
-            credit = credits.get(row['source_key'].removeprefix('tournament-bet-payout:'))
+            credit = credits.get(legacy_bet_id(row))
             if credit:
                 settlement_cash[credit['market_id'], row['username']] += amount
         if row['reason'] in ('prediction_order_reserve', 'prediction_order_refund', 'prediction_trade_credit'):
-            trade_cash[key] += amount
+            trade_cash[key] += amount + number(metadata.get('fee', 0))
         if metadata.get('kind') == 'filled-bets-reset':
             reset_markets.add(key[0])
         if row['reason'] == 'prediction_reconciliation':
@@ -130,7 +168,7 @@ def audit(data):
     legacy_paid = defaultdict(lambda: ZERO)
     for row in ledger:
         if row['reason'] in ('tournament_bet_payout', 'tournament_bet_refund'):
-            legacy_paid[row['source_key'].split(':')[-1]] += number(row['amount'])
+            legacy_paid[legacy_bet_id(row)] += number(row['amount'])
     legacy_errors = []
     for bet in data['tournament_bets']:
         if str(bet['id']) in credits:
@@ -141,77 +179,16 @@ def audit(data):
     return {'version': VERSION, 'counts': {key: len(value) for key, value in data.items()},
             'settledMarketUsersChecked': len(checked), 'corrections': corrections,
             'positionErrors': position_errors, 'openRedemptionErrors': open_redemption_errors,
-            'legacyErrors': legacy_errors, 'settlements': checked}
-
-def quote(value):
-    return "'" + str(value).replace("'", "''") + "'"
-
-def correction_sql(report):
-    if report['positionErrors'] or report['openRedemptionErrors'] or report['legacyErrors']:
-        raise ValueError('Resolve quantity or legacy audit errors before posting corrections')
-    rows = []
-    for item in report['corrections']:
-        rows.append('(' + ','.join(quote(item[key]) for key in ('marketId', 'username', 'kind', 'expectedCash', 'previousCash', 'delta')) + ')')
-    if not rows:
-        return "select 'No prediction accounting corrections required' as result;\n"
-    return '''begin;
-select pg_advisory_xact_lock(hashtext('prediction-accounting-audit-v1'));
-create temp table accounting_corrections(market_id text,username text,kind text,expected numeric,previous numeric,delta numeric) on commit drop;
-insert into accounting_corrections values\n''' + ',\n'.join(rows) + ''';
-select pg_advisory_xact_lock(hashtext('prediction-market:'||market_id)) from (select distinct market_id from accounting_corrections) m order by market_id;
-select a.username from public.coin_accounts a where username in (select username from accounting_corrections) order by username for update;
-create temp table accounting_posted(username text,delta numeric) on commit drop;
-create temp table accounting_wallets_before on commit drop as select username,balance from public.coin_accounts where username in (select username from accounting_corrections);
-do $$
-declare r record; actual numeric; source text; total numeric; msg text;
-begin
- for r in select * from accounting_corrections order by username,market_id loop
-  source:='prediction-history-reconcile:v1:'||r.kind||':'||r.market_id||':'||r.username;
-  if exists(select 1 from public.coin_transactions where source_key=source) then continue; end if;
-  if r.kind='duplicate-legacy-payout' then
-   select coalesce(sum(t.amount),0) into actual from public.coin_transactions t where t.username=r.username and (
-    (t.metadata->>'marketId'=r.market_id and (t.reason='prediction_market_payout' or t.source_key like 'prediction-position-net:%'))
-    or (t.reason='tournament_bet_payout' and t.source_key in (select 'tournament-bet-payout:'||source_bet_id from public.prediction_legacy_position_credits where market_id=r.market_id and username=r.username))
-    or (t.reason='prediction_reconciliation' and t.metadata->>'marketId'=r.market_id and t.metadata->>'kind'=r.kind));
-  else
-   if exists(select 1 from public.prediction_fills where market_id=r.market_id)
-    or exists(select 1 from public.prediction_positions where market_id=r.market_id and username=r.username and quantity>0) then raise exception 'Reset market has new trades'; end if;
-   select coalesce(sum(t.amount),0) into actual from public.coin_transactions t where t.username=r.username and t.metadata->>'marketId'=r.market_id and (
-    t.reason in ('prediction_order_reserve','prediction_order_refund','prediction_trade_credit')
-    or (t.reason='prediction_reconciliation' and t.metadata->>'kind'=r.kind));
-  end if;
-  if actual<>r.previous then raise exception 'Accounting receipts changed for %, %',r.market_id,r.username; end if;
-  perform public.post_prediction_reconciliation(r.username,r.delta,source,jsonb_build_object(
-   'auditVersion','prediction-accounting-v1','kind',r.kind,'marketId',r.market_id,
-   'expectedCash',r.expected,'previousCash',r.previous,'delta',r.delta));
-  insert into accounting_posted values(r.username,r.delta);
- end loop;
- for r in select username,sum(delta) as delta from accounting_posted where username<>'prediction_admin' group by username loop
-  source:='prediction-accounting-audit-v1:'||r.username;
-  msg:='Betting history corrected: '||case when r.delta>=0 then '+' else '−' end||to_char(abs(r.delta),'FM999,999,990.00')||' coins. See your coin history.';
-  insert into public.notifications(recipient_username,notification_type,feature_key,feature_message,feature_path)
-   select r.username,'feature',source,msg,'/betting' where not exists(select 1 from public.notifications where recipient_username=r.username and notification_type='feature' and feature_key=source);
- end loop;
- for r in select b.username,b.balance,sum(c.delta) delta from accounting_wallets_before b join accounting_posted c on c.username=b.username group by b.username,b.balance loop
-  if (select balance from public.coin_accounts where username=r.username)<>r.balance+r.delta then raise exception 'Wallet correction mismatch for %',r.username; end if;
- end loop;
-end;
-$$;
-commit;
-select jsonb_build_object('corrections',(select count(*) from public.coin_transactions where reason='prediction_reconciliation' and metadata->>'auditVersion'='prediction-accounting-v1'),'netChange',(select sum(amount) from public.coin_transactions where reason='prediction_reconciliation' and metadata->>'auditVersion'='prediction-accounting-v1')) as result;
-'''
+            'legacyErrors': legacy_errors, 'feeErrors': audit_trade_fees(data), 'settlements': checked}
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--snapshot', type=Path)
     parser.add_argument('--report', type=Path, required=True)
-    parser.add_argument('--write-sql', type=Path)
     args = parser.parse_args()
     data = json.loads(args.snapshot.read_text()) if args.snapshot else load_live()
     report = audit(data)
     args.report.write_text(json.dumps(report, default=str, indent=2))
-    if args.write_sql:
-        args.write_sql.write_text(correction_sql(report))
     print(json.dumps({key: value for key, value in report.items() if key != 'settlements'}, default=str))
 
 if __name__ == '__main__':

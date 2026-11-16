@@ -91,7 +91,9 @@ declare legacy_paid numeric(18,6); due numeric(18,6);
 begin
  select coalesce(sum(t.amount),0) into legacy_paid
  from public.prediction_legacy_position_credits c join public.coin_transactions t
- on t.source_key='tournament-bet-payout:'||c.source_bet_id
+ on t.reason='tournament_bet_payout' and t.username=c.username and (
+  t.metadata->>'betId'=c.source_bet_id::text or t.source_key='tournament-bet-payout:'||c.source_bet_id
+  or t.metadata->>'reverses'='tournament-bet-payout:'||c.source_bet_id)
  where c.market_id=p_market_id and c.username=p_username and c.outcome=p_outcome;
  due:=greatest(0,round(p_amount-legacy_paid,6));
  if due=0 then return 0; end if;

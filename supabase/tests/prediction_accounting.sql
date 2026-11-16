@@ -13,7 +13,7 @@ declare
  bet_row public.tournament_bets%rowtype;
  template public.tournament_betting_markets%rowtype;
  before_wallet numeric;
- prepaid boolean;
+ legacy_state text;
  rejected boolean;
 begin
  if has_function_privilege('anon','public.post_prediction_reconciliation(text,numeric,text,jsonb)','execute')
@@ -57,15 +57,19 @@ begin
  if (select balance from public.coin_accounts where username=trader)-before_wallet<>1000 then raise exception 'Switched position settlement incorrect'; end if;
 
  select * into strict template from public.tournament_betting_markets where market_kind='match' limit 1;
- foreach prepaid in array array[false,true] loop
-  legacy_id:=fixture_market||case when prepaid then '-prepaid' else '-converted' end;
+ foreach legacy_state in array array['converted','prepaid','reversed'] loop
+  legacy_id:=fixture_market||'-'||legacy_state;
   insert into public.tournament_betting_markets(id,tournament_id,bracket_match_id,round_name,round_order,player_one,player_two,player_one_price,status,market_kind,category,category_order,label,closes_at)
   values(legacy_id,template.tournament_id,legacy_id,template.round_name,template.round_order,trader,maker,50,'open','match',template.category,template.category_order,'Accounting regression',now()+interval '1 day');
   insert into public.tournament_betting_outcomes(market_id,player,price_percent,display_order) values(legacy_id,trader,50,1),(legacy_id,maker,50,2) on conflict (market_id,player) do update set price_percent=excluded.price_percent;
   order_result:=public.place_tournament_bet(trader,legacy_id,trader,10);
   select * into strict bet_row from public.tournament_bets where market_id=legacy_id and username=trader;
   select balance into before_wallet from public.coin_accounts where username=trader;
-  if prepaid then perform public.resolve_tournament_betting_market(legacy_id,trader,'played'); end if;
+  if legacy_state<>'converted' then perform public.resolve_tournament_betting_market(legacy_id,trader,'played'); end if;
+  if legacy_state='reversed' then
+   perform public.apply_coin_transaction(trader,-bet_row.potential_payout,'tournament_bet_payout','tournament-bet-payout-reversal:'||bet_row.id,
+    jsonb_build_object('betId',bet_row.id,'marketId',legacy_id,'reverses','tournament-bet-payout:'||bet_row.id));
+  end if;
   insert into public.prediction_markets(id,question,resolution_rules,resolution_source_url,closes_at,status,outcome_yes_label,outcome_no_label)
    values(legacy_id,'Legacy accounting regression','Fixture','https://atomicpuzzles.org/betting',now()+interval '1 day','open',trader,maker);
   insert into public.prediction_legacy_position_credits(source_bet_id,market_id,username,outcome,quantity,price_cents)
@@ -75,7 +79,7 @@ begin
   perform public.resolve_prediction_market(legacy_id,'yes');
   perform public.resolve_tournament_betting_market(legacy_id,trader,'played');
   perform public.resolve_prediction_market(legacy_id,'yes');
-  if (select balance from public.coin_accounts where username=trader)-before_wallet<>bet_row.potential_payout then raise exception 'Legacy/exchange settlement paid twice (prepaid=%)',prepaid; end if;
+  if (select balance from public.coin_accounts where username=trader)-before_wallet<>bet_row.potential_payout then raise exception 'Legacy/exchange settlement incorrect (state=%)',legacy_state; end if;
  end loop;
 end;
 $$;
