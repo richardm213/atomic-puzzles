@@ -163,4 +163,17 @@ test("coin transaction URLs preserve the selected tab and player through reload 
       url.searchParams.get("player") === "maracker",
   );
   await expect(player).toHaveValue("maracker");
+  await page.getByRole("button", { name: "Clear all", exact: true }).click();
+  await expect(page.getByRole("checkbox", { checked: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("checkbox", { checked: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Select all", exact: true })).toBeVisible();
+  await page.getByRole("checkbox", { name: "Fines", exact: true }).check();
+  await page.getByRole("checkbox", { name: "Gifts", exact: true }).check();
+  await expect(page.getByRole("button", { name: "Select all", exact: true })).toBeVisible();
+  await page.getByRole("checkbox", { name: "Puzzle solves", exact: true }).check();
+  await expect(page.getByRole("button", { name: "Clear all", exact: true })).toBeVisible();
+  await page.getByRole("checkbox", { name: "Puzzle solves", exact: true }).uncheck();
+  await page.getByRole("button", { name: "Select all", exact: true }).click();
+  await expect(page.getByRole("checkbox", { checked: false })).toHaveCount(0);
 });

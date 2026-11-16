@@ -294,14 +294,17 @@ export const CoinRankingsPage = () => {
     ? getErrorMessage(transactionsQuery.error, "Unable to load coin transactions.")
     : "";
 
-  const toggleCategory = (category: TransactionCategory, checked: boolean) => {
+  const updateCategories = (categories: TransactionCategory[]) => {
     setTransactionPage(1);
-    setSelectedCategories((current) => {
-      const next = checked ? [...current, category] : current.filter((entry) => entry !== category);
-      setBrowserStorageJson("local", filterStorageKey, { version: 2, categories: next });
-      return next;
-    });
+    setSelectedCategories(categories);
+    setBrowserStorageJson("local", filterStorageKey, { version: 2, categories });
   };
+  const toggleCategory = (category: TransactionCategory, checked: boolean) =>
+    updateCategories(
+      checked
+        ? [...selectedCategories, category]
+        : selectedCategories.filter((entry) => entry !== category),
+    );
 
   return (
     <div className="rankingsPage">
@@ -435,7 +438,17 @@ export const CoinRankingsPage = () => {
             </form>
 
             <fieldset className="coinTransactionFilters">
-              <legend>Show transactions</legend>
+              <legend>
+                Show transactions
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateCategories(selectedCategories.length <= 2 ? allTransactionCategories : [])
+                  }
+                >
+                  {selectedCategories.length <= 2 ? "Select all" : "Clear all"}
+                </button>
+              </legend>
               <div>
                 {transactionFilters.map((filter) => (
                   <label key={filter.key}>
