@@ -1,11 +1,6 @@
 import { z } from "zod";
 
-import {
-  isAwcNotToWinSelfBet,
-  isTournamentBetOnOpponent,
-  MAX_PREDICTION_ORDER_QUANTITY,
-  MIN_BET_AMOUNT,
-} from "../../../shared/domain/betting";
+import { MAX_PREDICTION_ORDER_QUANTITY } from "../../../shared/domain/betting";
 import {
   type PredictionPositionCredit,
   type PredictionPositionFill,
@@ -44,7 +39,6 @@ const exchangeMarketIdSchema = z
 
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("bootstrap") }),
-  z.object({ action: z.literal("markets") }),
   z.object({ action: z.literal("exchangeMarkets") }),
   z.object({ action: z.literal("predictionPositions") }),
   z.object({
@@ -64,8 +58,6 @@ const bodySchema = z.discriminatedUnion("action", [
     marketId: exchangeMarketIdSchema,
     period: predictionHistoryPeriodSchema.default("all"),
   }),
-  z.object({ action: z.literal("bets") }),
-  z.object({ action: z.literal("allBets") }),
   z.object({ action: z.literal("suggestions") }),
   z.object({
     action: z.literal("exchangeMarketBatch"),
@@ -109,56 +101,7 @@ const bodySchema = z.discriminatedUnion("action", [
     suggestionId: z.number().int().positive(),
     vote: voteValueSchema,
   }),
-  z.object({
-    action: z.literal("place"),
-    marketId: z.string().trim().min(1).max(100),
-    selection: z
-      .string()
-      .trim()
-      .min(1)
-      .max(50)
-      .regex(/^[a-z0-9_-]+$/i, "Invalid player selection."),
-    stake: z.number().int().min(MIN_BET_AMOUNT).max(1000),
-  }),
 ]);
-
-const marketColumns = [
-  "id",
-  "tournament_id",
-  "bracket_match_id",
-  "round_name",
-  "round_order",
-  "player_one",
-  "player_two",
-  "player_one_price",
-  "player_two_price",
-  "market_kind",
-  "category",
-  "category_order",
-  "label",
-  "status",
-  "winner",
-  "closes_at",
-  "updated_at",
-  "settled_at",
-  "tournament_betting_outcomes(player,price_percent,display_order)",
-].join(",");
-
-const betColumns = [
-  "id",
-  "market_id",
-  "username",
-  "selection",
-  "price_cents",
-  "stake",
-  "fee",
-  "total_cost",
-  "potential_payout",
-  "status",
-  "payout",
-  "placed_at",
-  "settled_at",
-].join(",");
 
 const suggestionColumns = [
   "id",
@@ -278,13 +221,13 @@ type ExchangePositionRow = {
   updated_at: string;
 };
 type PublicPredictionPositionRow = ExchangePositionRow & { username: string };
-type LegacyPositionCreditRow = {
+type PositionCreditRow = {
   market_id: string;
   outcome: "yes" | "no";
   quantity: number;
   price_cents: number;
 };
-type PublicLegacyPositionCreditRow = LegacyPositionCreditRow & { username: string };
+type PublicPositionCreditRow = PositionCreditRow & { username: string };
 
 const groupByMarketId = <Row extends { market_id: string }>(rows: readonly Row[]) => {
   const grouped = new Map<string, Row[]>();
@@ -302,6 +245,7 @@ const loadPredictionMarketStates = async (
   username: string | null,
 ) => {
   const marketIds = [...new Set(requestedMarketIds)];
+  if (!marketIds.length) return [];
   const [initialMarketResult, bookOrdersResult, fillsResult] = await Promise.all([
     supabase.from("prediction_markets").select(exchangeMarketColumns).in("id", marketIds),
     supabase
@@ -406,28 +350,6 @@ const loadExchangeMarketCatalog = async (supabase: ReturnType<typeof createServe
   return data ?? [];
 };
 
-const loadTournamentMarkets = async (supabase: ReturnType<typeof createServerSupabase>) => {
-  const { data, error } = await supabase
-    .from("tournament_betting_markets")
-    .select(marketColumns)
-    .in("tournament_id", ["awc2026", "lichess-ban-2026"])
-    .order("category_order", { ascending: true })
-    .order("round_order", { ascending: true });
-  if (error) throw new Error(`Unable to load betting markets: ${error.message}`);
-  return data ?? [];
-};
-
-const loadAllTournamentBets = async (supabase: ReturnType<typeof createServerSupabase>) => {
-  const { data, error } = await supabase
-    .from("tournament_bets")
-    .select(betColumns)
-    .order("placed_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(200);
-  if (error) throw new Error(`Unable to load all tournament bets: ${error.message}`);
-  return data ?? [];
-};
-
 type PredictionHistoryRow = PublicPredictionPositionRow & {
   average_price_cents: number | null;
   closed_cost_coins: number;
@@ -491,11 +413,9 @@ const loadAllPredictionPositions = async (
   };
   const creditQuery = () => {
     let query = supabase
-      .from("prediction_legacy_position_credits")
-      .select(
-        "market_id,username,outcome,quantity,price_cents,credited_at,...tournament_bets(fee_coins:fee)",
-      )
-      .order("source_bet_id");
+      .from("prediction_position_credits")
+      .select("market_id,username,outcome,quantity,price_cents,credited_at,fee_coins,cost_coins")
+      .order("id");
     if (marketIds) query = query.in("market_id", [...marketIds]);
     if (username) query = query.eq("username", username);
     return query;
@@ -504,12 +424,7 @@ const loadAllPredictionPositions = async (
     let query = supabase
       .from("coin_transactions")
       .select("username,amount,reason,metadata,created_at")
-      .in("reason", [
-        "prediction_trade_fee",
-        "tournament_bet",
-        "prediction_order_reserve",
-        "prediction_trade_credit",
-      ])
+      .in("reason", ["prediction_trade_fee", "prediction_order_reserve", "prediction_trade_credit"])
       .neq("username", "prediction_admin")
       .order("id");
     if (marketIds) query = query.in("metadata->>marketId", [...marketIds]);
@@ -519,7 +434,7 @@ const loadAllPredictionPositions = async (
   const [rawPositions, rawFills, rawCredits, rawNettings, rawFees] = await Promise.all([
     readPredictionRows(positionQuery, "prediction positions"),
     readPredictionRows(fillQuery, "prediction trades"),
-    readPredictionRows(creditQuery, "legacy prediction positions"),
+    readPredictionRows(creditQuery, "prediction position credits"),
     readPredictionRows(nettingQuery, "prediction pair redemptions"),
     readPredictionRows(feeQuery, "prediction trading fees"),
   ]);
@@ -564,7 +479,7 @@ const loadAllPredictionPositions = async (
     if (fill.seller_username !== fill.buyer_username)
       ownerFor(fill.market_id, fill.seller_username)?.fills.push(fill);
   }
-  for (const credit of rawCredits as (PublicLegacyPositionCreditRow & { credited_at: string })[])
+  for (const credit of rawCredits as (PublicPositionCreditRow & { credited_at: string })[])
     ownerFor(credit.market_id, credit.username)?.credits.push(credit);
   for (const net of rawNettings as (PredictionPositionNetting & {
     market_id: string;
@@ -581,7 +496,6 @@ const loadAllPredictionPositions = async (
     if (!fee.metadata.marketId) continue;
     const owner = ownerFor(fee.metadata.marketId, fee.username);
     if (owner) {
-      if (fee.reason === "tournament_bet" && owner.credits.length === 0) continue;
       owner.receipts.push(fee);
       if (predictionTradingFee(fee) !== 0 && fee.created_at > owner.feeDate)
         owner.feeDate = fee.created_at;
@@ -631,7 +545,6 @@ export const bettingRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, bodySchema, "Invalid betting request.");
   if (
     [
-      "place",
       "suggest",
       "voteSuggestion",
       "placeExchangeOrder",
@@ -644,10 +557,8 @@ export const bettingRoute = async (event: FunctionEvent) => {
   const identity = await authenticateRequest(
     event.headers,
     input.action === "bootstrap" ||
-      input.action === "markets" ||
       input.action === "exchangeMarkets" ||
       input.action === "predictionPositions" ||
-      input.action === "allBets" ||
       input.action === "suggestions" ||
       input.action === "exchangeMarketBatch" ||
       input.action === "exchangeTraderHistory" ||
@@ -676,14 +587,12 @@ export const bettingRoute = async (event: FunctionEvent) => {
       readPredictionRows(
         () =>
           supabase
-            .from("prediction_legacy_position_credits")
-            .select(
-              "source_bet_id,outcome,quantity,price_cents,credited_at,...tournament_bets(fee_coins:fee)",
-            )
+            .from("prediction_position_credits")
+            .select("id,outcome,quantity,price_cents,credited_at,fee_coins,cost_coins")
             .eq("market_id", marketId)
             .eq("username", username)
-            .order("source_bet_id"),
-        "converted bets",
+            .order("id"),
+        "prediction position credits",
       ),
       readPredictionRows(
         () =>
@@ -698,29 +607,22 @@ export const bettingRoute = async (event: FunctionEvent) => {
     ]);
     if (market.error) throw new Error(`Unable to load this market: ${market.error.message}`);
     if (!market.data) throw new HttpError(404, "This market is unavailable.");
-    const legacyCredits = credits as (PredictionPositionCredit & { source_bet_id: number })[];
-    const legacySources = legacyCredits.map(
-      (credit) => `tournament-bet-payout:${credit.source_bet_id}`,
-    );
+    const positionCredits = credits as PredictionPositionCredit[];
     const receipts = await readPredictionRows(() => {
-      let query = supabase
+      const query = supabase
         .from("coin_transactions")
         .select("id,amount,reason,source_key,metadata,created_at")
         .eq("username", username)
         .in("reason", [
           "prediction_trade_fee",
-          "tournament_bet",
           "prediction_market_payout",
           "prediction_reconciliation",
-          "tournament_bet_payout",
           "prediction_order_reserve",
           "prediction_order_refund",
           "prediction_trade_credit",
         ])
         .order("id");
-      query = legacySources.length
-        ? query.or(`metadata->>marketId.eq.${marketId},source_key.in.(${legacySources.join(",")})`)
-        : query.eq("metadata->>marketId", marketId);
+      query.eq("metadata->>marketId", marketId);
       return query;
     }, "trader cash receipts");
     return identityResponse(identity, 200, {
@@ -728,7 +630,7 @@ export const bettingRoute = async (event: FunctionEvent) => {
         username,
         market: market.data,
         fills: fills as PredictionPositionFill[],
-        credits: legacyCredits,
+        credits: positionCredits,
         nettings: nettings as PredictionPositionNetting[],
         receipts: receipts as PredictionHistoryReceipt[],
       }),
@@ -772,10 +674,8 @@ export const bettingRoute = async (event: FunctionEvent) => {
   }
 
   if (input.action === "bootstrap") {
-    const [markets, exchangeMarkets, allBets, allPredictionPositions] = await Promise.all([
-      loadTournamentMarkets(supabase),
+    const [exchangeMarkets, allPredictionPositions] = await Promise.all([
       loadExchangeMarketCatalog(supabase),
-      loadAllTournamentBets(supabase),
       loadAllPredictionPositions(supabase),
     ]);
     const exchangeMarketStates = await loadPredictionMarketStates(
@@ -785,9 +685,7 @@ export const bettingRoute = async (event: FunctionEvent) => {
     );
     return identityResponse(identity, 200, {
       result: {
-        markets,
         exchangeMarkets,
-        allBets,
         allPredictionPositions,
         exchangeMarketStates,
       },
@@ -809,14 +707,6 @@ export const bettingRoute = async (event: FunctionEvent) => {
       identity?.username ?? null,
     );
     return identityResponse(identity, 200, { result: states });
-  }
-
-  if (input.action === "markets") {
-    return identityResponse(identity, 200, { result: await loadTournamentMarkets(supabase) });
-  }
-
-  if (input.action === "allBets") {
-    return identityResponse(identity, 200, { result: await loadAllTournamentBets(supabase) });
   }
 
   if (input.action === "suggestions") {
@@ -915,18 +805,6 @@ export const bettingRoute = async (event: FunctionEvent) => {
     });
   }
 
-  if (input.action === "bets") {
-    const { data, error } = await supabase
-      .from("tournament_bets")
-      .select(betColumns)
-      .eq("username", username)
-      .order("placed_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(200);
-    if (error) throw new Error(`Unable to load tournament bets: ${error.message}`);
-    return identityResponse(identity, 200, { result: data });
-  }
-
   if (input.action === "suggest") {
     const normalizedLabels = input.outcomes.map((outcome) => outcome.label.toLowerCase());
     if (new Set(normalizedLabels).size !== normalizedLabels.length) {
@@ -978,57 +856,5 @@ export const bettingRoute = async (event: FunctionEvent) => {
     });
   }
 
-  if (input.marketId.startsWith("lichess-ban-") && input.stake > 200) {
-    throw new HttpError(400, "Banned-market bets are limited to 200 coins.");
-  }
-
-  if (isAwcNotToWinSelfBet(input.marketId, username, input.selection)) {
-    throw new HttpError(400, "You can’t bet on yourself not to win AWC.");
-  }
-
-  const { data: selectedMarket, error: selectedMarketError } = await supabase
-    .from("tournament_betting_markets")
-    .select("market_kind,player_one,player_two")
-    .eq("id", input.marketId)
-    .maybeSingle();
-  if (selectedMarketError) {
-    throw new Error(`Unable to validate betting market: ${selectedMarketError.message}`);
-  }
-  if (
-    selectedMarket &&
-    isTournamentBetOnOpponent(
-      {
-        marketKind: selectedMarket.market_kind,
-        playerOne: selectedMarket.player_one,
-        playerTwo: selectedMarket.player_two,
-      },
-      username,
-      input.selection,
-    )
-  ) {
-    throw new HttpError(400, "You can’t bet on your opponent.");
-  }
-
-  const { data, error } = await supabase.rpc("place_tournament_bet", {
-    p_username: username,
-    p_market_id: input.marketId,
-    p_selection: input.selection,
-    p_stake: input.stake,
-  });
-  if (error) {
-    if (/not enough coins/i.test(error.message)) {
-      throw new HttpError(409, "You don’t have enough coins for this bet and its 2% fee.");
-    }
-    if (/not open|deadline has passed/i.test(error.message)) {
-      throw new HttpError(409, "Betting has closed for this market.");
-    }
-    if (/not found/i.test(error.message)) {
-      throw new HttpError(404, "That betting market no longer exists.");
-    }
-    if (/between 1 and 1000/i.test(error.message)) {
-      throw new HttpError(400, "Enter a bet from 1 to 1,000 coins.");
-    }
-    throw new Error(`Unable to place tournament bet: ${error.message}`);
-  }
-  return identityResponse(identity, 200, { result: data });
+  throw new HttpError(400, "Unsupported betting action.");
 };

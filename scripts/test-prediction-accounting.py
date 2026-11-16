@@ -1,4 +1,4 @@
-"""Regression for legacy payouts already reversed before a later accounting audit."""
+"""Regression for imported positions, duplicate payouts and all-in trade fees."""
 import runpy
 import unittest
 from decimal import Decimal
@@ -7,30 +7,18 @@ from pathlib import Path
 AUDIT = runpy.run_path(str(Path(__file__).with_name('audit-prediction-accounting.py')))['audit']
 
 class PredictionAccountingTest(unittest.TestCase):
-    def test_reversed_legacy_payout_is_not_reclaimed_again(self):
-        for previous_correction in (False, True):
-            with self.subTest(previous_correction=previous_correction):
-                ledger = [
-                    {'reason': 'tournament_bet_payout', 'source_key': 'tournament-bet-payout:7', 'amount': 10, 'metadata': {'betId': 7}},
-                    {'reason': 'tournament_bet_payout', 'source_key': 'tournament-bet-payout-reversal:7', 'amount': -10, 'metadata': {'betId': 7, 'reverses': 'tournament-bet-payout:7'}},
-                    {'reason': 'prediction_market_payout', 'source_key': 'prediction-market-payout:market:trader', 'amount': 10, 'metadata': {'marketId': 'market'}},
-                ]
-                if previous_correction:
-                    ledger.append({'reason': 'prediction_reconciliation', 'source_key': 'prediction-history-reconcile:v1:duplicate-legacy-payout:market:trader', 'amount': -10,
-                                   'metadata': {'marketId': 'market', 'kind': 'duplicate-legacy-payout'}})
-                for row in ledger:
-                    row['username'] = 'trader'
-                result = AUDIT({
-                    'prediction_markets': [{'id': 'market', 'status': 'resolved', 'outcome': 'yes'}],
-                    'prediction_fills': [], 'prediction_positions': [{'market_id': 'market', 'username': 'trader', 'outcome': 'yes', 'quantity': 10}],
-                    'prediction_legacy_position_credits': [{'source_bet_id': 7, 'market_id': 'market', 'username': 'trader', 'outcome': 'yes', 'quantity': 10}],
-                    'tournament_bets': [], 'coin_transactions': ledger,
-                })
-                self.assertEqual(result['positionErrors'], [])
-                if previous_correction:
-                    self.assertEqual([row['delta'] for row in result['corrections']], [Decimal('10')])
-                else:
-                    self.assertEqual(result['corrections'], [])
+    def test_imported_positions_have_one_settlement_entitlement(self):
+        data = {
+            'prediction_markets': [{'id': 'market', 'status': 'resolved', 'outcome': 'yes'}],
+            'prediction_fills': [],
+            'prediction_positions': [{'market_id': 'market', 'username': 'trader', 'outcome': 'yes', 'quantity': 10}],
+            'prediction_position_credits': [{'id': 7, 'market_id': 'market', 'username': 'trader', 'outcome': 'yes', 'quantity': 10}],
+            'coin_transactions': [{'username': 'trader', 'reason': 'prediction_market_payout', 'source_key': 'prediction-market-payout:market:trader', 'amount': 10, 'metadata': {'marketId': 'market'}}],
+        }
+        self.assertEqual(AUDIT(data)['corrections'], [])
+        self.assertEqual(AUDIT(data)['positionErrors'], [])
+        data['coin_transactions'].append({**data['coin_transactions'][0], 'source_key': 'duplicate'})
+        self.assertEqual([row['delta'] for row in AUDIT(data)['corrections']], [Decimal('-10')])
 
     def test_raw_and_bundled_fees_must_match_the_executed_trade(self):
         fee_audit = runpy.run_path(str(Path(__file__).with_name('audit-prediction-accounting.py')))['audit_trade_fees']

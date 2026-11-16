@@ -89,40 +89,38 @@ describe("prediction trader transactions", () => {
     ]);
   });
 
-  it("shows an opposite purchase as a sale and preserves corrected legacy P&L", () => {
+  it("counts imported purchase fees once when closing the opposite side", () => {
     const rows = buildPredictionTraderHistory({
       username: "trader",
       market: { ...market, outcome: "no" },
       credits: [
         {
-          source_bet_id: 7,
           outcome: "no",
           quantity: 300,
           price_cents: 60,
           credited_at: time(2),
           fee_coins: 3.6,
+          cost_coins: 183.6,
         },
       ],
       fills: [fill(3, 200, 30)],
       nettings: [{ id: 1, quantity: 200, created_at: time(3) }],
       receipts: [
-        receipt(10, -183.6, "tournament_bet", {
+        receipt(10, -183.6, "prediction_order_reserve", {
           created_at: time(1),
-          metadata: { fee: 3.6, betId: 7 },
+          metadata: { fee: 3.6, positionCreditId: 7 },
         }),
-        receipt(1, 300, "tournament_bet_payout", { source_key: "tournament-bet-payout:7" }),
         receipt(3, 200, "prediction_trade_credit", { source_key: "prediction-position-net:1" }),
         receipt(4, -5, "prediction_trade_fee", { metadata: { orderId: 3 } }),
         receipt(5, 100, "prediction_market_payout", {
           metadata: { outcome: "no", contracts: 100 },
         }),
-        receipt(6, -300, "prediction_reconciliation"),
       ],
     });
     expect(rows.filter((row) => row.action === "sell")).toMatchObject([
       { outcome: "no", quantity: 200, averagePriceCents: 67.5, pnlChange: 12.6 },
     ]);
-    expect(rows.at(-1)).toMatchObject({ action: "correction", pnlChange: -300, runningPnl: 51.4 });
+    expect(rows.at(-1)).toMatchObject({ action: "settlement", pnlChange: 38.8, runningPnl: 51.4 });
   });
 
   it("closes the existing side before buying any excess, with all-in prices and no extra trading action", () => {

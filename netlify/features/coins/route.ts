@@ -45,17 +45,16 @@ const leaderboardQueryPageSize = 1_000;
 const hiddenLeaderboardUsernames = new Set(["admin", "prediction_admin"]);
 
 type CoinAccountRow = { username: string; balance: number };
-type OpenBetRow = { id: number; username: string; total_cost: number };
 type PredictionPositionRow = {
   market_id: string;
   username: string;
   outcome: "yes" | "no";
   quantity: number;
 };
-type LegacyPositionCreditRow = {
+type PositionCreditRow = {
   credited_at: string;
   fee_coins?: number;
-  source_bet_id: number;
+  id: number;
   market_id: string;
   username: string;
   outcome: "yes" | "no";
@@ -145,17 +144,12 @@ const bodySchema = z.discriminatedUnion("action", [
 ]);
 
 const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => {
-  const [accounts, openBets, unsettledMarkets] = await Promise.all([
+  const [accounts, unsettledMarkets] = await Promise.all([
     loadAllLeaderboardRows<CoinAccountRow>((from, to) => {
       const query = supabase.from("coin_accounts").select("username,balance");
       if (username) query.eq("username", username);
       return query.order("username").range(from, to);
     }, "Unable to load coin rankings: coin accounts could not be read."),
-    loadAllLeaderboardRows<OpenBetRow>((from, to) => {
-      const query = supabase.from("tournament_bets").select("id,username,total_cost");
-      if (username) query.eq("username", username);
-      return query.eq("status", "open").order("id").range(from, to);
-    }, "Unable to load coin rankings: tournament bets could not be read."),
     loadAllLeaderboardRows<{ id: string }>(
       (from, to) =>
         supabase
@@ -172,7 +166,7 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
   const unsettledMarketIds = unsettledMarkets.map((market) => market.id);
 
   if (unsettledMarketIds.length > 0) {
-    const [positions, fills, legacyCredits, nettings, receipts] = await Promise.all([
+    const [positions, fills, positionCredits, nettings, receipts] = await Promise.all([
       loadAllLeaderboardRows<PredictionPositionRow>((from, to) => {
         const query = supabase
           .from("prediction_positions")
@@ -195,15 +189,15 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
         if (username) query.or(`buyer_username.eq.${username},seller_username.eq.${username}`);
         return query.in("market_id", unsettledMarketIds).order("id").range(from, to);
       }, "Unable to load coin rankings: prediction fills could not be read."),
-      loadAllLeaderboardRows<LegacyPositionCreditRow>((from, to) => {
+      loadAllLeaderboardRows<PositionCreditRow>((from, to) => {
         const query = supabase
-          .from("prediction_legacy_position_credits")
+          .from("prediction_position_credits")
           .select(
-            "source_bet_id,market_id,username,outcome,quantity,price_cents,credited_at,...tournament_bets(fee_coins:fee)",
+            "id,market_id,username,outcome,quantity,price_cents,credited_at,fee_coins,cost_coins",
           );
         if (username) query.eq("username", username);
-        return query.in("market_id", unsettledMarketIds).order("source_bet_id").range(from, to);
-      }, "Unable to load coin rankings: legacy prediction positions could not be read."),
+        return query.in("market_id", unsettledMarketIds).order("id").range(from, to);
+      }, "Unable to load coin rankings: prediction position credits could not be read."),
       loadAllLeaderboardRows<PredictionPositionNetting & { market_id: string; username: string }>(
         (from, to) => {
           const query = supabase
@@ -244,11 +238,9 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
         fillsByOwner.set(key, rows);
       }
     }
-    const creditsByOwner = new Map<string, LegacyPositionCreditRow[]>();
+    const creditsByOwner = new Map<string, PositionCreditRow[]>();
     const nettingsByOwner = new Map<string, PredictionPositionNetting[]>();
-    const convertedBetIds = new Set<number>();
-    for (const credit of legacyCredits) {
-      convertedBetIds.add(credit.source_bet_id);
+    for (const credit of positionCredits) {
       const key = `${credit.market_id}:${credit.username}`;
       const rows = creditsByOwner.get(key) ?? [];
       rows.push(credit);
@@ -294,12 +286,6 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
       const positionCostCents = traded.costCents;
       addAmount(openBetCosts, position.username, positionCostCents / 100);
     }
-
-    for (const bet of openBets) {
-      if (!convertedBetIds.has(bet.id)) addAmount(openBetCosts, bet.username, bet.total_cost);
-    }
-  } else {
-    for (const bet of openBets) addAmount(openBetCosts, bet.username, bet.total_cost);
   }
   const rankings = accounts
     .filter(

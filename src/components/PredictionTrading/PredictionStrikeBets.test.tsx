@@ -4,10 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
-import {
-  allPredictionPositionsQueryOptions,
-  allTournamentBetsQueryOptions,
-} from "../../lib/betting/bettingQueries";
+import { allPredictionPositionsQueryOptions } from "../../lib/betting/bettingQueries";
 import {
   predictionMarketBatchQueryOptions,
   predictionMarketCatalogQueryOptions,
@@ -47,7 +44,6 @@ it.each(["resolved", "closed", "open"] as const)(
         settlement: { time: end, price: 100 },
       });
     }
-    client.setQueryData(allTournamentBetsQueryOptions().queryKey, []);
     client.setQueryData(allPredictionPositionsQueryOptions().queryKey, [
       {
         marketId: "strike",

@@ -9,18 +9,10 @@ type Market = {
 };
 type Order = { id: number; outcome: string; filled_quantity: number };
 type Fill = { id: number; outcome: string; quantity: number };
-type LegacyMarket = {
-  id: string;
-  label: string;
-  market_kind: string;
-  player_one: string;
-  player_two: string;
-};
 type Context = {
   markets: ReadonlyMap<string, Market>;
   orders: ReadonlyMap<number, Order>;
   fills: ReadonlyMap<number, Fill>;
-  legacyMarkets: ReadonlyMap<string, LegacyMarket>;
 };
 const numeric = (value: unknown): number | undefined => {
   const number = typeof value === "number" || typeof value === "string" ? Number(value) : NaN;
@@ -37,14 +29,7 @@ export const describeBettingTransaction = (
   const metadata = transaction.metadata ?? {};
   const marketId = text(metadata.marketId);
   const market = context.markets.get(marketId);
-  const legacy = context.legacyMarkets.get(marketId);
-  const label =
-    market?.display_name ||
-    (legacy?.market_kind === "match"
-      ? `${legacy.player_one} vs ${legacy.player_two}`
-      : legacy?.label) ||
-    text(metadata.selection) ||
-    text(metadata.winner);
+  const label = market?.display_name || text(metadata.selection) || text(metadata.winner);
   if (reason === "prediction_liquidity_funding")
     return `${amount < 0 ? "Reduced" : "Funded"} ${label ? `liquidity for ${label}` : "prediction-market liquidity"}`;
   if (!label) return reason === "tournament_bet_refund" ? "Refund for betting limit" : undefined;
@@ -122,7 +107,7 @@ export const describeCoinTransactions = async <T extends Transaction>(
     if (error) throw new Error(`Unable to describe coin transactions: ${error.message}`);
     return (data ?? []) as R[];
   };
-  const [markets, orders, fills, legacyMarkets] = await Promise.all([
+  const [markets, orders, fills] = await Promise.all([
     read<Market>(
       "prediction_markets",
       "id,display_name,outcome_yes_label,outcome_no_label",
@@ -130,17 +115,11 @@ export const describeCoinTransactions = async <T extends Transaction>(
     ),
     read<Order>("prediction_orders", "id,outcome,filled_quantity", orderIds),
     read<Fill>("prediction_fills", "id,outcome,quantity", fillIds),
-    read<LegacyMarket>(
-      "tournament_betting_markets",
-      "id,label,market_kind,player_one,player_two",
-      marketIds,
-    ),
   ]);
   const context: Context = {
     markets: new Map(markets.map((m) => [m.id, m])),
     orders: new Map(orders.map((o) => [o.id, o])),
     fills: new Map(fills.map((f) => [f.id, f])),
-    legacyMarkets: new Map(legacyMarkets.map((m) => [m.id, m])),
   };
   return transactions.map((transaction) => {
     const description = describeBettingTransaction(transaction, context);

@@ -23,10 +23,23 @@ Historical fees are embedded in their original purchase or sale receipts under `
 Original fee rows and trade receipts are retained in the private fee-history archive. Consolidating
 these rows preserves every wallet and ledger total; fee metadata prevents double counting.
 
+Sportsbook view and order-book view place the same prediction orders. There is no second bet,
+price, position or payout system. Imported purchases live in `prediction_position_credits`, with
+an exact all-in cost, fee, original purchase date, outcome and source key. History and coin
+rankings read these records directly; they never join the old sportsbook tables. The original
+purchase receipts retain their amounts, IDs and dates and link to the credit with
+`metadata.positionCreditId`, so replay counts each fee once.
 
-Converted legacy bets and exchange contracts represent one entitlement. The legacy resolver skips
-converted bets, and the exchange resolver deducts any legacy payout made before conversion.
-Repeated settlement calls use the same receipt keys and cannot pay again.
+The former fixed-price tables are read-only private archives, retained for audit and safe
+rollout to earlier deployments. Their purchase/refund/settlement RPCs and bracket settlement
+trigger are retired. Neither archived statuses nor archived payout fields affect active bets.
+All 87 historical bets were imported, including 14 still-open bets belonging to eight users.
+Each original selection, quantity and price was checked against its prediction strike. The
+migration changes no wallet balance, live holding, open order or past payout.
+
+Apply `supabase/prediction_canonical_history.sql` and the current `supabase/market_admin.sql`
+together in one Firefox SQL transaction after the earlier exchange migrations. The migration
+archives the original records, rejects unmapped or inconsistent bets, and is safe to repeat.
 
 ## Audit and correction
 
@@ -37,12 +50,9 @@ python3 scripts/audit-prediction-accounting.py --report /tmp/prediction-audit.js
 ```
 
 It independently reconciles contract quantities and payouts across all settled strikes, open pair
-redemptions, and unconverted legacy bets. For old resets that deleted fills, use immutable cash
+redemptions, and imported positions. For old resets that deleted fills, use immutable cash
 receipts to restore principal while preserving the reset's original fee policy. Do not invent
 trades or refund liquidity inventory that still exists.
-
-The audit includes positive legacy payouts and their signed reversals, linked by bet ID or the
-original receipt key. A reversed legacy payout must not be reclaimed again.
 
 When a historical payout needs repair, prepare a guarded transaction in Firefox against the
 current database. Archive the complete original receipts, affected wallets, and any removed
@@ -53,6 +63,6 @@ do not add correction transactions. Check full receipt snapshots before writing 
 archive key idempotent. Re-audit payouts, wallet deltas, and notifications after committing.
 Do not overwrite wallets with ledger sums: historical opening balances can predate ledger entries.
 
-Apply `supabase/prediction_accounting.sql` after the existing exchange migrations. Its regression
-fixtures live in `supabase/tests/prediction_accounting.sql` and roll back all fixtures. Apply
+The current regression fixtures in `supabase/tests/prediction_accounting.sql` and
+`supabase/tests/market_admin.sql` roll back all fixtures. Apply
 `supabase/notification_paths.sql` for internal notification links with query parameters.

@@ -10,20 +10,19 @@ begin
   select username from public.prediction_positions where prediction_positions.market_id=market_admin_plan.market_id and quantity>0
   union select buyer_username from public.prediction_fills where prediction_fills.market_id=market_admin_plan.market_id
   union select seller_username from public.prediction_fills where prediction_fills.market_id=market_admin_plan.market_id and seller_username is not null
-  union select username from public.prediction_legacy_position_credits where prediction_legacy_position_credits.market_id=market_admin_plan.market_id
+  union select username from public.prediction_position_credits where prediction_position_credits.market_id=market_admin_plan.market_id
  ) u where username<>'prediction_admin';
  plan:=jsonb_build_object(
   'actor','seaside_tiramisu','operationKey','market-admin:'||md5(market_id||method)||md5(market_id||method),
   'input',jsonb_build_object('kind','binary'),'eventId',null,
   'expectedMarkets',(select jsonb_agg(to_jsonb(m)) from public.prediction_markets m where id=market_id),
   'expectedPositions',coalesce((select jsonb_agg(to_jsonb(p)) from public.prediction_positions p where p.market_id=market_admin_plan.market_id),'[]'::jsonb),
-  'expectedBets','[]'::jsonb,'expectedLegacy','[]'::jsonb,'legacyResolutions','[]'::jsonb,
   'expectedPayments',coalesce((select jsonb_agg(to_jsonb(p)) from (
    select username,sum(round(quantity*(case outcome when 'yes' then price else 100-price end)/100,6)) amount
    from public.prediction_positions p where p.market_id=market_admin_plan.market_id and quantity>0 group by username
   ) p),'[]'::jsonb),
   'settlements',jsonb_build_array(jsonb_build_object('id',market_id,'method',method,'outcome',case when method='binary' then 'yes' end,
-   'referenceFillId',reference_id,'price',price,'message','Alpha won 6–2.','legacyBetIds','[]'::jsonb,'refunds','[]'::jsonb)),
+   'referenceFillId',reference_id,'price',price,'message','Alpha won 6–2.','refunds','[]'::jsonb)),
   'summary',jsonb_build_object('notificationCount',participants));
  return plan;
 end;

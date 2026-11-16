@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only audit of every prediction settlement, including signed legacy payout reversals."""
+"""Read-only reconciliation of prediction holdings, payouts, redemptions and fees."""
 from __future__ import annotations
 import argparse
 import json
@@ -12,10 +12,9 @@ from pathlib import Path
 
 ZERO = Decimal(0)
 SCALE = Decimal('0.000001')
-VERSION = 'prediction-accounting-v2'
+VERSION = 'prediction-accounting-v3'
 TABLES = ('prediction_markets', 'prediction_fills', 'prediction_positions',
-          'prediction_position_nettings', 'prediction_legacy_position_credits',
-          'tournament_bets', 'tournament_betting_markets', 'prediction_orders')
+          'prediction_position_nettings', 'prediction_position_credits', 'prediction_orders')
 
 def number(value):
     return Decimal(str(value))
@@ -49,16 +48,6 @@ def load_live():
     data['coin_transactions'] = read('coin_transactions', {'order': 'id', 'or':
         '(reason.like.prediction_*,reason.like.tournament_bet*)'})
     return data
-
-def legacy_bet_id(row):
-    metadata = row.get('metadata') or {}
-    if metadata.get('betId') is not None:
-        return str(metadata['betId'])
-    source = metadata.get('reverses') or row['source_key']
-    for prefix in ('tournament-bet-payout:', 'tournament-bet-payout-reversal:', 'tournament-bet-refund:'):
-        if source.startswith(prefix):
-            return source.removeprefix(prefix)
-    return None
 
 def audit_trade_fees(data):
     paid = defaultdict(lambda: ZERO)
@@ -111,7 +100,7 @@ def audit(data):
     markets = {row['id']: row for row in data['prediction_markets']}
     quantities = defaultdict(lambda: {'yes': ZERO, 'no': ZERO})
     fill_counts = Counter()
-    for row in data['prediction_legacy_position_credits']:
+    for row in data['prediction_position_credits']:
         quantities[row['market_id'], row['username']][row['outcome']] += number(row['quantity'])
     for row in data['prediction_fills']:
         market, outcome, qty = row['market_id'], row['outcome'], number(row['quantity'])
@@ -120,7 +109,6 @@ def audit(data):
             quantities[market, row['buyer_username']][outcome] += qty
         if row['seller_username']:
             quantities[market, row['seller_username']][outcome] -= qty
-    credits = {str(row['source_bet_id']): row for row in data['prediction_legacy_position_credits']}
     settlement_cash = defaultdict(lambda: ZERO)
     net_cash = defaultdict(lambda: ZERO)
     trade_cash = defaultdict(lambda: ZERO)
@@ -135,10 +123,6 @@ def audit(data):
             settlement_cash[key] += amount
         if row['source_key'].startswith('prediction-position-net:'):
             net_cash[key] += amount
-        if row['reason'] == 'tournament_bet_payout':
-            credit = credits.get(legacy_bet_id(row))
-            if credit:
-                settlement_cash[credit['market_id'], row['username']] += amount
         if row['reason'] in ('prediction_order_reserve', 'prediction_order_refund', 'prediction_trade_credit'):
             trade_cash[key] += amount + number(metadata.get('fee', 0))
         if metadata.get('kind') == 'filled-bets-reset':
@@ -182,23 +166,10 @@ def audit(data):
             corrections.append({'marketId': market_id, 'username': username,
                                 'kind': 'cancelled-market-reset', 'expectedCash': ZERO,
                                 'previousCash': actual, 'delta': money(-actual)})
-    # Every unconverted legacy bet remains its own entitlement. Converted ones were
-    # included above; counting their old receipts twice is the original production bug.
-    legacy_paid = defaultdict(lambda: ZERO)
-    for row in ledger:
-        if row['reason'] in ('tournament_bet_payout', 'tournament_bet_refund'):
-            legacy_paid[legacy_bet_id(row)] += number(row['amount'])
-    legacy_errors = []
-    for bet in data['tournament_bets']:
-        if str(bet['id']) in credits:
-            continue
-        expected = number(bet['potential_payout']) if bet['status'] == 'won' else number(bet['total_cost']) if bet['status'] == 'refunded' else ZERO
-        if expected != legacy_paid[str(bet['id'])]:
-            legacy_errors.append({'betId': bet['id'], 'expected': expected, 'actual': legacy_paid[str(bet['id'])]})
     return {'version': VERSION, 'counts': {key: len(value) for key, value in data.items()},
             'settledMarketUsersChecked': len(checked), 'corrections': corrections,
             'positionErrors': position_errors, 'openRedemptionErrors': open_redemption_errors,
-            'legacyErrors': legacy_errors, 'feeErrors': audit_trade_fees(data), 'settlements': checked}
+            'feeErrors': audit_trade_fees(data), 'settlements': checked}
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

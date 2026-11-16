@@ -7,7 +7,6 @@ import { createPortal } from "react-dom";
 
 import {
   allPredictionPositionsQueryOptions,
-  allTournamentBetsQueryOptions,
 } from "../../lib/betting/bettingQueries";
 import {
   predictionMarketBatchQueryOptions,
@@ -29,20 +28,18 @@ const StrikeBetList = ({
   onSelectBettor: (username: string) => void;
 }) => {
   const positions = useQuery({ ...allPredictionPositionsQueryOptions(), refetchInterval: 15_000 });
-  const legacy = useQuery(allTournamentBetsQueryOptions());
   const catalog = useQuery(predictionMarketCatalogQueryOptions());
   const states = useQuery(predictionMarketBatchQueryOptions([definition.id]));
-  const error = positions.error ?? legacy.error ?? catalog.error ?? states.error;
+  const error = positions.error ?? catalog.error ?? states.error;
   if (error)
     return <InlineState kind="error">{getErrorMessage(error, "Unable to load bets.")}</InlineState>;
-  if (positions.isPending || legacy.isPending || catalog.isPending || states.isPending) {
+  if (positions.isPending || catalog.isPending || states.isPending) {
     return <p role="status">Loading bets…</p>;
   }
   if (!states.data?.some((state) => state.market.status !== "open")) {
     return <InlineState kind="empty">This strike is still pending.</InlineState>;
   }
   const bets = buildBetHistory({
-    tournamentBets: legacy.data ?? [],
     predictionPositions: positions.data ?? [],
     predictionMarketGroups: catalog.data ?? [],
     predictionMarketStates: states.data ?? [],
@@ -52,7 +49,6 @@ const StrikeBetList = ({
   return (
     <BetHistoryTable
       bets={bets}
-      markets={[]}
       countryByPlayer={{}}
       emptyMessage="No bets on this strike yet."
       showUsername

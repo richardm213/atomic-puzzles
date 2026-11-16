@@ -12,19 +12,6 @@ alter table public.market_admin_resolution_receipts enable row level security;
 revoke all on public.market_admin_resolution_receipts from public,anon,authenticated;
 grant select on public.market_admin_resolution_receipts to service_role;
 
--- Outright markets can have more than the original two choices. The settlement
--- routine still validates a named winner against tournament_betting_outcomes.
-do $$
-declare c record;
-begin
- for c in select conname from pg_constraint where conrelid='public.tournament_betting_markets'::regclass
-  and contype='c' and pg_get_constraintdef(oid) like '%winner%player_one%player_two%'
- loop execute format('alter table public.tournament_betting_markets drop constraint %I',c.conname); end loop;
- alter table public.tournament_betting_markets add constraint tournament_betting_market_result_winner_check
-  check (winner is null or market_kind='outright' or winner=player_one or winner=player_two);
-end;
-$$;
-
 create or replace function public.refresh_atomic_tour_event_entries_for_event(p_event text)
 returns void language plpgsql security definer set search_path='' as $$
 begin
@@ -63,13 +50,9 @@ declare
  change jsonb;
  patch jsonb;
  m public.prediction_markets%rowtype;
- lm public.tournament_betting_markets%rowtype;
- bet public.tournament_bets%rowtype;
  participant record;
  payment record;
  payout numeric(18,6);
- amount numeric(18,6);
- won boolean;
  key text;
  message text;
  notification_count integer:=0;
@@ -94,19 +77,6 @@ begin
  for expected in select value from jsonb_array_elements(p_plan->'expectedMarkets') loop
   select * into m from public.prediction_markets where id=expected->>'id' for update;
   if to_jsonb(m) is distinct from expected or m.status not in('open','closed') then raise exception 'Market changed; refresh the preview'; end if;
- end loop;
- for expected in select value from jsonb_array_elements(p_plan->'expectedLegacy') order by value->>'id' loop
-  select * into lm from public.tournament_betting_markets where id=expected->>'id' for update;
-  if to_jsonb(lm) is distinct from expected then raise exception 'Legacy market changed; refresh the preview'; end if;
- end loop;
- select coalesce(jsonb_agg(to_jsonb(b) order by b.id),'[]'::jsonb) into actual from public.tournament_bets b
- where b.market_id in(select x->>'id' from jsonb_array_elements(p_plan->'legacyResolutions') x)
- or b.id in(select (x->>'id')::bigint from jsonb_array_elements(p_plan->'expectedBets') x);
- select coalesce(jsonb_agg(x order by (x->>'id')::bigint),'[]'::jsonb) into expected from jsonb_array_elements(p_plan->'expectedBets') x;
- if actual is distinct from expected then raise exception 'Legacy bets changed; refresh the preview'; end if;
- for expected in select value from jsonb_array_elements(p_plan->'expectedBets') loop
-  select to_jsonb(b) into actual from public.tournament_bets b where b.id=(expected->>'id')::bigint for update;
-  if actual is distinct from expected then raise exception 'Legacy bets changed; refresh the preview'; end if;
  end loop;
  select coalesce(jsonb_agg(to_jsonb(p) order by p.market_id,p.username,p.outcome),'[]'::jsonb) into actual
  from public.prediction_positions p where p.market_id in(select x->>'id' from jsonb_array_elements(p_plan->'expectedMarkets') x);
@@ -176,45 +146,6 @@ begin
   then raise exception 'Atomic Tour event totals verification failed'; end if;
  end if;
 
- -- Converted bets are contracts even after being sold: only unconverted legacy
- -- bets can receive a separate fixed-price payout/refund.
- for item in select value from jsonb_array_elements(p_plan->'legacyResolutions') loop
-  select * into lm from public.tournament_betting_markets where id=item->>'id' for update;
-  if lm.id is null then raise exception 'Legacy market missing'; end if;
-  if lm.status in('settled','refunded') then continue; end if;
-  if item->>'method'='played' and not (item?'selection') then
-   perform public.resolve_tournament_betting_market(lm.id,item->>'winner','played');
-   continue;
-  end if;
-  for bet in select * from public.tournament_bets where market_id=lm.id and status='open'
-   and (not(item?'selection') or selection=item->>'selection')
-   and (item->>'method' not in('eliminate','eliminate-inverse') or selection=item->>'winner')
-   order by id for update loop
-   won:=case item->>'method' when 'inverse' then bet.selection<>item->>'winner'
-    when 'eliminate-inverse' then true when 'eliminate' then false when 'loss' then false
-    else bet.selection=item->>'winner' end;
-   amount:=case item->>'method' when 'refund' then bet.total_cost when 'price' then round(bet.potential_payout*
-    (case when bet.selection=item->>'yesPlayer' then (item->>'price')::numeric else 100-(item->>'price')::numeric end)/100,6)
-    else case when won then bet.potential_payout else 0 end end;
-   if exists(select 1 from public.prediction_legacy_position_credits where source_bet_id=bet.id) then amount:=0; end if;
-   if amount>0 then
-    perform public.apply_coin_transaction(bet.username,amount,
-     case when item->>'method'='refund' then 'tournament_bet_refund' else 'tournament_bet_payout' end,
-     case when item->>'method'='refund' then 'tournament-bet-refund:' else 'tournament-bet-payout:' end||bet.id,
-     jsonb_build_object('marketId',lm.id,'betId',bet.id,'winner',item->>'winner'));
-   end if;
-   update public.tournament_bets set status=case when item->>'method'='refund' then 'refunded'
-     when item->>'method'='price' and amount>0 then 'won' when won then 'won' else 'lost' end,
-    payout=amount,settled_at=now() where id=bet.id;
-  end loop;
-  if item->>'method' not in('eliminate','eliminate-inverse') and not(item?'selection') then
-   update public.tournament_betting_markets set status=case when item->>'method'='refund' then 'refunded' else 'settled' end,
-    winner=case when item->>'method' in('inverse','loss','price','refund') then null else item->>'winner' end,
-    resolution=case when item->>'method'='refund' then 'refunded' else 'manual' end,
-    settled_at=now(),updated_at=now() where id=lm.id;
-  end if;
- end loop;
-
  for item in select value from jsonb_array_elements(p_plan->'settlements') loop
   if item->>'method'='binary' then perform public.resolve_prediction_market(item->>'id',item->>'outcome');
   elsif item->>'method'='price' then perform public.resolve_prediction_market_at_price(item->>'id',(item->>'referenceFillId')::bigint);
@@ -247,15 +178,11 @@ begin
     select username from public.prediction_positions where market_id=m.id and quantity>0
     union select buyer_username from public.prediction_fills where market_id=m.id
     union select seller_username from public.prediction_fills where market_id=m.id and seller_username is not null
-    union select username from public.prediction_legacy_position_credits where market_id=m.id
-    union select username from public.tournament_bets where id in(select value::bigint from jsonb_array_elements_text(item->'legacyBetIds'))
+    union select username from public.prediction_position_credits where market_id=m.id
    ) users where username<>'prediction_admin' order by username loop
    select coalesce(sum(t.amount),0) into payout from public.coin_transactions t where t.username=participant.username and (
     (t.reason='prediction_market_payout' and t.metadata->>'marketId'=m.id)
     or (t.reason='prediction_order_refund' and t.source_key='prediction-market-refund:'||m.id||':'||participant.username)
-    or (t.reason in('tournament_bet_payout','tournament_bet_refund') and (t.metadata->>'betId')::bigint in
-      (select value::bigint from jsonb_array_elements_text(item->'legacyBetIds')) and not exists
-      (select 1 from public.prediction_legacy_position_credits c where c.source_bet_id=(t.metadata->>'betId')::bigint))
    );
    message:=upper(left(item->>'message',1))||substr(item->>'message',2)||case when payout>0
     then ' +'||case when round(payout,2)=trunc(round(payout,2)) then to_char(round(payout,2),'FM999,999,999,990')

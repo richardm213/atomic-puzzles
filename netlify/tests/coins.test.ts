@@ -30,20 +30,46 @@ describe("coins function", () => {
         select: vi.fn(),
         eq: vi.fn(),
         in: vi.fn(),
+        gt: vi.fn(),
+        or: vi.fn(),
         order: vi.fn(),
         range: vi.fn(async () => ({
           data:
             table === "coin_accounts"
               ? [{ username: "portfolio_owner", balance: 100 }]
-              : table === "tournament_bets"
-                ? [{ id: 1, username: "portfolio_owner", total_cost: 25 }]
-                : [],
+              : table === "prediction_markets"
+                ? [{ id: "strike" }]
+                : table === "prediction_positions"
+                  ? [
+                      {
+                        market_id: "strike",
+                        username: "portfolio_owner",
+                        outcome: "yes",
+                        quantity: 50,
+                      },
+                    ]
+                  : table === "prediction_position_credits"
+                    ? [
+                        {
+                          id: 1,
+                          market_id: "strike",
+                          username: "portfolio_owner",
+                          outcome: "yes",
+                          quantity: 50,
+                          price_cents: 50,
+                          cost_coins: 25,
+                          credited_at: "2026-10-01T00:00:00Z",
+                        },
+                      ]
+                    : [],
           error: null,
         })),
       };
       query.select.mockReturnValue(query);
       query.eq.mockReturnValue(query);
       query.in.mockReturnValue(query);
+      query.gt.mockReturnValue(query);
+      query.or.mockReturnValue(query);
       query.order.mockReturnValue(query);
       queries.set(table, query.eq);
       return query;
@@ -60,7 +86,10 @@ describe("coins function", () => {
     expect(response.statusCode).toBe(200);
     expect(JSON.parse(response.body).result).toMatchObject({ balance: 100, inBets: 25 });
     expect(queries.get("coin_accounts")).toHaveBeenCalledWith("username", "portfolio_owner");
-    expect(queries.get("tournament_bets")).toHaveBeenCalledWith("username", "portfolio_owner");
+    expect(queries.get("prediction_position_credits")).toHaveBeenCalledWith(
+      "username",
+      "portfolio_owner",
+    );
   });
   it("purchases a permanent theme for the signed-in user without accepting a client price", async () => {
     const rpc = vi.fn(async () => ({
@@ -155,16 +184,6 @@ describe("coins function", () => {
     }));
     const orderAccounts = vi.fn(() => ({ range: accountRange }));
     const selectAccounts = vi.fn(() => ({ order: orderAccounts }));
-    const openBetRange = vi.fn(async () => ({
-      data: [
-        { id: 1, username: "bettor", total_cost: 400 },
-        { id: 2, username: "bettor", total_cost: 50 },
-      ],
-      error: null,
-    }));
-    const orderOpenBets = vi.fn(() => ({ range: openBetRange }));
-    const filterOpenBets = vi.fn(() => ({ order: orderOpenBets }));
-    const selectOpenBets = vi.fn(() => ({ eq: filterOpenBets }));
     const unsettledMarketRange = vi.fn(async () => ({
       data: [{ id: "market-1" }],
       error: null,
@@ -225,7 +244,7 @@ describe("coins function", () => {
       data: [
         {
           credited_at: "2026-09-01T00:00:00.000Z",
-          source_bet_id: 2,
+          id: 2,
           market_id: "market-1",
           username: "bettor",
           outcome: "yes",
@@ -280,19 +299,17 @@ describe("coins function", () => {
       select:
         table === "coin_accounts"
           ? selectAccounts
-          : table === "tournament_bets"
-            ? selectOpenBets
-            : table === "prediction_markets"
-              ? selectOpenMarkets
-              : table === "prediction_positions"
-                ? selectPositions
-                : table === "prediction_fills"
-                  ? selectFills
-                  : table === "prediction_position_nettings"
-                    ? selectNettings
-                    : table === "coin_transactions"
-                      ? selectReceipts
-                      : selectCredits,
+          : table === "prediction_markets"
+            ? selectOpenMarkets
+            : table === "prediction_positions"
+              ? selectPositions
+              : table === "prediction_fills"
+                ? selectFills
+                : table === "prediction_position_nettings"
+                  ? selectNettings
+                  : table === "coin_transactions"
+                    ? selectReceipts
+                    : selectCredits,
     }));
     mocks.createClient.mockReturnValue({ from });
 
@@ -305,13 +322,10 @@ describe("coins function", () => {
     expect(response.statusCode).toBe(200);
     expect(from).toHaveBeenCalledWith("coin_accounts");
     expect(selectAccounts).toHaveBeenCalledWith("username,balance");
-    expect(from).toHaveBeenCalledWith("tournament_bets");
-    expect(selectOpenBets).toHaveBeenCalledWith("id,username,total_cost");
-    expect(filterOpenBets).toHaveBeenCalledWith("status", "open");
     expect(filterUnsettledMarkets).toHaveBeenCalledWith("status", ["open", "closed"]);
     expect(JSON.parse(response.body).result).toEqual([
-      { username: "bettor", netWorth: 1327.25, balance: 850, inBets: 477.25 },
       { username: "saver", netWorth: 1200, balance: 1200, inBets: 0 },
+      { username: "bettor", netWorth: 927.25, balance: 850, inBets: 77.25 },
     ]);
   });
 

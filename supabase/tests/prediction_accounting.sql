@@ -7,13 +7,10 @@ declare
  maker text:='acct-maker-'||suffix;
  debtor text:='acct-debt-'||suffix;
  fixture_market text:='accounting-'||suffix;
- legacy_id text;
+ secondary_market text;
  order_result jsonb;
  sell_id bigint;
- bet_row public.tournament_bets%rowtype;
- template public.tournament_betting_markets%rowtype;
  before_wallet numeric;
- legacy_state text;
  rejected boolean;
 begin
  if has_function_privilege('anon','public.post_prediction_reconciliation(text,numeric,text,jsonb)','execute')
@@ -58,49 +55,36 @@ begin
  if (select balance from public.coin_accounts where username=trader)-before_wallet<>1000 then raise exception 'Switched position settlement incorrect'; end if;
 
  -- Fees belong to the original buy/sell receipt, and closing a position uses net proceeds.
- legacy_id:=fixture_market||'-cash';
+ secondary_market:=fixture_market||'-cash';
  insert into public.prediction_markets(id,question,resolution_rules,resolution_source_url,closes_at,status)
- values(legacy_id,'All-in cash regression','Fixture','https://atomicpuzzles.org/betting',now()+interval '1 day','open');
+ values(secondary_market,'All-in cash regression','Fixture','https://atomicpuzzles.org/betting',now()+interval '1 day','open');
  select balance into before_wallet from public.coin_accounts where username=trader;
- perform public.place_prediction_order(maker,legacy_id,'no','buy',60,10);
- perform public.place_prediction_order(trader,legacy_id,'yes','buy',40,10);
- perform public.place_prediction_order(maker,legacy_id,'yes','buy',60,10);
- order_result:=public.place_prediction_order(trader,legacy_id,'yes','sell',60,10);
+ perform public.place_prediction_order(maker,secondary_market,'no','buy',60,10);
+ perform public.place_prediction_order(trader,secondary_market,'yes','buy',40,10);
+ perform public.place_prediction_order(maker,secondary_market,'yes','buy',60,10);
+ order_result:=public.place_prediction_order(trader,secondary_market,'yes','sell',60,10);
  if (select balance from public.coin_accounts where username=trader)-before_wallet<>1.8
  or (order_result->>'balance')::numeric<>before_wallet+1.8 then raise exception 'All-in buy/sell cash incorrect'; end if;
- if (select count(*) from public.coin_transactions where username=trader and metadata->>'marketId'=legacy_id)<>2
- or not exists(select 1 from public.coin_transactions where username=trader and metadata->>'marketId'=legacy_id and amount=-4.08 and (metadata->>'fee')::numeric=0.08)
- or not exists(select 1 from public.coin_transactions where username=trader and metadata->>'marketId'=legacy_id and amount=5.88 and (metadata->>'fee')::numeric=0.12)
+ if (select count(*) from public.coin_transactions where username=trader and metadata->>'marketId'=secondary_market)<>2
+ or not exists(select 1 from public.coin_transactions where username=trader and metadata->>'marketId'=secondary_market and amount=-4.08 and (metadata->>'fee')::numeric=0.08)
+ or not exists(select 1 from public.coin_transactions where username=trader and metadata->>'marketId'=secondary_market and amount=5.88 and (metadata->>'fee')::numeric=0.12)
  then raise exception 'Trade fees were not included exactly once in the original receipts'; end if;
- if exists(select 1 from public.prediction_positions where market_id=legacy_id and username=trader and quantity<>0)
+ if exists(select 1 from public.prediction_positions where market_id=secondary_market and username=trader and quantity<>0)
  then raise exception 'A fully sold position remains'; end if;
 
- select * into strict template from public.tournament_betting_markets where market_kind='match' limit 1;
- foreach legacy_state in array array['converted','prepaid','reversed'] loop
-  legacy_id:=fixture_market||'-'||legacy_state;
-  insert into public.tournament_betting_markets(id,tournament_id,bracket_match_id,round_name,round_order,player_one,player_two,player_one_price,status,market_kind,category,category_order,label,closes_at)
-  values(legacy_id,template.tournament_id,legacy_id,template.round_name,template.round_order,trader,maker,50,'open','match',template.category,template.category_order,'Accounting regression',now()+interval '1 day');
-  insert into public.tournament_betting_outcomes(market_id,player,price_percent,display_order) values(legacy_id,trader,50,1),(legacy_id,maker,50,2) on conflict (market_id,player) do update set price_percent=excluded.price_percent;
-  order_result:=public.place_tournament_bet(trader,legacy_id,trader,10);
-  select * into strict bet_row from public.tournament_bets where market_id=legacy_id and username=trader;
-  select balance into before_wallet from public.coin_accounts where username=trader;
-  if legacy_state<>'converted' then perform public.resolve_tournament_betting_market(legacy_id,trader,'played'); end if;
-  if legacy_state='reversed' then
-   perform public.apply_coin_transaction(trader,-bet_row.potential_payout,'tournament_bet_payout','tournament-bet-payout-reversal:'||bet_row.id,
-    jsonb_build_object('betId',bet_row.id,'marketId',legacy_id,'reverses','tournament-bet-payout:'||bet_row.id));
-  end if;
-  insert into public.prediction_markets(id,question,resolution_rules,resolution_source_url,closes_at,status,outcome_yes_label,outcome_no_label)
-   values(legacy_id,'Legacy accounting regression','Fixture','https://atomicpuzzles.org/betting',now()+interval '1 day','open',trader,maker);
-  insert into public.prediction_legacy_position_credits(source_bet_id,market_id,username,outcome,quantity,price_cents)
-   values(bet_row.id,legacy_id,trader,'yes',bet_row.potential_payout,50);
-  insert into public.prediction_positions(market_id,username,outcome,quantity) values(legacy_id,trader,'yes',bet_row.potential_payout);
-  perform public.resolve_tournament_betting_market(legacy_id,trader,'played');
-  perform public.resolve_prediction_market(legacy_id,'yes');
-  perform public.resolve_tournament_betting_market(legacy_id,trader,'played');
-  perform public.resolve_prediction_market(legacy_id,'yes');
-  if (select balance from public.coin_accounts where username=trader)-before_wallet<>bet_row.potential_payout then raise exception 'Legacy/exchange settlement incorrect (state=%)',legacy_state; end if;
- end loop;
+ -- Imported positions settle through the same prediction resolver exactly once.
+ secondary_market:=fixture_market||'-imported';
+ insert into public.prediction_markets(id,question,resolution_rules,resolution_source_url,closes_at,status)
+ values(secondary_market,'Imported position regression','Fixture','https://atomicpuzzles.org/betting',now()+interval '1 day','open');
+ insert into public.prediction_position_credits(source_key,market_id,username,outcome,quantity,price_cents,cost_coins,fee_coins,credited_at)
+ values(secondary_market,secondary_market,trader,'yes',20,50,10.2,0.2,now());
+ insert into public.prediction_positions(market_id,username,outcome,quantity) values(secondary_market,trader,'yes',20);
+ select balance into before_wallet from public.coin_accounts where username=trader;
+ perform public.resolve_prediction_market(secondary_market,'yes');
+ perform public.resolve_prediction_market(secondary_market,'yes');
+ if (select balance from public.coin_accounts where username=trader)-before_wallet<>20 then raise exception 'Imported position paid incorrectly'; end if;
+ if to_regprocedure('public.place_tournament_bet(text,text,text,numeric)') is not null then raise exception 'Retired sportsbook RPC still exposed'; end if;
 end;
 $$;
 rollback;
-select 'PASS: net exposure, all-in trade receipts, order balances, conversion settlement, idempotence and private debt handling' as result;
+select 'PASS: net exposure, all-in trade receipts, order balances, import settlement, idempotence and private debt handling' as result;

@@ -7,7 +7,6 @@ import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUnderscoreUsernameCutoff } from "../../hooks/useUnderscoreUsernameCutoff";
-import type { BettingMarket } from "../../lib/betting/betting";
 import { formatCoinValue } from "../../lib/coins/coinDisplay";
 import {
   type PredictionMarketGroup,
@@ -18,16 +17,6 @@ import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
 import { type BetHistoryEntry, betHistoryPnl, betHistoryReturn } from "./bettingHistoryModel";
-
-const abbreviateRound = (roundName: string): string => {
-  const normalizedRound = roundName.trim().toLowerCase();
-  const numberedRound = /^round of (\d+)$/.exec(normalizedRound);
-  if (numberedRound) return `R${numberedRound[1]}`;
-  if (normalizedRound === "quarterfinals" || normalizedRound === "quarterfinal") return "QF";
-  if (normalizedRound === "semifinals" || normalizedRound === "semifinal") return "SF";
-  if (normalizedRound === "finals" || normalizedRound === "final") return "F";
-  return roundName;
-};
 
 const BetHistoryUsername = ({ username }: { username: string }) => {
   const { displayName, elementRef } = useUnderscoreUsernameCutoff<HTMLSpanElement>(username);
@@ -97,7 +86,6 @@ const betSortValue = (bet: BetHistoryEntry, column: BetSortColumn): string | num
 
 export const BetHistoryTable = ({
   bets,
-  markets,
   countryByPlayer,
   emptyMessage,
   showUsername = false,
@@ -110,7 +98,6 @@ export const BetHistoryTable = ({
   onSelectBet,
 }: {
   bets: BetHistoryEntry[];
-  markets: BettingMarket[];
   countryByPlayer: Record<string, string>;
   emptyMessage: string;
   showUsername?: boolean;
@@ -216,13 +203,7 @@ export const BetHistoryTable = ({
           </thead>
           <tbody>
             {sortedBets.map((bet, index) => {
-              const isPrediction = bet.kind === "prediction";
-              const market = markets.find((candidate) => candidate.id === bet.marketId);
               const selectionLabel = bet.predictionSelectionLabel ?? bet.selection;
-              const round =
-                !isPrediction && market?.marketKind !== "outright"
-                  ? (market?.roundName ?? "AWC 2026")
-                  : "";
               const countryCode =
                 bet.predictionSelectionCountryCode ??
                 countryByPlayer[selectionLabel.toLowerCase()] ??
@@ -242,10 +223,8 @@ export const BetHistoryTable = ({
                       : undefined;
               const selectionContents = (
                 <>
-                  <BetHistoryUsername
-                    username={isPrediction ? selectionLabel.toLowerCase() : selectionLabel}
-                  />
-                  {isPrediction && bet.predictionOutcome && !bet.predictionSelectionLabel ? (
+                  <BetHistoryUsername username={selectionLabel.toLowerCase()} />
+                  {bet.predictionOutcome && !bet.predictionSelectionLabel ? (
                     <span className="betHistoryOutcome">
                       · {bet.predictionOutcome === "yes" ? "Yes" : "No"}
                     </span>
@@ -254,7 +233,7 @@ export const BetHistoryTable = ({
               );
               return (
                 <tr
-                  key={bet.historyKey ?? `${bet.kind ?? "tournament"}-${bet.id}`}
+                  key={bet.historyKey}
                   className={shareable || onSelectBet ? "betHistoryShareRow" : undefined}
                   data-bet-index={shareable || onSelectBet ? index : undefined}
                   tabIndex={onSelectBet ? 0 : undefined}
@@ -302,10 +281,7 @@ export const BetHistoryTable = ({
                     </span>
                     {showMarket ? (
                       <span className="betHistoryMarket">
-                        {isPrediction
-                          ? (bet.predictionMarketTitle ?? "Prediction market")
-                          : market?.label || bet.marketId}
-                        {round ? <small> · {abbreviateRound(round)}</small> : null}
+                        {bet.predictionMarketTitle ?? "Prediction market"}
                       </span>
                     ) : null}
                   </th>
@@ -373,11 +349,7 @@ export const BetHistoryTable = ({
             ] ??
             ""
           }
-          marketTitle={
-            sharedBet.predictionMarketTitle ??
-            markets.find((market) => market.id === sharedBet.marketId)?.label ??
-            sharedBet.marketId
-          }
+          marketTitle={sharedBet.predictionMarketTitle ?? sharedBet.marketId}
           onClose={() => setSharedBet(null)}
         />
       ) : null}
@@ -392,7 +364,6 @@ type BettingHistoryProps = {
   onLogin: () => void;
   myBets: BetHistoryEntry[];
   allBets: BetHistoryEntry[];
-  markets: BettingMarket[];
   predictionMarketGroups: PredictionMarketGroup[];
   predictionMarketStates: PredictionMarketState[];
   countryByPlayer: Record<string, string>;
@@ -430,7 +401,6 @@ export const BettingHistory = ({
   onLogin,
   myBets,
   allBets,
-  markets,
   predictionMarketGroups,
   predictionMarketStates,
   countryByPlayer,
@@ -482,19 +452,8 @@ export const BettingHistory = ({
       }
     }
 
-    for (const market of markets) {
-      // Prediction catalog entries may also appear in the legacy market list.
-      if (stateByMarketId.has(market.id)) continue;
-      if (resolvedOnly && market.status !== "settled") continue;
-      const settled = ["settled", "refunded"].includes(market.status);
-      if (settled && (filters.status === "open" || !marketsWithBets.has(market.id))) continue;
-      if (!options.has(market.id)) {
-        options.set(market.id, `${market.roundName} · ${market.label}`);
-      }
-    }
-
     return [...options].map(([id, label]) => ({ id, label }));
-  }, [allBets, filters.status, markets, myBets, predictionMarketGroups, predictionMarketStates]);
+  }, [allBets, filters.status, myBets, predictionMarketGroups, predictionMarketStates]);
   const visibleMyBets = useMemo(
     () =>
       filterHistoryBets({
@@ -562,7 +521,6 @@ export const BettingHistory = ({
       <BetHistoryTable
         returnDisplay={returnDisplay}
         bets={visibleMyBets}
-        markets={markets}
         countryByPlayer={countryByPlayer}
         emptyMessage={
           filtersActive ? "No bets match these filters." : "You have not placed any bets."
@@ -582,7 +540,6 @@ export const BettingHistory = ({
       <BetHistoryTable
         returnDisplay={returnDisplay}
         bets={visibleAllBets}
-        markets={markets}
         countryByPlayer={countryByPlayer}
         emptyMessage={
           filters.bettor.trim() || filtersActive

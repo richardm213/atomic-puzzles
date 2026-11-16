@@ -7,14 +7,11 @@ import {
   predictionMarketGroupsFromRows,
   predictionMarketStateResultSchema,
 } from "../predictionMarkets/predictionMarkets";
-import { bettingMarketSchema, tournamentBetSchema } from "./betting";
 
 const bettingBootstrapSchema = z.object({
   result: z.object({
-    markets: z.array(bettingMarketSchema),
     exchangeMarkets: z.array(predictionMarketCatalogRowSchema),
-    allBets: z.array(tournamentBetSchema),
-    allPredictionPositions: z.array(predictionHistoryPositionSchema).optional(),
+    allPredictionPositions: z.array(predictionHistoryPositionSchema),
     exchangeMarketStates: z.array(predictionMarketStateResultSchema),
   }),
 });
@@ -30,11 +27,8 @@ export const fetchBettingBootstrap = async () => {
     },
   );
   return {
-    markets: response.result.markets,
     predictionMarketGroups: predictionMarketGroupsFromRows(response.result.exchangeMarkets),
-    allBets: response.result.allBets,
-    predictionPositions: response.result.allPredictionPositions ?? [],
-    predictionPositionsSupported: response.result.allPredictionPositions !== undefined,
+    predictionPositions: response.result.allPredictionPositions,
     predictionMarketStates: response.result.exchangeMarketStates,
   };
 };

@@ -20,7 +20,6 @@ const roundOf16Bet: BetHistoryEntry = {
   status: "open",
   placedAt: "2026-10-27T20:36:00Z",
   settledAt: null,
-  kind: "prediction",
   predictionOutcome: "no",
   predictionSelectionLabel: "crepuscular",
   predictionSelectionCountryCode: "US",
@@ -67,7 +66,6 @@ describe("BettingHistory", () => {
         onLogin={() => undefined}
         myBets={[roundOf16Bet]}
         allBets={[]}
-        markets={[]}
         predictionMarketGroups={[
           {
             id: "awc-2026-round-of-16",
@@ -150,7 +148,6 @@ describe("BettingHistory", () => {
         onLogin={() => undefined}
         myBets={bets}
         allBets={[]}
-        markets={[]}
         predictionMarketGroups={[]}
         predictionMarketStates={[]}
         countryByPlayer={{}}
@@ -199,7 +196,6 @@ describe("BettingHistory", () => {
         onLogin={() => undefined}
         myBets={[]}
         allBets={[]}
-        markets={[]}
         predictionMarketGroups={[
           {
             id: "awc-2026-round-of-16",

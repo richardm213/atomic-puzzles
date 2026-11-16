@@ -46,7 +46,7 @@ export const buildPredictionTraderHistory = ({
 }: {
   username: string;
   fills: readonly PredictionPositionFill[];
-  credits: readonly (PredictionPositionCredit & { source_bet_id?: number })[];
+  credits: readonly PredictionPositionCredit[];
   nettings: readonly PredictionPositionNetting[];
   receipts: readonly PredictionHistoryReceipt[];
   market: {
@@ -69,19 +69,13 @@ export const buildPredictionTraderHistory = ({
   const remainingOutcome = replay.positions.yes.quantity > 0 ? "yes" : "no";
   const remainingQuantity = replay.positions.yes.quantity + replay.positions.no.quantity;
   const remainingCost = (replay.positions.yes.costCents + replay.positions.no.costCents) / 100;
-  const legacyCredits = new Map(
-    credits.map((credit) => [`tournament-bet-payout:${credit.source_bet_id}`, credit]),
-  );
   let settled = false;
   for (const receipt of [...receipts].sort(
     (a, b) => a.created_at.localeCompare(b.created_at) || a.id - b.id,
   )) {
     const metadata = receipt.metadata ?? {};
-    const legacy = legacyCredits.get(receipt.source_key);
     const outcome =
-      metadata.outcome === "yes" || metadata.outcome === "no"
-        ? metadata.outcome
-        : (legacy?.outcome ?? null);
+      metadata.outcome === "yes" || metadata.outcome === "no" ? metadata.outcome : null;
     const row: Entry = {
       id: `receipt:${receipt.id}`,
       createdAt: receipt.created_at,
@@ -95,14 +89,10 @@ export const buildPredictionTraderHistory = ({
       if (hasTrades) continue; // Already included in the matched trade's average price.
       row.action = "fee";
       row.pnlChange = -predictionTradingFee(receipt);
-    } else if (
-      receipt.reason === "prediction_reconciliation" ||
-      (receipt.reason === "tournament_bet_payout" && receipt.amount < 0)
-    )
-      row.action = "correction";
-    else if (["prediction_market_payout", "tournament_bet_payout"].includes(receipt.reason)) {
+    } else if (receipt.reason === "prediction_reconciliation") row.action = "correction";
+    else if (receipt.reason === "prediction_market_payout") {
       row.action = "settlement";
-      row.quantity = numeric(metadata.contracts) ?? legacy?.quantity ?? remainingQuantity;
+      row.quantity = numeric(metadata.contracts) ?? remainingQuantity;
       row.averagePriceCents = row.quantity > 0 ? (receipt.amount * 100) / row.quantity : null;
       row.outcome ??= remainingOutcome;
       if (!settled) row.pnlChange -= remainingCost;

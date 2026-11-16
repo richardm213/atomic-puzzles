@@ -18,6 +18,7 @@ export type PredictionPositionCredit = {
   price_cents: number;
   credited_at: string;
   fee_coins?: number;
+  cost_coins?: number;
 };
 export type PredictionPositionNetting = { id: number; quantity: number; created_at: string };
 export type PredictionPositionEvent = {
@@ -40,9 +41,8 @@ export const predictionTradingFee = (receipt: {
 }): number =>
   receipt.reason === "prediction_trade_fee"
     ? -receipt.amount
-    : ["tournament_bet", "prediction_order_reserve", "prediction_trade_credit"].includes(
-          receipt.reason,
-        ) && typeof receipt.metadata?.fee === "number"
+    : ["prediction_order_reserve", "prediction_trade_credit"].includes(receipt.reason) &&
+        typeof receipt.metadata?.fee === "number"
       ? receipt.metadata.fee
       : 0;
 
@@ -72,7 +72,7 @@ export const replayPredictionPosition = ({
   const feesByOrder = new Map<number, number>();
   let totalTradeFees = 0;
   for (const receipt of receipts) {
-    if (receipt.reason === "tournament_bet") continue; // Included in converted credits' cost.
+    if (receipt.metadata?.positionCreditId !== undefined) continue; // Credit cost includes its fee.
     const fee = predictionTradingFee(receipt);
     totalTradeFees += fee;
     const orderId = receipt.metadata?.orderId;
@@ -127,9 +127,15 @@ export const replayPredictionPosition = ({
       value,
     })),
   ].sort((a, b) => a.time.localeCompare(b.time) || a.priority - b.priority || a.id - b.id);
-  const buy = (outcome: PredictionOutcome, quantity: number, price: number, fee = 0) => {
+  const buy = (
+    outcome: PredictionOutcome,
+    quantity: number,
+    price: number,
+    fee = 0,
+    cost?: number,
+  ) => {
     positions[outcome].quantity += quantity;
-    positions[outcome].costCents += quantity * price + fee * 100;
+    positions[outcome].costCents += cost === undefined ? quantity * price + fee * 100 : cost * 100;
     lastOutcome = outcome;
   };
   const remove = (outcome: PredictionOutcome, quantity: number) => {
@@ -204,14 +210,17 @@ export const replayPredictionPosition = ({
         event.value.quantity,
         event.value.price_cents,
         event.value.fee_coins ?? 0,
+        event.value.cost_coins,
       );
       transactions.push({
-        id: `convert:${event.id}`,
+        id: `credit:${event.id}`,
         createdAt: event.time,
         action: "buy",
         outcome: event.value.outcome,
         averagePriceCents:
-          event.value.price_cents + ((event.value.fee_coins ?? 0) * 100) / event.value.quantity,
+          event.value.cost_coins === undefined
+            ? event.value.price_cents + ((event.value.fee_coins ?? 0) * 100) / event.value.quantity
+            : (event.value.cost_coins * 100) / event.value.quantity,
         quantity: event.value.quantity,
         pnlChange: 0,
       });

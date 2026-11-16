@@ -321,26 +321,6 @@
   background: color-mix(in srgb, var(--color-primary) 3%, transparent);
 }
 
-.bettingMarketDeadline {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin: 0;
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-
-.bettingMarketDeadline span {
-  font-weight: 650;
-}
-
-.bettingMarketDeadline time {
-  color: var(--color-heading);
-  font-weight: 650;
-  text-align: right;
-}
-
 .bettingMarketGroup:last-child .bettingMarketCard:last-child {
   border-bottom: 0;
 }
@@ -1634,16 +1614,6 @@
 
   .bettingOutcomes {
     grid-template-columns: 1fr;
-  }
-
-  .bettingMarketDeadline {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .bettingMarketDeadline time {
-    text-align: left;
   }
 
   .marketSuggestionCard {

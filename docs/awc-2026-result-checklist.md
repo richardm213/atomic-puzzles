@@ -31,11 +31,10 @@ additional notifications after a successful admin-page settlement.
    - Verify the winner and loser received the correct stage awards and dates.
 
 4. **Resolve every applicable market**
-   - Settle the legacy fixed-price match market and the prediction order-book market, if both exist.
-   - Resolve to the correct player/outcome and cancel remaining open orders safely.
-   - Check `prediction_legacy_position_credits` before settlement. A converted legacy bet is
-     already represented by exchange contracts, even if they were later sold or netted. Never
-     credit it again through the legacy market. Only unconverted legacy bets can pay separately.
+   - Resolve the prediction match strike and applicable championship strikes, cancelling remaining
+     open orders safely. Sportsbook view trades these same prediction contracts.
+   - Imported positions in `prediction_position_credits` already represent the former fixed-price
+     bets. They settle once through the prediction resolver; never pay the read-only archives.
 
 5. **Send resolution notifications**
    - Notify every bettor, including losers.

@@ -22,26 +22,16 @@ import { useAuth } from "../../context/AuthContext";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { usePredictionOrderSide } from "../../hooks/usePredictionOrderSide";
 import {
-  AWC_NOT_TO_WIN_MARKET_ID,
-  type BettingMarket,
   findCurrentTournamentOpponent,
-  isAwcNotToWinSelfBet,
   isRestrictedPredictionOrder,
-  isTournamentBetOnOpponent,
   MAX_BET_STAKE,
-  maxTournamentBetStake,
   MIN_BET_AMOUNT,
-  placeTournamentBet,
   predictionOrderRestrictionMessage,
-  quoteTournamentBet,
 } from "../../lib/betting/betting";
 import {
   allPredictionPositionsQueryOptions,
-  allTournamentBetsQueryOptions,
   bettingBootstrapQueryOptions,
-  bettingMarketsQueryOptions,
   bettingQueryKeys,
-  tournamentBetsQueryOptions,
 } from "../../lib/betting/bettingQueries";
 import { formatCoinValue, formatCoinVolume } from "../../lib/coins/coinDisplay";
 import { coinSummaryQueryOptions, updateCachedCoinBalance } from "../../lib/coins/coinQueries";
@@ -86,7 +76,6 @@ type BettingView = "markets" | "mine" | "all" | "suggestions";
 type WinnerPosition = "yes" | "no";
 type PredictionDisplayMode = "book" | "market";
 type PredictionMarketCategory = (typeof predictionMarketCategories)[number];
-type Selection = { marketId: string; player: string };
 type PredictionSelection = { marketId: string; outcome: PredictionOutcome };
 const bettingViews: readonly BettingView[] = ["markets", "mine", "all", "suggestions"];
 const predictionDisplayModeSchema = z.enum(["book", "market"]);
@@ -125,7 +114,6 @@ const predictionGroupIdByCategory: Record<PredictionMarketCategory, string> = {
 };
 const isWinnerCategory = (category: string): boolean =>
   category === "2026 AWC Champion" || category === "AWC 2027" || category === "Nov Shield";
-const winnerNoMarketId = AWC_NOT_TO_WIN_MARKET_ID;
 const marketCategorySlug = (category: string): string => {
   const normalizedCategory = category
     .trim()
@@ -136,17 +124,15 @@ const marketCategorySlug = (category: string): string => {
   return normalizedCategory.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 };
 
-const marketCategoryFromSearch = (
-  search: string,
-  categories: readonly string[] = [defaultMarketCategory, ...predictionMarketCategories],
-): string => {
+const marketCategoryFromSearch = (search: string): PredictionMarketCategory => {
   const requestedMarket = new URLSearchParams(search).get("market") ?? "";
   if (requestedMarket === "markets") return "Ban";
   if (requestedMarket === "champion") return "2026 AWC Champion";
   if (requestedMarket === "shield") return "Nov Shield";
   return (
-    categories.find((category) => marketCategorySlug(category) === requestedMarket) ??
-    defaultMarketCategory
+    predictionMarketCategories.find(
+      (category) => marketCategorySlug(category) === requestedMarket,
+    ) ?? defaultMarketCategory
   );
 };
 
@@ -166,23 +152,6 @@ const bettingViewFromLocation = (): BettingView =>
 const winnerPositionFromSearch = (search: string): WinnerPosition =>
   new URLSearchParams(search).get("side") === "no" ? "no" : "yes";
 
-const winnerPositionForMarket = (market: BettingMarket): WinnerPosition =>
-  market.id === winnerNoMarketId ? "no" : "yes";
-
-const formatBettingDeadline = (value: string): string =>
-  new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short",
-  }).format(new Date(value));
-
-const marketAcceptsBets = (market: BettingMarket, now: number): boolean => {
-  return market.status === "open" && (!market.closesAt || Date.parse(market.closesAt) > now);
-};
-
 export const BettingPage = () => {
   const { isAuthenticated, isLoading: authLoading, login, user } = useAuth();
   const queryClient = useQueryClient();
@@ -196,7 +165,6 @@ export const BettingPage = () => {
   const [winnerPosition, setWinnerPosition] = useState<WinnerPosition>(() =>
     typeof window === "undefined" ? "yes" : winnerPositionFromSearch(window.location.search),
   );
-  const [selection, setSelection] = useState<Selection | null>(null);
   const [predictionSelection, setPredictionSelection] = useState<PredictionSelection | null>(null);
   const [expandedPredictionMarketId, setExpandedPredictionMarketId] = useState<string | null>(null);
   const [expandedPredictionOutcome, setExpandedPredictionOutcome] =
@@ -217,18 +185,11 @@ export const BettingPage = () => {
       predictionDisplayModeSchema,
       "book",
     );
-  const [stakeInput, setStakeInput] = useState("");
-  const [stakeTouched, setStakeTouched] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const betSlipRef = useRef<HTMLElement>(null);
-  const betAmountRef = useRef<HTMLInputElement>(null);
   const predictionStakeRef = useRef<HTMLInputElement>(null);
 
   const bootstrapQuery = useQuery(bettingBootstrapQueryOptions());
-  const marketsQuery = useQuery({
-    ...bettingMarketsQueryOptions(),
-    enabled: bootstrapQuery.isError,
-  });
   const predictionCatalogQuery = useQuery({
     ...predictionMarketCatalogQueryOptions(),
     enabled: bootstrapQuery.isError,
@@ -241,17 +202,9 @@ export const BettingPage = () => {
     () => predictionMarketGroups.flatMap((group) => group.markets),
     [predictionMarketGroups],
   );
-  const betsQuery = useQuery({
-    ...tournamentBetsQueryOptions(username),
-    enabled: isAuthenticated,
-  });
-  const allBetsQuery = useQuery({
-    ...allTournamentBetsQueryOptions(),
-    enabled: bootstrapQuery.isError,
-  });
   const predictionPositionsQuery = useQuery({
     ...allPredictionPositionsQueryOptions(),
-    enabled: bootstrapQuery.isError || bootstrapQuery.data?.predictionPositionsSupported === true,
+    enabled: bootstrapQuery.isError || Boolean(bootstrapQuery.data),
   });
   const coinSummaryQuery = useQuery({
     ...coinSummaryQueryOptions(username),
@@ -271,8 +224,6 @@ export const BettingPage = () => {
     const bootstrapMarketIds = bootstrapQuery.data.predictionMarketGroups.flatMap((group) =>
       group.markets.map((market) => market.id),
     );
-    queryClient.setQueryData(bettingQueryKeys.markets, bootstrapQuery.data.markets);
-    queryClient.setQueryData(bettingQueryKeys.allBets, bootstrapQuery.data.allBets);
     queryClient.setQueryData(
       bettingQueryKeys.predictionPositions,
       bootstrapQuery.data.predictionPositions,
@@ -289,12 +240,7 @@ export const BettingPage = () => {
   const predictionMarketQuery = useQuery({
     ...predictionMarketBatchQueryOptions(predictionMarketIds),
     refetchOnMount: false,
-    enabled:
-      predictionMarketIds.length > 0 &&
-      (isPredictionMarketCategory(marketCategory) ||
-        marketCategory === "2026 AWC Champion" ||
-        view === "all" ||
-        view === "mine"),
+    enabled: predictionMarketIds.length > 0,
   });
   usePredictionMarketRealtime(queryClient, predictionMarketIds, !bootstrapQuery.data);
   const predictionMarketStates = useMemo(
@@ -306,74 +252,32 @@ export const BettingPage = () => {
     [predictionMarketStates],
   );
   const countryByPlayer = countriesQuery.data ?? {};
-  const markets = useMemo(() => marketsQuery.data ?? [], [marketsQuery.data]);
-  const currentTime = useMarketDeadlineClock(markets);
+  const currentTime = useMarketDeadlineClock(
+    predictionMarketStates.map((state) => ({
+      status: state.market.status,
+      closesAt: state.market.closesAt,
+    })),
+  );
   const allHistoryBets = useMemo(
     () =>
       buildBetHistory({
-        tournamentBets: allBetsQuery.data ?? [],
         predictionPositions: predictionPositionsQuery.data ?? [],
         predictionMarketGroups,
         predictionMarketStates,
       }),
-    [
-      allBetsQuery.data,
-      predictionMarketGroups,
-      predictionMarketStates,
-      predictionPositionsQuery.data,
-    ],
+    [predictionMarketGroups, predictionMarketStates, predictionPositionsQuery.data],
   );
   const pendingBetCount = useMemo(
     () => allHistoryBets.filter((bet) => bet.status === "open").length,
     [allHistoryBets],
   );
-  const openMarkets = useMemo(
-    () => markets.filter((market) => marketAcceptsBets(market, currentTime)),
-    [currentTime, markets],
-  );
-  const marketCategories = useMemo(() => {
-    const categories = Array.from(
-      new Map(
-        [...openMarkets]
-          .sort((a, b) => a.categoryOrder - b.categoryOrder)
-          .map((market) => [market.category, market.categoryOrder]),
-      ).keys(),
-    );
-    const defaultCategory = categories.find((category) => category === defaultMarketCategory);
-    return Array.from(
-      new Set([
-        ...(defaultCategory ? [defaultCategory] : []),
-        ...predictionMarketCategories,
-        ...categories.filter(
-          (category) =>
-            category !== "Banned" &&
-            category !== "Markets" &&
-            category !== "AWC Champion" &&
-            category !== defaultMarketCategory,
-        ),
-      ]),
-    );
-  }, [openMarkets]);
-  const visibleMarkets = useMemo(
-    () =>
-      isPredictionMarketCategory(marketCategory)
-        ? []
-        : openMarkets.filter(
-            (market) =>
-              market.category === marketCategory &&
-              (marketCategory !== "AWC Champion" ||
-                winnerPositionForMarket(market) === winnerPosition),
-          ),
-    [marketCategory, openMarkets, winnerPosition],
-  );
+  const marketCategories = predictionMarketCategories;
   const predictionMarketOnlyCategory =
     marketCategory === "Ban" || marketCategory === "2026 AWC Side Bets";
   const activePredictionDisplayMode: PredictionDisplayMode = predictionMarketOnlyCategory
     ? "market"
     : predictionDisplayMode;
-  const activePredictionGroupId = isPredictionMarketCategory(marketCategory)
-    ? predictionGroupIdByCategory[marketCategory]
-    : undefined;
+  const activePredictionGroupId = predictionGroupIdByCategory[marketCategory];
   const activePredictionGroup = predictionMarketGroups.find(
     (group) => group.id === activePredictionGroupId,
   );
@@ -558,37 +462,10 @@ export const BettingPage = () => {
         predictionSide,
       )
     : null;
-  const marketGroups = useMemo(() => {
-    const groups = new Map<string, BettingMarket[]>();
-    visibleMarkets
-      .filter((market) => !market.id.startsWith("lichess-ban-"))
-      .forEach((market) => {
-        const group = groups.get(market.roundName) ?? [];
-        group.push(market);
-        groups.set(market.roundName, group);
-      });
-    return Array.from(groups.entries());
-  }, [visibleMarkets]);
-  const selectedMarket = selection
-    ? (openMarkets.find((market) => market.id === selection.marketId) ?? null)
-    : null;
-  const selectedPrice = selectedMarket
-    ? (selectedMarket.outcomes.find((outcome) => outcome.player === selection?.player)
-        ?.pricePercent ?? 50)
-    : 50;
-  const selectedCountryCode = selection
-    ? (countryByPlayer[selection.player.toLowerCase()] ?? "")
-    : "";
-  const marketStakeLimit = selectedMarket?.id.startsWith("lichess-ban-") ? 200 : MAX_BET_STAKE;
-  const stake = Number(stakeInput);
-  const validStake =
-    Number.isInteger(stake) && stake >= MIN_BET_AMOUNT && stake <= marketStakeLimit;
-  const quote = quoteTournamentBet(validStake ? stake : 0, selectedPrice);
   const myBets = useMemo(
     () =>
       isAuthenticated
         ? buildBetHistory({
-            tournamentBets: betsQuery.data ?? [],
             predictionPositions: (predictionPositionsQuery.data ?? []).filter(
               (position) => position.username.toLowerCase() === username.toLowerCase(),
             ),
@@ -597,7 +474,6 @@ export const BettingPage = () => {
           })
         : [],
     [
-      betsQuery.data,
       isAuthenticated,
       predictionMarketGroups,
       predictionMarketStates,
@@ -618,25 +494,11 @@ export const BettingPage = () => {
     const total = values.reduce((sum, value) => sum + value, 0);
     return Math.abs(total) >= 0.005 ? total : null;
   }, [activePredictionGroup, isAuthenticated, personalPredictionPnlByMarketId]);
-  const balanceLimitedStake = isAuthenticated ? maxTournamentBetStake(balance) : MAX_BET_STAKE;
-  const effectiveStakeLimit = Math.min(balanceLimitedStake, marketStakeLimit);
-  const bettingUnavailable = isAuthenticated && effectiveStakeLimit < MIN_BET_AMOUNT;
-  const selectionIsOpponent =
-    selection && selectedMarket && isAuthenticated
-      ? isTournamentBetOnOpponent(selectedMarket, username, selection.player)
-      : false;
-  const selectionIsSelfNotToWin =
-    selection && isAuthenticated
-      ? isAwcNotToWinSelfBet(selection.marketId, username, selection.player)
-      : false;
-  const insufficientBalance = isAuthenticated && validStake && quote.totalCost > balance;
-
   useEffect(() => {
     const syncViewFromHistory = () => {
       setView(bettingViewFromLocation());
-      setMarketCategory(marketCategoryFromSearch(window.location.search, marketCategories));
+      setMarketCategory(marketCategoryFromSearch(window.location.search));
       setWinnerPosition(winnerPositionFromSearch(window.location.search));
-      setSelection(null);
       setPredictionSelection(null);
       setExpandedPredictionMarketId(null);
     };
@@ -693,7 +555,7 @@ export const BettingPage = () => {
   };
 
   const selectMarketCategory = (nextCategory: string) => {
-    if (nextCategory === marketCategory) return;
+    if (!isPredictionMarketCategory(nextCategory) || nextCategory === marketCategory) return;
     const nextUrl = new URL(window.location.href);
     nextUrl.searchParams.set("view", "markets");
     nextUrl.searchParams.set("market", marketCategorySlug(nextCategory));
@@ -704,7 +566,6 @@ export const BettingPage = () => {
     }
     window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
     setMarketCategory(nextCategory);
-    setSelection(null);
     setPredictionSelection(null);
     setExpandedPredictionMarketId(null);
   };
@@ -712,24 +573,8 @@ export const BettingPage = () => {
   const selectWinnerPosition = (nextPosition: WinnerPosition) => {
     if (nextPosition === winnerPosition) return;
     setWinnerPosition(nextPosition);
-    setSelection(null);
     setPredictionSelection(null);
   };
-
-  const placeBetMutation = useMutation({
-    mutationFn: placeTournamentBet,
-    onSuccess: async (result, variables) => {
-      const placedCost = quoteTournamentBet(variables.stake, result.bet.priceCents).totalCost;
-      setSuccessMessage(
-        `Bet placed on ${result.bet.selection} for ${formatCoinValue(placedCost)} coins.`,
-      );
-      setStakeInput("");
-      setStakeTouched(false);
-      updateCachedCoinBalance(queryClient, username, result.balance);
-      await queryClient.invalidateQueries({ queryKey: bettingQueryKeys.bets(username) });
-      await queryClient.invalidateQueries({ queryKey: bettingQueryKeys.allBets });
-    },
-  });
 
   const placePredictionMutation = useMutation({
     mutationFn: placePredictionOrder,
@@ -749,21 +594,11 @@ export const BettingPage = () => {
     },
   });
 
-  if (marketsQuery.isPending && markets.length === 0) return <RouteLoadingFallback />;
-
-  const chooseOutcome = (marketId: string, player: string) => {
-    setSelection({ marketId, player });
-    setSuccessMessage("");
-    placeBetMutation.reset();
-    const isMobile = window.matchMedia("(max-width: 760px)").matches;
-    if (isMobile) {
-      window.setTimeout(() => {
-        betSlipRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 0);
-    } else {
-      window.setTimeout(() => betAmountRef.current?.focus(), 0);
-    }
-  };
+  if (
+    bootstrapQuery.isPending ||
+    (predictionCatalogQuery.isPending && !predictionMarketGroups.length)
+  )
+    return <RouteLoadingFallback />;
 
   const choosePredictionOutcome = (
     marketId: string,
@@ -839,18 +674,6 @@ export const BettingPage = () => {
     });
   };
 
-  const submitBet = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!selectedMarket || !selection || !validStake || selectionIsOpponent || insufficientBalance)
-      return;
-    setSuccessMessage("");
-    placeBetMutation.mutate({
-      marketId: selectedMarket.id,
-      selection: selection.player,
-      stake,
-    });
-  };
-
   return (
     <div className="sitePage bettingPage">
       <Seo
@@ -897,7 +720,7 @@ export const BettingPage = () => {
             aria-selected={view === "all"}
             onClick={() => selectView("all")}
           >
-            All bets{allBetsQuery.data ? ` (${pendingBetCount})` : ""}
+            All bets{predictionPositionsQuery.data ? ` (${pendingBetCount})` : ""}
           </button>
           <button
             type="button"
@@ -909,19 +732,14 @@ export const BettingPage = () => {
           </button>
         </div>
 
-        {marketsQuery.error ? (
+        {predictionCatalogQuery.error ? (
           <InlineState kind="error">
-            {getErrorMessage(marketsQuery.error, "Unable to load betting markets.")}
+            {getErrorMessage(predictionCatalogQuery.error, "Unable to load markets.")}
           </InlineState>
         ) : null}
 
         {view === "markets" ? (
-          <section
-            className={`bettingMarketView${
-              isPredictionMarketCategory(marketCategory) ? " bettingMarketView--exchange" : ""
-            }`}
-            role="tabpanel"
-          >
+          <section className="bettingMarketView bettingMarketView--exchange" role="tabpanel">
             <div className="bettingMarketColumn">
               <div className="bettingCategories" aria-label="Market categories">
                 {marketCategories
@@ -1243,91 +1061,6 @@ export const BettingPage = () => {
                     ))}
                   </section>
                 ) : null}
-                {marketGroups.length ? (
-                  marketGroups.map(([roundName, roundMarkets]) => (
-                    <section className="bettingMarketGroup" key={roundName}>
-                      <h2>
-                        {marketCategory === "AWC Champion" ? "Who will win 2026 AWC" : roundName}
-                      </h2>
-                      {roundMarkets.map((market, marketIndex) => (
-                        <article className="bettingMarketCard" key={market.id}>
-                          {market.closesAt &&
-                          (marketIndex === 0 ||
-                            market.closesAt !== roundMarkets[marketIndex - 1]?.closesAt) ? (
-                            <p className="bettingMarketDeadline">
-                              <span>Bets close</span>
-                              <time dateTime={market.closesAt}>
-                                {formatBettingDeadline(market.closesAt)}
-                              </time>
-                            </p>
-                          ) : null}
-                          <div className="bettingOutcomes">
-                            {market.outcomes.map((outcome) => {
-                              const isSelected =
-                                selection?.marketId === market.id &&
-                                selection.player === outcome.player;
-                              const isOwnOutcome =
-                                isAuthenticated &&
-                                outcome.player.toLowerCase() === username.toLowerCase();
-                              const isOpponentOutcome =
-                                isAuthenticated &&
-                                isTournamentBetOnOpponent(market, username, outcome.player);
-                              const isSelfNotToWinOutcome =
-                                isAuthenticated &&
-                                isAwcNotToWinSelfBet(market.id, username, outcome.player);
-                              const unavailableReason = isSelfNotToWinOutcome
-                                ? "You can’t bet on yourself not to win AWC."
-                                : isOpponentOutcome
-                                  ? "You can’t bet on your opponent."
-                                  : undefined;
-                              const countryCode =
-                                countryByPlayer[outcome.player.toLowerCase()] ?? "";
-                              return (
-                                <button
-                                  type="button"
-                                  className={isSelected ? "isSelected" : ""}
-                                  aria-pressed={isSelected}
-                                  disabled={Boolean(unavailableReason)}
-                                  title={unavailableReason}
-                                  onClick={() => chooseOutcome(market.id, outcome.player)}
-                                  key={outcome.player}
-                                >
-                                  <span className="bettingOutcomePlayer">
-                                    <img
-                                      src={countryCodeToFlagUrl(countryCode)}
-                                      alt={
-                                        countryCode ? `${countryCode} flag` : "Country unavailable"
-                                      }
-                                      crossOrigin="anonymous"
-                                      loading="lazy"
-                                      decoding="async"
-                                    />
-                                    <span>{outcome.player}</span>
-                                  </span>
-                                  <span className="bettingOutcomeQuote">
-                                    <strong>
-                                      {market.id.startsWith("lichess-ban-") ? "Yes · " : ""}
-                                      {formatPredictionChance(outcome.pricePercent)}
-                                    </strong>
-                                    {isSelfNotToWinOutcome ? (
-                                      <small>Your outcome</small>
-                                    ) : isOpponentOutcome ? (
-                                      <small>Your opponent</small>
-                                    ) : isOwnOutcome ? (
-                                      <small>Your outcome</small>
-                                    ) : null}
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </article>
-                      ))}
-                    </section>
-                  ))
-                ) : !isPredictionMarketCategory(marketCategory) ? (
-                  <InlineState kind="empty">No AWC 2026 markets are open.</InlineState>
-                ) : null}
               </div>
             </div>
 
@@ -1641,145 +1374,7 @@ export const BettingPage = () => {
                       : "Choose Yes or No beside a player to start an order."}
                   </p>
                 )
-              ) : selectedMarket && selection ? (
-                <form onSubmit={submitBet}>
-                  <div className="betSlipSelection">
-                    <small>
-                      {selectedMarket.marketKind === "outright"
-                        ? selectedMarket.label
-                        : `${selectedMarket.roundName} · ${selectedMarket.label}`}
-                    </small>
-                    <div className="betSlipContract">
-                      <span>
-                        <img
-                          src={countryCodeToFlagUrl(selectedCountryCode)}
-                          alt={
-                            selectedCountryCode
-                              ? `${selectedCountryCode} flag`
-                              : "Country unavailable"
-                          }
-                          crossOrigin="anonymous"
-                        />
-                        <strong>{selection.player}</strong>
-                        <em>
-                          {selectedMarket.id.startsWith("lichess-ban-")
-                            ? "Yes"
-                            : selectedMarket.id === winnerNoMarketId
-                              ? "not to win"
-                              : "to win"}
-                        </em>
-                      </span>
-                      <b>{selectedPrice}%</b>
-                    </div>
-                  </div>
-                  <label htmlFor="bet-stake">Amount</label>
-                  <div className="betAmountField">
-                    <input
-                      ref={betAmountRef}
-                      id="bet-stake"
-                      type="number"
-                      inputMode="numeric"
-                      min={MIN_BET_AMOUNT}
-                      max={effectiveStakeLimit}
-                      step="1"
-                      placeholder="0"
-                      value={stakeInput}
-                      onChange={(event) => {
-                        setStakeInput(event.target.value);
-                        setStakeTouched(true);
-                      }}
-                      aria-describedby="bet-stake-help"
-                    />
-                    <span>coins</span>
-                  </div>
-                  <small id="bet-stake-help">
-                    {isAuthenticated
-                      ? `Max bet: ${formatCoinValue(effectiveStakeLimit)} coins`
-                      : "Log in to see max bet"}
-                  </small>
-
-                  <dl className="betQuote">
-                    <div>
-                      <dt>Potential payout</dt>
-                      <dd>{validStake ? formatCoinValue(quote.potentialPayout) : "—"}</dd>
-                    </div>
-                    <div className="betQuoteTotal">
-                      <dt>Total cost</dt>
-                      <dd>{validStake ? formatCoinValue(quote.totalCost) : "—"}</dd>
-                    </div>
-                    <div className="betQuoteFee">
-                      <dt>Includes 2% fee</dt>
-                      <dd>{validStake ? formatCoinValue(quote.fee) : "—"}</dd>
-                    </div>
-                  </dl>
-
-                  {stakeTouched && !validStake ? (
-                    <InlineState kind="error">
-                      Enter a whole coin amount from 1 to {formatCoinValue(marketStakeLimit)}.
-                    </InlineState>
-                  ) : null}
-                  {insufficientBalance ? (
-                    <InlineState kind="error">
-                      You need {formatCoinValue(quote.totalCost)} coins including the fee.
-                    </InlineState>
-                  ) : null}
-                  {bettingUnavailable ? (
-                    <InlineState kind="info">
-                      You do not have enough coins to place this bet.
-                    </InlineState>
-                  ) : null}
-                  {selectionIsOpponent ? (
-                    <InlineState kind="error">
-                      You can’t bet on your opponent. Choose another outcome.
-                    </InlineState>
-                  ) : null}
-                  {selectionIsSelfNotToWin ? (
-                    <InlineState kind="error">
-                      You can’t bet on yourself not to win AWC. Choose another player.
-                    </InlineState>
-                  ) : null}
-                  {placeBetMutation.error ? (
-                    <InlineState kind="error">
-                      {getErrorMessage(placeBetMutation.error, "Unable to place your bet.")}
-                    </InlineState>
-                  ) : null}
-                  {successMessage ? (
-                    <InlineState kind="success">{successMessage}</InlineState>
-                  ) : null}
-
-                  {isAuthenticated ? (
-                    <button
-                      className="betSubmitButton"
-                      type="submit"
-                      disabled={
-                        !validStake ||
-                        insufficientBalance ||
-                        bettingUnavailable ||
-                        selectionIsOpponent ||
-                        selectionIsSelfNotToWin ||
-                        placeBetMutation.isPending
-                      }
-                    >
-                      {placeBetMutation.isPending
-                        ? "Placing bet…"
-                        : validStake
-                          ? `Place bet · ${formatCoinValue(quote.totalCost)} coins`
-                          : "Place bet"}
-                    </button>
-                  ) : (
-                    <button
-                      className="betSubmitButton"
-                      type="button"
-                      disabled={authLoading}
-                      onClick={() => void login("/betting")}
-                    >
-                      Log in to bet
-                    </button>
-                  )}
-                </form>
-              ) : (
-                <p className="betSlipEmpty">Choose a player to see the exact cost and payout.</p>
-              )}
+              ) : null}
             </aside>
           </section>
         ) : view === "suggestions" ? (
@@ -1797,14 +1392,13 @@ export const BettingPage = () => {
             onLogin={() => void login("/betting")}
             myBets={myBets}
             allBets={allHistoryBets}
-            markets={markets}
             predictionMarketGroups={predictionMarketGroups}
             predictionMarketStates={predictionMarketStates}
             countryByPlayer={countryByPlayer}
-            myBetsLoading={betsQuery.isPending || predictionPositionsQuery.isPending}
-            allBetsLoading={allBetsQuery.isPending || predictionPositionsQuery.isPending}
-            myBetsError={betsQuery.error ?? predictionPositionsQuery.error}
-            allBetsError={allBetsQuery.error ?? predictionPositionsQuery.error}
+            myBetsLoading={predictionPositionsQuery.isPending}
+            allBetsLoading={predictionPositionsQuery.isPending}
+            myBetsError={predictionPositionsQuery.error}
+            allBetsError={predictionPositionsQuery.error}
           />
         )}
       </div>

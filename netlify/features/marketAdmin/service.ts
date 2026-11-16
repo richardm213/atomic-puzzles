@@ -23,12 +23,9 @@ import { HttpError } from "../../platform/errors";
 import { archiveDate, findArchivedMatches } from "./archive";
 import type { MarketAdminRepository } from "./repository";
 import type {
-  Bet,
   Credit,
   Fill,
   Ledger,
-  Legacy,
-  LegacyResolution,
   Market,
   Position,
   PreparedResolution,
@@ -46,22 +43,8 @@ const exclusiveGroup = (id: string | null) =>
 const title = (market: Market) => market.display_name || market.question;
 const label = (market: Market, outcome: "yes" | "no") =>
   outcome === "yes" ? market.outcome_yes_label || "Yes" : market.outcome_no_label || "No";
-const fixtureFor = (market: Market, fixtures: Fixture[], legacy: Legacy[]) =>
-  fixtures.find(
-    (f) =>
-      market.id === `${f.tournament}-${f.id}` ||
-      legacy.some(
-        (l) =>
-          l.id === market.id && l.tournament_id === f.tournament && l.bracket_match_id === f.id,
-      ),
-  );
-const paidBetId = (row: Ledger) =>
-  Number(
-    row.metadata?.betId ??
-      /tournament-bet-payout(?:-reversal)?:([0-9]+)/.exec(
-        String(row.metadata?.reverses || row.source_key),
-      )?.[1],
-  );
+const fixtureFor = (market: Market, fixtures: Fixture[]) =>
+  fixtures.find((f) => market.id === `${f.tournament}-${f.id}`);
 
 export class MarketAdminService {
   constructor(
@@ -74,23 +57,19 @@ export class MarketAdminService {
   }
 
   async context() {
-    const [markets, legacy] = await Promise.all([
-      this.repository.rows<Market>("prediction_markets"),
-      this.repository.rows<Legacy>("tournament_betting_markets"),
-    ]);
+    const markets = await this.repository.rows<Market>("prediction_markets");
     const eventIds = [
-      ...new Set([
-        ...legacy.map((l) => l.tournament_id),
-        ...markets.flatMap((m) => {
+      ...new Set(
+        markets.flatMap((m) => {
           const id = /^([a-z][a-z0-9]*\d{4})-/.exec(m.id)?.[1];
           return id ? [id] : [];
         }),
-      ]),
+      ),
     ];
     const fixtures = eventIds.length
       ? await this.repository.rows<Fixture>("tournament_matches", "*", { tournament: eventIds })
       : [];
-    return { markets, legacy, fixtures };
+    return { markets, fixtures };
   }
 
   async list(): Promise<{ markets: AdminMarket[] }> {
@@ -108,7 +87,7 @@ export class MarketAdminService {
           group: m.group_title || "Other markets",
           status: m.status,
           choices: { yes: label(m, "yes"), no: label(m, "no") },
-          fixture: fixtureFor(m, context.fixtures, context.legacy) ?? null,
+          fixture: fixtureFor(m, context.fixtures) ?? null,
         })),
     };
   }
@@ -139,12 +118,12 @@ export class MarketAdminService {
   }
 
   async prepare(input: MarketResolutionInput): Promise<PreparedResolution> {
-    const { markets, legacy, fixtures } = await this.context();
+    const { markets, fixtures } = await this.context();
     const selected = markets.find((m) => m.id === input.marketId);
     if (!selected) throw new HttpError(404, "Market not found.");
     if (!["open", "closed"].includes(selected.status))
       throw new HttpError(409, "This market has already been settled.");
-    const source = fixtureFor(selected, fixtures, legacy);
+    const source = fixtureFor(selected, fixtures);
     if (source && input.kind !== "match")
       throw new HttpError(400, "Enter the match score so the bracket and points stay consistent.");
     if (!source && input.kind === "match")
@@ -305,134 +284,20 @@ export class MarketAdminService {
         "outcome",
       ]),
       this.repository.rows<Credit>(
-        "prediction_legacy_position_credits",
+        "prediction_position_credits",
         "*",
         { market_id: marketIds },
-        "source_bet_id",
+        "id",
       ),
       this.repository.rows<Fill>("prediction_fills", "*", { market_id: marketIds }),
     ]);
-    const legacyResolutions: LegacyResolution[] = [];
-    const associatedLegacy = legacy.filter(
-      (l) =>
-        l.id === selected.id ||
-        (source && l.tournament_id === source.tournament && l.bracket_match_id === source.id),
-    );
-    for (const l of associatedLegacy)
-      legacyResolutions.push({
-        id: l.id,
-        winner: winner || lower(label(selected, outcome)),
-        method: "played",
-      });
-    const winnerGroupYear = /^awc-(\d{4})-champion$/.exec(selected.group_id || "")?.[1];
-    const winnerEvent = source?.tournament || (winnerGroupYear ? `awc${winnerGroupYear}` : "");
-    if (winnerEvent && (champion || eliminated)) {
-      for (const l of legacy.filter(
-        (l) =>
-          l.tournament_id === winnerEvent && l.market_kind === "outright" && /winner/.test(l.id),
-      ))
-        legacyResolutions.push({
-          id: l.id,
-          winner: champion || eliminated,
-          method: champion
-            ? l.id.endsWith("-no")
-              ? "inverse"
-              : "played"
-            : l.id.endsWith("-no")
-              ? "eliminate-inverse"
-              : "eliminate",
-        });
-    }
-    const uniqueLegacy = [...new Map(legacyResolutions.map((l) => [l.id, l])).values()].sort(
-      (a, b) => a.id.localeCompare(b.id),
-    );
-    let bets = uniqueLegacy.length
-      ? await this.repository.rows<Bet>("tournament_bets", "*", {
-          market_id: uniqueLegacy.map((l) => l.id),
-        })
-      : [];
-    if (credits.length) {
-      const sourceBets = await this.repository.rows<Bet>("tournament_bets", "*", {
-        id: credits.map((c) => String(c.source_bet_id)),
-      });
-      bets = [...new Map([...bets, ...sourceBets].map((b) => [b.id, b])).values()].sort(
-        (a, b) => a.id - b.id,
-      );
-    }
-    for (const old of legacy.filter(
-      (l) => !uniqueLegacy.some((r) => r.id === l.id) && !/winner/.test(l.id),
-    )) {
-      const sourceCredits = credits.filter(
-        (c) =>
-          c.market_id === selected.id &&
-          bets.some((b) => b.id === c.source_bet_id && b.market_id === old.id),
-      );
-      if (!sourceCredits.length) continue;
-      const selectedCredit = sourceCredits.find((c) => c.outcome === outcome);
-      const selection = bets.find((b) => b.id === selectedCredit?.source_bet_id)?.selection ?? null;
-      associatedLegacy.push(old);
-      uniqueLegacy.push({ id: old.id, winner: selection, method: selection ? "played" : "loss" });
-      const remaining = await this.repository.rows<Bet>("tournament_bets", "*", {
-        market_id: old.id,
-      });
-      bets = [...new Map([...bets, ...remaining].map((b) => [b.id, b])).values()].sort(
-        (a, b) => a.id - b.id,
-      );
-    }
-    if (
-      winnerEvent &&
-      !source &&
-      (input.kind === "price" || input.kind === "refund") &&
-      exclusiveGroup(selected.group_id)
-    ) {
-      for (const old of legacy.filter(
-        (l) => l.tournament_id === winnerEvent && /winner/.test(l.id),
-      )) {
-        uniqueLegacy.push({
-          id: old.id,
-          winner: lower(title(selected)),
-          method: input.kind,
-          selection: lower(title(selected)),
-          yesPlayer: lower(title(selected)),
-        });
-        const remaining = await this.repository.rows<Bet>("tournament_bets", "*", {
-          market_id: old.id,
-        });
-        bets = [...new Map([...bets, ...remaining].map((b) => [b.id, b])).values()].sort(
-          (a, b) => a.id - b.id,
-        );
-      }
-    }
-    uniqueLegacy.sort((a, b) => a.id.localeCompare(b.id));
-    const ledgerOwners = [
-      ...new Set([...positions.map((p) => p.username), ...bets.map((b) => b.username)]),
-    ];
+    const ledgerOwners = [...new Set(positions.map((p) => p.username))];
     const ledger = ledgerOwners.length
       ? await this.repository.rows<Ledger>("coin_transactions", "*", {
           username: ledgerOwners,
-          reason: [
-            "tournament_bet_payout",
-            "prediction_market_payout",
-            "prediction_order_reserve",
-            "prediction_order_refund",
-            "prediction_trade_credit",
-            "prediction_trade_fee",
-            "tournament_bet",
-          ],
+          reason: ["prediction_market_payout"],
         })
       : [];
-    const converted = new Set(
-      (
-        await (bets.length
-          ? this.repository.rows<Credit>(
-              "prediction_legacy_position_credits",
-              "*",
-              { source_bet_id: bets.map((b) => String(b.id)) },
-              "source_bet_id",
-            )
-          : Promise.resolve([]))
-      ).map((c) => c.source_bet_id),
-    );
     const chosenReference =
       input.kind === "price"
         ? input.referenceFillId
@@ -465,12 +330,6 @@ export class MarketAdminService {
           : targetOutcome === "yes"
             ? 100
             : 0;
-      const strikeBets = bets.filter(
-        (b) =>
-          (associatedLegacy.some((l) => l.id === b.market_id) && isSelected) ||
-          (uniqueLegacy.some((l) => l.id === b.market_id && /winner/.test(l.id)) &&
-            lower(b.selection) === lower(title(market))),
-      );
       const refunds: Settlement["refunds"] = [];
       if (targetMethod === "refund") {
         if (fills.some((f) => f.market_id === market.id))
@@ -490,7 +349,7 @@ export class MarketAdminService {
             const yes = held.find((p) => p.outcome === "yes")?.quantity ?? 0;
             const no = held.find((p) => p.outcome === "no")?.quantity ?? 0;
             if (yes !== no)
-              throw new HttpError(400, "Unpaired legacy liquidity needs a fair-price settlement.");
+              throw new HttpError(400, "Unpaired liquidity needs a fair-price settlement.");
             refunds.push({ username, amount: yes });
           } else {
             const ownerCredits = credits.filter(
@@ -502,7 +361,7 @@ export class MarketAdminService {
               credits: ownerCredits.map((c) => ({
                 ...c,
                 credited_at: String(c.credited_at),
-                fee_coins: (bets.find((b) => b.id === c.source_bet_id)?.fee as number) || 0,
+                fee_coins: c.fee_coins,
               })) as PredictionPositionCredit[],
               nettings: await this.repository.rows(
                 "prediction_position_nettings",
@@ -515,24 +374,12 @@ export class MarketAdminService {
               Math.abs(quantity - replay.positions.yes.quantity - replay.positions.no.quantity) >
               1e-6
             )
-              throw new HttpError(400, "Legacy refund holdings do not reconcile.");
-            const creditedBets = new Set(ownerCredits.map((c) => c.source_bet_id));
-            const alreadyPaid = ledger
-              .filter(
-                (t) =>
-                  t.username === username &&
-                  t.reason === "tournament_bet_payout" &&
-                  creditedBets.has(paidBetId(t)),
-              )
-              .reduce((sum, t) => sum + t.amount, 0);
+              throw new HttpError(400, "Imported holdings do not reconcile.");
             refunds.push({
               username,
               amount: Math.max(
                 0,
-                money(
-                  (replay.positions.yes.costCents + replay.positions.no.costCents) / 100 -
-                    alreadyPaid,
-                ),
+                money((replay.positions.yes.costCents + replay.positions.no.costCents) / 100),
               ),
             });
           }
@@ -552,21 +399,8 @@ export class MarketAdminService {
         price,
         referenceFillId: targetMethod === "price" ? reference!.id : null,
         message,
-        legacyBetIds: strikeBets.map((b) => b.id),
         refunds,
       });
-    }
-    for (const l of uniqueLegacy) {
-      if (!associatedLegacy.some((a) => a.id === l.id)) continue;
-      if (method !== "binary") {
-        l.method = method;
-        l.price = settlements.find((s) => s.id === selected.id)!.price;
-        l.yesPlayer = lower(selected.outcome_yes_label);
-      }
-    }
-    for (const l of uniqueLegacy.filter((l) => l.selection && l.method === "price")) {
-      const price = settlements.find((s) => s.id === selected.id)!.price;
-      l.price = l.id.endsWith("-no") ? 100 - price : price;
     }
     const payments = new Map<string, number>();
     const pay = (user: string, amount: number) =>
@@ -577,22 +411,6 @@ export class MarketAdminService {
         const gross = money(
           (p.quantity * (p.outcome === "yes" ? settlement.price : 100 - settlement.price)) / 100,
         );
-        const creditIds = new Set(
-          credits
-            .filter(
-              (c) =>
-                c.market_id === p.market_id && c.username === p.username && c.outcome === p.outcome,
-            )
-            .map((c) => c.source_bet_id),
-        );
-        const paid = ledger
-          .filter(
-            (t) =>
-              t.username === p.username &&
-              t.reason === "tournament_bet_payout" &&
-              creditIds.has(paidBetId(t)),
-          )
-          .reduce((sum, t) => sum + t.amount, 0);
         const receiptExists = ledger.some(
           (t) =>
             t.username === p.username &&
@@ -601,46 +419,10 @@ export class MarketAdminService {
                 ? `prediction-market-price-payout:${p.market_id}:${p.username}:${p.outcome}`
                 : `prediction-market-payout:${p.market_id}:${p.username}`),
         );
-        pay(p.username, receiptExists ? 0 : Math.max(0, money(gross - paid)));
+        pay(p.username, receiptExists ? 0 : gross);
       }
       for (const refund of settlement.refunds) pay(refund.username, refund.amount);
     }
-    for (const l of uniqueLegacy)
-      for (const bet of bets.filter(
-        (b) => b.market_id === l.id && b.status === "open" && !converted.has(b.id),
-      )) {
-        const same = lower(bet.selection) === l.winner;
-        if (
-          (l.method.startsWith("eliminate") && !same) ||
-          (l.selection && lower(bet.selection) !== l.selection)
-        )
-          continue;
-        const amount =
-          l.method === "refund"
-            ? bet.total_cost
-            : l.method === "price"
-              ? money(
-                  (bet.potential_payout *
-                    (lower(bet.selection) === l.yesPlayer ? l.price! : 100 - l.price!)) /
-                    100,
-                )
-              : (
-                    l.method === "inverse"
-                      ? !same
-                      : l.method === "eliminate-inverse"
-                        ? same
-                        : l.method === "eliminate" || l.method === "loss"
-                          ? false
-                          : same
-                  )
-                ? bet.potential_payout
-                : 0;
-        const sourceKey =
-          l.method === "refund"
-            ? `tournament-bet-refund:${bet.id}`
-            : `tournament-bet-payout:${bet.id}`;
-        pay(bet.username, ledger.some((t) => t.source_key === sourceKey) ? 0 : amount);
-      }
     let expectedAwards: PointAward[] = [];
     let awards: PointAward[] = [];
     if (source && updated) {
@@ -712,8 +494,6 @@ export class MarketAdminService {
       for (const f of fills.filter((f) => f.market_id === settlement.id))
         for (const u of [f.buyer_username, f.seller_username])
           if (u && u !== "prediction_admin") recipients.add(`${settlement.id}:${u}`);
-      for (const b of bets.filter((b) => settlement.legacyBetIds.includes(b.id)))
-        if (b.username !== "prediction_admin") recipients.add(`${settlement.id}:${b.username}`);
     }
     const summary: ResolutionSummary = {
       marketTitles: relatedMarkets.map(title),
@@ -758,12 +538,9 @@ export class MarketAdminService {
       fixtureChanges: changedFixtures,
       expectedMarkets: relatedMarkets,
       expectedPositions: positions,
-      expectedBets: bets,
-      expectedLegacy: legacy.filter((l) => uniqueLegacy.some((r) => r.id === l.id)),
       expectedAwards,
       awards,
       settlements,
-      legacyResolutions: uniqueLegacy,
       expectedPayments: [...payments].map(([username, amount]) => ({ username, amount })),
       summary,
       archiveCandidates,

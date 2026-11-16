@@ -2,21 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   findCurrentTournamentOpponent,
-  isAwcNotToWinSelfBet,
   isRestrictedAwcChampionOrder,
   isRestrictedPredictionOrder,
-  maxTournamentBetStake,
-  quoteTournamentBet,
 } from "./betting";
-
-describe("isAwcNotToWinSelfBet", () => {
-  it("blocks only a player's own selection in the AWC not-to-win market", () => {
-    expect(isAwcNotToWinSelfBet("awc2026-winner-no", "Actual_User", "actual_user")).toBe(true);
-    expect(isAwcNotToWinSelfBet("awc2027-winner-no", "Actual_User", "actual_user")).toBe(true);
-    expect(isAwcNotToWinSelfBet("awc2026-winner-no", "Actual_User", "another_player")).toBe(false);
-    expect(isAwcNotToWinSelfBet("awc2026-winner", "Actual_User", "actual_user")).toBe(false);
-  });
-});
 
 describe("AWC prediction-market player protections", () => {
   it("finds only an unresolved current opponent", () => {
@@ -64,37 +52,5 @@ describe("AWC prediction-market player protections", () => {
     expect(isRestrictedPredictionOrder({ ...base, outcome: "yes", side: "buy" })).toBeNull();
     expect(isRestrictedPredictionOrder({ ...base, outcome: "no", side: "buy" })).toBe("opponent");
     expect(isRestrictedPredictionOrder({ ...base, outcome: "yes", side: "sell" })).toBeNull();
-  });
-});
-
-describe("quoteTournamentBet", () => {
-  it("adds the two percent fee to the upfront cost", () => {
-    expect(quoteTournamentBet(100, 70)).toEqual({
-      stake: 100,
-      fee: 2,
-      totalCost: 102,
-      potentialPayout: 142.857143,
-      potentialProfit: 40.857143,
-    });
-  });
-
-  it("uses the locked cents price to calculate the payout", () => {
-    expect(quoteTournamentBet(100, 30)).toMatchObject({
-      totalCost: 102,
-      potentialPayout: 333.333333,
-      potentialProfit: 231.333333,
-    });
-  });
-});
-
-describe("maxTournamentBetStake", () => {
-  it("limits the stake to the available balance after the fee", () => {
-    expect(maxTournamentBetStake(700)).toBe(686);
-    expect(quoteTournamentBet(686, 50).totalCost).toBeLessThanOrEqual(700);
-    expect(quoteTournamentBet(687, 50).totalCost).toBeGreaterThan(700);
-  });
-
-  it("never exceeds the absolute 1,000 coin maximum", () => {
-    expect(maxTournamentBetStake(100_000)).toBe(1000);
   });
 });

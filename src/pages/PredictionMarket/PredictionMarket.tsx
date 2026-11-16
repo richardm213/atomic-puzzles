@@ -21,12 +21,10 @@ import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { usePredictionOrderSide } from "../../hooks/usePredictionOrderSide";
 import {
-  AWC_NOT_TO_WIN_MARKET_ID,
   findCurrentTournamentOpponent,
   isRestrictedPredictionOrder,
   predictionOrderRestrictionMessage,
 } from "../../lib/betting/betting";
-import { allTournamentBetsQueryOptions } from "../../lib/betting/bettingQueries";
 import { formatCoinVolume } from "../../lib/coins/coinDisplay";
 import { updateCachedCoinBalance } from "../../lib/coins/coinQueries";
 import { tournamentBracketQueryOptions } from "../../lib/matches/tournamentQueries";
@@ -49,7 +47,6 @@ import {
   type PredictionOrderSide,
   type PredictionOutcome,
   predictionOutcomeLabel,
-  predictionOutcomes,
   predictionTakerFee,
   quotePredictionBuy,
   quotePredictionSell,
@@ -84,10 +81,6 @@ export const PredictionMarketPage = () => {
     ...predictionMarketBatchQueryOptions(marketIds),
     enabled: marketIds.length > 0,
   });
-  const legacyBetsQuery = useQuery({
-    ...allTournamentBetsQueryOptions(),
-    enabled: Boolean(marketGroup),
-  });
   usePredictionMarketRealtime(queryClient, marketIds);
   const marketStates = useMemo(() => marketsQuery.data ?? [], [marketsQuery.data]);
   const marketStateById = useMemo(
@@ -100,7 +93,6 @@ export const PredictionMarketPage = () => {
 
     const groupMarketIds = new Set(marketGroup.markets.map((market) => market.id));
     const personalBets = buildBetHistory({
-      tournamentBets: legacyBetsQuery.data ?? [],
       predictionPositions: marketStates.flatMap(
         (state) =>
           state.historyPositions ??
@@ -114,13 +106,11 @@ export const PredictionMarketPage = () => {
       predictionMarketStates: marketStates,
     }).filter(
       (bet) =>
-        bet.kind === "prediction" &&
-        bet.username.toLowerCase() === username.toLowerCase() &&
-        groupMarketIds.has(bet.marketId),
+        bet.username.toLowerCase() === username.toLowerCase() && groupMarketIds.has(bet.marketId),
     );
 
     return predictionPnlByMarketId(personalBets);
-  }, [isAuthenticated, legacyBetsQuery.data, marketGroup, marketStates, username]);
+  }, [isAuthenticated, marketGroup, marketStates, username]);
   const personalMarketPnlTotal = personalMarketPnlById.size
     ? [...personalMarketPnlById.values()].reduce((total, pnl) => total + pnl, 0)
     : null;
@@ -234,57 +224,14 @@ export const PredictionMarketPage = () => {
       : null;
   const orderRestriction = activeMarketDefinition ? orderRestrictionFor(outcome, side) : null;
   const recentFills = useMemo(() => {
-    const definitionByUsername = new Map(
-      marketDefinitions.map((definition) => [definition.username.toLowerCase(), definition]),
-    );
-    const definitionById = new Map(
-      marketDefinitions.map((definition) => [definition.id, definition]),
-    );
     const exchangeFills = marketDefinitions.flatMap((definition) =>
       (marketStateById.get(definition.id)?.fills ?? []).map((fill) => ({ ...fill, definition })),
     );
-    const legacyFills = (legacyBetsQuery.data ?? []).flatMap((bet) => {
-      let legacyOutcome: PredictionOutcome | null = null;
-      if (marketGroup?.id === "awc-2026-champion") {
-        if (bet.marketId === "awc2026-winner") legacyOutcome = "yes";
-        else if (bet.marketId === AWC_NOT_TO_WIN_MARKET_ID) legacyOutcome = "no";
-      } else if (marketGroup?.id === "ban-2026" && bet.marketId.startsWith("lichess-ban-2026-")) {
-        legacyOutcome = "yes";
-      } else if (
-        marketGroup?.id === "awc-2026-round-of-16" ||
-        marketGroup?.id === "awc-2026-quarterfinals" ||
-        marketGroup?.id === "awc-2026-losers-round-1"
-      ) {
-        const matchup = definitionById.get(bet.marketId);
-        legacyOutcome =
-          predictionOutcomes.find(
-            (entry) => outcomeLabel(entry, matchup).toLowerCase() === bet.selection.toLowerCase(),
-          ) ?? null;
-      }
-      if (!legacyOutcome) return [];
-
-      const definition =
-        definitionById.get(bet.marketId) ?? definitionByUsername.get(bet.selection.toLowerCase());
-      if (!definition) return [];
-      return [
-        {
-          id: -bet.id,
-          outcome: legacyOutcome,
-          priceCents: bet.priceCents,
-          quantity: bet.potentialPayout,
-          buyerUsername: bet.username,
-          sellerUsername: null,
-          createdAt: bet.placedAt,
-          definition,
-        },
-      ];
-    });
-
-    return [...exchangeFills, ...legacyFills]
+    return exchangeFills
       .filter((fill) => fill.buyerUsername.toLowerCase() !== predictionAdminUsername)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id - left.id)
       .slice(0, 20);
-  }, [legacyBetsQuery.data, marketDefinitions, marketGroup?.id, marketStateById]);
+  }, [marketDefinitions, marketStateById]);
   const accountOrders = useMemo(
     () =>
       marketDefinitions

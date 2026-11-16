@@ -46,7 +46,7 @@ describe("betting function", () => {
           created_at: "2026-11-01T00:00:00Z",
         },
       ],
-      prediction_legacy_position_credits: [],
+      prediction_position_credits: [],
       prediction_position_nettings: [],
       coin_transactions: [
         {
@@ -205,7 +205,7 @@ describe("betting function", () => {
   it("returns one accounting row per trader for exited trades and netted holdings", async () => {
     const rows: Record<string, unknown[]> = {
       prediction_positions: [],
-      prediction_legacy_position_credits: [],
+      prediction_position_credits: [],
       prediction_fills: [
         {
           id: 1,
@@ -277,6 +277,9 @@ describe("betting function", () => {
       from: (table: string) => {
         const query = {
           select: () => query,
+          not: () => query,
+          then: (resolve: (value: unknown) => unknown) =>
+            Promise.resolve({ data: [], error: null }).then(resolve),
           order: () => query,
           gt: () => query,
           neq: () => query,
@@ -311,54 +314,17 @@ describe("betting function", () => {
       closed_cost_coins: 800,
       closed_proceeds_coins: 1000,
     });
-  });
-
-  it("returns the public AWC 2026 markets in bracket order", async () => {
-    const roundOrder = vi.fn(async () => ({
-      data: [{ id: "awc2026-wb-r1-m2", player_one: "maracker", player_two: "rabbier" }],
-      error: null,
-    }));
-    const categoryOrder = vi.fn(() => ({ order: roundOrder }));
-    const inFilter = vi.fn(() => ({ order: categoryOrder }));
-    const select = vi.fn(() => ({ in: inFilter }));
-    const from = vi.fn(() => ({ select }));
-    mocks.createClient.mockReturnValue({ from });
-
-    const response = await handler({
+    const bootstrap = await handler({
       httpMethod: "POST",
       headers: {},
-      body: JSON.stringify({ action: "markets" }),
+      body: JSON.stringify({ action: "bootstrap" }),
     });
-
-    expect(response.statusCode).toBe(200);
-    expect(from).toHaveBeenCalledWith("tournament_betting_markets");
-    expect(inFilter).toHaveBeenCalledWith("tournament_id", ["awc2026", "lichess-ban-2026"]);
-    expect(categoryOrder).toHaveBeenCalledWith("category_order", { ascending: true });
-    expect(roundOrder).toHaveBeenCalledWith("round_order", { ascending: true });
-  });
-
-  it("returns all bets publicly in newest-first order", async () => {
-    const limit = vi.fn(async () => ({
-      data: [{ id: 9, username: "other_player", selection: "natso" }],
-      error: null,
-    }));
-    const secondOrder = vi.fn(() => ({ limit }));
-    const firstOrder = vi.fn(() => ({ order: secondOrder }));
-    const select = vi.fn(() => ({ order: firstOrder }));
-    const from = vi.fn(() => ({ select }));
-    mocks.createClient.mockReturnValue({ from });
-
-    const response = await handler({
-      httpMethod: "POST",
-      headers: {},
-      body: JSON.stringify({ action: "allBets" }),
+    expect(bootstrap.statusCode).toBe(200);
+    expect(JSON.parse(bootstrap.body).result).toEqual({
+      exchangeMarkets: [],
+      allPredictionPositions: result,
+      exchangeMarketStates: [],
     });
-
-    expect(response.statusCode).toBe(200);
-    expect(from).toHaveBeenCalledWith("tournament_bets");
-    expect(firstOrder).toHaveBeenCalledWith("placed_at", { ascending: false });
-    expect(secondOrder).toHaveBeenCalledWith("id", { ascending: false });
-    expect(limit).toHaveBeenCalledWith(200);
   });
 
   it("publishes suggestion vote totals without exposing voter identities", async () => {
@@ -401,174 +367,16 @@ describe("betting function", () => {
     expect(response.body).not.toContain('"username":"one"');
   });
 
-  it("places a bet for the signed-in username and enforces the maximum", async () => {
-    const rpc = vi.fn(async () => ({
-      data: { balance: 898, bet: { id: 7, selection: "rabbier" } },
-      error: null,
-    }));
-    const maybeSingle = vi.fn(async () => ({
-      data: {
-        market_kind: "match",
-        player_one: "maracker",
-        player_two: "rabbier",
-      },
-      error: null,
-    }));
-    const eq = vi.fn(() => ({ maybeSingle }));
-    const select = vi.fn(() => ({ eq }));
-    const from = vi.fn(() => ({ select }));
-    mocks.createClient.mockReturnValue({ from, rpc });
-
-    const response = await handler({
-      httpMethod: "POST",
-      headers: requestHeaders("Actual_User"),
-      body: JSON.stringify({
-        action: "place",
-        marketId: "awc2026-wb-r1-m2",
-        selection: "rabbier",
-        stake: 100,
-        username: "impersonated-user",
-      }),
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(rpc).toHaveBeenCalledWith("place_tournament_bet", {
-      p_username: "actual_user",
-      p_market_id: "awc2026-wb-r1-m2",
-      p_selection: "rabbier",
-      p_stake: 100,
-    });
-
-    const invalidResponse = await handler({
-      httpMethod: "POST",
-      headers: requestHeaders("Actual_User"),
-      body: JSON.stringify({
-        action: "place",
-        marketId: "awc2026-wb-r1-m2",
-        selection: "rabbier",
-        stake: 1001,
-      }),
-    });
-    expect(invalidResponse.statusCode).toBe(400);
-    expect(rpc).toHaveBeenCalledTimes(1);
-
-    const belowMinimumResponse = await handler({
-      httpMethod: "POST",
-      headers: requestHeaders("Actual_User"),
-      body: JSON.stringify({
-        action: "place",
-        marketId: "awc2026-wb-r1-m2",
-        selection: "rabbier",
-        stake: 0,
-      }),
-    });
-    expect(belowMinimumResponse.statusCode).toBe(400);
-    expect(rpc).toHaveBeenCalledTimes(1);
-
-    const bannedMarketResponse = await handler({
-      httpMethod: "POST",
-      headers: requestHeaders("Actual_User"),
-      body: JSON.stringify({
-        action: "place",
-        marketId: "lichess-ban-2026-new-life14",
-        selection: "new_life14",
-        stake: 201,
-      }),
-    });
-    expect(bannedMarketResponse.statusCode).toBe(400);
-    expect(rpc).toHaveBeenCalledTimes(1);
-
-    maybeSingle.mockResolvedValueOnce({
-      data: {
-        market_kind: "match",
-        player_one: "Actual_User",
-        player_two: "rival",
-      },
-      error: null,
-    });
-    const selfBetResponse = await handler({
-      httpMethod: "POST",
-      headers: requestHeaders("Actual_User"),
-      body: JSON.stringify({
-        action: "place",
-        marketId: "awc2026-wb-r1-m2",
-        selection: "actual_user",
-        stake: 10,
-      }),
-    });
-    expect(selfBetResponse.statusCode).toBe(200);
-    expect(rpc).toHaveBeenCalledTimes(2);
-
-    maybeSingle.mockResolvedValueOnce({
-      data: {
-        market_kind: "match",
-        player_one: "Actual_User",
-        player_two: "rival",
-      },
-      error: null,
-    });
-    const opponentBetResponse = await handler({
-      httpMethod: "POST",
-      headers: requestHeaders("Actual_User"),
-      body: JSON.stringify({
-        action: "place",
-        marketId: "awc2026-wb-r1-m2",
-        selection: "rival",
-        stake: 10,
-      }),
-    });
-    expect(opponentBetResponse.statusCode).toBe(400);
-    expect(JSON.parse(opponentBetResponse.body).error).toBe("You can’t bet on your opponent.");
-    expect(rpc).toHaveBeenCalledTimes(2);
-
-    const selfNotToWinResponse = await handler({
-      httpMethod: "POST",
-      headers: requestHeaders("Actual_User"),
-      body: JSON.stringify({
-        action: "place",
-        marketId: "awc2026-winner-no",
-        selection: "actual_user",
-        stake: 10,
-      }),
-    });
-    expect(selfNotToWinResponse.statusCode).toBe(400);
-    expect(JSON.parse(selfNotToWinResponse.body).error).toBe(
-      "You can’t bet on yourself not to win AWC.",
-    );
-    expect(rpc).toHaveBeenCalledTimes(2);
-  });
-
-  it("reports a market deadline rejection as a closed market", async () => {
-    const rpc = vi.fn(async () => ({
-      data: null,
-      error: { message: "Betting deadline has passed for market awc2026-winner" },
-    }));
-    const maybeSingle = vi.fn(async () => ({
-      data: {
-        market_kind: "outright",
-        player_one: "",
-        player_two: "",
-      },
-      error: null,
-    }));
-    const eq = vi.fn(() => ({ maybeSingle }));
-    const select = vi.fn(() => ({ eq }));
-    const from = vi.fn(() => ({ select }));
-    mocks.createClient.mockReturnValue({ from, rpc });
-
-    const response = await handler({
-      httpMethod: "POST",
-      headers: requestHeaders("bettor"),
-      body: JSON.stringify({
-        action: "place",
-        marketId: "awc2026-winner",
-        selection: "natso",
-        stake: 10,
-      }),
-    });
-
-    expect(response.statusCode).toBe(409);
-    expect(JSON.parse(response.body).error).toBe("Betting has closed for this market.");
+  it("rejects retired fixed-price actions before accessing the database", async () => {
+    for (const action of ["place", "markets", "bets", "allBets"]) {
+      const response = await handler({
+        httpMethod: "POST",
+        headers: requestHeaders("bettor"),
+        body: JSON.stringify({ action, marketId: "awc2026-winner", selection: "natso", stake: 10 }),
+      });
+      expect(response.statusCode).toBe(400);
+    }
+    expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
   it("places exchange orders under the authenticated username", async () => {
@@ -593,7 +401,7 @@ describe("betting function", () => {
       prediction_orders: [],
       prediction_fills: [],
       prediction_positions: [],
-      prediction_legacy_position_credits: [],
+      prediction_position_credits: [],
     };
     const from = vi.fn((table: string) => {
       const result = { data: rowsByTable[table] ?? [], error: null };
