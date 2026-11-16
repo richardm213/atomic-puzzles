@@ -17,6 +17,7 @@ import {
   gameAnalysisPositionKey,
   gameAnalysisPositionStates,
   gameAnalysisRequestParameters,
+  gameAnalysisSubmissionIndexes,
   gameAnalysisSubmissionLimit,
   gameAnalysisSweepPositionLimit,
   isCompletedAtomicDbPosition,
@@ -46,6 +47,40 @@ describe("game analysis sweep", () => {
       expect(states[6]?.data).toBeUndefined();
       if (stored) expect(states[7]).toMatchObject({ completed: true, data: old[7]?.data });
     }
+  });
+
+  it("discards tablebase positions and old saved evaluations without leaving them pending", () => {
+    const fen = "8/8/8/8/3k4/8/1K3P1P/6N1 w - - 3 71";
+    for (const saved of [
+      undefined,
+      [
+        {
+          fen,
+          completed: false,
+          terminal: false,
+          requestStatus: "queued",
+          task: 123,
+          data: { score: 100, variationPlies: 5 },
+        },
+      ],
+    ]) {
+      expect(gameAnalysisPositionStates([fen], saved)).toEqual([
+        { fen, terminal: false, completed: true },
+      ]);
+    }
+  });
+
+  it("never sends tablebase positions to the engine queue or spends the submission budget on them", () => {
+    const five = "8/8/8/8/3k4/8/1K3P1P/6N1 w - - 3 71";
+    const six = "8/8/8/8/3k4/8/1K3P1P/6NR w - - 3 71";
+    const states = [
+      { fen: five, completed: false },
+      { fen: six, completed: true },
+      { fen: six, completed: false, requestStatus: "queued" },
+      { fen: six, completed: false },
+      { fen: six, completed: false },
+    ];
+    expect(gameAnalysisSubmissionIndexes(states, [0, 1, 2, 3, 4], 1)).toEqual([3]);
   });
 
   it("spreads a fixed position budget across the selected jobs", () => {

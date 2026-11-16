@@ -35,6 +35,15 @@ const position = (fen: string, cp: number, bestMove: string): StoredAtomicDbPosi
 });
 
 describe("AtomicDB game analysis classification", () => {
+  it("returns no evaluations or grades when the entire game falls outside engine analysis", () => {
+    expect(buildGameAnalysisSummary([], [])).toMatchObject({
+      positions: [],
+      evaluations: [],
+      assessments: [],
+    });
+    expect(() => buildGameAnalysisSummary(["e2e4"], [])).toThrow("do not match");
+  });
+
   it("uses AtomicDB's reported searched nodes when budget_nodes is null", () => {
     const parsed = parseStoredAtomicDbPosition("8/8/8/8/8/8/8/K6k w - - 0 1", {
       status: "UNKNOWN",

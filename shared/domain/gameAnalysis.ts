@@ -665,7 +665,7 @@ export const buildGameAnalysisSummary = (
   moves: readonly string[],
   positions: StoredAtomicDbPosition[],
 ): GameAnalysisSummary => {
-  if (positions.length !== moves.length + 1) {
+  if (moves.length !== Math.max(0, positions.length - 1)) {
     throw new Error("Game analysis positions do not match the move list.");
   }
 

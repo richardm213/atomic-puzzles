@@ -4,6 +4,7 @@ import process from "node:process";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { INITIAL_FEN } from "chessops/fen";
 
+import { isAtomicTablebasePosition } from "../../../shared/domain/atomicTablebase";
 import {
   applyGameAnalysisOpeningReview,
   buildGameAnalysisSummary,
@@ -119,6 +120,18 @@ export const uniqueGameAnalysisPositionIndexes = (
   ...new Map(indexes.map((index) => [gameAnalysisPositionKey(states[index]!.fen), index])).values(),
 ];
 
+export const gameAnalysisSubmissionIndexes = (
+  states: readonly { fen: string; completed: boolean; requestStatus?: string }[],
+  indexes: readonly number[],
+  limit: number,
+): number[] =>
+  indexes
+    .filter((index) => {
+      const state = states[index]!;
+      return !state.completed && !state.requestStatus && !isAtomicTablebasePosition(state.fen);
+    })
+    .slice(0, limit);
+
 const loadSharedPositions = async (
   supabase: SupabaseClient,
   states: PositionState[],
@@ -221,6 +234,7 @@ const initialStates = (fens: string[], skippedPositionCount = 0): PositionState[
         data: skippedWolfrandomPosition(fen),
       };
     }
+    if (isAtomicTablebasePosition(fen)) return { fen, terminal: false, completed: true };
     const terminal = terminalPosition(fen);
     return terminal
       ? { fen, terminal: true, completed: true, data: terminal }
@@ -236,6 +250,7 @@ export const gameAnalysisPositionStates = (
     return initialStates(fens, skippedPositionCount);
   }
   return fens.map((fen, index) => {
+    if (isAtomicTablebasePosition(fen)) return { fen, terminal: false, completed: true };
     if (index < skippedPositionCount) {
       return {
         fen,
@@ -581,9 +596,15 @@ const processClaimedGameAnalysisJob = async (
   const retryCount = options.poll === false ? data.retry_count : data.retry_count + 1;
   if (preflightCompletedPositions === states.length) {
     const positions = states.map((state) => state.data).filter(Boolean) as StoredAtomicDbPosition[];
-    const result = applyGameAnalysisOpeningReview(buildGameAnalysisSummary(moves, positions), {
-      wolfrandom: randomizedOpeningPlyCount > 0,
-    });
+    // Material cannot increase during a game. Discard the tablebase tail, including its
+    // evaluations and move grades, while retaining the original game line on the job.
+    const analyzedMoves = moves.slice(0, Math.max(0, positions.length - 1));
+    const result = applyGameAnalysisOpeningReview(
+      buildGameAnalysisSummary(analyzedMoves, positions),
+      {
+        wolfrandom: randomizedOpeningPlyCount > 0,
+      },
+    );
     await updateJob(supabase, data.game_id, {
       status: "ready",
       // The completed result contains the full position data. Dropping the progress copy avoids
@@ -605,7 +626,7 @@ const processClaimedGameAnalysisJob = async (
   const unsubmittedIndexes =
     options.submit === false
       ? []
-      : orderedIndexes.filter((index) => !states[index]?.requestStatus).slice(0, maxPositions);
+      : gameAnalysisSubmissionIndexes(states, orderedIndexes, maxPositions);
   let newlySubmitted = 0;
   await mapConcurrent(unsubmittedIndexes, 5, async (index) => {
     const state = states[index]!;

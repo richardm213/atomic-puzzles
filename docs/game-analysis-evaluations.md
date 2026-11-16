@@ -6,6 +6,11 @@ if it ends early, use a longer legal engine PV for that same root move from the
 same response. Some positions still have fewer than five legal moves or fewer
 than five available plies. Keep the available data rather than invent a line.
 
+Game workers discard the tail once a position has five or fewer pieces. They do
+not request searches, probe tablebases, or save evaluations or move grades for
+that tail. The original game moves remain intact; skipped positions do not hold
+up completion of the analysis.
+
 Catalog positions include the initial position and every ply of the setups and
 replays on the Openings page. The catalog cache has one row per normalized FEN
 and a `fetched_at` timestamp. Game workers never submit or fetch these positions.
