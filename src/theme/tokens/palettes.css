@@ -270,6 +270,12 @@
   --gem-surface-chroma: 0.008;
   --gem-wash: 3%;
   --brand-mark-color: #ff4545;
+  --brand-wordmark-color: oklch(var(--gem-accent-pale-lightness) 0.06 var(--gem-hue));
+  --brand-wordmark-gradient: linear-gradient(
+    180deg,
+    var(--color-heading),
+    var(--brand-wordmark-color)
+  );
   --brand-wordmark-background: var(--brand-wordmark-gradient);
   --brand-wordmark-text-fill: transparent;
 }
