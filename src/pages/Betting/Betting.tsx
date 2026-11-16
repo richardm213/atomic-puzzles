@@ -91,8 +91,9 @@ type PredictionSelection = { marketId: string; outcome: PredictionOutcome };
 const bettingViews: readonly BettingView[] = ["markets", "mine", "all", "suggestions"];
 const predictionDisplayModeSchema = z.enum(["book", "market"]);
 const predictionDisplayModeStorageKey = "betting:prediction-display-mode";
-const defaultMarketCategory = "AWC Quarterfinals";
+const defaultMarketCategory = "AWC Semifinals";
 const predictionMarketCategories = [
+  "AWC Semifinals",
   "AWC Quarterfinals",
   "AWC Losers 1",
   "2026 AWC Champion",
@@ -102,8 +103,15 @@ const predictionMarketCategories = [
   "Shield",
   "AWC 2027",
 ] as const;
-const otherMarketCategories: readonly string[] = ["AWC Round of 16", "Shield", "AWC 2027", "Ban"];
+const otherMarketCategories: readonly string[] = [
+  "AWC Quarterfinals",
+  "AWC Round of 16",
+  "Shield",
+  "AWC 2027",
+  "Ban",
+];
 const predictionGroupIdByCategory: Record<PredictionMarketCategory, string> = {
+  "AWC Semifinals": "awc-2026-semifinals",
   "AWC Quarterfinals": "awc-2026-quarterfinals",
   "AWC Losers 1": "awc-2026-losers-round-1",
   "AWC Round of 16": "awc-2026-round-of-16",
@@ -977,6 +985,7 @@ export const BettingPage = () => {
                     className={`bettingMarketGroup bettingPredictionBookGroup${
                       activePredictionGroup.id === "awc-2026-round-of-16" ||
                       activePredictionGroup.id === "awc-2026-quarterfinals" ||
+                      activePredictionGroup.id === "awc-2026-semifinals" ||
                       activePredictionGroup.id === "awc-2026-losers-round-1"
                         ? " bettingPredictionBookGroup--singleColumn"
                         : ""
