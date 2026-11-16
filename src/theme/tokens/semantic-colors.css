@@ -25,8 +25,8 @@
   --color-motif-unconfirmed: var(--color-danger);
   --color-loss-strip-bg: #3a1520;
   --color-loss-strip-text: #ff5c75;
-  --color-market-yes: #22d3ee;
-  --color-market-no: #e879f9;
+  --color-market-yes: oklch(78% 0.14 var(--market-side-a-hue));
+  --color-market-no: oklch(78% 0.14 var(--market-side-b-hue));
   --color-on-market: var(--color-panel-deep);
   --color-rating-blitz: #ff5252;
   --color-rating-hyper: #5688ff;
@@ -76,8 +76,8 @@
   --color-motif-unconfirmed: var(--color-loss-strip-text);
   --color-loss-strip-bg: #fee2e2;
   --color-loss-strip-text: #b91c1c;
-  --color-market-yes: oklch(40% 0.06 225);
-  --color-market-no: oklch(40% 0.06 325);
+  --color-market-yes: oklch(42% 0.12 var(--market-side-a-hue));
+  --color-market-no: oklch(42% 0.12 var(--market-side-b-hue));
   --color-on-market: var(--color-on-primary);
   --color-rating-blitz: #d92727;
   --color-rating-hyper: #2859df;

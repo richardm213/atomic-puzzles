@@ -1,6 +1,8 @@
 /* Default accents and canvas wash. Gemstone palettes override these without
    changing the mode's typography, borders, or surface opacity. */
 :root {
+  --market-side-a-hue: 225;
+  --market-side-b-hue: 325;
   --color-primary: #315be8;
   --color-primary-hover: #2447c2;
   --color-primary-soft: #9cbcff;
@@ -123,8 +125,11 @@
 }
 
 /* Palettes define the accent hues; color mode owns the neutral surfaces.
-   Status, market and rating colors keep their existing meaning across palettes. */
+   Status and rating colors keep their existing meaning across palettes.
+   Market sides use a contrasting pair from the active palette. */
 :root[data-palette="amethyst"] {
+  --market-side-a-hue: 295;
+  --market-side-b-hue: 165;
   --gem-hue: 295;
   --gem-nav-hue: 295;
   --gem-action-chroma: 0.2;
@@ -133,6 +138,8 @@
 }
 
 :root[data-palette="ruby"] {
+  --market-side-a-hue: 25;
+  --market-side-b-hue: 225;
   --gem-hue: 20;
   --gem-action-chroma: 0.18;
   --gem-accent-chroma: 0.18;
@@ -143,6 +150,8 @@
 }
 
 :root[data-palette="emerald"] {
+  --market-side-a-hue: 160;
+  --market-side-b-hue: 300;
   --gem-hue: 164;
   --gem-nav-hue: 157;
   --board-threat-ink: oklch(42% 0.22 321);
@@ -320,6 +329,8 @@
 
 /* Black changes the materials, not the dark mode's depth or semantic colors. */
 :root[data-palette="black"] {
+  --market-side-a-hue: 250;
+  --market-side-b-hue: 70;
   --theme-panel-ink: #191919;
   --theme-nav-ink: #0d0d0d;
   --theme-inset-ink: #080808;

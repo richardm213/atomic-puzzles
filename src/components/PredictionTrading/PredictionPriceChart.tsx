@@ -34,13 +34,18 @@ export const PredictionPriceChart = ({
   const [outcome, setOutcome] = useState<PredictionOutcome>("yes");
   const history = useQuery(predictionPriceHistoryQueryOptions(definition.id, period));
   return (
-    <section className="predictionPriceChart" aria-label="Market price history">
+    <section
+      className="predictionPriceChart"
+      data-outcome={outcome}
+      aria-label="Market price history"
+    >
       <div className="predictionChartControls">
         <div className="predictionChartChoices" role="group" aria-label="Chart outcome">
           {(["yes", "no"] as const).map((entry) => (
             <button
               type="button"
               key={entry}
+              data-outcome={entry}
               aria-pressed={entry === outcome}
               onClick={() => setOutcome(entry)}
             >
