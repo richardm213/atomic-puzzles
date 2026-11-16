@@ -155,7 +155,7 @@
 }
 
 .predictionSharedStatus--closed {
-  background: var(--color-danger-soft-bg);
+  background: var(--color-surface-inset-strong);
   color: var(--color-market-no) !important;
 }
 
