@@ -12,8 +12,8 @@ import { decodeGameResult } from "../../lib/archive/games";
 import { gameTerminationLabel } from "../../lib/games/termination";
 import { loadRawMatchById } from "../../lib/matches/data";
 import { buildExternalGameUrl } from "../../lib/matches/routes";
-import { getTournamentMatchLocation, getTournamentRouteId } from "../../lib/matches/tournaments";
 import { tournamentGameScore } from "../../lib/matches/tournamentGameScore";
+import { getTournamentMatchLocation, getTournamentRouteId } from "../../lib/matches/tournaments";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 
 const ratingForPlayer = (game: ArchiveGame, username: string) =>
@@ -79,7 +79,12 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
   );
   const matchScore =
     isTournament && matchQuery.data
-      ? tournamentGameScore(matchQuery.data, game.game_id, tournamentLocation?.match)
+      ? tournamentGameScore(
+          matchQuery.data,
+          game.game_id,
+          tournamentLocation?.match,
+          tournamentLocation?.tournament.seriesKey === "awc" ? 10 : undefined,
+        )
       : null;
 
   const player = (username: string, color: "white" | "black") => {

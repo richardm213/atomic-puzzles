@@ -45,14 +45,14 @@ describe("tournament post-game score", () => {
       "Alice",
       "draw",
     ]);
-    expect(tournamentGameScore(games, "g9", result(4.5, 5.5))).toMatchObject({
+    expect(tournamentGameScore(games, "g9", result(4.5, 5.5), 10)).toMatchObject({
       scores: new Map([
         ["alice", 5],
         ["bob", 4],
       ]),
       clinchedBy: null,
     });
-    expect(tournamentGameScore(games, "g10", result(4.5, 5.5))).toMatchObject({
+    expect(tournamentGameScore(games, "g10", result(4.5, 5.5), 10)).toMatchObject({
       scores: new Map([
         ["alice", 5.5],
         ["bob", 4.5],
@@ -61,16 +61,31 @@ describe("tournament post-game score", () => {
     });
   });
 
-  it("marks the published 8–6 finish, without guessing that a one-point tiebreak lead is enough", () => {
-    const games = match([
-      ...Array.from({ length: 6 }, () => ["Alice", "Bob"]).flat(),
-      "Alice",
-      "Alice",
-      "Bob",
-    ]);
-    expect(tournamentGameScore(games, "g13", result(6, 8))?.clinchedBy).toBeNull();
-    expect(tournamentGameScore(games, "g14", result(6, 8))?.clinchedBy).toBe("alice");
-    expect(tournamentGameScore(games, "g15", result(6, 8))?.clinchedBy).toBeNull();
+  it("highlights the first AWC clinch and the published finish, even when more games were played", () => {
+    const games = match([...Array(5).fill("Alice"), "draw", "Bob", "Bob", "Bob", "Alice"]);
+    expect(tournamentGameScore(games, "g5", result(3.5, 6.5), 10)?.clinchedBy).toBeNull();
+    expect(tournamentGameScore(games, "g6", result(3.5, 6.5), 10)?.clinchedBy).toBe("alice");
+    expect(tournamentGameScore(games, "g9", result(3.5, 6.5), 10)?.clinchedBy).toBeNull();
+    expect(tournamentGameScore(games, "g10", result(3.5, 6.5), 10)?.clinchedBy).toBe("alice");
+  });
+
+  it("waits for a tiebreak pair to finish, including drawn games and either winning player", () => {
+    const regulation = Array.from({ length: 5 }, () => ["Alice", "Bob"]).flat();
+    for (const [extra, official, winner, clinchingGame] of [
+      [["Alice", "Alice", "Bob", "Alice"], result(6, 8), "alice", 12],
+      [["Alice", "draw"], result(5.5, 6.5), "alice", 12],
+      [["Bob", "Alice", "Bob", "Bob"], result(8, 6), "bob", 14],
+    ] as const) {
+      const games = match([...regulation, ...extra]);
+      const decidingGame = games.games.length;
+      expect(
+        tournamentGameScore(games, `g${decidingGame - 1}`, official, 10)?.clinchedBy,
+      ).toBeNull();
+      expect(tournamentGameScore(games, `g${clinchingGame}`, official, 10)?.clinchedBy).toBe(
+        winner,
+      );
+      expect(tournamentGameScore(games, `g${decidingGame}`, official, 10)?.clinchedBy).toBe(winner);
+    }
   });
 
   it("handles early and longer regulation finishes using each event's official score", () => {
@@ -78,6 +93,9 @@ describe("tournament post-game score", () => {
       const games = match(Array(wins).fill("Alice"));
       expect(tournamentGameScore(games, `g${wins - 1}`, result(0, wins))?.clinchedBy).toBeNull();
       expect(tournamentGameScore(games, `g${wins}`, result(0, wins))?.clinchedBy).toBe("alice");
+      expect(
+        tournamentGameScore(games, `g${wins}`, result(0, wins), (wins - 1) * 2)?.clinchedBy,
+      ).toBe("alice");
     }
   });
 

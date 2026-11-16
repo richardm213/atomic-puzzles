@@ -10,6 +10,7 @@ export const tournamentGameScore = (
   match: TournamentScoreMatch,
   gameId: string,
   result?: OfficialResult | null,
+  regulationGames?: number,
 ) => {
   const [playerA, playerB] = match.players.map((player) => player.toLowerCase());
   if (!playerA || !playerB) return null;
@@ -44,15 +45,32 @@ export const tournamentGameScore = (
     last.scoreAAfter = officialA;
     last.scoreBAfter = officialB;
   }
-  const clincher = decisive
+  const publishedFinish = decisive
     ? mappedGames.find((game) => game.scoreAAfter === officialA && game.scoreBAfter === officialB)
     : undefined;
+  const winningPlayer = decisive ? (officialA > officialB ? playerA : playerB) : null;
+  const clincher =
+    decisive && regulationGames
+      ? mappedGames.find((game) => {
+          const [won, lost] =
+            winningPlayer === playerA
+              ? [game.scoreAAfter, game.scoreBAfter]
+              : [game.scoreBAfter, game.scoreAAfter];
+          const total = won + lost;
+          // Regulation needs a majority; tied regulation continues in two-game pairs.
+          return (
+            won > lost &&
+            ((won > regulationGames / 2 && lost < regulationGames / 2) ||
+              (total >= regulationGames && (total - regulationGames) % 2 === 0))
+          );
+        })
+      : undefined;
   return {
     scores: new Map([
       [playerA, current.scoreAAfter],
       [playerB, current.scoreBAfter],
     ]),
     gameNumber: current.index + 1,
-    clinchedBy: clincher?.id === gameId ? (officialA! > officialB! ? playerA : playerB) : null,
+    clinchedBy: clincher?.id === gameId || publishedFinish?.id === gameId ? winningPlayer : null,
   };
 };
