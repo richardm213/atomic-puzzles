@@ -102,10 +102,9 @@ describe("betting function", () => {
     });
   });
 
-  it("retains fully sold-out traders and counts their fees once in public position history", async () => {
+  it("returns one accounting row per trader for exited trades and netted holdings", async () => {
     const rows: Record<string, unknown[]> = {
       prediction_positions: [],
-      prediction_position_settlements: [],
       prediction_legacy_position_credits: [],
       prediction_fills: [
         {
@@ -131,6 +130,15 @@ describe("betting function", () => {
           created_at: "2026-11-14T01:00:00Z",
         },
       ],
+      prediction_position_nettings: [
+        {
+          id: 1,
+          market_id: "strike",
+          username: "switched",
+          quantity: 1000,
+          created_at: "2026-11-14T02:00:00Z",
+        },
+      ],
       coin_transactions: [
         {
           username: "trader",
@@ -140,6 +148,30 @@ describe("betting function", () => {
         },
       ],
     };
+    rows.prediction_fills!.push(
+      {
+        id: 3,
+        market_id: "strike",
+        outcome: "yes",
+        price_cents: 20,
+        quantity: 1000,
+        buyer_username: "switched",
+        seller_username: "prediction_admin",
+        pair_key: null,
+        created_at: "2026-11-14T00:00:00Z",
+      },
+      {
+        id: 4,
+        market_id: "strike",
+        outcome: "no",
+        price_cents: 60,
+        quantity: 2000,
+        buyer_username: "switched",
+        seller_username: "prediction_admin",
+        pair_key: null,
+        created_at: "2026-11-14T02:00:00Z",
+      },
+    );
     mocks.createClient.mockReturnValue({
       from: (table: string) => {
         const query = {
@@ -162,17 +194,21 @@ describe("betting function", () => {
       body: JSON.stringify({ action: "predictionPositions" }),
     });
     expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body).result).toEqual([
-      expect.objectContaining({
-        username: "trader",
-        market_id: "strike",
-        outcome: "yes",
-        quantity: 0,
-        closed_cost_coins: 2,
-        closed_proceeds_coins: 6,
-        fees_coins: 0.1,
-      }),
-    ]);
+    const result = JSON.parse(response.body).result;
+    expect(result).toHaveLength(2);
+    expect(result.find((row: { username: string }) => row.username === "trader")).toMatchObject({
+      outcome: "yes",
+      quantity: 0,
+      closed_cost_coins: 2,
+      closed_proceeds_coins: 6,
+      fees_coins: 0.1,
+    });
+    expect(result.find((row: { username: string }) => row.username === "switched")).toMatchObject({
+      outcome: "no",
+      quantity: 1000,
+      closed_cost_coins: 800,
+      closed_proceeds_coins: 1000,
+    });
   });
 
   it("returns the public AWC 2026 markets in bracket order", async () => {

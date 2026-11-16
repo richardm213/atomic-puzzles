@@ -7,6 +7,11 @@ import {
   SHOP_ITEM_COSTS,
   SHOP_REOPENS_AT,
 } from "../../../shared/domain/coins";
+import {
+  type PredictionPositionFill,
+  type PredictionPositionNetting,
+  replayPredictionPosition,
+} from "../../../shared/domain/predictionAccounting";
 import { resolveCanonicalArchiveUsername } from "../../archive/aliases";
 import {
   authenticateRequest,
@@ -18,10 +23,6 @@ import type { FunctionEvent } from "../../platform/defineFunction";
 import { createServerSupabase } from "../../platform/environment";
 import { HttpError } from "../../platform/errors";
 import { parseJsonBody } from "../../platform/validation";
-import {
-  calculatePredictionPositionCost,
-  type PredictionPositionFill,
-} from "../betting/predictionBook";
 
 const atomicDbOpeningSchema = z.string().trim().min(1).max(1000);
 const atomicDbPlayerSchema = z
@@ -51,6 +52,7 @@ type PredictionPositionRow = {
   quantity: number;
 };
 type LegacyPositionCreditRow = {
+  credited_at: string;
   source_bet_id: number;
   market_id: string;
   username: string;
@@ -168,7 +170,7 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
   const unsettledMarketIds = unsettledMarkets.map((market) => market.id);
 
   if (unsettledMarketIds.length > 0) {
-    const [positions, fills, legacyCredits] = await Promise.all([
+    const [positions, fills, legacyCredits, nettings] = await Promise.all([
       loadAllLeaderboardRows<PredictionPositionRow>((from, to) => {
         const query = supabase
           .from("prediction_positions")
@@ -194,38 +196,51 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
       loadAllLeaderboardRows<LegacyPositionCreditRow>((from, to) => {
         const query = supabase
           .from("prediction_legacy_position_credits")
-          .select("source_bet_id,market_id,username,outcome,quantity,price_cents");
+          .select("source_bet_id,market_id,username,outcome,quantity,price_cents,credited_at");
         if (username) query.eq("username", username);
         return query.in("market_id", unsettledMarketIds).order("source_bet_id").range(from, to);
       }, "Unable to load coin rankings: legacy prediction positions could not be read."),
+      loadAllLeaderboardRows<PredictionPositionNetting & { market_id: string; username: string }>(
+        (from, to) => {
+          const query = supabase
+            .from("prediction_position_nettings")
+            .select("id,market_id,username,quantity,created_at");
+          if (username) query.eq("username", username);
+          return query.in("market_id", unsettledMarketIds).order("id").range(from, to);
+        },
+        "Unable to load coin rankings: prediction redemptions could not be read.",
+      ),
     ]);
 
-    const fillsByMarket = new Map<string, LeaderboardPredictionFill[]>();
+    const fillsByOwner = new Map<string, LeaderboardPredictionFill[]>();
     for (const fill of fills) {
-      const marketFills = fillsByMarket.get(fill.market_id);
-      if (marketFills) marketFills.push(fill);
-      else fillsByMarket.set(fill.market_id, [fill]);
+      for (const owner of new Set([fill.buyer_username, fill.seller_username])) {
+        if (!owner || owner === "prediction_admin" || (username && owner !== username)) continue;
+        const key = `${fill.market_id}:${owner}`;
+        const rows = fillsByOwner.get(key) ?? [];
+        rows.push(fill);
+        fillsByOwner.set(key, rows);
+      }
     }
-    const legacyCostsByOwner = new Map<
-      string,
-      Record<"yes" | "no", { quantity: number; costCents: number }>
-    >();
+    const creditsByOwner = new Map<string, LegacyPositionCreditRow[]>();
+    const nettingsByOwner = new Map<string, PredictionPositionNetting[]>();
     const convertedBetIds = new Set<number>();
     for (const credit of legacyCredits) {
       convertedBetIds.add(credit.source_bet_id);
-      const ownerKey = `${credit.market_id}:${credit.username}`;
-      const ownerCosts = legacyCostsByOwner.get(ownerKey) ?? {
-        yes: { quantity: 0, costCents: 0 },
-        no: { quantity: 0, costCents: 0 },
-      };
-      ownerCosts[credit.outcome].quantity += credit.quantity;
-      ownerCosts[credit.outcome].costCents += credit.quantity * credit.price_cents;
-      legacyCostsByOwner.set(ownerKey, ownerCosts);
+      const key = `${credit.market_id}:${credit.username}`;
+      const rows = creditsByOwner.get(key) ?? [];
+      rows.push(credit);
+      creditsByOwner.set(key, rows);
     }
-
+    for (const netting of nettings) {
+      const key = `${netting.market_id}:${netting.username}`;
+      const rows = nettingsByOwner.get(key) ?? [];
+      rows.push(netting);
+      nettingsByOwner.set(key, rows);
+    }
     const costsByMarketAndUser = new Map<
       string,
-      ReturnType<typeof calculatePredictionPositionCost>
+      ReturnType<typeof replayPredictionPosition>["positions"]
     >();
     for (const position of positions) {
       // Liquidity is seeded directly for the internal market-maker account and is
@@ -234,18 +249,19 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
       const ownerKey = `${position.market_id}:${position.username}`;
       let costs = costsByMarketAndUser.get(ownerKey);
       if (!costs) {
-        costs = calculatePredictionPositionCost(
-          fillsByMarket.get(position.market_id) ?? [],
-          position.username,
-          legacyCostsByOwner.get(ownerKey),
-        );
+        costs = replayPredictionPosition({
+          username: position.username,
+          fills: fillsByOwner.get(ownerKey) ?? [],
+          credits: creditsByOwner.get(ownerKey) ?? [],
+          nettings: nettingsByOwner.get(ownerKey) ?? [],
+        }).positions;
         costsByMarketAndUser.set(ownerKey, costs);
       }
       const traded = costs[position.outcome];
       if (Math.abs(traded.quantity - position.quantity) > 0.000001) {
         throw new Error("Unable to load coin rankings: prediction position history is incomplete.");
       }
-      const positionCostCents = (traded.averagePriceCents ?? 0) * traded.quantity;
+      const positionCostCents = traded.costCents;
       addAmount(openBetCosts, position.username, positionCostCents / 100);
     }
 

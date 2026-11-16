@@ -232,7 +232,7 @@ test("completed strike opens on P&L and loads chart history only when selected",
   await page.getByRole("combobox", { name: "Display", exact: true }).selectOption("pnl");
   const myBets = page.getByRole("table");
   await expect(myBets.getByRole("row")).toHaveCount(2);
-  await expect(myBets).toContainText("Both sides");
+  await expect(myBets).not.toContainText("Both sides");
   await expect(myBets).toContainText("+4.85");
 });
 

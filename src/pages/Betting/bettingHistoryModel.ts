@@ -12,12 +12,12 @@ import {
 export type BetHistoryEntry = TournamentBet & {
   kind?: "prediction";
   historyKey?: string;
-  predictionOutcome?: PredictionOutcome;
+  predictionOutcome?: PredictionOutcome | undefined;
   predictionSelectionLabel?: string | undefined;
   predictionSelectionCountryCode?: string | undefined;
   predictionMarketTitle?: string | undefined;
   realizedPnl?: number;
-  mixedPredictionOutcomes?: boolean;
+  positionQuantity?: number;
 };
 
 // One history entry per bettor and strike, including trades on both outcomes.
@@ -40,8 +40,19 @@ export const predictionStrikeBetsByBettor = (
       });
       continue;
     }
-    previous.mixedPredictionOutcomes =
-      previous.mixedPredictionOutcomes || previous.predictionOutcome !== bet.predictionOutcome;
+    const selected =
+      (bet.positionQuantity ?? 0) > 0
+        ? bet
+        : (previous.positionQuantity ?? 0) > 0
+          ? previous
+          : Date.parse(bet.placedAt) > Date.parse(previous.placedAt)
+            ? bet
+            : previous;
+    previous.predictionOutcome = selected.predictionOutcome;
+    previous.predictionSelectionLabel = selected.predictionSelectionLabel;
+    previous.predictionSelectionCountryCode = selected.predictionSelectionCountryCode;
+    previous.priceCents = selected.priceCents;
+    previous.positionQuantity = (previous.positionQuantity ?? 0) + (bet.positionQuantity ?? 0);
     previous.stake += bet.stake;
     previous.fee += bet.fee;
     previous.totalCost += bet.totalCost;
@@ -184,6 +195,7 @@ export const buildBetHistory = ({
         kind: "prediction",
         historyKey: `prediction-position:${position.marketId}:${position.username.toLowerCase()}:${position.outcome}`,
         predictionOutcome: position.outcome,
+        positionQuantity: position.quantity,
         predictionSelectionLabel: hasNamedOutcomes
           ? predictionOutcomeLabel(definition, position.outcome)
           : undefined,

@@ -164,7 +164,8 @@ describe("buildBetHistory", () => {
     )!;
     expect(summary).toMatchObject({
       status: "open",
-      mixedPredictionOutcomes: true,
+      predictionOutcome: "no",
+      positionQuantity: 10,
       totalCost: 10.1,
       payout: 6,
       potentialPayout: 16,

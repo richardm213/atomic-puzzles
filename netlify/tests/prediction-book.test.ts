@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildPredictionBook,
-  calculatePredictionPositionCost,
-  calculatePredictionPositionHistory,
-  type PredictionBookOrder,
   type PredictionPositionFill,
-} from "../features/betting/predictionBook";
+  replayPredictionPosition,
+} from "../../shared/domain/predictionAccounting";
+import { buildPredictionBook, type PredictionBookOrder } from "../features/betting/predictionBook";
 
 const order = (overrides: Partial<PredictionBookOrder>): PredictionBookOrder => ({
   outcome: "yes",
@@ -80,8 +78,9 @@ describe("prediction order-book normalization", () => {
       created_at: `2026-10-27T00:00:0${id}Z`,
       ...overrides,
     });
-    const positions = calculatePredictionPositionHistory(
-      [
+    const result = replayPredictionPosition({
+      username: "trader",
+      fills: [
         fill(1, {}),
         fill(2, { price_cents: 40 }),
         fill(3, { quantity: 5, buyer_username: "other", seller_username: "trader" }),
@@ -107,52 +106,122 @@ describe("prediction order-book normalization", () => {
           pair_key: "paired-buy",
         }),
       ],
-      "trader",
-    );
+      nettings: [{ id: 1, quantity: 3, created_at: "2026-10-27T00:00:07Z" }],
+    });
 
-    expect(positions.yes).toEqual({
-      quantity: 12,
-      averagePriceCents: 35,
-      closed: { costCents: 640, proceedsCents: 500, quantity: 16 },
+    expect(result.positions).toEqual({
+      yes: { quantity: 12, costCents: 420 },
+      no: { quantity: 0, costCents: 0 },
     });
-    expect(positions.no).toEqual({
-      quantity: 0,
-      averagePriceCents: null,
-      closed: { costCents: 0, proceedsCents: 0, quantity: 0 },
-    });
+    expect(result.closed).toEqual({ costCents: 640, proceedsCents: 500, quantity: 16 });
   });
 
-  it("closes an opposite position before opening the remainder", () => {
-    const positions = calculatePredictionPositionHistory(
-      [
+  it.each([false, true])(
+    "holds only B after switching from A, with an explicit sell=%s",
+    (sellFirst) => {
+      const result = replayPredictionPosition({
+        username: "trader",
+        credits: [
+          { outcome: "yes", quantity: 1000, price_cents: 20, credited_at: "2026-11-01T00:00:00Z" },
+        ],
+        fills: [
+          ...(sellFirst
+            ? [
+                {
+                  id: 1,
+                  outcome: "yes" as const,
+                  price_cents: 40,
+                  quantity: 1000,
+                  buyer_username: "other",
+                  seller_username: "trader",
+                  pair_key: null,
+                  created_at: "2026-11-02T00:00:00Z",
+                },
+              ]
+            : []),
+          {
+            id: 2,
+            outcome: "no",
+            price_cents: 60,
+            quantity: 2000,
+            buyer_username: "trader",
+            seller_username: "maker",
+            pair_key: null,
+            created_at: "2026-11-03T00:00:00Z",
+          },
+        ],
+        nettings: sellFirst ? [] : [{ id: 1, quantity: 1000, created_at: "2026-11-03T00:00:00Z" }],
+      });
+      expect(result.positions).toEqual({
+        yes: { quantity: 0, costCents: 0 },
+        no: { quantity: sellFirst ? 2000 : 1000, costCents: sellFirst ? 120000 : 60000 },
+      });
+      expect(result.closed.proceedsCents).toBe(sellFirst ? 40000 : 100000);
+    },
+  );
+
+  it("keeps the remaining lot's cost when one order fills at multiple prices in the same transaction", () => {
+    const time = "2026-11-03T00:00:00Z";
+    const result = replayPredictionPosition({
+      username: "trader",
+      credits: [
+        { outcome: "yes", quantity: 100, price_cents: 20, credited_at: "2026-11-01T00:00:00Z" },
+      ],
+      fills: [
         {
           id: 1,
           outcome: "no",
-          price_cents: 60,
-          quantity: 600,
+          price_cents: 40,
+          quantity: 50,
           buyer_username: "trader",
-          seller_username: "maker",
-          pair_key: null,
-          created_at: "2026-11-04T00:00:00Z",
+          seller_username: null,
+          pair_key: "first",
+          created_at: time,
+        },
+        {
+          id: 2,
+          outcome: "no",
+          price_cents: 60,
+          quantity: 150,
+          buyer_username: "trader",
+          seller_username: null,
+          pair_key: "second",
+          created_at: time,
         },
       ],
-      "trader",
-      { yes: { quantity: 500, costCents: 10_000 } },
-    );
+      nettings: [
+        { id: 1, quantity: 50, created_at: time },
+        { id: 2, quantity: 50, created_at: time },
+      ],
+    });
+    expect(result.positions).toEqual({
+      yes: { quantity: 0, costCents: 0 },
+      no: { quantity: 100, costCents: 6000 },
+    });
+    expect(result.closed).toEqual({ quantity: 200, costCents: 7000, proceedsCents: 10000 });
+  });
 
-    expect(positions.yes).toEqual({
-      quantity: 0,
-      averagePriceCents: null,
-      closed: { costCents: 40000, proceedsCents: 50000, quantity: 1000 },
+  it("replays historical two-sided holdings before the netting feature without erasing shares that were later sold", () => {
+    const result = replayPredictionPosition({
+      username: "trader",
+      credits: [
+        { outcome: "yes", quantity: 100, price_cents: 20, credited_at: "2026-10-01T00:00:00Z" },
+        { outcome: "no", quantity: 200, price_cents: 60, credited_at: "2026-10-01T00:00:00Z" },
+      ],
+      fills: [
+        {
+          id: 1,
+          outcome: "yes",
+          price_cents: 30,
+          quantity: 100,
+          buyer_username: "other",
+          seller_username: "trader",
+          pair_key: null,
+          created_at: "2026-10-02T00:00:00Z",
+        },
+      ],
     });
-    expect(positions.no).toEqual({
-      quantity: 100,
-      averagePriceCents: 60,
-      closed: { costCents: 0, proceedsCents: 0, quantity: 0 },
-    });
-    expect(calculatePredictionPositionCost([], "trader")).toEqual({
-      yes: { quantity: 0, averagePriceCents: null },
-      no: { quantity: 0, averagePriceCents: null },
-    });
+    expect(result.positions.no).toEqual({ quantity: 200, costCents: 12000 });
+    expect(result.positions.yes.quantity).toBe(0);
   });
 });

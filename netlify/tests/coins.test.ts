@@ -174,7 +174,7 @@ describe("coins function", () => {
     const selectOpenMarkets = vi.fn(() => ({ in: filterUnsettledMarkets }));
     const positionRange = vi.fn(async () => ({
       data: [
-        { market_id: "market-1", username: "bettor", outcome: "yes", quantity: 200 },
+        { market_id: "market-1", username: "bettor", outcome: "yes", quantity: 150 },
         {
           market_id: "market-1",
           username: "prediction_admin",
@@ -203,6 +203,17 @@ describe("coins function", () => {
           pair_key: null,
           created_at: "2026-10-01T00:00:00.000Z",
         },
+        {
+          id: 11,
+          market_id: "market-1",
+          outcome: "no",
+          price_cents: 40,
+          quantity: 50,
+          buyer_username: "bettor",
+          seller_username: null,
+          pair_key: null,
+          created_at: "2026-10-02T00:00:00.000Z",
+        },
       ],
       error: null,
     }));
@@ -212,6 +223,7 @@ describe("coins function", () => {
     const creditRange = vi.fn(async () => ({
       data: [
         {
+          credited_at: "2026-09-01T00:00:00.000Z",
           source_bet_id: 2,
           market_id: "market-1",
           username: "bettor",
@@ -225,6 +237,24 @@ describe("coins function", () => {
     const orderCredits = vi.fn(() => ({ range: creditRange }));
     const filterCreditMarkets = vi.fn(() => ({ order: orderCredits }));
     const selectCredits = vi.fn(() => ({ in: filterCreditMarkets }));
+    const selectNettings = vi.fn(() => ({
+      in: () => ({
+        order: () => ({
+          range: async () => ({
+            data: [
+              {
+                id: 1,
+                market_id: "market-1",
+                username: "bettor",
+                quantity: 50,
+                created_at: "2026-10-02T00:00:00.000Z",
+              },
+            ],
+            error: null,
+          }),
+        }),
+      }),
+    }));
     const from = vi.fn((table: string) => ({
       select:
         table === "coin_accounts"
@@ -237,7 +267,9 @@ describe("coins function", () => {
                 ? selectPositions
                 : table === "prediction_fills"
                   ? selectFills
-                  : selectCredits,
+                  : table === "prediction_position_nettings"
+                    ? selectNettings
+                    : selectCredits,
     }));
     mocks.createClient.mockReturnValue({ from });
 
@@ -255,7 +287,7 @@ describe("coins function", () => {
     expect(filterOpenBets).toHaveBeenCalledWith("status", "open");
     expect(filterUnsettledMarkets).toHaveBeenCalledWith("status", ["open", "closed"]);
     expect(JSON.parse(response.body).result).toEqual([
-      { username: "bettor", netWorth: 1350, balance: 850, inBets: 500 },
+      { username: "bettor", netWorth: 1325, balance: 850, inBets: 475 },
       { username: "saver", netWorth: 1200, balance: 1200, inBets: 0 },
     ]);
   });

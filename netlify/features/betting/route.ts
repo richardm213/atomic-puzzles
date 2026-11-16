@@ -7,6 +7,12 @@ import {
   MIN_BET_AMOUNT,
 } from "../../../shared/domain/betting";
 import {
+  type PredictionPositionCredit,
+  type PredictionPositionFill,
+  type PredictionPositionNetting,
+  replayPredictionPosition,
+} from "../../../shared/domain/predictionAccounting";
+import {
   buildPredictionPriceHistory,
   predictionHistoryDuration,
   predictionHistoryPeriodSchema,
@@ -22,12 +28,7 @@ import type { FunctionEvent } from "../../platform/defineFunction";
 import { createServerSupabase } from "../../platform/environment";
 import { HttpError } from "../../platform/errors";
 import { parseJsonBody } from "../../platform/validation";
-import {
-  buildPredictionBook,
-  calculatePredictionPositionHistory,
-  type PredictionBookOrder,
-  type PredictionPositionFill,
-} from "./predictionBook";
+import { buildPredictionBook, type PredictionBookOrder } from "./predictionBook";
 
 const exchangeMarketIdSchema = z
   .string()
@@ -258,13 +259,6 @@ type ExchangePositionRow = {
   updated_at: string;
 };
 type PublicPredictionPositionRow = ExchangePositionRow & { username: string };
-type PredictionPositionSettlementRow = {
-  market_id: string;
-  username: string;
-  outcome: "yes" | "no";
-  quantity: number;
-  position_updated_at: string;
-};
 type LegacyPositionCreditRow = {
   market_id: string;
   outcome: "yes" | "no";
@@ -461,14 +455,11 @@ const loadAllPredictionPositions = async (
     if (username) query = query.eq("username", username);
     return query;
   };
-  const settlementQuery = () => {
+  const nettingQuery = () => {
     let query = supabase
-      .from("prediction_position_settlements")
-      .select("market_id,username,outcome,quantity,position_updated_at")
-      .neq("username", "prediction_admin")
-      .order("market_id")
-      .order("username")
-      .order("outcome");
+      .from("prediction_position_nettings")
+      .select("id,market_id,username,quantity,created_at")
+      .order("id");
     if (marketIds) query = query.in("market_id", [...marketIds]);
     if (username) query = query.eq("username", username);
     return query;
@@ -499,108 +490,109 @@ const loadAllPredictionPositions = async (
     if (username) query = query.eq("username", username);
     return query;
   };
-  const [rawPositions, rawSettlements, rawFills, rawCredits, rawFees] = await Promise.all([
+  const [rawPositions, rawFills, rawCredits, rawNettings, rawFees] = await Promise.all([
     readPredictionRows(positionQuery, "prediction positions"),
-    readPredictionRows(settlementQuery, "settled prediction positions"),
     readPredictionRows(fillQuery, "prediction trades"),
     readPredictionRows(creditQuery, "legacy prediction positions"),
+    readPredictionRows(nettingQuery, "prediction pair redemptions"),
     readPredictionRows(feeQuery, "prediction trading fees"),
   ]);
-  const fills = rawFills as ExchangeFillRow[];
-  const credits = rawCredits as (PublicLegacyPositionCreditRow & { credited_at: string })[];
-  const fees = rawFees as {
+  type Owner = {
+    marketId: string;
+    username: string;
+    fills: PredictionPositionFill[];
+    credits: PredictionPositionCredit[];
+    nettings: PredictionPositionNetting[];
+    fees: number;
+    feeDate: string;
+    reserved: Partial<Record<"yes" | "no", number>>;
+  };
+  const owners = new Map<string, Owner>();
+  const ownerFor = (marketId: string, name: string | null): Owner | undefined => {
+    const ownerName = name?.toLowerCase();
+    if (!ownerName || ownerName === "prediction_admin" || (username && ownerName !== username))
+      return undefined;
+    const key = `${marketId}:${ownerName}`;
+    let owner = owners.get(key);
+    if (!owner) {
+      owner = {
+        marketId,
+        username: ownerName,
+        fills: [],
+        credits: [],
+        nettings: [],
+        fees: 0,
+        feeDate: "",
+        reserved: {},
+      };
+      owners.set(key, owner);
+    }
+    return owner;
+  };
+  for (const position of rawPositions as PublicPredictionPositionRow[]) {
+    const owner = ownerFor(position.market_id, position.username);
+    if (owner) owner.reserved[position.outcome] = position.reserved_quantity;
+  }
+  for (const fill of rawFills as ExchangeFillRow[]) {
+    ownerFor(fill.market_id, fill.buyer_username)?.fills.push(fill);
+    if (fill.seller_username !== fill.buyer_username)
+      ownerFor(fill.market_id, fill.seller_username)?.fills.push(fill);
+  }
+  for (const credit of rawCredits as (PublicLegacyPositionCreditRow & { credited_at: string })[])
+    ownerFor(credit.market_id, credit.username)?.credits.push(credit);
+  for (const net of rawNettings as (PredictionPositionNetting & {
+    market_id: string;
+    username: string;
+  })[])
+    ownerFor(net.market_id, net.username)?.nettings.push(net);
+  for (const fee of rawFees as {
     username: string;
     amount: number;
     metadata: { marketId?: string };
     created_at: string;
-  }[];
-  const settlements = rawSettlements as PredictionPositionSettlementRow[];
-  const positions = new Map<string, PublicPredictionPositionRow>();
-  const key = (market: string, owner: string) => `${market}:${owner}`;
-  for (const position of rawPositions as PublicPredictionPositionRow[])
-    positions.set(`${key(position.market_id, position.username)}:${position.outcome}`, position);
-  for (const position of settlements)
-    positions.set(`${key(position.market_id, position.username)}:${position.outcome}`, {
-      ...position,
-      reserved_quantity: 0,
-      updated_at: position.position_updated_at,
-    });
-  const owners = new Map<string, { marketId: string; username: string }>();
-  const addOwner = (marketId: string, owner: string | null) => {
-    if (owner && owner !== "prediction_admin" && (!username || owner === username))
-      owners.set(key(marketId, owner), { marketId, username: owner });
-  };
-  for (const position of positions.values()) addOwner(position.market_id, position.username);
-  for (const fill of fills) {
-    addOwner(fill.market_id, fill.buyer_username);
-    addOwner(fill.market_id, fill.seller_username);
+  }[]) {
+    if (!fee.metadata.marketId) continue;
+    const owner = ownerFor(fee.metadata.marketId, fee.username);
+    if (owner) {
+      owner.fees -= Number(fee.amount);
+      if (fee.created_at > owner.feeDate) owner.feeDate = fee.created_at;
+    }
   }
-  for (const credit of credits) addOwner(credit.market_id, credit.username);
-  for (const fee of fees) if (fee.metadata?.marketId) addOwner(fee.metadata.marketId, fee.username);
-  const fillsByMarket = groupByMarketId(fills);
   const history: PredictionHistoryRow[] = [];
   for (const owner of owners.values()) {
-    const ownerCredits = credits.filter(
-      (credit) => credit.market_id === owner.marketId && credit.username === owner.username,
-    );
-    const ownerFills = (fillsByMarket.get(owner.marketId) ?? []).filter(
-      (fill) => fill.buyer_username === owner.username || fill.seller_username === owner.username,
-    );
-    const ownerFees = fees.filter(
-      (fee) => fee.metadata?.marketId === owner.marketId && fee.username === owner.username,
-    );
-    const initial = Object.fromEntries(
-      (["yes", "no"] as const).map((outcome) => {
-        const entries = ownerCredits.filter((credit) => credit.outcome === outcome);
-        return [
-          outcome,
-          {
-            quantity: entries.reduce((sum, credit) => sum + credit.quantity, 0),
-            costCents: entries.reduce(
-              (sum, credit) => sum + credit.quantity * credit.price_cents,
-              0,
-            ),
-          },
-        ];
-      }),
-    );
-    const costs = calculatePredictionPositionHistory(ownerFills, owner.username, initial);
-    let remainingFees = -ownerFees.reduce((sum, fee) => sum + Number(fee.amount), 0);
-    const updatedAt =
-      [
-        ...ownerFills.map((fill) => fill.created_at),
-        ...ownerCredits.map((credit) => credit.credited_at),
-        ...ownerFees.map((fee) => fee.created_at),
-      ]
-        .sort()
-        .at(-1) ?? new Date(0).toISOString();
-    for (const outcome of ["yes", "no"] as const) {
-      const position = positions.get(`${key(owner.marketId, owner.username)}:${outcome}`);
-      const cost = costs[outcome];
-      if (!position && cost.closed.quantity === 0 && !(outcome === "no" && remainingFees > 0))
-        continue;
-      history.push({
-        market_id: owner.marketId,
-        username: owner.username,
-        outcome,
-        quantity: position?.quantity ?? 0,
-        reserved_quantity: position?.reserved_quantity ?? 0,
-        updated_at:
-          position?.updated_at && position.updated_at > updatedAt ? position.updated_at : updatedAt,
-        average_price_cents:
-          position && position.quantity > 0
-            ? cost.quantity === position.quantity
-              ? cost.averagePriceCents
-              : null
-            : cost.closed.quantity > 0
-              ? cost.closed.costCents / cost.closed.quantity
-              : 0,
-        closed_cost_coins: cost.closed.costCents / 100,
-        closed_proceeds_coins: cost.closed.proceedsCents / 100,
-        fees_coins: remainingFees,
-      });
-      remainingFees = 0;
-    }
+    // A reset removes its trades, not the immutable redemption/fee receipts. Those
+    // old redemptions no longer describe holdings in the reopened market.
+    const replay = replayPredictionPosition({
+      ...owner,
+      nettings: owner.fills.length || owner.credits.length ? owner.nettings : [],
+    });
+    if (replay.positions.yes.quantity > 0.000001 && replay.positions.no.quantity > 0.000001)
+      throw new Error("Prediction history contains unnetted holdings.");
+    const outcome =
+      replay.positions.yes.quantity > 0
+        ? "yes"
+        : replay.positions.no.quantity > 0
+          ? "no"
+          : replay.lastOutcome;
+    const position = replay.positions[outcome];
+    if (position.quantity === 0 && replay.closed.quantity === 0 && owner.fees === 0) continue;
+    history.push({
+      market_id: owner.marketId,
+      username: owner.username,
+      outcome,
+      quantity: position.quantity,
+      reserved_quantity: Math.min(position.quantity, owner.reserved[outcome] ?? 0),
+      updated_at: owner.feeDate > replay.updatedAt ? owner.feeDate : replay.updatedAt,
+      average_price_cents:
+        position.quantity > 0
+          ? position.costCents / position.quantity
+          : replay.closed.quantity > 0
+            ? replay.closed.costCents / replay.closed.quantity
+            : 0,
+      closed_cost_coins: replay.closed.costCents / 100,
+      closed_proceeds_coins: replay.closed.proceedsCents / 100,
+      fees_coins: owner.fees,
+    });
   }
   return history;
 };

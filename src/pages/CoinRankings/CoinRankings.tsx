@@ -63,6 +63,7 @@ const reasonCategory: Record<CoinTransactionReason, TransactionCategory> = {
   prediction_trade_credit: "bets",
   prediction_trade_fee: "bets",
   prediction_market_payout: "bets",
+  prediction_reconciliation: "bets",
   prediction_liquidity_funding: "bets",
   game_analysis: "game-analysis",
   opening_publish: "purchases",
@@ -177,6 +178,7 @@ const transactionDescription = (transaction: CoinTransaction) => {
   if (transaction.reason === "prediction_trade_fee") {
     return "Prediction trade fee";
   }
+  if (transaction.reason === "prediction_reconciliation") return "Betting accounting correction";
   if (transaction.reason === "prediction_market_payout") {
     return "Prediction market payout";
   }

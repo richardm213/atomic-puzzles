@@ -209,9 +209,7 @@ export const BetHistoryTable = ({
             {sortedBets.map((bet, index) => {
               const isPrediction = bet.kind === "prediction";
               const market = markets.find((candidate) => candidate.id === bet.marketId);
-              const selectionLabel = bet.mixedPredictionOutcomes
-                ? "Both sides"
-                : (bet.predictionSelectionLabel ?? bet.selection);
+              const selectionLabel = bet.predictionSelectionLabel ?? bet.selection;
               const round =
                 !isPrediction && market?.marketKind !== "outright"
                   ? (market?.roundName ?? "AWC 2026")
@@ -235,17 +233,10 @@ export const BetHistoryTable = ({
                       : undefined;
               const selectionContents = (
                 <>
-                  {bet.mixedPredictionOutcomes ? (
-                    "Both sides"
-                  ) : (
-                    <BetHistoryUsername
-                      username={isPrediction ? selectionLabel.toLowerCase() : selectionLabel}
-                    />
-                  )}
-                  {isPrediction &&
-                  !bet.mixedPredictionOutcomes &&
-                  bet.predictionOutcome &&
-                  !bet.predictionSelectionLabel ? (
+                  <BetHistoryUsername
+                    username={isPrediction ? selectionLabel.toLowerCase() : selectionLabel}
+                  />
+                  {isPrediction && bet.predictionOutcome && !bet.predictionSelectionLabel ? (
                     <span className="betHistoryOutcome">
                       · {bet.predictionOutcome === "yes" ? "Yes" : "No"}
                     </span>
@@ -260,15 +251,13 @@ export const BetHistoryTable = ({
                 >
                   <th className="betHistorySelection" scope="row">
                     <span className="betHistoryPlayer">
-                      {!bet.mixedPredictionOutcomes ? (
-                        <img
-                          src={countryCodeToFlagUrl(countryCode)}
-                          alt={countryCode ? `${countryCode} flag` : "Country unavailable"}
-                          crossOrigin="anonymous"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : null}
+                      <img
+                        src={countryCodeToFlagUrl(countryCode)}
+                        alt={countryCode ? `${countryCode} flag` : "Country unavailable"}
+                        crossOrigin="anonymous"
+                        loading="lazy"
+                        decoding="async"
+                      />
                       <strong>
                         {shareable ? (
                           <button
@@ -300,14 +289,8 @@ export const BetHistoryTable = ({
                   ) : null}
                   <td className="betHistoryNumber" data-label={priceLabel}>
                     <strong>
-                      {bet.mixedPredictionOutcomes ? (
-                        "—"
-                      ) : (
-                        <>
-                          {formatCoinValue(bet.priceCents)}
-                          <span className="betHistoryPriceSuffix">%</span>
-                        </>
-                      )}
+                      {formatCoinValue(bet.priceCents)}
+                      <span className="betHistoryPriceSuffix">%</span>
                     </strong>
                   </td>
                   <td className="betHistoryNumber" data-label="Cost">
@@ -354,13 +337,11 @@ export const BetHistoryTable = ({
         <BetShareSlip
           bet={sharedBet}
           countryCode={
-            sharedBet.mixedPredictionOutcomes
-              ? ""
-              : (sharedBet.predictionSelectionCountryCode ??
-                countryByPlayer[
-                  (sharedBet.predictionSelectionLabel ?? sharedBet.selection).toLowerCase()
-                ] ??
-                "")
+            sharedBet.predictionSelectionCountryCode ??
+            countryByPlayer[
+              (sharedBet.predictionSelectionLabel ?? sharedBet.selection).toLowerCase()
+            ] ??
+            ""
           }
           marketTitle={
             sharedBet.predictionMarketTitle ??
