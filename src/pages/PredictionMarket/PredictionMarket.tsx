@@ -91,23 +91,11 @@ export const PredictionMarketPage = () => {
     const pnlByMarketId = new Map<PredictionMarketId, number>();
     if (!isAuthenticated || !marketGroup) return pnlByMarketId;
 
-    const groupMarketIds = new Set(marketGroup.markets.map((market) => market.id));
     const personalBets = buildBetHistory({
-      predictionPositions: marketStates.flatMap(
-        (state) =>
-          state.historyPositions ??
-          state.positions.map((position) => ({
-            ...position,
-            marketId: state.market.id,
-            username,
-          })),
-      ),
+      predictionPositions: marketStates.flatMap((state) => state.historyPositions ?? []),
       predictionMarketGroups: [marketGroup],
       predictionMarketStates: marketStates,
-    }).filter(
-      (bet) =>
-        bet.username.toLowerCase() === username.toLowerCase() && groupMarketIds.has(bet.marketId),
-    );
+    }).filter((bet) => bet.username.toLowerCase() === username.toLowerCase());
 
     return predictionPnlByMarketId(personalBets);
   }, [isAuthenticated, marketGroup, marketStates, username]);

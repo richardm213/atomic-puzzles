@@ -7,19 +7,18 @@ import { BettingHistory } from "./BettingHistory";
 import type { BetHistoryEntry } from "./bettingHistoryModel";
 
 const roundOf16Bet: BetHistoryEntry = {
-  id: 4,
+  historyKey: "prediction-position:awc-r16-natso-crepuscular:buyer",
+  realizedPnl: 0,
+  pnl: 100.5,
   marketId: "awc-r16-natso-crepuscular",
   username: "buyer",
   selection: "natso vs crepuscular",
   priceCents: 85,
-  stake: 569.5,
-  fee: 0,
   totalCost: 569.5,
   potentialPayout: 670,
   payout: 0,
   status: "open",
   placedAt: "2026-10-27T20:36:00Z",
-  settledAt: null,
   predictionOutcome: "no",
   predictionSelectionLabel: "crepuscular",
   predictionSelectionCountryCode: "US",
@@ -128,13 +127,11 @@ describe("BettingHistory", () => {
 
   it("switches returns to net P&L including fees and potential profit", async () => {
     const user = userEvent.setup();
-    const bets = (["open", "won", "lost", "refunded"] as const).map((status, index) => ({
+    const bets = (["open", "won", "lost", "refunded"] as const).map((status) => ({
       ...roundOf16Bet,
-      id: index + 1,
+      historyKey: `${roundOf16Bet.historyKey}:${status}`,
       status,
       predictionSelectionLabel: status,
-      stake: 295,
-      fee: 5,
       totalCost: status === "open" ? 150 : 300,
       pnl: status === "open" ? 300 : status === "won" ? 150 : status === "refunded" ? 0 : -300,
       potentialPayout: 600,

@@ -16,7 +16,7 @@ import {
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
-import { type BetHistoryEntry, betHistoryPnl, betHistoryReturn } from "./bettingHistoryModel";
+import { type BetHistoryEntry, betHistoryReturn } from "./bettingHistoryModel";
 
 const BetHistoryUsername = ({ username }: { username: string }) => {
   const { displayName, elementRef } = useUnderscoreUsernameCutoff<HTMLSpanElement>(username);
@@ -80,7 +80,7 @@ const betSortValue = (bet: BetHistoryEntry, column: BetSortColumn): string | num
     case "cost":
       return bet.totalCost;
     case "pnl":
-      return betHistoryPnl(bet);
+      return bet.pnl;
   }
 };
 
@@ -209,7 +209,7 @@ export const BetHistoryTable = ({
                 countryByPlayer[selectionLabel.toLowerCase()] ??
                 "";
               const payout = betHistoryReturn(bet);
-              const pnl = Math.round(betHistoryPnl(bet) * 100) / 100 || 0;
+              const pnl = Math.round(bet.pnl * 100) / 100 || 0;
               const showPnl = returnDisplay === "pnl";
               const result =
                 bet.status === "open"

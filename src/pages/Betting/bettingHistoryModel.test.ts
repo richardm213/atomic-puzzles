@@ -214,6 +214,10 @@ describe("buildBetHistory", () => {
     expect(predictionPnlByMarketId(resolved).get("champion-player")).toBeCloseTo(6.03);
     const lost = historyFor({ ...state.market, outcome: "no" });
     expect(predictionPnlByMarketId(lost).get("champion-player")).toBeCloseTo(1.03);
+    const fairPrice = historyFor({ ...state.market, outcome: null, settlementPriceCents: 50 });
+    expect(predictionPnlByMarketId(fairPrice).get("champion-player")).toBeCloseTo(3.53);
+    const refunded = historyFor({ ...state.market, status: "refunded", outcome: null });
+    expect(predictionPnlByMarketId(refunded).get("champion-player")).toBeCloseTo(2.03);
   });
 
   it("uses the current position quantity, cost basis, and update date", () => {

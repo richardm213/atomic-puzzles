@@ -9,39 +9,33 @@ import {
 } from "../../lib/predictionMarkets/predictionMarkets";
 
 export type BetHistoryEntry = {
-  id: number;
   marketId: string;
   username: string;
   selection: string;
   priceCents: number;
-  stake: number;
-  fee: number;
   totalCost: number;
   potentialPayout: number;
   status: "open" | "won" | "lost" | "refunded" | "settled";
   payout: number;
   placedAt: string;
-  settledAt: string | null;
-  historyKey?: string;
-  predictionOutcome?: PredictionOutcome | undefined;
+  historyKey: string;
+  predictionOutcome: PredictionOutcome;
   predictionSelectionLabel?: string | undefined;
   predictionSelectionCountryCode?: string | undefined;
   predictionMarketTitle?: string | undefined;
-  realizedPnl?: number;
-  pnl?: number;
+  realizedPnl: number;
+  pnl: number;
 };
 
 export const betHistoryReturn = (bet: BetHistoryEntry): number =>
   bet.status === "open" ? bet.potentialPayout : bet.payout;
-export const betHistoryPnl = (bet: BetHistoryEntry): number =>
-  bet.pnl ?? betHistoryReturn(bet) - bet.totalCost;
 
 export const predictionPnlByMarketId = (
   bets: readonly BetHistoryEntry[],
 ): ReadonlyMap<string, number> => {
   const pnlByMarketId = new Map<string, number>();
   for (const bet of bets) {
-    const pnl = bet.status === "open" ? (bet.realizedPnl ?? 0) : betHistoryPnl(bet);
+    const pnl = bet.status === "open" ? bet.realizedPnl : bet.pnl;
     if (bet.status === "open" && pnl === 0) continue;
     pnlByMarketId.set(bet.marketId, (pnlByMarketId.get(bet.marketId) ?? 0) + pnl);
   }
@@ -58,34 +52,23 @@ const predictionSettlement = (
   outcome: PredictionOutcome,
   quantity: number,
   totalCost: number,
-): Pick<BetHistoryEntry, "status" | "payout" | "settledAt"> => {
-  const resolvedOutcome = state?.market.outcome;
-  const settlementPrice = state?.market.settlementPriceCents;
-  let status: BetHistoryEntry["status"] = "open";
-  if (state?.market.status === "refunded") status = "refunded";
-  if (state?.market.status === "resolved") {
-    status =
-      settlementPrice === null || settlementPrice === undefined
-        ? resolvedOutcome === outcome
-          ? "won"
-          : "lost"
-        : "settled";
-  }
-  const settlementPayout =
-    settlementPrice !== null && settlementPrice !== undefined
-      ? (quantity * (outcome === "yes" ? settlementPrice : 100 - settlementPrice)) / 100
-      : 0;
+): Pick<BetHistoryEntry, "status" | "payout"> => {
+  const market = state?.market;
+  if (market?.status === "refunded") return { status: "refunded", payout: totalCost };
+  if (market?.status !== "resolved") return { status: "open", payout: 0 };
+  const price = market.settlementPriceCents;
+  const payoutPrice =
+    price !== null && price !== undefined
+      ? outcome === "yes"
+        ? price
+        : 100 - price
+      : market.outcome === outcome
+        ? 100
+        : 0;
   return {
-    status,
-    payout:
-      status === "won"
-        ? quantity
-        : status === "settled"
-          ? settlementPayout
-          : status === "refunded"
-            ? totalCost
-            : 0,
-    settledAt: status === "open" ? null : (state?.market.resolvedAt ?? null),
+    status:
+      price !== null && price !== undefined ? "settled" : payoutPrice === 100 ? "won" : "lost",
+    payout: (quantity * payoutPrice) / 100,
   };
 };
 
@@ -144,13 +127,10 @@ export const buildBetHistory = ({
     const hasNamedOutcomes = Boolean(definition.outcomeLabels);
     return [
       {
-        id: 0,
         marketId: definition.id,
         username: position.username,
         selection: definition.username,
         priceCents: position.averagePriceCents,
-        stake: remainingCost,
-        fee: fees,
         totalCost: remainingCost,
         potentialPayout: position.quantity + closedProceeds,
         ...settlement,

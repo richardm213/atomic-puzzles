@@ -4,11 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useAppSettings } from "../../context/AppSettings";
-import {
-  type BetHistoryEntry,
-  betHistoryPnl,
-  betHistoryReturn,
-} from "../../pages/Betting/bettingHistoryModel";
+import { type BetHistoryEntry, betHistoryReturn } from "../../pages/Betting/bettingHistoryModel";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { formatPricePercentageValue } from "../../utils/formatters";
@@ -240,9 +236,9 @@ export const BetShareSlip = ({
           context.font = `${weight} ${--size}px ${font}`;
         }
         context.fillStyle =
-          i === 2 && bet.status !== "open" && betHistoryPnl(bet) > 0
+          i === 2 && bet.status !== "open" && bet.pnl > 0
             ? color("--color-payout-profit")
-            : i === 2 && bet.status !== "open" && betHistoryPnl(bet) < 0
+            : i === 2 && bet.status !== "open" && bet.pnl < 0
               ? color("--color-payout-loss")
               : heading;
         context.fillText(value!, 384, y);
