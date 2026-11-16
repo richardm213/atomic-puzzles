@@ -15,7 +15,7 @@ SCALE = Decimal('0.000001')
 VERSION = 'prediction-accounting-v2'
 TABLES = ('prediction_markets', 'prediction_fills', 'prediction_positions',
           'prediction_position_nettings', 'prediction_legacy_position_credits',
-          'tournament_bets', 'tournament_betting_markets')
+          'tournament_bets', 'tournament_betting_markets', 'prediction_orders')
 
 def number(value):
     return Decimal(str(value))
@@ -76,13 +76,32 @@ def audit_trade_fees(data):
     for fill in data['prediction_fills']:
         if fill.get('taker_order_id') is not None:
             by_order[fill['taker_order_id']].append(fill)
+    # Enumerate executed taker orders too: iterating paid fees alone misses a fee
+    # that was never charged. Historical fixtures can supply only their receipts.
+    keys = set(paid)
+    for order in data.get('prediction_orders', []):
+        if order['id'] in by_order:
+            keys.add((order['market_id'], order['username'], order['id']))
     errors = []
-    for (market, username, order), actual in paid.items():
+    for market, username, order in sorted(keys):
+        actual = paid[market, username, order]
         fills = [fill for fill in by_order[order] if fill['seller_username'] == username or (
             fill['buyer_username'] == username and not (fill['pair_key'] and fill['seller_username']))]
-        if not fills:  # Old resets deleted their fills; do not invent execution data.
-            continue
-        expected = sum((money(number(fill['quantity']) * number(fill['price_cents']) / 100 * Decimal('0.02')) for fill in fills), ZERO)
+        if fills:
+            expected = sum((money(number(fill['quantity']) * number(fill['price_cents']) / 100 * Decimal('0.02')) for fill in fills), ZERO)
+        else:
+            # Resets deleted some old fills/orders but retained their cash receipts.
+            # Principal after price-improvement/unfilled-order refunds still proves
+            # the executed value. Reset refunds omit orderId and do not erase fees.
+            receipts = [row for row in data['coin_transactions']
+                        if row['username'] == username and
+                        (row.get('metadata') or {}).get('marketId') == market and
+                        (row.get('metadata') or {}).get('orderId') == order and
+                        row['reason'] in ('prediction_order_reserve', 'prediction_trade_credit', 'prediction_order_refund')]
+            if not receipts:
+                continue
+            principal = sum((number(row['amount']) + number((row.get('metadata') or {}).get('fee', 0)) for row in receipts), ZERO)
+            expected = money(abs(principal) * Decimal('0.02'))
         if abs(expected - actual) > SCALE:
             errors.append({'marketId': market, 'username': username, 'orderId': order,
                            'expected': expected, 'actual': actual})
