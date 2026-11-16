@@ -216,12 +216,12 @@ export const CoinRankingsPage = () => {
   const usernameFilter = search.player ?? "";
   const setView = (next: CoinView) =>
     void navigate({
-      search: (previous) => ({ ...previous, view: next === "transactions" ? next : undefined }),
+      search: { ...search, view: next === "transactions" ? next : undefined },
       resetScroll: false,
     });
   const setUsernameFilter = (player: string) =>
     void navigate({
-      search: (previous) => ({ ...previous, player: player || undefined }),
+      search: { ...search, player: player || undefined },
       resetScroll: false,
     });
   const [transactionPage, setTransactionPage] = useState(1);
