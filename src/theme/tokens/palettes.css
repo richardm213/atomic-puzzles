@@ -261,7 +261,9 @@
 :root[data-theme="dark"][data-palette="ruby"] {
   --gem-hue: 27;
   --gem-nav-hue: 27;
-  --color-primary-soft: #ff6b6b;
+  --color-primary-soft: #ff4b4b;
+  --color-primary-pale: #ff6565;
+  --color-market-yes: var(--color-primary-soft);
   --gem-material-hue: 260;
   --gem-page-top-lightness: 23%;
   --gem-canvas-chroma: 0.008;
