@@ -281,6 +281,13 @@ export const puzzleMotifs: PuzzleMotif[] = [
       "In an endgame, the queen and king thread an escape path away from the enemy king, forcing it next to its pawn where it will be exploded.",
   },
   {
+    tag: "pawnitisation",
+    name: "Pawnitisation",
+    parentTag: "endgame",
+    description:
+      "The defender holds a draw against an extra bishop by keeping their pawns on the opposite colour and preventing the opponent from creating a passed pawn.",
+  },
+  {
     tag: "pawn_endgame",
     name: "Pawn endgame",
     parentTag: "endgame",

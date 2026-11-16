@@ -53,6 +53,7 @@ insert into public.puzzle_tag_hierarchy (tag, parent_tag) values
   ('stuck_piece', null),
   ('endgame', null),
   ('threading_the_needle', 'endgame'),
+  ('pawnitisation', 'endgame'),
   ('pawn_endgame', 'endgame')
 on conflict (tag) do update set parent_tag = excluded.parent_tag;
 

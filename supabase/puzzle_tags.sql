@@ -54,6 +54,7 @@ alter table public.puzzles
       'stuck_piece',
       'endgame',
       'threading_the_needle',
+      'pawnitisation',
       'pawn_endgame'
     ]::text[]
   );
@@ -102,6 +103,7 @@ as $$
       ('avoiding_perpetual', 'defensive'),
       ('explosion_defense', 'defensive'),
       ('threading_the_needle', 'endgame'),
+      ('pawnitisation', 'endgame'),
       ('pawn_endgame', 'endgame')
   ), ancestors(tag) as (
     select parent_tag from relationships where child_tag = p_tag
