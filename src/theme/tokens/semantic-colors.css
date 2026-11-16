@@ -21,6 +21,8 @@
   --color-profit-strip-text: #070c16;
   --color-warning: #facc15;
   --color-danger: #fca5a5;
+  --color-pnl-profit: var(--color-success);
+  --color-pnl-loss: var(--color-danger);
   --color-motif-confirmed: var(--color-success);
   --color-motif-unconfirmed: var(--color-danger);
   --color-loss-strip-bg: #3a1520;

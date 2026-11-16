@@ -262,6 +262,8 @@
   --gem-hue: 27;
   --gem-nav-hue: 27;
   --color-primary-soft: #ff4b4b;
+  --color-pnl-profit: #4ade80;
+  --color-pnl-loss: #ff626b;
   --color-primary-pale: #ff6565;
   --color-market-yes: var(--color-primary-soft);
   --gem-material-hue: 260;

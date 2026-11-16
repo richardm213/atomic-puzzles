@@ -1091,11 +1091,11 @@
 }
 
 .betHistoryReturn[data-result="gain"] strong {
-  color: var(--color-success);
+  color: var(--color-pnl-profit);
 }
 
 .betHistoryReturn[data-result="loss"] strong {
-  color: var(--color-danger);
+  color: var(--color-pnl-loss);
 }
 
 .betHistoryState time {

@@ -204,11 +204,11 @@
 }
 
 .predictionTraderHistory [data-pnl="1"] {
-  color: var(--color-success);
+  color: var(--color-pnl-profit);
 }
 
 .predictionTraderHistory [data-pnl="-1"] {
-  color: var(--color-danger);
+  color: var(--color-pnl-loss);
 }
 
 .predictionTraderHistoryTable [data-outcome="yes"] {
