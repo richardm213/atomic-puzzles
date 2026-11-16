@@ -79,6 +79,15 @@ test("side bets have their own route and secondary markets stay in the dropdown"
   await expect(other.getByRole("option", { name: "Nov Shield", exact: true })).toHaveCount(0);
   await page.reload();
   await expect(shield).toHaveAttribute("aria-pressed", "true");
+  const sportsbook = page.getByRole("button", { name: "Sportsbook view", exact: true });
+  const orderBook = page.getByRole("button", { name: "Order book view", exact: true });
+  await sportsbook.click();
+  await expect(sportsbook).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("group", { name: "Winner side" })).toBeVisible();
+  await orderBook.click();
+  await expect(orderBook).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(orderBook).toHaveAttribute("aria-pressed", "true");
   for (const category of ["AWC Round of 16", "AWC Losers 1", "AWC 2027"]) {
     await expect(page.getByRole("button", { name: category, exact: true })).toHaveCount(0);
     await other.selectOption(category);

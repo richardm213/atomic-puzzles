@@ -123,8 +123,8 @@ const predictionGroupIdByCategory: Record<PredictionMarketCategory, string> = {
   Ban: "ban-2026",
   "Nov Shield": "november-atomic-shield-2026",
 };
-const isAwcWinnerCategory = (category: string): boolean =>
-  category === "2026 AWC Champion" || category === "AWC 2027";
+const isWinnerCategory = (category: string): boolean =>
+  category === "2026 AWC Champion" || category === "AWC 2027" || category === "Nov Shield";
 const winnerNoMarketId = AWC_NOT_TO_WIN_MARKET_ID;
 const marketCategorySlug = (category: string): string => {
   const normalizedCategory = category
@@ -367,9 +367,7 @@ export const BettingPage = () => {
     [marketCategory, openMarkets, winnerPosition],
   );
   const predictionMarketOnlyCategory =
-    marketCategory === "Nov Shield" ||
-    marketCategory === "Ban" ||
-    marketCategory === "2026 AWC Side Bets";
+    marketCategory === "Ban" || marketCategory === "2026 AWC Side Bets";
   const activePredictionDisplayMode: PredictionDisplayMode = predictionMarketOnlyCategory
     ? "market"
     : predictionDisplayMode;
@@ -393,7 +391,7 @@ export const BettingPage = () => {
     if (activePredictionDisplayMode !== "book") {
       return sortPredictionMarketsByChance(definitions, predictionStateByMarketId);
     }
-    const displayedOutcome: PredictionOutcome = isAwcWinnerCategory(marketCategory)
+    const displayedOutcome: PredictionOutcome = isWinnerCategory(marketCategory)
       ? winnerPosition
       : "yes";
     return [...definitions].sort((left, right) => {
@@ -651,7 +649,7 @@ export const BettingPage = () => {
     currentUrl.searchParams.set("view", view);
     if (view === "markets") {
       currentUrl.searchParams.set("market", marketCategorySlug(marketCategory));
-      if (isAwcWinnerCategory(marketCategory)) {
+      if (isWinnerCategory(marketCategory)) {
         currentUrl.searchParams.set("side", winnerPosition);
       } else {
         currentUrl.searchParams.delete("side");
@@ -683,7 +681,7 @@ export const BettingPage = () => {
     nextUrl.searchParams.set("view", nextView);
     if (nextView === "markets") {
       nextUrl.searchParams.set("market", marketCategorySlug(marketCategory));
-      if (isAwcWinnerCategory(marketCategory)) {
+      if (isWinnerCategory(marketCategory)) {
         nextUrl.searchParams.set("side", winnerPosition);
       }
     } else {
@@ -699,7 +697,7 @@ export const BettingPage = () => {
     const nextUrl = new URL(window.location.href);
     nextUrl.searchParams.set("view", "markets");
     nextUrl.searchParams.set("market", marketCategorySlug(nextCategory));
-    if (isAwcWinnerCategory(nextCategory)) {
+    if (isWinnerCategory(nextCategory)) {
       nextUrl.searchParams.set("side", winnerPosition);
     } else {
       nextUrl.searchParams.delete("side");
@@ -1004,11 +1002,11 @@ export const BettingPage = () => {
                       isLoading={activePredictionGroupLoading}
                       isOpen={activePredictionGroupOpen}
                       middle={
-                        isAwcWinnerCategory(marketCategory) ? (
+                        isWinnerCategory(marketCategory) ? (
                           <div
                             className="bettingPositionToggle"
                             role="group"
-                            aria-label="AWC winner side"
+                            aria-label="Winner side"
                           >
                             <button
                               type="button"
@@ -1043,7 +1041,7 @@ export const BettingPage = () => {
                         const resolvedOutcome = state.market.outcome ?? "no";
                         const settlementPrice = state.market.settlementPriceCents;
                         const invertChampionOutcome =
-                          isAwcWinnerCategory(marketCategory) && winnerPosition === "no";
+                          isWinnerCategory(marketCategory) && winnerPosition === "no";
                         const displayedResolvedOutcome = invertChampionOutcome
                           ? resolvedOutcome === "yes"
                             ? "no"
@@ -1068,13 +1066,11 @@ export const BettingPage = () => {
                           </article>
                         );
                       }
-                      const sportsbookOutcome: PredictionOutcome = isAwcWinnerCategory(
-                        marketCategory,
-                      )
+                      const sportsbookOutcome: PredictionOutcome = isWinnerCategory(marketCategory)
                         ? winnerPosition
                         : "yes";
                       const compactSportsbookCard =
-                        isAwcWinnerCategory(marketCategory) || marketCategory === "Ban";
+                        isWinnerCategory(marketCategory) || marketCategory === "Ban";
                       const sportsbookOutcomes = compactSportsbookCard
                         ? [sportsbookOutcome]
                         : predictionOutcomes;
