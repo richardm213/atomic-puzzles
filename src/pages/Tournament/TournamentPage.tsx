@@ -55,6 +55,7 @@ import { normalizeUsername } from "../../utils/playerNames";
 import { AtomicChessLeaguePage } from "./AtomicChessLeaguePage";
 import {
   BOARD_PADDING,
+  buildLoserSourcesByMatchId,
   buildStageTreeLayout,
   buildStartRoundState,
   buildZoomState,
@@ -63,7 +64,6 @@ import {
   COLUMN_GAP,
   DEFAULT_STAGE_ZOOM,
   getAwcCurrentRound,
-  getRoundShortLabel,
   getRoundSlug,
   getStageRoundShortLabel,
   getStageStartRound,
@@ -72,6 +72,7 @@ import {
   getTournamentViewStorageKey,
   HEADER_SPACE,
   isRoundRobinQualifyingStage,
+  type LoserSource,
   MAX_STAGE_ZOOM,
   MIN_STAGE_ZOOM,
   type PositionedMatch,
@@ -137,11 +138,6 @@ type TournamentEntryMarker = {
   description: string;
 };
 
-type LoserSource = {
-  label: string;
-  loserName: string;
-};
-
 const tournamentHeading = (bracket: TournamentBracket): string => {
   if (bracket.headingTitle) return bracket.headingTitle;
   return `${bracket.seriesName} ${bracket.year}`;
@@ -150,12 +146,6 @@ const winnerName = (match: TournamentMatch): string => {
   if (match.s1 > match.s2) return match.p1;
   if (match.s2 > match.s1) return match.p2;
   return "Draw";
-};
-
-const loserName = (match: TournamentMatch): string => {
-  const winner = winnerName(match);
-  if (!winner || winner === "Draw") return "";
-  return normalizeUsername(winner) === normalizeUsername(match.p1) ? match.p2 : match.p1;
 };
 
 const isEmptyPlayer = (playerName: string): boolean => String(playerName || "").trim() === "";
@@ -1341,33 +1331,7 @@ const BracketTournamentPage = ({
   const loserSourcesByMatchId = useMemo(() => {
     if (bracket?.id !== "awc2026") return new Map<string, LoserSource[]>();
 
-    const losersRoundOneIds = new Set(
-      bracket.matches
-        .filter((match) => match.bracket === "losers" && match.round === "Round 1")
-        .map((match) => match.id),
-    );
-    const sources = new Map<string, LoserSource[]>();
-
-    bracket.matches
-      .filter((match) => match.bracket === "main" && losersRoundOneIds.has(match.loser_to))
-      .sort((left, right) => left.order - right.order)
-      .forEach((match) => {
-        const existing = sources.get(match.loser_to) || [];
-        const hasNamedMatchup =
-          !isEmptyPlayer(match.p1) &&
-          !isEmptyPlayer(match.p2) &&
-          !isTournamentByePlayer(match.p1) &&
-          !isTournamentByePlayer(match.p2);
-        existing.push({
-          label: hasNamedMatchup
-            ? `Loser: ${match.p1} vs ${match.p2}`
-            : `Loser of ${getRoundShortLabel(match.round)} #${match.order}`,
-          loserName: loserName(match),
-        });
-        sources.set(match.loser_to, existing);
-      });
-
-    return sources;
+    return buildLoserSourcesByMatchId(bracket.matches);
   }, [bracket]);
   const seedEntries = useMemo<TournamentSeedEntry[]>(() => {
     if (!bracket) return [];

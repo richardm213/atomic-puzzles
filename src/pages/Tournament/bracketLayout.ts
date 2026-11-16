@@ -6,6 +6,38 @@ import {
 } from "../../lib/matches/tournaments";
 import { getBrowserStorageJson, removeBrowserStorageItem } from "../../utils/browserStorage";
 
+export type LoserSource = {
+  label: string;
+  loserName: string;
+};
+
+export const buildLoserSourcesByMatchId = (
+  matches: readonly TournamentMatch[],
+): Map<string, LoserSource[]> => {
+  const losersMatchIds = new Set(
+    matches.filter((match) => match.bracket === "losers").map((match) => match.id),
+  );
+  const sources = new Map<string, LoserSource[]>();
+
+  matches
+    .filter((match) => match.bracket === "main" && losersMatchIds.has(match.loser_to))
+    .sort((left, right) => left.order - right.order)
+    .forEach((match) => {
+      const existing = sources.get(match.loser_to) ?? [];
+      const hasNamedMatchup =
+        Boolean(match.p1.trim() && match.p2.trim()) && !isTournamentByeMatch(match);
+      existing.push({
+        label: hasNamedMatchup
+          ? `${match.p1} / ${match.p2}`
+          : `Loser of ${getRoundShortLabel(match.round)} #${match.order}`,
+        loserName: match.s1 > match.s2 ? match.p2 : match.s2 > match.s1 ? match.p1 : "",
+      });
+      sources.set(match.loser_to, existing);
+    });
+
+  return sources;
+};
+
 export type StageLayout = {
   rounds: TournamentBracketStage["rounds"];
   width: number;

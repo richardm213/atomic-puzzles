@@ -1,5 +1,6 @@
 import type { TournamentBracketStage, TournamentMatch } from "../../lib/matches/tournaments";
 import {
+  buildLoserSourcesByMatchId,
   buildStageTreeLayout,
   buildStartRoundState,
   DEFAULT_STAGE_ZOOM,
@@ -46,6 +47,39 @@ const stage: TournamentBracketStage = {
 };
 
 describe("bracket layout", () => {
+  it("labels main-draw loser feeds in later losers rounds as well as the first round", () => {
+    const sources = buildLoserSourcesByMatchId([
+      { ...match("r16"), order: 1, loser_to: "lb-r1", s1: 6, s2: 4 },
+      { ...match("qf"), order: 1, loser_to: "lb-r2", s1: 4, s2: 6 },
+      { ...match("sf"), round: "Semifinals", order: 1, loser_to: "lb-r4" },
+      { ...match("final"), round: "Finals", order: 1, p1: "", p2: "", loser_to: "lb-final" },
+      { ...match("missing-destination"), loser_to: "absent" },
+      ...(
+        [
+          ["lb-r1", "Round 1"],
+          ["lb-r2", "Round 2"],
+          ["lb-r4", "Round 4"],
+          ["lb-final", "Final"],
+        ] as const
+      ).map(([id, round]) => ({
+        ...match(id),
+        bracket: "losers",
+        round,
+        loser_to: "lb-r1",
+      })),
+    ]);
+
+    expect([...sources.keys()]).toEqual(["lb-r1", "lb-r2", "lb-r4", "lb-final"]);
+    expect(sources.get("lb-r1")).toEqual([
+      { label: "Player one / Player two", loserName: "Player two" },
+    ]);
+    expect(sources.get("lb-r2")?.[0]?.loserName).toBe("Player one");
+    expect(sources.get("lb-r4")).toEqual([
+      { label: "Player one / Player two", loserName: "" },
+    ]);
+    expect(sources.get("lb-final")).toEqual([{ label: "Loser of F #1", loserName: "" }]);
+  });
+
   it("steps through the compact zoom range without repeating the saved 65% stop", () => {
     const levels = [0.55];
     for (let index = 0; index < 10; index += 1) {
