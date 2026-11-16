@@ -42,6 +42,24 @@ Apply `supabase/prediction_canonical_history.sql` and the current `supabase/mark
 together in one Firefox SQL transaction after the earlier exchange migrations. The migration
 archives the original records, rejects unmapped or inconsistent bets, and is safe to repeat.
 
+## Safe order retries and terminal results
+
+User orders go through `place_prediction_order_once`, with a request UUID scoped to the authenticated
+username and bound to the exact order parameters. The receipt commits with the order. Retries return
+the original order and the current wallet balance. The client keeps uncertain requests across page
+reloads and errors, and coalesces simultaneous submissions. Only confirmed success or a database-confirmed rejection clears the request;
+a later identical purchase gets a new UUID. Sportsbook retries retain the original execution quote
+for the same budget. The error action retries the original order even if available holdings change.
+
+The low-level payout functions accept only open/closed markets or an exact repeat of the same
+completed settlement. A refunded market cannot be settled again, and a fair-price result cannot be
+silently treated as a binary result. Apply `supabase/prediction_request_safety.sql` after the canonical
+history migration; its rollback regression is `supabase/tests/prediction_request_safety.sql`.
+
+Market refunds appear in trader history even for imported holdings. Returned principal offsets the
+remaining cost once, preserving realized trading P&L. The audit independently checks refunded costs,
+including fees and nettings, plus paired liquidity collateral; it flags missing and excessive refunds.
+
 ## Audit and correction
 
 Run the read-only audit against the current project:

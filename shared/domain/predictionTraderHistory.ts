@@ -90,8 +90,13 @@ export const buildPredictionTraderHistory = ({
       row.action = "fee";
       row.pnlChange = -predictionTradingFee(receipt);
     } else if (receipt.reason === "prediction_reconciliation") row.action = "correction";
-    else if (receipt.reason === "prediction_market_payout") {
-      row.action = "settlement";
+    else if (
+      receipt.reason === "prediction_market_payout" ||
+      (receipt.reason === "prediction_order_refund" &&
+        (metadata.kind === "market-refund" ||
+          receipt.source_key.startsWith("prediction-market-refund:")))
+    ) {
+      row.action = receipt.reason === "prediction_market_payout" ? "settlement" : "refund";
       row.quantity = numeric(metadata.contracts) ?? remainingQuantity;
       row.averagePriceCents = row.quantity > 0 ? (receipt.amount * 100) / row.quantity : null;
       row.outcome ??= remainingOutcome;

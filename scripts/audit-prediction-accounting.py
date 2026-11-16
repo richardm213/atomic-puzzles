@@ -12,7 +12,7 @@ from pathlib import Path
 
 ZERO = Decimal(0)
 SCALE = Decimal('0.000001')
-VERSION = 'prediction-accounting-v3'
+VERSION = 'prediction-accounting-v4'
 TABLES = ('prediction_markets', 'prediction_fills', 'prediction_positions',
           'prediction_position_nettings', 'prediction_position_credits', 'prediction_orders')
 
@@ -96,6 +96,30 @@ def audit_trade_fees(data):
                            'expected': expected, 'actual': actual})
     return errors
 
+def refundable_position_cost(data, market_id, username):
+    """Independent weighted-cost replay for no-trade refunds, including imported fees."""
+    held = {side: {'quantity': ZERO, 'cost': ZERO} for side in ('yes', 'no')}
+    events = []
+    for credit in data['prediction_position_credits']:
+        if credit['market_id'] == market_id and credit['username'] == username:
+            events.append((credit['credited_at'], 0, credit.get('id', 0), credit))
+    for netting in data.get('prediction_position_nettings', []):
+        if netting['market_id'] == market_id and netting['username'] == username:
+            events.append((netting['created_at'], 1, netting['id'], netting))
+    for _, kind, _, row in sorted(events, key=lambda event: event[:3]):
+        quantity = number(row['quantity'])
+        if kind == 0:
+            position = held[row['outcome']]
+            position['quantity'] += quantity
+            position['cost'] += number(row['cost_coins']) if row.get('cost_coins') is not None else quantity * number(row['price_cents']) / 100 + number(row.get('fee_coins', 0))
+        else:
+            for position in held.values():
+                if quantity > position['quantity']:
+                    raise ValueError('Refund history redeems more shares than were held')
+                position['cost'] -= position['cost'] * quantity / position['quantity']
+                position['quantity'] -= quantity
+    return money(sum((position['cost'] for position in held.values()), ZERO))
+
 def audit(data):
     markets = {row['id']: row for row in data['prediction_markets']}
     quantities = defaultdict(lambda: {'yes': ZERO, 'no': ZERO})
@@ -110,6 +134,7 @@ def audit(data):
         if row['seller_username']:
             quantities[market, row['seller_username']][outcome] -= qty
     settlement_cash = defaultdict(lambda: ZERO)
+    refund_cash = defaultdict(lambda: ZERO)
     net_cash = defaultdict(lambda: ZERO)
     trade_cash = defaultdict(lambda: ZERO)
     reset_markets = set()
@@ -121,6 +146,8 @@ def audit(data):
         amount = number(row['amount'])
         if row['reason'] == 'prediction_market_payout':
             settlement_cash[key] += amount
+        if row['reason'] == 'prediction_order_refund' and (metadata.get('kind') == 'market-refund' or row['source_key'].startswith('prediction-market-refund:')):
+            refund_cash[key] += amount
         if row['source_key'].startswith('prediction-position-net:'):
             net_cash[key] += amount
         if row['reason'] in ('prediction_order_reserve', 'prediction_order_refund', 'prediction_trade_credit'):
@@ -130,22 +157,23 @@ def audit(data):
         if row['reason'] == 'prediction_reconciliation':
             correction_cash[key, metadata.get('kind')] += amount
     corrections, checked, position_errors, open_redemption_errors = [], [], [], []
+    refund_errors, refunds_checked = [], []
     live = defaultdict(lambda: {'yes': ZERO, 'no': ZERO})
     for row in data['prediction_positions']:
         live[row['market_id'], row['username']][row['outcome']] = number(row['quantity'])
-    for key in sorted(set(quantities) | set(settlement_cash) | {key for key in live if key[1] != "prediction_admin"}):
+    for key in sorted(set(quantities) | set(settlement_cash) | set(refund_cash) | {key for key in live if key[1] != "prediction_admin" or markets[key[0]]["status"] == "refunded"}):
         market_id, username = key
         market = markets[market_id]
         gross = quantities[key]
         paired = min(gross.values()) if username != 'prediction_admin' else ZERO
         desired = {side: gross[side] - paired for side in ('yes', 'no')}
-        if desired != live[key]:
+        if desired != live[key] and not (market["status"] == "refunded" and username == "prediction_admin"):
             position_errors.append({'marketId': market_id, 'username': username,
                                     'expected': desired, 'actual': live[key]})
         if market['status'] == 'resolved':
             price = Decimal(1) if market['outcome'] == 'yes' else ZERO if market['outcome'] == 'no' else number(market['settlement_price_cents']) / 100
             expected = money(gross['yes'] * price + gross['no'] * (1 - price))
-            actual = settlement_cash[key] + net_cash[key] + correction_cash[key, 'duplicate-legacy-payout']
+            actual = settlement_cash[key] + refund_cash[key] + net_cash[key] + correction_cash[key, 'duplicate-legacy-payout']
             item = {'marketId': market_id, 'username': username, 'kind': 'duplicate-legacy-payout',
                     'expectedCash': expected, 'previousCash': actual, 'delta': money(expected - actual)}
             checked.append(item)
@@ -154,6 +182,23 @@ def audit(data):
         elif paired != net_cash[key] and market_id not in reset_markets:
             open_redemption_errors.append({'marketId': market_id, 'username': username,
                                           'expected': paired, 'actual': net_cash[key]})
+        if market['status'] == 'refunded':
+            if fill_counts[market_id]:
+                refund_errors.append({'marketId': market_id, 'username': username, 'error': 'Traded market requires fair-price settlement'})
+                continue
+            if username == 'prediction_admin':
+                if live[key]['yes'] != live[key]['no']:
+                    refund_errors.append({'marketId': market_id, 'username': username, 'error': 'Unpaired liquidity cannot be fully refunded'})
+                    continue
+                expected = live[key]['yes']
+            else:
+                expected = refundable_position_cost(data, market_id, username)
+            actual = refund_cash[key] + settlement_cash[key]
+            item = {'marketId': market_id, 'username': username, 'expectedCash': expected,
+                    'previousCash': actual, 'delta': money(expected - actual)}
+            refunds_checked.append(item)
+            if item['delta']:
+                refund_errors.append(item)
     # Old "filled-bets-reset" operations deleted the fills. Reconcile their cash receipts,
     # including complete-set redemptions, rather than inventing the missing trades.
     # Keep the original fee policy: these resets returned trading principal, not fees.
@@ -167,9 +212,9 @@ def audit(data):
                                 'kind': 'cancelled-market-reset', 'expectedCash': ZERO,
                                 'previousCash': actual, 'delta': money(-actual)})
     return {'version': VERSION, 'counts': {key: len(value) for key, value in data.items()},
-            'settledMarketUsersChecked': len(checked), 'corrections': corrections,
+            'settledMarketUsersChecked': len(checked), 'refundedMarketUsersChecked': len(refunds_checked), 'corrections': corrections,
             'positionErrors': position_errors, 'openRedemptionErrors': open_redemption_errors,
-            'feeErrors': audit_trade_fees(data), 'settlements': checked}
+            'feeErrors': audit_trade_fees(data), 'refundErrors': refund_errors, 'settlements': checked}
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

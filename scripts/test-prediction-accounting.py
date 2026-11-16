@@ -20,6 +20,31 @@ class PredictionAccountingTest(unittest.TestCase):
         data['coin_transactions'].append({**data['coin_transactions'][0], 'source_key': 'duplicate'})
         self.assertEqual([row['delta'] for row in AUDIT(data)['corrections']], [Decimal('-10')])
 
+    def test_refunds_include_imported_fees_remaining_cost_and_liquidity_collateral(self):
+        data = {
+            'prediction_markets': [{'id': 'market', 'status': 'refunded', 'outcome': None}],
+            'prediction_fills': [], 'prediction_orders': [],
+            'prediction_positions': [],
+            'prediction_position_credits': [
+                {'id': 1, 'market_id': 'market', 'username': 'trader', 'outcome': 'yes', 'quantity': 20, 'cost_coins': 8.16, 'credited_at': '2026-11-01'},
+                {'id': 2, 'market_id': 'market', 'username': 'trader', 'outcome': 'no', 'quantity': 10, 'cost_coins': 3.06, 'credited_at': '2026-11-02'}],
+            'prediction_position_nettings': [{'id': 1, 'market_id': 'market', 'username': 'trader', 'quantity': 10, 'created_at': '2026-11-03'}],
+            'coin_transactions': [{'username': 'trader', 'reason': 'prediction_trade_credit', 'source_key': 'prediction-position-net:1', 'amount': 10, 'metadata': {'marketId': 'market'}}],
+        }
+        data['prediction_positions'] = [{'market_id': 'market', 'username': 'trader', 'outcome': 'yes', 'quantity': 10}] + [
+            {'market_id': 'market', 'username': 'prediction_admin', 'outcome': side, 'quantity': 50} for side in ('yes','no')]
+        liquidity = {'username': 'prediction_admin', 'reason': 'prediction_order_refund', 'source_key': 'prediction-market-refund:market:prediction_admin', 'amount': 50, 'metadata': {'marketId': 'market', 'kind': 'market-refund'}}
+        data['coin_transactions'].append(liquidity)
+        for refund in (0, 4.08, 5.08):
+            with self.subTest(refund=refund):
+                data['coin_transactions'] = data['coin_transactions'][:2]
+                if refund:
+                    data['coin_transactions'].append({'username': 'trader', 'reason': 'prediction_order_refund', 'source_key': 'prediction-market-refund:market:trader', 'amount': refund, 'metadata': {'marketId': 'market', 'kind': 'market-refund'}})
+                report = AUDIT(data)
+                self.assertEqual(report['positionErrors'], [])
+                self.assertEqual(report['openRedemptionErrors'], [])
+                self.assertEqual([row['delta'] for row in report['refundErrors']], [] if refund == 4.08 else [Decimal('4.080000')-Decimal(str(refund))])
+
     def test_raw_and_bundled_fees_must_match_the_executed_trade(self):
         fee_audit = runpy.run_path(str(Path(__file__).with_name('audit-prediction-accounting.py')))['audit_trade_fees']
         fill = {'id': 1, 'market_id': 'market', 'quantity': 10, 'price_cents': 50, 'buyer_username': 'trader',

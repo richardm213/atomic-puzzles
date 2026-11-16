@@ -188,4 +188,44 @@ describe("prediction trader transactions", () => {
     expect(rows.map((row) => row.action)).toEqual(["payment", "refund"]);
     expect(rows.at(-1)?.runningPnl).toBe(-0.18);
   });
+  it("shows imported-position refunds once and keeps realized netting profit", () => {
+    const credits = [
+      {
+        outcome: "yes" as const,
+        quantity: 20,
+        price_cents: 40,
+        cost_coins: 8.16,
+        fee_coins: 0.16,
+        credited_at: time(1),
+      },
+      {
+        outcome: "no" as const,
+        quantity: 10,
+        price_cents: 30,
+        cost_coins: 3.06,
+        fee_coins: 0.06,
+        credited_at: time(2),
+      },
+    ];
+    for (const returned of [4.08, 3.08]) {
+      const rows = buildPredictionTraderHistory({
+        username: "trader",
+        market: { ...market, status: "refunded", outcome: null },
+        credits,
+        fills: [],
+        nettings: [{ id: 1, quantity: 10, created_at: time(3) }],
+        receipts: [
+          receipt(1, returned, "prediction_order_refund", {
+            created_at: time(5),
+            source_key: "prediction-market-refund:market:trader",
+            metadata: { kind: "market-refund" },
+          }),
+        ],
+      });
+      expect(rows.filter((row) => row.action === "refund")).toMatchObject([
+        { quantity: 10, pnlChange: returned - 4.08 },
+      ]);
+      expect(rows.at(-1)?.runningPnl).toBeCloseTo(2.86 + returned - 4.08);
+    }
+  });
 });
