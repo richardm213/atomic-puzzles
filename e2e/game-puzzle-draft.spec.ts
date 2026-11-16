@@ -283,3 +283,114 @@ test("puzzle drafting detects a played transposition and keeps saved copies sync
     ["f3", "Ng4", "Bc4", "Nf2"],
   ]);
 });
+
+test("tournament game details show post-game scores and clear the clinch marker when navigating", async ({
+  page,
+}) => {
+  const winners = ["Alice", "Bob", "Alice", "Bob", "Alice", "Bob", "Alice", "Bob", "Alice", "draw"];
+  const games = winners.map((winner, index) => {
+    const whiteSlot = index % 2 ? 2 : 1;
+    const winnerSlot = winner === "draw" ? 0 : winner === "Alice" ? 1 : 2;
+    const winnerCode = winner === "draw" ? "d" : winnerSlot === whiteSlot ? "w" : "b";
+    return `score-${index + 1},${winnerCode},${winnerSlot},${whiteSlot}`;
+  });
+  await page.route("**/__e2e_supabase/**/tournament_matches?**", (route) => {
+    const matchId = new URL(route.request().url()).searchParams.get("match_id");
+    return route.fulfill({
+      json:
+        matchId === "eq.score-match"
+          ? [
+              {
+                tournament: "awc2026",
+                bracket: "main",
+                round: "Quarterfinals",
+                order: 1,
+                id: "wb-r2-m1",
+                match_id: "score-match",
+                p1: "Bob",
+                p2: "Alice",
+                s1: 4.5,
+                s2: 5.5,
+              },
+            ]
+          : [],
+    });
+  });
+  await page.route("**/api/archive-data?**", (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    if (params.get("resource") === "game") {
+      const id = params.get("gameId") ?? "";
+      const ordinary = id === "ordinary-game";
+      const index = ordinary ? 1 : Number(id.split("-")[1]);
+      return route.fulfill({
+        json: {
+          game_id: id,
+          game_index: index,
+          result: index === 10 ? 1 : 2,
+          moves: ["e2e4", "e7e5"],
+          clocks: null,
+          move_ts: null,
+          initial_fen: null,
+          external_match_id: ordinary ? "ordinary-match" : "score-match",
+          mode: "blitz",
+          start_ts: 1_700_000_000_000,
+          source: "friend",
+          player_1: "Alice",
+          player_2: "Bob",
+          time_control: "3+2",
+          tournament: ordinary ? null : "awc2026",
+          ratings_are_per_game: true,
+          p1_before_rating: 1900,
+          p1_after_rating: 1905,
+          p1_before_rd: 50,
+          p1_after_rd: 50,
+          p2_before_rating: 1950,
+          p2_after_rating: 1945,
+          p2_before_rd: 50,
+          p2_after_rd: 50,
+        },
+      });
+    }
+    if (params.get("resource") === "matches") {
+      const ordinary = params.get("matchId") === "ordinary-match";
+      return route.fulfill({
+        json: {
+          rows: ordinary
+            ? []
+            : [
+                {
+                  match_id: "score-match",
+                  mode: "blitz",
+                  player_1: "Alice",
+                  player_2: "Bob",
+                  start_ts: 1_700_000_000_000,
+                  time_control: "3+2",
+                  source: "friend",
+                  tournament_id: "awc2026",
+                  games,
+                },
+              ],
+          total: ordinary ? 0 : 1,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        },
+      });
+    }
+    return route.fulfill({ json: [] });
+  });
+  await page.goto("/game/score-9");
+  const details = page.getByRole("complementary", { name: "Game details", exact: true });
+  await expect(details.getByLabel("Alice: 5 match points", { exact: true })).toBeVisible();
+  await expect(details.getByRole("img", { name: "Match clinched" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Next game, game 10", exact: true }).click();
+  await expect(details.getByLabel("Alice: 5.5 match points", { exact: true })).toBeVisible();
+  await expect(details.getByRole("img", { name: "Match clinched" })).toBeVisible();
+  await expect(details.getByText("1900", { exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(details.getByLabel("Bob: 4.5 match points", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Previous game, game 9", exact: true }).click();
+  await expect(details.getByRole("img", { name: "Match clinched" })).toHaveCount(0);
+  await page.goto("/game/ordinary-game");
+  await expect(details.getByText("1900", { exact: true })).toBeVisible();
+  await expect(details.getByLabel(/match points$/)).toHaveCount(0);
+});

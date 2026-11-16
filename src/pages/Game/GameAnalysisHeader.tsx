@@ -1,4 +1,4 @@
-import { faArrowLeft, faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faArrowRight, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -13,7 +13,8 @@ import { gameTerminationLabel } from "../../lib/games/termination";
 import { loadRawMatchById } from "../../lib/matches/data";
 import { buildExternalGameUrl } from "../../lib/matches/routes";
 import { getTournamentMatchLocation, getTournamentRouteId } from "../../lib/matches/tournaments";
-import { formatLocalDateTime } from "../../utils/formatters";
+import { tournamentGameScore } from "../../lib/matches/tournamentGameScore";
+import { formatLocalDateTime, formatScore } from "../../utils/formatters";
 
 const ratingForPlayer = (game: ArchiveGame, username: string) =>
   username === game.player_1
@@ -67,15 +68,53 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
   });
   const tournamentLocation = tournamentLocationQuery.data ?? null;
 
-  const player = (username: string, color: "white" | "black") => (
-    <div className="gameAnalysisPlayer">
-      <span className={`playerColorMarker ${color}`} aria-label={`${color} pieces`} />
-      <PlayerLink username={username} className="gameAnalysisPlayerName">
-        {username}
-      </PlayerLink>
-      <PlayerRating game={game} username={username} />
-    </div>
+  const matchQuery = useQuery({
+    queryKey: ["games", "match-crosstable", game.external_match_id],
+    queryFn: () => loadRawMatchById(game.external_match_id),
+    enabled: Boolean((tournamentLocation || game.tournament) && game.external_match_id),
+    staleTime: 10 * 60 * 1_000,
+  });
+  const isTournament = Boolean(
+    tournamentLocation || game.tournament || matchQuery.data?.tournament_id,
   );
+  const matchScore =
+    isTournament && matchQuery.data
+      ? tournamentGameScore(matchQuery.data, game.game_id, tournamentLocation?.match)
+      : null;
+
+  const player = (username: string, color: "white" | "black") => {
+    const score = matchScore?.scores.get(username.toLowerCase());
+    const clinched = matchScore?.clinchedBy === username.toLowerCase();
+    return (
+      <div
+        className={`gameAnalysisPlayer${matchScore ? " gameAnalysisPlayer--tournament" : ""}${clinched ? " gameAnalysisPlayer--clinched" : ""}`}
+      >
+        <span className={`playerColorMarker ${color}`} aria-label={`${color} pieces`} />
+        <PlayerLink username={username} className="gameAnalysisPlayerName">
+          {username}
+        </PlayerLink>
+        <PlayerRating game={game} username={username} />
+        {score !== undefined ? (
+          <span
+            className="gameAnalysisMatchScore"
+            aria-label={`${username}: ${formatScore(score)} match points`}
+            title={`Match score after game ${matchScore!.gameNumber}`}
+          >
+            {clinched ? (
+              <span
+                role="img"
+                aria-label="Match clinched"
+                title={`${username} clinched the match in this game`}
+              >
+                <FontAwesomeIcon icon={faCheck} aria-hidden="true" />
+              </span>
+            ) : null}
+            {formatScore(score)}
+          </span>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
     <header className="gameAnalysisHeader">

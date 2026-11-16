@@ -168,6 +168,56 @@
   padding: 2px 0;
 }
 
+.gameAnalysisPlayer--tournament {
+  padding: 6px;
+  row-gap: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.gameAnalysisPlayer--tournament .playerColorMarker {
+  grid-row: 1 / span 2;
+}
+
+.gameAnalysisPlayer--tournament .gameAnalysisPlayerName {
+  font-size: 14px;
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.gameAnalysisPlayer--tournament .gameAnalysisRating {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: start;
+}
+
+.gameAnalysisPlayer--tournament .gameAnalysisRating > span:first-child {
+  text-align: left;
+}
+
+.gameAnalysisMatchScore {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-width: 4ch;
+  color: var(--color-heading);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.gameAnalysisMatchScore [role="img"] {
+  color: var(--color-success);
+  font-size: 12px;
+}
+
+.gameAnalysisPlayer--clinched {
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+  box-shadow: inset 2px 0 var(--color-success);
+}
+
 .gameAnalysisPlayerName {
   min-width: 0;
   overflow: hidden;
@@ -1029,18 +1079,15 @@
 
 @media (min-width: 980px) {
   .analysisPage.gameAnalysisPage {
-    --game-details-width: clamp(
-      184px,
-      calc(22vw - 27px),
-      clamp(300px, calc(2.5vw + 270px), 330px)
-    );
+    --game-details-width: clamp(184px, calc(22vw - 27px), clamp(300px, calc(2.5vw + 270px), 330px));
     --game-controls-min: clamp(244px, calc(36vw - 102px), var(--board-layout-controls-width));
 
     width: min(
       100%,
       calc(
-        var(--analysis-board-size) + var(--game-details-width) + var(--board-layout-controls-width) +
-          2 * (var(--analysis-column-gap) + var(--board-layout-gutter))
+        var(--analysis-board-size) + var(--game-details-width) +
+          var(--board-layout-controls-width) + 2 *
+          (var(--analysis-column-gap) + var(--board-layout-gutter))
       )
     );
     grid-template-columns:
@@ -1122,6 +1169,10 @@
 
   .gameAnalysisPlayerName {
     line-height: var(--control-height-touch);
+  }
+
+  .gameAnalysisPlayer--tournament .gameAnalysisPlayerName {
+    line-height: 1.4;
   }
 
   .gameAnalysisGameNavigation {
