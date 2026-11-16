@@ -32,7 +32,7 @@ import {
   tournamentCatalogQueryOptions,
 } from "../../lib/matches/tournamentQueries";
 import {
-  getAdjacentTournamentMetas,
+  compareTournamentStartDates,
   getTournamentDecisiveMatch,
   getTournamentRouteId,
   isTournamentByeMatch,
@@ -1124,10 +1124,6 @@ const BracketTournamentPage = ({
     false,
   );
   const catalogQuery = useQuery(tournamentCatalogQueryOptions());
-  const adjacentTournaments = useMemo(
-    () => getAdjacentTournamentMetas(tournamentId, catalogQuery.data ?? []),
-    [catalogQuery.data, tournamentId],
-  );
   const bracketQuery = useQuery({
     ...tournamentBracketQueryOptions(tournamentId),
     enabled: Boolean(tournamentId),
@@ -1567,6 +1563,9 @@ const BracketTournamentPage = ({
 
   const heading = tournamentHeading(bracket);
   const seoTitle = bracket.title;
+  const tournamentYears = (catalogQuery.data ?? [bracket])
+    .filter((entry) => entry.seriesKey === bracket.seriesKey)
+    .sort(compareTournamentStartDates);
 
   return (
     <div className="tournamentPage">
@@ -1582,39 +1581,26 @@ const BracketTournamentPage = ({
             <Link className="tournamentBackLink" to="/tournaments">
               All tournaments
             </Link>
-            <div className="tournamentYearNav" aria-label="Tournament years">
-              {adjacentTournaments.previous ? (
-                <Link
-                  className="tournamentYearNavLink"
-                  to="/tournaments/$tournamentId/$tournamentTab"
-                  params={{
-                    tournamentId: getTournamentRouteId(adjacentTournaments.previous.id),
+            <select
+              className="tournamentYearSelect"
+              aria-label="Tournament year"
+              value={bracket.id}
+              onChange={(event) => {
+                void navigate({
+                  to: "/tournaments/$tournamentId/$tournamentTab",
+                  params: {
+                    tournamentId: getTournamentRouteId(event.target.value),
                     tournamentTab: activeStageKey,
-                  }}
-                >
-                  ← {adjacentTournaments.previous.year}
-                </Link>
-              ) : (
-                <span className="tournamentYearNavSpacer" aria-hidden="true" />
-              )}
-              <span className="tournamentYearNavCurrent" aria-current="page">
-                {bracket.year}
-              </span>
-              {adjacentTournaments.next ? (
-                <Link
-                  className="tournamentYearNavLink"
-                  to="/tournaments/$tournamentId/$tournamentTab"
-                  params={{
-                    tournamentId: getTournamentRouteId(adjacentTournaments.next.id),
-                    tournamentTab: activeStageKey,
-                  }}
-                >
-                  {adjacentTournaments.next.year} →
-                </Link>
-              ) : (
-                <span className="tournamentYearNavSpacer" aria-hidden="true" />
-              )}
-            </div>
+                  },
+                });
+              }}
+            >
+              {tournamentYears.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.year}
+                </option>
+              ))}
+            </select>
           </div>
           <h1>{heading}</h1>
           {bracket.startDate || bracket.timeControl || bracket.hostNames?.length ? (
@@ -1632,6 +1618,11 @@ const BracketTournamentPage = ({
               ) : null}
               {bracket.hostNames?.length ? (
                 <span className="tournamentHosts">Hosted by {bracket.hostNames.join(" · ")}</span>
+              ) : null}
+              {bracket.id === "awc2026" ? (
+                <Link className="tournamentBettingLink" to="/betting">
+                  Betting
+                </Link>
               ) : null}
             </div>
           ) : null}

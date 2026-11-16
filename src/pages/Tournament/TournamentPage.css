@@ -120,46 +120,23 @@
   scroll-margin-top: 18px;
 }
 
-.tournamentYearNav {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.tournamentYearNavLink,
-.tournamentYearNavSpacer {
-  min-width: 78px;
-}
-
-.tournamentYearNavCurrent {
-  min-width: 72px;
-  color: var(--color-heading);
-  font-size: 1rem;
-  letter-spacing: 0.02em;
-}
-
-.tournamentYearNavLink {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.tournamentYearSelect {
+  min-height: 44px;
   padding: 8px 12px;
   border-radius: 6px;
   border: 1px solid var(--color-border);
   background: var(--color-panel-strong);
   color: var(--color-muted);
-  font-size: 0.95rem;
-  font-weight: 650;
-  text-decoration: none;
+  font-size: 1rem;
+  cursor: pointer;
   transition:
     border-color 160ms ease,
     background 160ms ease,
     color 160ms ease;
 }
 
-.tournamentYearNavLink:hover,
-.tournamentYearNavLink:focus-visible {
+.tournamentYearSelect:hover,
+.tournamentYearSelect:focus-visible {
   border-color: color-mix(in srgb, var(--tournament-gold) 34%, var(--color-border));
   background: color-mix(in srgb, var(--tournament-gold) 7%, var(--color-panel-strong));
   color: var(--color-heading);
@@ -418,7 +395,7 @@ a.tournamentGroupHistoryChip:focus-visible {
   inline-size: 100%;
   min-inline-size: 0;
   max-inline-size: 100%;
-  font-size: clamp(1.8rem, 3.2vw, 2.65rem);
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
   line-height: 1;
   letter-spacing: -0.035em;
   overflow-wrap: anywhere;
@@ -447,7 +424,7 @@ a.tournamentGroupHistoryChip:focus-visible {
   border-left: 1px solid var(--color-border);
   color: var(--color-heading);
   font-size: 0.92rem;
-  font-weight: 650;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   line-height: 1.25;
 }
@@ -455,6 +432,26 @@ a.tournamentGroupHistoryChip:focus-visible {
 .tournamentHosts {
   color: var(--color-muted);
   font-weight: 500;
+}
+
+.tournamentBettingLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-left: 10px;
+  border-left: 1px solid var(--color-border);
+  color: var(--color-primary);
+  font-size: 0.92rem;
+  text-underline-offset: 3px;
+}
+
+.tournamentBettingLink:hover {
+  color: var(--color-heading);
+}
+
+.tournamentBettingLink:focus-visible {
+  outline: 2px solid var(--color-primary-ring);
+  outline-offset: 2px;
 }
 
 @media (max-width: 640px) {
@@ -465,7 +462,7 @@ a.tournamentGroupHistoryChip:focus-visible {
 
   .tournamentPageHeroCopy h1 {
     inline-size: min(100%, calc(100vw - 72px));
-    font-size: clamp(1.65rem, 8vw, 2.05rem);
+    font-size: clamp(1.5rem, 6.4vw, 1.75rem);
     line-height: 1.08;
   }
 
