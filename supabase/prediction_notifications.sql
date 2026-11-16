@@ -71,7 +71,7 @@ declare
   market_path text;
   winner_label text;
   result_label text;
-  score_row record;
+  score_row public.tournament_matches%rowtype;
   winner_score_label text;
   loser_score_label text;
   payout_amount numeric(18, 6);
@@ -95,7 +95,7 @@ begin
     winner_label := upper(left(winner_label, 1)) || substr(winner_label, 2);
 
     if market_row.outcome_yes_label is not null and market_row.outcome_no_label is not null then
-      select match.p1, match.p2, match.s1, match.s2
+      select match.*
       into score_row
       from public.tournament_matches match
       where (
