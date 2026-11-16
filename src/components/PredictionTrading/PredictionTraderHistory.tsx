@@ -34,6 +34,7 @@ export const PredictionTraderHistory = ({
   onBack: () => void;
 }) => {
   const history = useQuery(predictionTraderHistoryQueryOptions(definition.id, username));
+  const totalPnl = history.data?.at(-1)?.runningPnl ?? 0;
   const back = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     back.current?.focus();
@@ -55,47 +56,58 @@ export const PredictionTraderHistory = ({
       ) : history.data.length === 0 ? (
         <InlineState kind="empty">No transactions on this strike.</InlineState>
       ) : (
-        <DataTable className="predictionTraderHistoryTable">
-          <caption>Transactions for {username}</caption>
-          <thead>
-            <tr>
-              <th scope="col">Time</th>
-              <th scope="col">Action</th>
-              <th scope="col">Selection</th>
-              <th scope="col">Avg. price</th>
-              <th scope="col">Quantity</th>
-              <th scope="col">P&amp;L change</th>
-              <th scope="col">Running P&amp;L</th>
-            </tr>
-          </thead>
-          <tbody>
-            {history.data.map((row) => (
-              <tr key={row.id}>
-                <td>
-                  <time dateTime={row.createdAt}>{formatLocalDateTime(row.createdAt)}</time>
-                </td>
-                <td>{actionLabels[row.action]}</td>
-                <td data-outcome={row.outcome ?? undefined}>
-                  {row.outcome
-                    ? predictionOutcomeLabel(definition, row.outcome)
-                    : row.action === "sell"
-                      ? "Both sides"
-                      : "—"}
-                </td>
-                <td>
-                  {row.averagePriceCents === null
-                    ? "—"
-                    : `${formatCoinValue(row.averagePriceCents)}¢`}
-                </td>
-                <td>{row.quantity === null ? "—" : formatCoinValue(row.quantity)}</td>
-                <td data-pnl={Math.sign(row.pnlChange)}>{pnl(row.pnlChange)}</td>
-                <td data-pnl={Math.sign(row.runningPnl)}>
-                  <strong>{pnl(row.runningPnl)}</strong>
+        <>
+          <p className="predictionHistoryTotal">
+            Total P&amp;L <strong data-pnl={Math.sign(totalPnl)}>{pnl(totalPnl)}</strong>
+          </p>
+          <DataTable className="predictionTraderHistoryTable">
+            <caption>Transactions for {username}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Time</th>
+                <th scope="col">Action</th>
+                <th scope="col">Selection</th>
+                <th scope="col">Avg. price</th>
+                <th scope="col">Quantity</th>
+                <th scope="col">P&amp;L change</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.data.map((row) => (
+                <tr key={row.id}>
+                  <td>
+                    <time dateTime={row.createdAt}>{formatLocalDateTime(row.createdAt)}</time>
+                  </td>
+                  <td>{actionLabels[row.action]}</td>
+                  <td data-outcome={row.outcome ?? undefined}>
+                    {row.outcome
+                      ? predictionOutcomeLabel(definition, row.outcome)
+                      : row.action === "sell"
+                        ? "Both sides"
+                        : "—"}
+                  </td>
+                  <td>
+                    {row.averagePriceCents === null
+                      ? "—"
+                      : `${formatCoinValue(row.averagePriceCents)}¢`}
+                  </td>
+                  <td>{row.quantity === null ? "—" : formatCoinValue(row.quantity)}</td>
+                  <td data-pnl={Math.sign(row.pnlChange)}>{pnl(row.pnlChange)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th scope="row" colSpan={5}>
+                  Total P&amp;L
+                </th>
+                <td data-pnl={Math.sign(totalPnl)}>
+                  <strong>{pnl(totalPnl)}</strong>
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </DataTable>
+            </tfoot>
+          </DataTable>
+        </>
       )}
     </section>
   );

@@ -236,9 +236,9 @@ test("completed strike opens on P&L and loads chart history only when selected",
   const transactions = dialog.getByRole("table", { name: "Transactions for e2e-player" });
   await expect(
     transactions.getByRole("columnheader", { name: "Running P&L", exact: true }),
-  ).toBeVisible();
-  await expect(transactions.getByRole("row")).toHaveCount(4);
+  ).toHaveCount(0);
   await expect(transactions.getByRole("row").last()).toContainText("+8.85");
+  await expect(dialog.getByText("+8.85", { exact: true })).toHaveCount(2);
   await dialog.getByRole("button", { name: "← P&L", exact: true }).click();
   const transactionButton = dialog.getByRole("button", {
     name: "View transactions for e2e-player",
