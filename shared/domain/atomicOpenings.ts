@@ -197,7 +197,21 @@ export const atomicOpenings: readonly Opening[] = [
     ],
   },
   taggedOpening("Nf3 Na3", "1. Nf3 f6 2. Na3", 7),
-  taggedOpening("Nf3 d4", "1. Nf3 f6 2. d4", 6),
+  {
+    ...taggedOpening("Nf3 d4", "1. Nf3 f6 2. d4", 6),
+    branches: [
+      {
+        id: "nf3-d4-e6",
+        reply: "2…e6",
+        lines: [
+          { name: "3. Bh6", pgn: "1. Nf3 f6 2. d4 e6 3. Bh6" },
+          { name: "3. d5", pgn: "1. Nf3 f6 2. d4 e6 3. d5" },
+          { name: "3. Na3", pgn: "1. Nf3 f6 2. d4 e6 3. Na3" },
+          { name: "3. e4", pgn: "1. Nf3 f6 2. d4 e6 3. e4" },
+        ],
+      },
+    ],
+  },
   {
     ...taggedOpening("Nf3 Nd4", nf3Nd4, 1),
     branches: [
@@ -248,9 +262,34 @@ export const atomicOpenings: readonly Opening[] = [
       },
     ],
   },
-  taggedOpening("Nh3 e3", "1. Nh3 h6 2. e3", 4),
+  {
+    ...taggedOpening("Nh3 e3", "1. Nh3 h6 2. e3", 4),
+    branches: [
+      {
+        id: "nh3-e3-e6",
+        reply: "2…e6",
+        lines: [
+          { name: "3. Nc3", pgn: "1. Nh3 h6 2. e3 e6 3. Nc3" },
+          { name: "3. Nf4", pgn: "1. Nh3 h6 2. e3 e6 3. Nf4" },
+        ],
+      },
+    ],
+  },
   taggedOpening("Nh3 Na3", "1. Nh3 h6 2. Na3", 8),
-  taggedOpening("Nh3 Nc3", "1. Nh3 h6 2. Nc3", 2),
+  {
+    ...taggedOpening("Nh3 Nc3", "1. Nh3 h6 2. Nc3", 2),
+    branches: [
+      {
+        id: "nh3-nc3-e6",
+        reply: "2…e6",
+        lines: [
+          { name: "3. d4", pgn: "1. Nh3 h6 2. Nc3 e6 3. d4" },
+          { name: "3. e3", pgn: "1. Nh3 h6 2. Nc3 e6 3. e3" },
+          { name: "3. Nb5", pgn: "1. Nh3 h6 2. Nc3 e6 3. Nb5" },
+        ],
+      },
+    ],
+  },
   taggedOpening("Nh3 e6", "1. Nh3 e6"),
   taggedOpening("e3 Nc3", "1. e3 e6 2. Nc3", 5),
   taggedOpening("e3 Nf3", "1. e3 e6 2. Nf3"),
