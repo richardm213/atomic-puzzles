@@ -204,7 +204,16 @@ describe("betting function", () => {
 
   it("returns one accounting row per trader for exited trades and netted holdings", async () => {
     const rows: Record<string, unknown[]> = {
-      prediction_positions: [],
+      prediction_positions: [
+        {
+          market_id: "strike",
+          username: "switched",
+          outcome: "no",
+          quantity: 1000,
+          reserved_quantity: 0,
+          updated_at: "2026-11-14T02:00:00Z",
+        },
+      ],
       prediction_position_credits: [],
       prediction_fills: [
         {

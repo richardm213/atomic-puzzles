@@ -7,12 +7,8 @@ import {
   SHOP_ITEM_COSTS,
   SHOP_REOPENS_AT,
 } from "../../../shared/domain/coins";
-import {
-  type PredictionPositionFill,
-  type PredictionPositionNetting,
-  replayPredictionPosition,
-} from "../../../shared/domain/predictionAccounting";
 import { resolveCanonicalArchiveUsername } from "../../archive/aliases";
+import { loadPredictionPositions } from "../../lib/predictionPositions";
 import {
   authenticateRequest,
   identityResponse,
@@ -45,24 +41,6 @@ const leaderboardQueryPageSize = 1_000;
 const hiddenLeaderboardUsernames = new Set(["admin", "prediction_admin"]);
 
 type CoinAccountRow = { username: string; balance: number };
-type PredictionPositionRow = {
-  market_id: string;
-  username: string;
-  outcome: "yes" | "no";
-  quantity: number;
-};
-type PositionCreditRow = {
-  credited_at: string;
-  fee_coins?: number;
-  id: number;
-  market_id: string;
-  username: string;
-  outcome: "yes" | "no";
-  quantity: number;
-  price_cents: number;
-};
-type LeaderboardPredictionFill = PredictionPositionFill & { market_id: string };
-
 const loadAllLeaderboardRows = async <Row>(
   queryPage: (from: number, to: number) => PromiseLike<{ data: Row[] | null; error: unknown }>,
   errorMessage: string,
@@ -166,127 +144,19 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
   const unsettledMarketIds = unsettledMarkets.map((market) => market.id);
 
   if (unsettledMarketIds.length > 0) {
-    const [positions, fills, positionCredits, nettings, receipts] = await Promise.all([
-      loadAllLeaderboardRows<PredictionPositionRow>((from, to) => {
-        const query = supabase
-          .from("prediction_positions")
-          .select("market_id,username,outcome,quantity");
-        if (username) query.eq("username", username);
-        return query
-          .in("market_id", unsettledMarketIds)
-          .gt("quantity", 0)
-          .order("market_id")
-          .order("username")
-          .order("outcome")
-          .range(from, to);
-      }, "Unable to load coin rankings: prediction positions could not be read."),
-      loadAllLeaderboardRows<LeaderboardPredictionFill>((from, to) => {
-        const query = supabase
-          .from("prediction_fills")
-          .select(
-            "id,market_id,outcome,price_cents,quantity,buyer_username,seller_username,pair_key,maker_order_id,taker_order_id,created_at",
-          );
-        if (username) query.or(`buyer_username.eq.${username},seller_username.eq.${username}`);
-        return query.in("market_id", unsettledMarketIds).order("id").range(from, to);
-      }, "Unable to load coin rankings: prediction fills could not be read."),
-      loadAllLeaderboardRows<PositionCreditRow>((from, to) => {
-        const query = supabase
-          .from("prediction_position_credits")
-          .select(
-            "id,market_id,username,outcome,quantity,price_cents,credited_at,fee_coins,cost_coins",
-          );
-        if (username) query.eq("username", username);
-        return query.in("market_id", unsettledMarketIds).order("id").range(from, to);
-      }, "Unable to load coin rankings: prediction position credits could not be read."),
-      loadAllLeaderboardRows<PredictionPositionNetting & { market_id: string; username: string }>(
-        (from, to) => {
-          const query = supabase
-            .from("prediction_position_nettings")
-            .select("id,market_id,username,quantity,created_at");
-          if (username) query.eq("username", username);
-          return query.in("market_id", unsettledMarketIds).order("id").range(from, to);
-        },
-        "Unable to load coin rankings: prediction redemptions could not be read.",
-      ),
-      loadAllLeaderboardRows<{
-        username: string;
-        amount: number;
-        reason: string;
-        metadata: Record<string, unknown>;
-      }>((from, to) => {
-        const query = supabase
-          .from("coin_transactions")
-          .select("username,amount,reason,metadata")
-          .in("reason", [
-            "prediction_trade_fee",
-            "prediction_order_reserve",
-            "prediction_trade_credit",
-          ])
-          .in("metadata->>marketId", unsettledMarketIds);
-        if (username) query.eq("username", username);
-        return query.order("id").range(from, to);
-      }, "Unable to load coin rankings: trading costs could not be read."),
-    ]);
-
-    const fillsByOwner = new Map<string, LeaderboardPredictionFill[]>();
-    for (const fill of fills) {
-      for (const owner of new Set([fill.buyer_username, fill.seller_username])) {
-        if (!owner || owner === "prediction_admin" || (username && owner !== username)) continue;
-        const key = `${fill.market_id}:${owner}`;
-        const rows = fillsByOwner.get(key) ?? [];
-        rows.push(fill);
-        fillsByOwner.set(key, rows);
-      }
-    }
-    const creditsByOwner = new Map<string, PositionCreditRow[]>();
-    const nettingsByOwner = new Map<string, PredictionPositionNetting[]>();
-    for (const credit of positionCredits) {
-      const key = `${credit.market_id}:${credit.username}`;
-      const rows = creditsByOwner.get(key) ?? [];
-      rows.push(credit);
-      creditsByOwner.set(key, rows);
-    }
-    for (const netting of nettings) {
-      const key = `${netting.market_id}:${netting.username}`;
-      const rows = nettingsByOwner.get(key) ?? [];
-      rows.push(netting);
-      nettingsByOwner.set(key, rows);
-    }
-    const receiptsByOwner = new Map<string, typeof receipts>();
-    for (const receipt of receipts) {
-      const key = `${String(receipt.metadata.marketId)}:${receipt.username}`;
-      const rows = receiptsByOwner.get(key) ?? [];
-      rows.push(receipt);
-      receiptsByOwner.set(key, rows);
-    }
-    const costsByMarketAndUser = new Map<
-      string,
-      ReturnType<typeof replayPredictionPosition>["positions"]
-    >();
+    const positions = await loadPredictionPositions(supabase, unsettledMarketIds, username, {
+      verifyHoldings: true,
+    });
     for (const position of positions) {
-      // Liquidity is seeded directly for the internal market-maker account and is
-      // intentionally excluded from public rankings.
-      if (position.username === "prediction_admin") continue;
-      const ownerKey = `${position.market_id}:${position.username}`;
-      let costs = costsByMarketAndUser.get(ownerKey);
-      if (!costs) {
-        costs = replayPredictionPosition({
-          username: position.username,
-          fills: fillsByOwner.get(ownerKey) ?? [],
-          credits: creditsByOwner.get(ownerKey) ?? [],
-          nettings: nettingsByOwner.get(ownerKey) ?? [],
-          receipts: receiptsByOwner.get(ownerKey) ?? [],
-        }).positions;
-        costsByMarketAndUser.set(ownerKey, costs);
-      }
-      const traded = costs[position.outcome];
-      if (Math.abs(traded.quantity - position.quantity) > 0.000001) {
-        throw new Error("Unable to load coin rankings: prediction position history is incomplete.");
-      }
-      const positionCostCents = traded.costCents;
-      addAmount(openBetCosts, position.username, positionCostCents / 100);
+      if (position.quantity > 0 && position.average_price_cents !== null)
+        addAmount(
+          openBetCosts,
+          position.username,
+          (position.quantity * position.average_price_cents) / 100,
+        );
     }
   }
+
   const rankings = accounts
     .filter(
       (account) => username || !hiddenLeaderboardUsernames.has(account.username.toLowerCase()),

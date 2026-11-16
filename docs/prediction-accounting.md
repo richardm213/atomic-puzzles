@@ -10,7 +10,8 @@ The internal liquidity account is excluded from this trader rule.
 redemptions. Replay the recorded events rather than assuming old opposing purchases were netted:
 netting was introduced after some positions had already been sold. Same-transaction redemptions
 must follow the fills that funded them so remaining contracts retain their proper cost.
-Bet history and wallet summaries share this calculation. History emits one row per trader/strike,
+Bet history and wallet summaries share this calculation through
+`netlify/lib/predictionPositions.ts`, which also owns the paginated credit, trade and netting reads. History emits one row per trader/strike,
 including realized gain, rather than treating old settlement snapshots as current holdings.
 
 Cost is the weighted cost basis of the remaining shares, including their purchase fees. Selling

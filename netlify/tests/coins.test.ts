@@ -31,6 +31,7 @@ describe("coins function", () => {
         eq: vi.fn(),
         in: vi.fn(),
         gt: vi.fn(),
+        neq: vi.fn(),
         or: vi.fn(),
         order: vi.fn(),
         range: vi.fn(async () => ({
@@ -69,6 +70,7 @@ describe("coins function", () => {
       query.eq.mockReturnValue(query);
       query.in.mockReturnValue(query);
       query.gt.mockReturnValue(query);
+      query.neq.mockReturnValue(query);
       query.or.mockReturnValue(query);
       query.order.mockReturnValue(query);
       queries.set(table, query.eq);
@@ -174,43 +176,24 @@ describe("coins function", () => {
   });
 
   it("returns public coin rankings ordered by net worth", async () => {
-    const accountRange = vi.fn(async () => ({
-      data: [
-        { username: "admin", balance: 10_000 },
+    const rows: Record<string, unknown[]> = {
+      coin_accounts: [
+        { username: "admin", balance: 10000 },
         { username: "saver", balance: 1200 },
         { username: "bettor", balance: 850 },
       ],
-      error: null,
-    }));
-    const orderAccounts = vi.fn(() => ({ range: accountRange }));
-    const selectAccounts = vi.fn(() => ({ order: orderAccounts }));
-    const unsettledMarketRange = vi.fn(async () => ({
-      data: [{ id: "market-1" }],
-      error: null,
-    }));
-    const orderUnsettledMarkets = vi.fn(() => ({ range: unsettledMarketRange }));
-    const filterUnsettledMarkets = vi.fn(() => ({ order: orderUnsettledMarkets }));
-    const selectOpenMarkets = vi.fn(() => ({ in: filterUnsettledMarkets }));
-    const positionRange = vi.fn(async () => ({
-      data: [
-        { market_id: "market-1", username: "bettor", outcome: "yes", quantity: 150 },
+      prediction_markets: [{ id: "market-1" }],
+      prediction_positions: [
         {
           market_id: "market-1",
-          username: "prediction_admin",
-          outcome: "no",
-          quantity: 490,
+          username: "bettor",
+          outcome: "yes",
+          quantity: 150,
+          reserved_quantity: 0,
+          updated_at: "2026-10-02T00:00:00Z",
         },
       ],
-      error: null,
-    }));
-    const positionOrderOutcome = vi.fn(() => ({ range: positionRange }));
-    const positionOrderUsername = vi.fn(() => ({ order: positionOrderOutcome }));
-    const positionOrderMarket = vi.fn(() => ({ order: positionOrderUsername }));
-    const filterPositivePositions = vi.fn(() => ({ order: positionOrderMarket }));
-    const filterPositionMarkets = vi.fn(() => ({ gt: filterPositivePositions }));
-    const selectPositions = vi.fn(() => ({ in: filterPositionMarkets }));
-    const fillRange = vi.fn(async () => ({
-      data: [
+      prediction_fills: [
         {
           id: 10,
           taker_order_id: 7,
@@ -221,7 +204,7 @@ describe("coins function", () => {
           buyer_username: "bettor",
           seller_username: null,
           pair_key: null,
-          created_at: "2026-10-01T00:00:00.000Z",
+          created_at: "2026-10-01T00:00:00Z",
         },
         {
           id: 11,
@@ -232,18 +215,11 @@ describe("coins function", () => {
           buyer_username: "bettor",
           seller_username: null,
           pair_key: null,
-          created_at: "2026-10-02T00:00:00.000Z",
+          created_at: "2026-10-02T00:00:00Z",
         },
       ],
-      error: null,
-    }));
-    const orderFills = vi.fn(() => ({ range: fillRange }));
-    const filterFillMarkets = vi.fn(() => ({ order: orderFills }));
-    const selectFills = vi.fn(() => ({ in: filterFillMarkets }));
-    const creditRange = vi.fn(async () => ({
-      data: [
+      prediction_position_credits: [
         {
-          credited_at: "2026-09-01T00:00:00.000Z",
           id: 2,
           market_id: "market-1",
           username: "bettor",
@@ -251,82 +227,63 @@ describe("coins function", () => {
           quantity: 100,
           price_cents: 50,
           fee_coins: 2,
+          credited_at: "2026-09-01T00:00:00Z",
         },
       ],
-      error: null,
-    }));
-    const orderCredits = vi.fn(() => ({ range: creditRange }));
-    const filterCreditMarkets = vi.fn(() => ({ order: orderCredits }));
-    const selectCredits = vi.fn(() => ({ in: filterCreditMarkets }));
-    const selectNettings = vi.fn(() => ({
-      in: () => ({
-        order: () => ({
-          range: async () => ({
-            data: [
-              {
-                id: 1,
-                market_id: "market-1",
-                username: "bettor",
-                quantity: 50,
-                created_at: "2026-10-02T00:00:00.000Z",
-              },
-            ],
+      prediction_position_nettings: [
+        {
+          id: 1,
+          market_id: "market-1",
+          username: "bettor",
+          quantity: 50,
+          created_at: "2026-10-02T00:00:00Z",
+        },
+      ],
+      coin_transactions: [
+        {
+          username: "bettor",
+          reason: "prediction_order_reserve",
+          amount: -51,
+          metadata: { marketId: "market-1", orderId: 7, fee: 1 },
+          created_at: "2026-10-01T00:00:00Z",
+        },
+      ],
+    };
+    mocks.createClient.mockReturnValue({
+      from: (table: string) => {
+        const query = {
+          select: () => query,
+          eq: () => query,
+          in: () => query,
+          gt: () => query,
+          neq: () => query,
+          order: () => query,
+          range: async (from: number, to: number) => ({
+            data: (rows[table] ?? []).slice(from, to + 1),
             error: null,
           }),
-        }),
-      }),
-    }));
-    const selectReceipts = () => ({
-      in: () => ({
-        in: () => ({
-          order: () => ({
-            range: async () => ({
-              data: [
-                {
-                  username: "bettor",
-                  reason: "prediction_order_reserve",
-                  amount: -51,
-                  metadata: { marketId: "market-1", orderId: 7, fee: 1 },
-                },
-              ],
-              error: null,
-            }),
-          }),
-        }),
-      }),
+        };
+        return query;
+      },
     });
-    const from = vi.fn((table: string) => ({
-      select:
-        table === "coin_accounts"
-          ? selectAccounts
-          : table === "prediction_markets"
-            ? selectOpenMarkets
-            : table === "prediction_positions"
-              ? selectPositions
-              : table === "prediction_fills"
-                ? selectFills
-                : table === "prediction_position_nettings"
-                  ? selectNettings
-                  : table === "coin_transactions"
-                    ? selectReceipts
-                    : selectCredits,
-    }));
-    mocks.createClient.mockReturnValue({ from });
-
     const response = await handler({
       httpMethod: "POST",
       headers: {},
       body: JSON.stringify({ action: "leaderboard" }),
     });
-
     expect(response.statusCode).toBe(200);
-    expect(from).toHaveBeenCalledWith("coin_accounts");
-    expect(selectAccounts).toHaveBeenCalledWith("username,balance");
-    expect(filterUnsettledMarkets).toHaveBeenCalledWith("status", ["open", "closed"]);
     expect(JSON.parse(response.body).result).toEqual([
       { username: "saver", netWorth: 1200, balance: 1200, inBets: 0 },
       { username: "bettor", netWorth: 927.25, balance: 850, inBets: 77.25 },
     ]);
+    rows.prediction_positions = [];
+    const inconsistent = await handler({
+      httpMethod: "POST",
+      headers: {},
+      body: JSON.stringify({ action: "leaderboard" }),
+    });
+    expect(inconsistent.statusCode).toBe(500);
+    expect(JSON.parse(inconsistent.body).code).toBe("internal_error");
   });
 
   it("returns a bounded, filtered public transaction feed without source keys", async () => {

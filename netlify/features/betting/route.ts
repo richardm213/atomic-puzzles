@@ -5,8 +5,6 @@ import {
   type PredictionPositionCredit,
   type PredictionPositionFill,
   type PredictionPositionNetting,
-  predictionTradingFee,
-  replayPredictionPosition,
 } from "../../../shared/domain/predictionAccounting";
 import {
   buildPredictionPriceHistory,
@@ -18,6 +16,12 @@ import {
   type PredictionHistoryReceipt,
 } from "../../../shared/domain/predictionTraderHistory";
 import { voteValueSchema } from "../../../shared/domain/voting";
+import {
+  loadPredictionPositions,
+  predictionFillColumns,
+  type PredictionHistoryRow,
+  readPredictionRows,
+} from "../../lib/predictionPositions";
 import {
   authenticateRequest,
   identityResponse,
@@ -152,11 +156,6 @@ const exchangeMarketColumns = [
   "sportsbook_volume_coins",
   "exchange_volume_coins",
 ].join(",");
-const exchangeMarketColumnsWithoutStoredVolume = exchangeMarketColumns
-  .split(",")
-  .filter((column) => column !== "exchange_volume_coins")
-  .join(",");
-
 const exchangeOrderColumns = [
   "id",
   "market_id",
@@ -171,20 +170,6 @@ const exchangeOrderColumns = [
   "expires_at",
   "created_at",
   "updated_at",
-].join(",");
-
-const exchangeFillColumns = [
-  "id",
-  "market_id",
-  "outcome",
-  "price_cents",
-  "quantity",
-  "buyer_username",
-  "seller_username",
-  "pair_key",
-  "maker_order_id",
-  "taker_order_id",
-  "created_at",
 ].join(",");
 
 type ExchangeMarketRow = {
@@ -213,21 +198,6 @@ type ExchangeOrderRow = PredictionBookOrder & {
 };
 
 type ExchangeFillRow = PredictionPositionFill & { market_id: string };
-type ExchangePositionRow = {
-  market_id: string;
-  outcome: "yes" | "no";
-  quantity: number;
-  reserved_quantity: number;
-  updated_at: string;
-};
-type PublicPredictionPositionRow = ExchangePositionRow & { username: string };
-type PositionCreditRow = {
-  market_id: string;
-  outcome: "yes" | "no";
-  quantity: number;
-  price_cents: number;
-};
-type PublicPositionCreditRow = PositionCreditRow & { username: string };
 
 const groupByMarketId = <Row extends { market_id: string }>(rows: readonly Row[]) => {
   const grouped = new Map<string, Row[]>();
@@ -246,7 +216,7 @@ const loadPredictionMarketStates = async (
 ) => {
   const marketIds = [...new Set(requestedMarketIds)];
   if (!marketIds.length) return [];
-  const [initialMarketResult, bookOrdersResult, fillsResult] = await Promise.all([
+  const [marketResult, bookOrdersResult, fillsResult] = await Promise.all([
     supabase.from("prediction_markets").select(exchangeMarketColumns).in("id", marketIds),
     supabase
       .from("prediction_orders")
@@ -257,19 +227,12 @@ const loadPredictionMarketStates = async (
       .limit(10_000),
     supabase
       .from("prediction_fills")
-      .select(exchangeFillColumns)
+      .select(predictionFillColumns)
       .in("market_id", marketIds)
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(Math.min(10_000, marketIds.length * 100)),
   ]);
-  const marketResult =
-    initialMarketResult.error?.message.includes("exchange_volume_coins") === true
-      ? await supabase
-          .from("prediction_markets")
-          .select(exchangeMarketColumnsWithoutStoredVolume)
-          .in("id", marketIds)
-      : initialMarketResult;
   if (marketResult.error)
     throw new Error(`Unable to load prediction markets: ${marketResult.error.message}`);
   if (bookOrdersResult.error)
@@ -284,7 +247,7 @@ const loadPredictionMarketStates = async (
   let userOrders: ExchangeOrderRow[] = [];
   if (username) {
     const [history, orders] = await Promise.all([
-      loadAllPredictionPositions(supabase, marketIds, username),
+      loadPredictionPositions(supabase, marketIds, username),
       supabase
         .from("prediction_orders")
         .select(exchangeOrderColumns)
@@ -306,16 +269,7 @@ const loadPredictionMarketStates = async (
     const marketRecentFills = (recentFillsByMarket.get(market.id) ?? []).slice(0, 100);
     const history = positionsByMarket.get(market.id) ?? [];
     return {
-      market:
-        market.exchange_volume_coins === undefined
-          ? {
-              ...market,
-              exchange_volume_coins: marketRecentFills.reduce(
-                (sum, fill) => sum + (fill.price_cents * fill.quantity) / 100,
-                0,
-              ),
-            }
-          : market,
+      market,
       book: buildPredictionBook(bookOrdersByMarket.get(market.id) ?? []),
       fills: marketRecentFills,
       positions: history.filter((position) => position.quantity > 0),
@@ -348,197 +302,6 @@ const loadExchangeMarketCatalog = async (supabase: ReturnType<typeof createServe
     .order("display_order", { ascending: true });
   if (error) throw new Error(`Unable to load prediction market catalog: ${error.message}`);
   return data ?? [];
-};
-
-type PredictionHistoryRow = PublicPredictionPositionRow & {
-  average_price_cents: number | null;
-  closed_cost_coins: number;
-  closed_proceeds_coins: number;
-  fees_coins: number;
-};
-
-type RowQuery = {
-  range: (
-    from: number,
-    to: number,
-  ) => PromiseLike<{
-    data: unknown[] | null;
-    error: { message: string } | null;
-  }>;
-};
-
-// PostgREST caps each response. Never silently lose older trades or sold-out positions.
-const readPredictionRows = async (query: () => RowQuery, label: string) => {
-  const rows: unknown[] = [];
-  for (let offset = 0; ; offset += 1000) {
-    const result = await query().range(offset, offset + 999);
-    if (result.error) throw new Error(`Unable to load ${label}: ${result.error.message}`);
-    rows.push(...(result.data ?? []));
-    if (!result.data || result.data.length < 1000) return rows;
-  }
-};
-
-const loadAllPredictionPositions = async (
-  supabase: ReturnType<typeof createServerSupabase>,
-  marketIds?: readonly string[],
-  username?: string,
-): Promise<PredictionHistoryRow[]> => {
-  const positionQuery = () => {
-    let query = supabase
-      .from("prediction_positions")
-      .select("market_id,username,outcome,quantity,reserved_quantity,updated_at")
-      .gt("quantity", 0)
-      .neq("username", "prediction_admin")
-      .order("market_id")
-      .order("username")
-      .order("outcome");
-    if (marketIds) query = query.in("market_id", [...marketIds]);
-    if (username) query = query.eq("username", username);
-    return query;
-  };
-  const nettingQuery = () => {
-    let query = supabase
-      .from("prediction_position_nettings")
-      .select("id,market_id,username,quantity,created_at")
-      .order("id");
-    if (marketIds) query = query.in("market_id", [...marketIds]);
-    if (username) query = query.eq("username", username);
-    return query;
-  };
-  const fillQuery = () => {
-    let query = supabase.from("prediction_fills").select(exchangeFillColumns).order("id");
-    if (marketIds) query = query.in("market_id", [...marketIds]);
-    if (username) query = query.or(`buyer_username.eq.${username},seller_username.eq.${username}`);
-    return query;
-  };
-  const creditQuery = () => {
-    let query = supabase
-      .from("prediction_position_credits")
-      .select("market_id,username,outcome,quantity,price_cents,credited_at,fee_coins,cost_coins")
-      .order("id");
-    if (marketIds) query = query.in("market_id", [...marketIds]);
-    if (username) query = query.eq("username", username);
-    return query;
-  };
-  const feeQuery = () => {
-    let query = supabase
-      .from("coin_transactions")
-      .select("username,amount,reason,metadata,created_at")
-      .in("reason", ["prediction_trade_fee", "prediction_order_reserve", "prediction_trade_credit"])
-      .neq("username", "prediction_admin")
-      .order("id");
-    if (marketIds) query = query.in("metadata->>marketId", [...marketIds]);
-    if (username) query = query.eq("username", username);
-    return query;
-  };
-  const [rawPositions, rawFills, rawCredits, rawNettings, rawFees] = await Promise.all([
-    readPredictionRows(positionQuery, "prediction positions"),
-    readPredictionRows(fillQuery, "prediction trades"),
-    readPredictionRows(creditQuery, "prediction position credits"),
-    readPredictionRows(nettingQuery, "prediction pair redemptions"),
-    readPredictionRows(feeQuery, "prediction trading fees"),
-  ]);
-  type Owner = {
-    marketId: string;
-    username: string;
-    fills: PredictionPositionFill[];
-    credits: PredictionPositionCredit[];
-    nettings: PredictionPositionNetting[];
-    receipts: { reason: string; amount: number; metadata: Record<string, unknown> }[];
-    feeDate: string;
-    reserved: Partial<Record<"yes" | "no", number>>;
-  };
-  const owners = new Map<string, Owner>();
-  const ownerFor = (marketId: string, name: string | null): Owner | undefined => {
-    const ownerName = name?.toLowerCase();
-    if (!ownerName || ownerName === "prediction_admin" || (username && ownerName !== username))
-      return undefined;
-    const key = `${marketId}:${ownerName}`;
-    let owner = owners.get(key);
-    if (!owner) {
-      owner = {
-        marketId,
-        username: ownerName,
-        fills: [],
-        credits: [],
-        nettings: [],
-        receipts: [],
-        feeDate: "",
-        reserved: {},
-      };
-      owners.set(key, owner);
-    }
-    return owner;
-  };
-  for (const position of rawPositions as PublicPredictionPositionRow[]) {
-    const owner = ownerFor(position.market_id, position.username);
-    if (owner) owner.reserved[position.outcome] = position.reserved_quantity;
-  }
-  for (const fill of rawFills as ExchangeFillRow[]) {
-    ownerFor(fill.market_id, fill.buyer_username)?.fills.push(fill);
-    if (fill.seller_username !== fill.buyer_username)
-      ownerFor(fill.market_id, fill.seller_username)?.fills.push(fill);
-  }
-  for (const credit of rawCredits as (PublicPositionCreditRow & { credited_at: string })[])
-    ownerFor(credit.market_id, credit.username)?.credits.push(credit);
-  for (const net of rawNettings as (PredictionPositionNetting & {
-    market_id: string;
-    username: string;
-  })[])
-    ownerFor(net.market_id, net.username)?.nettings.push(net);
-  for (const fee of rawFees as {
-    username: string;
-    amount: number;
-    reason: string;
-    metadata: { marketId?: string; fee?: number };
-    created_at: string;
-  }[]) {
-    if (!fee.metadata.marketId) continue;
-    const owner = ownerFor(fee.metadata.marketId, fee.username);
-    if (owner) {
-      owner.receipts.push(fee);
-      if (predictionTradingFee(fee) !== 0 && fee.created_at > owner.feeDate)
-        owner.feeDate = fee.created_at;
-    }
-  }
-  const history: PredictionHistoryRow[] = [];
-  for (const owner of owners.values()) {
-    // A reset removes its trades, not the immutable redemption/fee receipts. Those
-    // old redemptions no longer describe holdings in the reopened market.
-    const replay = replayPredictionPosition({
-      ...owner,
-      nettings: owner.fills.length || owner.credits.length ? owner.nettings : [],
-    });
-    if (replay.positions.yes.quantity > 0.000001 && replay.positions.no.quantity > 0.000001)
-      throw new Error("Prediction history contains unnetted holdings.");
-    const outcome =
-      replay.positions.yes.quantity > 0
-        ? "yes"
-        : replay.positions.no.quantity > 0
-          ? "no"
-          : replay.lastOutcome;
-    const position = replay.positions[outcome];
-    if (position.quantity === 0 && replay.closed.quantity === 0 && replay.unallocatedFees === 0)
-      continue;
-    history.push({
-      market_id: owner.marketId,
-      username: owner.username,
-      outcome,
-      quantity: position.quantity,
-      reserved_quantity: Math.min(position.quantity, owner.reserved[outcome] ?? 0),
-      updated_at: owner.feeDate > replay.updatedAt ? owner.feeDate : replay.updatedAt,
-      average_price_cents:
-        position.quantity > 0
-          ? position.costCents / position.quantity
-          : replay.closed.quantity > 0
-            ? replay.closed.costCents / replay.closed.quantity
-            : 0,
-      closed_cost_coins: replay.closed.costCents / 100,
-      closed_proceeds_coins: replay.closed.proceedsCents / 100,
-      fees_coins: replay.unallocatedFees,
-    });
-  }
-  return history;
 };
 
 export const bettingRoute = async (event: FunctionEvent) => {
@@ -578,7 +341,7 @@ export const bettingRoute = async (event: FunctionEvent) => {
         () =>
           supabase
             .from("prediction_fills")
-            .select(exchangeFillColumns)
+            .select(predictionFillColumns)
             .eq("market_id", marketId)
             .or(`buyer_username.eq.${username},seller_username.eq.${username}`)
             .order("id"),
@@ -676,7 +439,7 @@ export const bettingRoute = async (event: FunctionEvent) => {
   if (input.action === "bootstrap") {
     const [exchangeMarkets, allPredictionPositions] = await Promise.all([
       loadExchangeMarketCatalog(supabase),
-      loadAllPredictionPositions(supabase),
+      loadPredictionPositions(supabase),
     ]);
     const exchangeMarketStates = await loadPredictionMarketStates(
       supabase,
@@ -697,7 +460,7 @@ export const bettingRoute = async (event: FunctionEvent) => {
   }
 
   if (input.action === "predictionPositions") {
-    return identityResponse(identity, 200, { result: await loadAllPredictionPositions(supabase) });
+    return identityResponse(identity, 200, { result: await loadPredictionPositions(supabase) });
   }
 
   if (input.action === "exchangeMarketBatch") {
