@@ -103,6 +103,10 @@ const CoinRankingsPage = lazyRouteComponent(
   () => import("./pages/CoinRankings/CoinRankings"),
   "CoinRankingsPage",
 );
+const MarketAdminPage = lazyRouteComponent(
+  () => import("./pages/MarketAdmin/MarketAdmin"),
+  "MarketAdminPage",
+);
 const ShopRedemptionsPage = lazyRouteComponent(
   () => import("./pages/ShopRedemptions/ShopRedemptions"),
   "ShopRedemptionsPage",
@@ -705,6 +709,12 @@ const puzzleTestRoute = createRoute({
   component: PuzzleTestPage,
 });
 
+const marketAdminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/markets",
+  component: MarketAdminPage,
+});
+
 const shopRedemptionsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/shop-redemptions",
@@ -984,6 +994,7 @@ const routeTree = rootRoute.addChildren([
   coinRankingsRoute,
   puzzleTestRoute,
   shopRedemptionsRoute,
+  marketAdminRoute,
   gameAnalysesRoute,
   gameAnalysesFinishedRoute,
   legacyPuzzleLeaderboardRoute,

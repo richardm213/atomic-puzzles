@@ -316,6 +316,13 @@ const tournamentSeedsCache = new Map<string, Promise<Record<string, number>>>();
 const tournamentBracketCache = new Map<string, Promise<TournamentBracket | null>>();
 const tournamentCatalogCache = new Map<string, Promise<TournamentMeta[]>>();
 
+export const clearTournamentResultCaches = (): void => {
+  tournamentMatchesCache.clear();
+  tournamentPlayerHistoryCache.clear();
+  tournamentMatchLocationCache.clear();
+  tournamentBracketCache.clear();
+};
+
 const requestBracketData = <T>(
   tournamentId: string,
   cache: Map<string, Promise<T>>,

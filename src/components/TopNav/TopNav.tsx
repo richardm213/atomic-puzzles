@@ -8,12 +8,12 @@ import {
   faChevronLeft,
   faChevronRight,
   faClipboardCheck,
+  faCoins,
   faFlask,
   faGear,
   faListCheck,
   faRightFromBracket,
   faRightToBracket,
-  faTriangleExclamation,
   faTrophy,
   faUser,
   faXmark,
@@ -710,14 +710,14 @@ export const TopNav = () => {
                       </Link>
                       <Link
                         className="navProfileDropdownItem"
-                        to="/puzzles/issues"
+                        to="/admin/markets"
                         role="menuitem"
                         onClick={() => setOpenPanel(null)}
                       >
                         <span className="navProfileDropdownIcon" aria-hidden="true">
-                          <FontAwesomeIcon icon={faTriangleExclamation} />
+                          <FontAwesomeIcon icon={faCoins} />
                         </span>
-                        Puzzle issues
+                        Markets
                       </Link>
                       <Link
                         className="navProfileDropdownItem"

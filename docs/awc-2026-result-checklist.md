@@ -2,6 +2,18 @@
 
 Use this checklist whenever the user reports an AWC 2026 result.
 
+The admin **Markets** page (`/admin/markets`) handles these steps together. Select the match
+strike, enter the score, date and result type, review the automatic archive match and settlement
+preview, then click **Resolve and publish**. The guarded database transaction updates both bracket
+paths, event awards/rankings/entries, applicable match and championship markets, payouts and
+notifications. It saves a receipt and rolls everything back if verification fails. Retrying a
+completed request returns the receipt without paying again. Withdrawals use a fair trade price,
+or refund original holdings if there were no trades. Only explicitly allow an unlinked match
+when the archive is genuinely unavailable; link it after ingestion.
+
+The steps below also cover manual result updates. Do not rerun the points updater or send
+additional notifications after a successful admin-page settlement.
+
 1. **Record the result**
    - Update the exact `awc2026` row in the current Supabase database.
    - Store the exact score, match date, and outcome type.

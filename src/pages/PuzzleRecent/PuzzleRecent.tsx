@@ -317,6 +317,9 @@ export const PuzzleRecentPage = () => {
             </button>
           </div>
         </div>
+        <Link className="queueSecondaryButton" to="/puzzles/issues">
+          Puzzle issues
+        </Link>
         <Link className="queueSecondaryButton" to="/puzzles/review">
           Review queue
         </Link>
