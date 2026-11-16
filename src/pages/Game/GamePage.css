@@ -169,41 +169,20 @@
 }
 
 .gameAnalysisPlayer--tournament {
-  padding: 6px;
-  row-gap: 2px;
+  grid-template-columns: 14px minmax(0, 1fr) auto auto;
+  padding-inline: 6px;
   border-radius: var(--radius-sm);
 }
 
-.gameAnalysisPlayer--tournament .playerColorMarker {
-  grid-row: 1 / span 2;
-}
-
-.gameAnalysisPlayer--tournament .gameAnalysisPlayerName {
-  font-size: 14px;
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.gameAnalysisPlayer--tournament .gameAnalysisRating {
-  grid-column: 2;
-  grid-row: 2;
-  justify-self: start;
-}
-
-.gameAnalysisPlayer--tournament .gameAnalysisRating > span:first-child {
-  text-align: left;
-}
-
 .gameAnalysisMatchScore {
-  grid-column: 3;
-  grid-row: 1 / span 2;
+  grid-column: 4;
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
   min-width: 4ch;
   color: var(--color-heading);
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -1169,10 +1148,6 @@
 
   .gameAnalysisPlayerName {
     line-height: var(--control-height-touch);
-  }
-
-  .gameAnalysisPlayer--tournament .gameAnalysisPlayerName {
-    line-height: 1.4;
   }
 
   .gameAnalysisGameNavigation {
