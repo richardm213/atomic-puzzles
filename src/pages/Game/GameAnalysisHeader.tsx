@@ -13,8 +13,9 @@ import { gameTerminationLabel } from "../../lib/games/termination";
 import { loadRawMatchById } from "../../lib/matches/data";
 import { buildExternalGameUrl } from "../../lib/matches/routes";
 import { tournamentGameScore } from "../../lib/matches/tournamentGameScore";
-import { getTournamentMatchLocation, getTournamentRouteId } from "../../lib/matches/tournaments";
+import { getTournamentRouteId } from "../../lib/matches/tournaments";
 import { formatLocalDateTime, formatScore } from "../../utils/formatters";
+import { useGameTournament } from "./useGameTournament";
 
 const ratingForPlayer = (game: ArchiveGame, username: string) =>
   username === game.player_1
@@ -60,27 +61,11 @@ const PlayerRating = ({ game, username }: { game: ArchiveGame; username: string 
 
 export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
   const { white, black } = decodeGameResult(game);
-  const tournamentLocationQuery = useQuery({
-    queryKey: ["tournament-match-location", game.external_match_id],
-    queryFn: () => getTournamentMatchLocation(game.external_match_id),
-    enabled: Boolean(game.external_match_id),
-    staleTime: 10 * 60 * 1_000,
-  });
-  const tournamentLocation = tournamentLocationQuery.data ?? null;
-
-  const matchQuery = useQuery({
-    queryKey: ["games", "match-crosstable", game.external_match_id],
-    queryFn: () => loadRawMatchById(game.external_match_id),
-    enabled: Boolean((tournamentLocation || game.tournament) && game.external_match_id),
-    staleTime: 10 * 60 * 1_000,
-  });
-  const isTournament = Boolean(
-    tournamentLocation || game.tournament || matchQuery.data?.tournament_id,
-  );
+  const { tournamentLocation, match, isTournament } = useGameTournament(game);
   const matchScore =
-    isTournament && matchQuery.data
+    isTournament && match
       ? tournamentGameScore(
-          matchQuery.data,
+          match,
           game.game_id,
           tournamentLocation?.match,
           tournamentLocation?.tournament.seriesKey === "awc" ? 10 : undefined,

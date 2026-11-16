@@ -2,6 +2,7 @@ import { fetchArchiveJson } from "./client";
 import type { ArchiveMatchSource, ArchiveMode } from "./types";
 
 export type ArchiveGame = {
+  spectator_chat?: { username: string; text: string }[] | null;
   game_id: string;
   game_index: number;
   result: number;

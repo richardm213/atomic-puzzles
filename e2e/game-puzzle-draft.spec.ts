@@ -339,6 +339,15 @@ test("tournament game details show post-game scores and clear the clinch marker 
           player_2: "Bob",
           time_control: "3+2",
           tournament: ordinary ? null : "awc2026",
+          spectator_chat:
+            ordinary || index === 9
+              ? [
+                  { username: "SpectatorName", text: "<b>Great move!</b>" },
+                  { username: "Other", text: "Nice game" },
+                ]
+              : index === 10
+                ? []
+                : null,
           ratings_are_per_game: true,
           p1_before_rating: 1900,
           p1_after_rating: 1905,
@@ -379,10 +388,25 @@ test("tournament game details show post-game scores and clear the clinch marker 
     return route.fulfill({ json: [] });
   });
   await page.goto("/game/score-9");
+  const comments = page.getByRole("region", { name: "Spectator comments", exact: true });
+  await expect(comments.getByRole("listitem")).toHaveText([
+    "SpectatorName <b>Great move!</b>",
+    "Other Nice game",
+  ]);
+  await expect(comments.locator("b")).toHaveCount(0);
+  await expect(comments.getByRole("textbox")).toHaveCount(0);
+  await comments.getByRole("checkbox", { name: "Hide chat", exact: true }).check();
+  await expect(comments.getByRole("list")).toHaveCount(0);
+  await page.reload();
+  await expect(comments.getByRole("checkbox", { name: "Hide chat", exact: true })).toBeChecked();
+  await expect(comments.getByRole("list")).toHaveCount(0);
+  await comments.getByRole("checkbox", { name: "Hide chat", exact: true }).uncheck();
+  await expect(comments.getByRole("listitem")).toHaveCount(2);
   const details = page.getByRole("complementary", { name: "Game details", exact: true });
   await expect(details.getByLabel("Alice: 5 match points", { exact: true })).toBeVisible();
   await expect(details.getByRole("img", { name: "Match clinched" })).toHaveCount(0);
   await page.getByRole("link", { name: "Next game, game 10", exact: true }).click();
+  await expect(comments.getByText("No spectator comments.", { exact: true })).toBeVisible();
   await expect(details.getByLabel("Alice: 5.5 match points", { exact: true })).toBeVisible();
   await expect(details.getByRole("img", { name: "Match clinched" })).toBeVisible();
   await expect(details.getByText("1900", { exact: true })).toBeVisible();
@@ -390,7 +414,13 @@ test("tournament game details show post-game scores and clear the clinch marker 
   await expect(details.getByLabel("Bob: 4.5 match points", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Previous game, game 9", exact: true }).click();
   await expect(details.getByRole("img", { name: "Match clinched" })).toHaveCount(0);
+  await expect(comments.getByText("<b>Great move!</b>", { exact: true })).toBeVisible();
+  await page.goto("/game/score-8");
+  await expect(
+    comments.getByText("Spectator chat hasn’t been captured yet.", { exact: true }),
+  ).toBeVisible();
   await page.goto("/game/ordinary-game");
   await expect(details.getByText("1900", { exact: true })).toBeVisible();
   await expect(details.getByLabel(/match points$/)).toHaveCount(0);
+  await expect(comments).toHaveCount(0);
 });

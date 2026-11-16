@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { getArchiveClient } from "./client";
 import {
   decodePackedTimeline,
@@ -399,6 +401,30 @@ const queryMatches = async (params: URLSearchParams) => {
   };
 };
 
+const spectatorChatSchema = z.array(z.object({ username: z.string(), text: z.string() }));
+
+// Captures are optional while the archive importer rolls out the chat table.
+const querySpectatorChat = async (gameId: string) => {
+  try {
+    const result = await getArchiveClient().execute({
+      sql: "select messages from game_spectator_chat where game_id=? limit 1",
+      args: [gameId],
+    });
+    const raw = result.rows[0]?.messages;
+    return typeof raw === "string"
+      ? spectatorChatSchema.safeParse(JSON.parse(raw)).data ?? null
+      : null;
+  } catch (error) {
+    if (
+      error instanceof SyntaxError ||
+      (error instanceof Error &&
+        /no such table: (?:main\.)?game_spectator_chat\b/i.test(error.message))
+    )
+      return null;
+    throw error;
+  }
+};
+
 const queryGame = async (params: URLSearchParams) => {
   const schemaVersion = await getSchemaVersion();
   if (schemaVersion < 3) {
@@ -436,6 +462,7 @@ const queryGame = async (params: URLSearchParams) => {
   const gameRatings = ratingsWithMatchOrientation(row);
   return {
     ...normalized,
+    spectator_chat: await querySpectatorChat(gameId),
     ...(schemaVersion >= 7 ? decodePackedTimeline(timeline) : timelineWithValidatedLengths(row)),
     ratings_are_per_game: gameRatings !== null,
     p1_before_rating: gameRatings?.p1_before_rating ?? null,

@@ -96,6 +96,7 @@ import {
   fetchExplorerApiResponse,
 } from "../../utils/openingExplorer";
 import { GameAnalysisHeader, GameMatchNavigation } from "../Game/GameAnalysisHeader";
+import { GameComments } from "../Game/GameComments";
 import { GameComputerAnalysis, GameComputerAnalysisPlayers } from "../Game/GameComputerAnalysis";
 import { GameUnderboard, type GameUnderboardTab } from "../Game/GameUnderboard";
 import type { usePracticeSettings } from "../Practice/usePracticeSettings";
@@ -1381,6 +1382,7 @@ export const AnalysisPage = ({
       </aside>
       <GameMatchNavigation game={game} puzzleDraftOpen={Boolean(puzzleDraft)} />
       {puzzleConfirmation}
+      <GameComments game={game} />
     </div>
   ) : null;
 

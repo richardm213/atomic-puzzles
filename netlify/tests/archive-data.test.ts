@@ -8,7 +8,7 @@ vi.mock("@libsql/client/web", () => ({ createClient: mocks.createClient }));
 describe("archive-data function", () => {
   beforeEach(() => {
     vi.resetModules();
-    mocks.execute.mockReset();
+    mocks.execute.mockReset().mockResolvedValue({ rows: [] });
     mocks.createClient.mockReset();
     mocks.createClient.mockReturnValue({ execute: mocks.execute });
     process.env.TURSO_MATCHES_DATABASE_URL = "libsql://matches.test";
@@ -215,6 +215,49 @@ describe("archive-data function", () => {
     const game = JSON.parse(response.body);
     expect(game).toMatchObject(expected);
     expect(game).not.toHaveProperty("timeline");
+  });
+
+  it.each([
+    {
+      stored:
+        '[{"username":"SpectatorName","text":"Great move!"},{"username":"Other","text":"<b>plain text</b>"}]',
+      expected: [
+        { username: "SpectatorName", text: "Great move!" },
+        { username: "Other", text: "<b>plain text</b>" },
+      ],
+    },
+    { stored: "[]", expected: [] },
+    { stored: null, expected: null },
+    { stored: "{invalid json", expected: null },
+    { stored: '[{"username":"SpectatorName","text":42}]', expected: null },
+  ])(
+    "preserves spectator captures and distinguishes missing or invalid data: $stored",
+    async ({ stored, expected }) => {
+      mocks.execute
+        .mockResolvedValueOnce({ rows: [{ value: "7" }] })
+        .mockResolvedValueOnce({ rows: [{ game_id: "chat-game", timeline: null }] })
+        .mockResolvedValueOnce({ rows: stored === null ? [] : [{ messages: stored }] });
+      const { handler } = await import("../functions/archive-data");
+      const response = await handler({
+        queryStringParameters: { resource: "game", gameId: "chat-game" },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body).spectator_chat).toEqual(expected);
+      expect(mocks.execute.mock.calls[2]?.[0]).toMatchObject({ args: ["chat-game"] });
+    },
+  );
+
+  it("keeps games available before the spectator-chat table is installed", async () => {
+    mocks.execute
+      .mockResolvedValueOnce({ rows: [{ value: "7" }] })
+      .mockResolvedValueOnce({ rows: [{ game_id: "chat-game", timeline: null }] })
+      .mockRejectedValueOnce(new Error("SQLITE_ERROR: no such table: game_spectator_chat"));
+    const { handler } = await import("../functions/archive-data");
+    const response = await handler({
+      queryStringParameters: { resource: "game", gameId: "chat-game" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).spectator_chat).toBeNull();
   });
 
   it("returns the stored Atomic960 starting FEN for an archived game", async () => {
