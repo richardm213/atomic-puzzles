@@ -6,6 +6,7 @@ import {
   type PredictionOutcome,
 } from "../../../shared/domain/betting";
 import { formatPricePercentageValue } from "../../utils/formatters";
+import { idempotentRequest } from "../api/idempotentRequest";
 import { postApi } from "../api/postApi";
 
 export type {
@@ -503,35 +504,42 @@ const orderMutationSchema = z.object({
 export type PredictionOrderMutationResult = z.infer<typeof orderMutationSchema>["result"];
 
 export const placePredictionOrder = async ({
+  username,
   marketId,
   outcome,
   side,
   priceCents,
   quantity,
+  budgetCoins,
 }: {
+  username: string;
   marketId: PredictionMarketId;
   outcome: PredictionOutcome;
   side: PredictionOrderSide;
   priceCents: number;
   quantity: number;
+  budgetCoins?: number;
 }) => {
-  const response = await postApi(
-    "/api/betting",
-    {
-      action: "placeExchangeOrder",
-      marketId,
-      outcome,
-      side,
-      priceCents,
-      quantity,
-    },
-    {
-      schema: orderMutationSchema,
-      errorMessage: "Unable to place this order.",
-      invalidMessage: "The market returned invalid order details.",
+  return idempotentRequest(
+    `prediction-order:${username.toLowerCase()}:${JSON.stringify([marketId, outcome, side, ...(budgetCoins === undefined ? [priceCents, quantity] : ["budget", budgetCoins])])}`,
+    { marketId, outcome, side, priceCents, quantity },
+    async (requestId, original) => {
+      const response = await postApi(
+        "/api/betting",
+        {
+          action: "placeExchangeOrder",
+          requestId,
+          ...original,
+        },
+        {
+          schema: orderMutationSchema,
+          errorMessage: "Unable to place this order.",
+          invalidMessage: "The market returned invalid order details.",
+        },
+      );
+      return response.result;
     },
   );
-  return response.result;
 };
 
 export const cancelPredictionOrder = async (marketId: PredictionMarketId, orderId: number) => {

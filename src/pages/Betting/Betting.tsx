@@ -643,6 +643,7 @@ export const BettingPage = () => {
     )
       return;
     placePredictionMutation.mutate({
+      username,
       marketId: predictionSelection.marketId,
       outcome: predictionSelection.outcome,
       side: predictionSide,
@@ -666,11 +667,13 @@ export const BettingPage = () => {
     )
       return;
     placePredictionMutation.mutate({
+      username,
       marketId: predictionSelection.marketId,
       outcome: predictionSelection.outcome,
       side: "buy",
       priceCents: predictionPrice,
       quantity: predictionSportsbookQuantity,
+      budgetCoins: predictionStake,
     });
   };
 
@@ -1298,6 +1301,16 @@ export const BettingPage = () => {
                           placePredictionMutation.error,
                           "Unable to place this order.",
                         )}
+                        <button
+                          type="button"
+                          disabled={placePredictionMutation.variables?.username !== username}
+                          onClick={() => {
+                            if (placePredictionMutation.variables)
+                              placePredictionMutation.mutate(placePredictionMutation.variables);
+                          }}
+                        >
+                          Retry original order
+                        </button>
                       </InlineState>
                     ) : null}
                     {selectedPredictionRestriction ? (

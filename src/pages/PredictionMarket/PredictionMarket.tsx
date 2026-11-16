@@ -266,6 +266,7 @@ export const PredictionMarketPage = () => {
     if (!validPrice || !validQuantity || !hasSellInventory || !marketOpen || orderRestriction)
       return;
     placeMutation.mutate({
+      username,
       marketId: activeMarketId,
       outcome,
       side,
@@ -385,6 +386,15 @@ export const PredictionMarketPage = () => {
           {placeMutation.error ? (
             <InlineState kind="error">
               {getErrorMessage(placeMutation.error, "Unable to place this order.")}
+              <button
+                type="button"
+                disabled={placeMutation.variables?.username !== username}
+                onClick={() => {
+                  if (placeMutation.variables) placeMutation.mutate(placeMutation.variables);
+                }}
+              >
+                Retry original order
+              </button>
             </InlineState>
           ) : null}
           {successMessage ? <InlineState kind="success">{successMessage}</InlineState> : null}

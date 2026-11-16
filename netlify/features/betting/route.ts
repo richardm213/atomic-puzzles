@@ -69,6 +69,7 @@ const bodySchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("placeExchangeOrder"),
+    requestId: z.uuid(),
     marketId: exchangeMarketIdSchema,
     outcome: z.enum(["yes", "no"]),
     side: z.enum(["buy", "sell"]),
@@ -489,7 +490,8 @@ export const bettingRoute = async (event: FunctionEvent) => {
 
   const username = requireUsername(identity, "Log in with Lichess to use Atomic Coins for bets.");
   if (input.action === "placeExchangeOrder") {
-    const { data, error } = await supabase.rpc("place_prediction_order", {
+    const { data, error } = await supabase.rpc("place_prediction_order_once", {
+      p_request_id: input.requestId,
       p_username: username,
       p_market_id: input.marketId,
       p_outcome: input.outcome,
@@ -498,19 +500,57 @@ export const bettingRoute = async (event: FunctionEvent) => {
       p_quantity: input.quantity,
     });
     if (error) {
+      if (/request ID.*different parameters/i.test(error.message))
+        throw new HttpError(
+          409,
+          "This order request was already used for a different order.",
+          {},
+          "order_request_conflict",
+        );
       if (/not enough coins/i.test(error.message))
-        throw new HttpError(409, "You don’t have enough available Atomic Coins.");
+        throw new HttpError(
+          409,
+          "You don’t have enough available Atomic Coins.",
+          {},
+          "order_rejected",
+        );
       if (/not enough available contracts/i.test(error.message))
-        throw new HttpError(409, "You don’t have enough available contracts to sell.");
+        throw new HttpError(
+          409,
+          "You don’t have enough available contracts to sell.",
+          {},
+          "order_rejected",
+        );
       if (/would cross one of your open orders/i.test(error.message))
-        throw new HttpError(409, "This order would cross one of your existing open orders.");
+        throw new HttpError(
+          409,
+          "This order would cross one of your existing open orders.",
+          {},
+          "order_rejected",
+        );
       if (/bet against yourself/i.test(error.message))
-        throw new HttpError(400, "You can’t bet against yourself in the AWC champion market.");
+        throw new HttpError(
+          400,
+          "You can’t bet against yourself in the AWC champion market.",
+          {},
+          "order_rejected",
+        );
       if (/bet against your current awc opponent/i.test(error.message))
-        throw new HttpError(400, "You can’t bet against your current AWC opponent.");
+        throw new HttpError(
+          400,
+          "You can’t bet against your current AWC opponent.",
+          {},
+          "order_rejected",
+        );
       if (/only bet on yourself in your awc round of 16 market/i.test(error.message))
-        throw new HttpError(400, "You can only bet on yourself in your AWC Round of 16 market.");
-      if (/closed/i.test(error.message)) throw new HttpError(409, "This market is closed.");
+        throw new HttpError(
+          400,
+          "You can only bet on yourself in your AWC Round of 16 market.",
+          {},
+          "order_rejected",
+        );
+      if (/closed/i.test(error.message))
+        throw new HttpError(409, "This market is closed.", {}, "order_rejected");
       throw new Error(`Unable to place prediction order: ${error.message}`);
     }
     return identityResponse(identity, 200, {

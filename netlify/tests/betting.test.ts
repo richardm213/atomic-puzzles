@@ -389,7 +389,7 @@ describe("betting function", () => {
   });
 
   it("places exchange orders under the authenticated username", async () => {
-    const rpc = vi.fn(async () => ({ data: { orderId: 41, balance: 92.5 }, error: null }));
+    const rpc = vi.fn().mockResolvedValue({ data: { orderId: 41, balance: 92.5 }, error: null });
     const rowsByTable: Record<string, unknown[]> = {
       prediction_markets: [
         {
@@ -430,21 +430,25 @@ describe("betting function", () => {
     });
     mocks.createClient.mockReturnValue({ from, rpc });
 
-    const response = await handler({
+    const orderRequest = {
       httpMethod: "POST",
       headers: requestHeaders("Market_User"),
       body: JSON.stringify({
         action: "placeExchangeOrder",
+        requestId: "e29ff207-83d7-4d1e-bcc0-64213e9e1089",
+        username: "impersonated-user",
         marketId: "natso-ban-2026",
         outcome: "yes",
         side: "buy",
         priceCents: 75,
         quantity: 10,
       }),
-    });
+    };
+    const response = await handler(orderRequest);
 
     expect(response.statusCode).toBe(200);
-    expect(rpc).toHaveBeenCalledWith("place_prediction_order", {
+    expect(rpc).toHaveBeenCalledWith("place_prediction_order_once", {
+      p_request_id: "e29ff207-83d7-4d1e-bcc0-64213e9e1089",
       p_username: "market_user",
       p_market_id: "natso-ban-2026",
       p_outcome: "yes",
@@ -462,5 +466,14 @@ describe("betting function", () => {
         }),
       }),
     );
+    for (const [message, expectedCode] of [
+      ["Not enough coins", "order_rejected"],
+      ["Order request ID was already used for different parameters", "order_request_conflict"],
+    ]) {
+      rpc.mockResolvedValueOnce({ data: null, error: { message } });
+      const rejected = await handler(orderRequest);
+      expect(rejected.statusCode).toBe(409);
+      expect(JSON.parse(rejected.body).code).toBe(expectedCode);
+    }
   });
 });

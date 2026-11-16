@@ -665,10 +665,14 @@ begin
   for update;
   if market_row.id is null then raise exception 'Prediction market not found'; end if;
   if market_row.status = 'resolved' then
-    if market_row.outcome <> normalized_outcome then
+    if market_row.outcome is distinct from normalized_outcome then
       raise exception 'Prediction market already resolved differently';
     end if;
     return;
+  end if;
+
+  if market_row.status not in ('open', 'closed') then
+    raise exception 'Prediction market cannot be settled from status %', market_row.status;
   end if;
 
   perform public.cancel_prediction_market_orders(p_market_id);
@@ -738,6 +742,10 @@ begin
       return;
     end if;
     raise exception 'Prediction market already resolved differently';
+  end if;
+
+  if market_row.status not in ('open', 'closed') then
+    raise exception 'Prediction market cannot be settled from status %', market_row.status;
   end if;
 
   perform public.cancel_prediction_market_orders(p_market_id);

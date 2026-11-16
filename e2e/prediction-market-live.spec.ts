@@ -684,6 +684,8 @@ test("betting order-book ticket sells only unreserved owned shares", async ({ pa
     if (body.action === "placeExchangeOrder") {
       orders.push(body);
       quantity = 3;
+      if (orders.length === 1)
+        return route.fulfill({ status: 500, json: { error: "Order response was lost" } });
       return route.fulfill({
         json: { result: { orderId: 10, balance: 201.96, marketId, state: state() } },
       });
@@ -714,6 +716,9 @@ test("betting order-book ticket sells only unreserved owned shares", async ({ pa
   await expect(page.getByText("1.96 coins", { exact: true })).toBeVisible();
   await submit.click();
   await expect.poll(() => orders.length).toBe(1);
+  await page.getByRole("button", { name: "Retry original order", exact: true }).click();
+  await expect.poll(() => orders.length).toBe(2);
+  expect(orders[1]).toEqual(orders[0]);
   expect(orders[0]).toMatchObject({
     action: "placeExchangeOrder",
     marketId,
