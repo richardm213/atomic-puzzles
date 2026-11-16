@@ -94,6 +94,7 @@ const predictionDisplayModeStorageKey = "betting:prediction-display-mode";
 const defaultMarketCategory = "AWC Semifinals";
 const predictionMarketCategories = [
   "AWC Semifinals",
+  "AWC Losers 2",
   "AWC Quarterfinals",
   "Nov Shield",
   "2026 AWC Champion",
@@ -114,6 +115,7 @@ const predictionGroupIdByCategory: Record<PredictionMarketCategory, string> = {
   "AWC Semifinals": "awc-2026-semifinals",
   "AWC Quarterfinals": "awc-2026-quarterfinals",
   "AWC Losers 1": "awc-2026-losers-round-1",
+  "AWC Losers 2": "awc-2026-losers-round-2",
   "AWC Round of 16": "awc-2026-round-of-16",
   "2026 AWC Champion": "awc-2026-champion",
   "2026 AWC Side Bets": "awc-2026-side-bets",
@@ -987,7 +989,8 @@ export const BettingPage = () => {
                       activePredictionGroup.id === "awc-2026-round-of-16" ||
                       activePredictionGroup.id === "awc-2026-quarterfinals" ||
                       activePredictionGroup.id === "awc-2026-semifinals" ||
-                      activePredictionGroup.id === "awc-2026-losers-round-1"
+                      activePredictionGroup.id === "awc-2026-losers-round-1" ||
+                      activePredictionGroup.id === "awc-2026-losers-round-2"
                         ? " bettingPredictionBookGroup--singleColumn"
                         : ""
                     }`}

@@ -7,6 +7,7 @@ test("side bets have their own route and secondary markets stay in the dropdown"
 }) => {
   const groups = [
     ["awc-2026-side-bets", "2026 AWC Side Bets"],
+    ["awc-2026-losers-round-2", "AWC 2026 Losers Round 2"],
     ["awc-2026-round-of-16", "AWC 2026 Round of 16"],
     ["november-atomic-shield-2026", "November Atomic Shield"],
     ["awc-2027-champion", "Who will win 2027 AWC"],
@@ -65,6 +66,12 @@ test("side bets have their own route and secondary markets stay in the dropdown"
   await page.goto("/betting");
   await page.getByRole("button", { name: "2026 AWC Side Bets", exact: true }).click();
   await expect(page.getByText("2026 AWC Side Bets", { exact: true })).toHaveCount(2);
+  const losers2 = page.getByRole("button", { name: "AWC Losers 2", exact: true });
+  await losers2.click();
+  await expect(losers2).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("AWC 2026 Losers Round 2", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(losers2).toHaveAttribute("aria-pressed", "true");
   const other = page.getByRole("combobox", { name: "Other markets", exact: true });
   const shield = page.getByRole("button", { name: "Nov Shield", exact: true });
   await shield.click();

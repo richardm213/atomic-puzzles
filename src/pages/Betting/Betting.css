@@ -103,7 +103,11 @@
 }
 
 .bettingCategories {
-  display: flex;
+  display: grid;
+  grid-template-rows: repeat(2, minmax(44px, auto));
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  justify-content: start;
   gap: var(--space-2);
   overflow-x: auto;
   padding-bottom: 2px;
