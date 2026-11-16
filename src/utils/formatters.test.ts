@@ -6,8 +6,17 @@ import {
   formatCommentAge,
   formatGameCount,
   formatLocalDateTime,
+  formatPricePercentageValue,
   formatSignedDecimal,
 } from "./formatters";
+
+it("keeps exact whole price percentages and rounds fractional prices to one decimal", () => {
+  expect(formatPricePercentageValue(85)).toBe("85");
+  expect(formatPricePercentageValue(85.14)).toBe("85.1");
+  expect(formatPricePercentageValue(85.16)).toBe("85.2");
+  expect(formatPricePercentageValue(85.01)).toBe("85.0");
+  expect(formatPricePercentageValue(85.99)).toBe("86.0");
+});
 
 describe("formatSignedDecimal", () => {
   it.each([

@@ -7,6 +7,7 @@ import { useAppSettings } from "../../context/AppSettings";
 import type { BetHistoryEntry } from "../../pages/Betting/bettingHistoryModel";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
+import { formatPricePercentageValue } from "../../utils/formatters";
 
 export const BetShareSlip = ({
   bet,
@@ -35,7 +36,7 @@ export const BetShareSlip = ({
     (bet.predictionOutcome
       ? `${bet.predictionOutcome === "yes" ? "Yes" : "No"} · ${bet.selection}`
       : bet.selection);
-  const odds = `${bet.priceCents.toLocaleString(undefined, { maximumFractionDigits: 1 })}% chance`;
+  const odds = `${formatPricePercentageValue(bet.priceCents)}% chance`;
   const cost = `${bet.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} coins`;
   const payout = bet.status === "open" ? bet.potentialPayout : bet.payout;
   const payoutLabel = bet.status === "open" ? "To win" : "Paid out";

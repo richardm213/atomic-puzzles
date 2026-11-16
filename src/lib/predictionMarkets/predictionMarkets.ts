@@ -5,6 +5,7 @@ import {
   type PredictionOrderSide,
   type PredictionOutcome,
 } from "../../../shared/domain/betting";
+import { formatPricePercentageValue } from "../../utils/formatters";
 import { postApi } from "../api/postApi";
 
 export type {
@@ -483,7 +484,7 @@ export const formatPredictionShares = (value: number): string =>
   value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 export const formatPredictionChance = (value: number | undefined): string =>
-  value === undefined ? "—" : `${value}%`;
+  value === undefined ? "—" : `${formatPricePercentageValue(value)}%`;
 
 export const formatPredictionAveragePrice = (
   cents: number | null | undefined,

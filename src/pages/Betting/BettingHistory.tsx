@@ -16,7 +16,7 @@ import {
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { getErrorMessage } from "../../utils/errors";
-import { formatLocalDateTime } from "../../utils/formatters";
+import { formatLocalDateTime, formatPricePercentageValue } from "../../utils/formatters";
 import type { BetHistoryEntry } from "./bettingHistoryModel";
 
 const abbreviateRound = (roundName: string): string => {
@@ -289,7 +289,7 @@ export const BetHistoryTable = ({
                   ) : null}
                   <td className="betHistoryNumber" data-label={priceLabel}>
                     <strong>
-                      {formatCoinValue(bet.priceCents)}
+                      {formatPricePercentageValue(bet.priceCents)}
                       <span className="betHistoryPriceSuffix">%</span>
                     </strong>
                   </td>

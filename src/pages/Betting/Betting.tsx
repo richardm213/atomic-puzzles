@@ -1307,7 +1307,7 @@ export const BettingPage = () => {
                                   <span className="bettingOutcomeQuote">
                                     <strong>
                                       {market.id.startsWith("lichess-ban-") ? "Yes · " : ""}
-                                      {outcome.pricePercent}%
+                                      {formatPredictionChance(outcome.pricePercent)}
                                     </strong>
                                     {isSelfNotToWinOutcome ? (
                                       <small>Your outcome</small>

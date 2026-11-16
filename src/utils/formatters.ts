@@ -1,3 +1,9 @@
+export const formatPricePercentageValue = (value: number): string =>
+  value.toLocaleString(undefined, {
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 1,
+    maximumFractionDigits: 1,
+  });
+
 export const formatSignedDecimal = (value: number | null): string => {
   if (value === null || !Number.isFinite(value)) return "";
   const rounded = Math.round(value * 10) / 10;
