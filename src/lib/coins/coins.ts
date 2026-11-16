@@ -35,6 +35,7 @@ export type CoinRanking = {
 export const coinTransactionReasons = COIN_TRANSACTION_REASONS;
 
 export type CoinTransaction = {
+  description?: string;
   id: number;
   username: string;
   amount: number;
@@ -123,11 +124,13 @@ const coinTransactionsSchema = z.object({
         username: z.string(),
         amount: z.number(),
         reason: z.enum(coinTransactionReasons),
+        description: z.string().optional(),
         metadata: z.record(z.string(), z.unknown()).optional().default({}),
         created_at: z.string(),
       })
       .transform((transaction) => ({
         id: transaction.id,
+        ...(transaction.description ? { description: transaction.description } : {}),
         username: transaction.username,
         amount: transaction.amount,
         reason: transaction.reason,

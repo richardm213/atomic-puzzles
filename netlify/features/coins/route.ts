@@ -23,6 +23,7 @@ import type { FunctionEvent } from "../../platform/defineFunction";
 import { createServerSupabase } from "../../platform/environment";
 import { HttpError } from "../../platform/errors";
 import { parseJsonBody } from "../../platform/validation";
+import { describeCoinTransactions } from "./transactionDescriptions";
 
 const atomicDbOpeningSchema = z.string().trim().min(1).max(1000);
 const atomicDbPlayerSchema = z
@@ -360,8 +361,9 @@ export const coinsRoute = async (event: FunctionEvent) => {
       .range(from, to);
     if (error) throw new Error(`Unable to load coin transactions: ${error.message}`);
     const total = count ?? 0;
+    const transactions = await describeCoinTransactions(supabase, data);
     return identityResponse(identity, 200, {
-      result: data.map((transaction) =>
+      result: transactions.map((transaction) =>
         transaction.reason === "puzzle_tagging"
           ? {
               ...transaction,

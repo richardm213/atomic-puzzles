@@ -124,14 +124,27 @@ test("coin transaction URLs preserve the selected tab and player through reload 
       players.push(body.username);
       return route.fulfill({
         json: {
-          result: [],
-          pagination: { page: 1, pageSize: 50, total: 0, totalPages: 1 },
+          result: [
+            {
+              id: 1,
+              username: body.username ?? "wolfram_ep",
+              amount: -12.24,
+              reason: "prediction_order_reserve",
+              metadata: { marketId: "rabbier", quantity: 20 },
+              description: "Bought 20 shares of rabbier",
+              created_at: "2026-11-16T00:00:00Z",
+            },
+          ],
+          pagination: { page: 1, pageSize: 50, total: 1, totalPages: 1 },
         },
       });
     }
     return route.fulfill({ json: { result: [] } });
   });
   await page.goto("/rankings/coins?view=transactions&player=wolfram_ep");
+  await expect(
+    page.getByRole("cell", { name: "Bought 20 shares of rabbier", exact: true }),
+  ).toBeVisible();
   const player = page.getByRole("textbox", { name: "Player", exact: true });
   await expect(page.getByRole("tab", { name: "Transactions", exact: true })).toHaveAttribute(
     "aria-selected",

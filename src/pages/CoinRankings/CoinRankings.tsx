@@ -153,35 +153,11 @@ const transactionDescription = (transaction: CoinTransaction) => {
       ? `Game analysis refunded${gameId ? ` · ${gameId}` : ""}`
       : `Analyzed game${gameId ? ` · ${gameId}` : ""}`;
   }
-  if (transaction.reason === "tournament_bet") {
-    const selection = metadataString(transaction, "selection");
-    return selection ? `Bet on ${selection}` : "Placed a tournament bet";
-  }
-  if (transaction.reason === "tournament_bet_payout") {
-    const winner = metadataString(transaction, "winner");
-    return winner ? `Won bet on ${winner}` : "Tournament bet payout";
-  }
-  if (transaction.reason === "tournament_bet_refund") {
-    return "Tournament bet refunded";
-  }
-  if (transaction.reason === "prediction_order_reserve") {
-    return transaction.metadata.chargeMode === "fill"
-      ? "Bought prediction contracts"
-      : "Reserved coins for a prediction order";
-  }
-  if (transaction.reason === "prediction_order_refund") {
-    return "Prediction order refund";
-  }
-  if (transaction.reason === "prediction_trade_credit") {
-    return "Sold prediction contracts";
-  }
-  if (transaction.reason === "prediction_trade_fee") {
-    return "Prediction trade fee";
-  }
-  if (transaction.reason === "prediction_reconciliation") return "Betting accounting correction";
-  if (transaction.reason === "prediction_market_payout") {
-    return "Prediction market payout";
-  }
+  if (
+    transaction.reason.startsWith("prediction_") ||
+    transaction.reason.startsWith("tournament_bet")
+  )
+    return "Betting transaction";
   return "Claimed daily bonus";
 };
 
@@ -505,7 +481,7 @@ export const CoinRankingsPage = () => {
                             {transaction.username}
                           </Link>
                         </td>
-                        <td>{transactionDescription(transaction)}</td>
+                        <td>{transaction.description ?? transactionDescription(transaction)}</td>
                         <td>
                           <time dateTime={transaction.createdAt}>
                             {formatLocalDateTime(transaction.createdAt)}
