@@ -42,7 +42,8 @@ begin
  order_result:=public.place_prediction_order(trader,fixture_market,'yes','sell',90,1000);
  sell_id:=(order_result->>'orderId')::bigint;
  perform public.place_prediction_order(maker,fixture_market,'yes','buy',40,2000);
- perform public.place_prediction_order(trader,fixture_market,'no','buy',60,2000);
+ order_result:=public.place_prediction_order(trader,fixture_market,'no','buy',60,2000);
+ if (order_result->>'balance')::numeric<>(select balance from public.coin_accounts where username=trader) then raise exception 'Order balance omitted returned collateral'; end if;
  if (select coalesce(sum(quantity),0) from public.prediction_positions where market_id=fixture_market and username=trader and outcome='yes')<>0
  then raise exception 'Old side remains after switching'; end if;
  if (select quantity from public.prediction_positions p where p.market_id=fixture_market and username=trader and outcome='no')<>1000
@@ -55,6 +56,24 @@ begin
  perform public.resolve_prediction_market(fixture_market,'no');
  perform public.resolve_prediction_market(fixture_market,'no');
  if (select balance from public.coin_accounts where username=trader)-before_wallet<>1000 then raise exception 'Switched position settlement incorrect'; end if;
+
+ -- Fees belong to the original buy/sell receipt, and closing a position uses net proceeds.
+ legacy_id:=fixture_market||'-cash';
+ insert into public.prediction_markets(id,question,resolution_rules,resolution_source_url,closes_at,status)
+ values(legacy_id,'All-in cash regression','Fixture','https://atomicpuzzles.org/betting',now()+interval '1 day','open');
+ select balance into before_wallet from public.coin_accounts where username=trader;
+ perform public.place_prediction_order(maker,legacy_id,'no','buy',60,10);
+ perform public.place_prediction_order(trader,legacy_id,'yes','buy',40,10);
+ perform public.place_prediction_order(maker,legacy_id,'yes','buy',60,10);
+ order_result:=public.place_prediction_order(trader,legacy_id,'yes','sell',60,10);
+ if (select balance from public.coin_accounts where username=trader)-before_wallet<>1.8
+ or (order_result->>'balance')::numeric<>before_wallet+1.8 then raise exception 'All-in buy/sell cash incorrect'; end if;
+ if (select count(*) from public.coin_transactions where username=trader and metadata->>'marketId'=legacy_id)<>2
+ or not exists(select 1 from public.coin_transactions where username=trader and metadata->>'marketId'=legacy_id and amount=-4.08 and (metadata->>'fee')::numeric=0.08)
+ or not exists(select 1 from public.coin_transactions where username=trader and metadata->>'marketId'=legacy_id and amount=5.88 and (metadata->>'fee')::numeric=0.12)
+ then raise exception 'Trade fees were not included exactly once in the original receipts'; end if;
+ if exists(select 1 from public.prediction_positions where market_id=legacy_id and username=trader and quantity<>0)
+ then raise exception 'A fully sold position remains'; end if;
 
  select * into strict template from public.tournament_betting_markets where market_kind='match' limit 1;
  foreach legacy_state in array array['converted','prepaid','reversed'] loop
@@ -84,4 +103,4 @@ begin
 end;
 $$;
 rollback;
-select 'PASS: net exposure, sell reservations, conversion settlement order, idempotence, private corrections and debt handling' as result;
+select 'PASS: net exposure, all-in trade receipts, order balances, conversion settlement, idempotence and private debt handling' as result;

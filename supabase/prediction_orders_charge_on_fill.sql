@@ -295,12 +295,13 @@ begin
       debit_key := incoming.id || ':' || resting.id || ':' || incoming.filled_quantity;
       next_balance := public.apply_coin_transaction(
         incoming.username,
-        -trade_amount,
+        -(trade_amount + taker_fee),
         'prediction_order_reserve',
         'prediction-trade-buyer:' || debit_key || ':incoming',
         jsonb_build_object(
           'marketId', p_market_id, 'orderId', incoming.id, 'makerOrderId', resting.id,
-          'priceCents', execution_price, 'quantity', match_quantity, 'chargeMode', 'fill'
+          'priceCents', execution_price, 'quantity', match_quantity, 'chargeMode', 'fill',
+          'fee', taker_fee
         )
       );
 
@@ -456,10 +457,11 @@ begin
         ) returning id into fill_id;
         next_balance := public.apply_coin_transaction(
           incoming.username,
-          trade_amount,
+          trade_amount - taker_fee,
           'prediction_trade_credit',
           'prediction-fill-seller:' || fill_id,
-          jsonb_build_object('marketId', p_market_id, 'fillId', fill_id, 'orderId', incoming.id)
+          jsonb_build_object('marketId', p_market_id, 'fillId', fill_id, 'orderId', incoming.id,
+            'fee', taker_fee)
         );
       else
         pair_key_value := debit_key;
@@ -487,10 +489,11 @@ begin
         ) returning id into fill_id;
         next_balance := public.apply_coin_transaction(
           incoming.username,
-          trade_amount,
+          trade_amount - taker_fee,
           'prediction_trade_credit',
           'prediction-fill-seller:' || fill_id,
-          jsonb_build_object('marketId', p_market_id, 'fillId', fill_id, 'orderId', incoming.id)
+          jsonb_build_object('marketId', p_market_id, 'fillId', fill_id, 'orderId', incoming.id,
+            'fee', taker_fee)
         );
 
         insert into public.prediction_fills (
@@ -509,21 +512,6 @@ begin
         );
       end if;
     end if;
-
-    next_balance := public.apply_coin_transaction(
-      incoming.username,
-      -taker_fee,
-      'prediction_trade_fee',
-      'prediction-taker-fee:' || incoming.id || ':' || resting.id || ':' || incoming.filled_quantity,
-      jsonb_build_object(
-        'marketId', p_market_id,
-        'orderId', incoming.id,
-        'makerOrderId', resting.id,
-        'priceCents', execution_price,
-        'quantity', match_quantity,
-        'rate', 0.02
-      )
-    );
 
     update public.prediction_orders
     set filled_quantity = filled_quantity + match_quantity,
@@ -547,6 +535,8 @@ begin
     where id = resting.id;
   end loop;
 
+  -- Include collateral returned by the position trigger in the response balance.
+  select balance into next_balance from public.coin_accounts where username = incoming.username;
   return jsonb_build_object(
     'orderId', incoming.id,
     'marketId', p_market_id,
