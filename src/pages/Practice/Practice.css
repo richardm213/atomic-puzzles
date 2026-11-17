@@ -14,7 +14,7 @@
   grid-template-rows: auto var(--analysis-default-explorer-split) auto;
 }
 
-.practicePanel.puzzleDraftOpen {
+.practicePanel.puzzleDraftOpen.explorerCollapsed {
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
 

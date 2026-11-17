@@ -424,7 +424,12 @@ export const AnalysisPage = ({
     z.boolean(),
     defaultExplorerOpen,
   );
-  const explorerOpen = !training && !puzzleDraft && explorerPreference;
+  const [draftExplorerOpen, setDraftExplorerOpen] = useState(false);
+  const explorerOpen = !training && (puzzleDraft ? draftExplorerOpen : explorerPreference);
+  const toggleExplorer = () => {
+    if (puzzleDraft) setDraftExplorerOpen((open) => !open);
+    else setExplorerOpen((open) => !open);
+  };
   const [gamePanelHeight, setGamePanelHeight] = useState<number | null>(null);
   const [gamePanelResizing, setGamePanelResizing] = useState(false);
   const [gameUnderboardTab, setGameUnderboardTab] = useState<GameUnderboardTab>("analysis");
@@ -769,6 +774,7 @@ export const AnalysisPage = ({
         ply: 0,
       }),
     );
+    setDraftExplorerOpen(false);
     setPuzzleDraft({
       fen: currentFen,
       orientation: boardState?.turn || gameOrientation,
@@ -1079,7 +1085,7 @@ export const AnalysisPage = ({
     status: explorerStatus,
     error: explorerError,
   } = useOpeningExplorer({
-    enabled: !training && !puzzleDraft && (explorerOpen || !atomicDbEngineSettings.enabled),
+    enabled: !training && (explorerOpen || !atomicDbEngineSettings.enabled),
     cacheKey: explorerUrl ?? undefined,
     // The backend cancels superseded navigation requests, so a short trailing
     // debounce is enough to collapse move-list scrubbing without making each
@@ -1103,9 +1109,7 @@ export const AnalysisPage = ({
     status: explorerStatus,
     explorerOpen,
     onPlay: playExplorerMove,
-    onExplorer: () => {
-      if (!puzzleDraft) setExplorerOpen((open) => !open);
-    },
+    onExplorer: toggleExplorer,
     onGameAnalysis: () => {
       if (game && !puzzleDraft) setGameComputerAnalysisEnabled((enabled) => !enabled);
     },
@@ -1569,8 +1573,8 @@ export const AnalysisPage = ({
             canStepBack={!training && canStepBack}
             canStepForward={!training && canStepForward}
             onNavigate={requestNavigation}
-            onToggle={() => setExplorerOpen((open) => !open)}
-            toggleDisabled={training || Boolean(puzzleDraft)}
+            onToggle={toggleExplorer}
+            toggleDisabled={training}
             toggleAriaLabel={explorerOpen ? "Hide opening explorer" : "Show opening explorer"}
             toggleClassName="explorer"
             toggleTitle="Opening explorer"

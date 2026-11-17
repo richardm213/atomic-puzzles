@@ -226,7 +226,13 @@ export const PracticePage = () => {
   );
   const [exhaustedFen, setExhaustedFen] = useState<string | null>(null);
   const [movesOpen, setMovesOpen] = usePersistedState(MOVES_OPEN_STORAGE_KEY, z.boolean(), true);
-  const explorerOpen = !puzzleDraft && !movesOpen;
+  const [draftExplorerOpen, setDraftExplorerOpen] = useState(false);
+  const explorerOpen = puzzleDraft ? draftExplorerOpen : !movesOpen;
+  const toggleExplorer = () => {
+    if (puzzleDraft) setDraftExplorerOpen((open) => !open);
+    else setMovesOpen((open) => !open);
+    setSettingsOpen(false);
+  };
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [notationLayout, setNotationLayout] = useMoveNotationLayout();
   const alignedPanelHeight = useBoardAlignedPanelHeight(
@@ -308,7 +314,7 @@ export const PracticePage = () => {
   const practiceExplorerCacheKey = useMemo(
     () =>
       JSON.stringify({
-        fen: currentFen,
+        fen: analysisFen,
         opponentSource,
         opponentUsernames,
         opponentSide,
@@ -316,7 +322,7 @@ export const PracticePage = () => {
         minGames: practiceEngine.minGames,
       }),
     [
-      currentFen,
+      analysisFen,
       opponentSide,
       opponentSource,
       opponentUsernames,
@@ -333,7 +339,7 @@ export const PracticePage = () => {
 
       setExhaustedFen(null);
       return fetchPracticeExplorerResponse({
-        fen: currentFen,
+        fen: analysisFen,
         opponentSource,
         opponentUsernames,
         opponentSide,
@@ -344,7 +350,7 @@ export const PracticePage = () => {
     },
     [
       canUsePlayerSource,
-      currentFen,
+      analysisFen,
       opponentSide,
       opponentSource,
       opponentUsernames,
@@ -358,8 +364,8 @@ export const PracticePage = () => {
     status,
     error,
   } = useOpeningExplorer({
-    enabled: !handoffActive && !isReplica,
-    fen: currentFen,
+    enabled: puzzleDraft ? explorerOpen : !handoffActive && !isReplica,
+    fen: analysisFen,
     playerColor: opponentSide,
     showPerformance: opponentSource === "player" && showPerformance,
     request: requestExplorer,
@@ -673,12 +679,17 @@ export const PracticePage = () => {
 
   const playPracticeMove = useCallback(
     (uci: string): void => {
+      if (puzzleDraft) {
+        setHoveredMoveUci(null);
+        setDraftNavigation({ type: "play", uci });
+        return;
+      }
       clearAutoMoveState();
       setHoveredMoveUci(null);
       recordTriedMove(currentFen, uci);
       queueNavigation({ type: "play", uci });
     },
-    [currentFen, queueNavigation, recordTriedMove, clearAutoMoveState],
+    [currentFen, queueNavigation, recordTriedMove, clearAutoMoveState, puzzleDraft],
   );
 
   const playAtomicDbLine = useCallback(
@@ -951,6 +962,7 @@ export const PracticePage = () => {
     setHoveredMoveUci(null);
     setCreatedPuzzle(null);
     setDraftBoardState(null);
+    setDraftExplorerOpen(false);
     setPuzzleDraft({
       fen: currentFen,
       orientation: currentTurn,
@@ -1086,19 +1098,15 @@ export const PracticePage = () => {
   }, [canStepBack, clearAutoMoveState, currentTurn, opponentSide, queueNavigation]);
 
   useWorkspaceShortcuts({
-    enabled: !puzzleDraft,
-    blocked: usernamePickerOpen || settingsOpen,
+    blocked: usernamePickerOpen || settingsOpen || puzzleSaving,
     engineEnabled: atomicDbEngineSettings.enabled,
     moves: practiceMoves,
     status,
-    explorerOpen: !movesOpen,
+    explorerOpen,
     onPlay: playPracticeMove,
-    onExplorer: () => {
-      setMovesOpen((open) => !open);
-      setSettingsOpen(false);
-    },
-    onPause: toggleGamePaused,
-    onAlternate: requestAlternateAutoMove,
+    onExplorer: toggleExplorer,
+    onPause: puzzleDraft ? undefined : toggleGamePaused,
+    onAlternate: puzzleDraft ? undefined : requestAlternateAutoMove,
   });
 
   const practiceSettingsContent = (
@@ -1299,8 +1307,8 @@ export const PracticePage = () => {
                   ? "Choose a player or use the general database."
                   : "No database continuation.",
               showPerformance: opponentSource === "player" && showPerformance,
-              orientation: side,
-              currentPly,
+              orientation: puzzleDraft?.orientation ?? side,
+              currentPly: puzzleDraft ? draftBoard.currentPly : currentPly,
               onPlayMove: playPracticeMove,
               onHoverMove: setHoveredMoveUci,
               showInlineError: false,
@@ -1567,13 +1575,10 @@ export const PracticePage = () => {
           canStepForward={puzzleDraft ? draftBoard.canStepForward : canStepForward}
           className="practiceToolbar"
           onNavigate={requestNavigation}
-          toggleDisabled={Boolean(puzzleDraft)}
-          onToggle={() => {
-            setSettingsOpen(false);
-            setMovesOpen((open) => !open);
-          }}
-          toggleAriaLabel={movesOpen ? "Show database moves" : "Hide database moves"}
-          toggleTitle={`${movesOpen ? "Show database moves" : "Hide database moves"}${explorerShortcutHint ? ` (${explorerShortcutHint})` : ""}`}
+          toggleDisabled={puzzleSaving}
+          onToggle={toggleExplorer}
+          toggleAriaLabel={explorerOpen ? "Hide database moves" : "Show database moves"}
+          toggleTitle={`${explorerOpen ? "Hide database moves" : "Show database moves"}${explorerShortcutHint ? ` (${explorerShortcutHint})` : ""}`}
         />
       </AnalysisWorkspacePanel>
 

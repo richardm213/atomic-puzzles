@@ -114,6 +114,64 @@ test("game puzzle drafts optionally copy editable continuations from the origina
   );
 });
 
+test("opening explorer extends puzzle drafts without changing the source board", async ({
+  page,
+}) => {
+  await page.route("**/api/opening-explorer?**", (route) => {
+    const fen = new URL(route.request().url()).searchParams.get("fen") ?? "";
+    const blackToMove = fen.split(" ")[1] === "b";
+    return route.fulfill({
+      json: {
+        moves: [
+          {
+            uci: blackToMove ? "e7e5" : "e2e4",
+            games: 10,
+            whiteWins: 5,
+            draws: 0,
+            blackWins: 5,
+            avgOpponentRating: null,
+          },
+        ],
+        recentGames: [],
+      },
+    });
+  });
+  await page.route("**/api/puzzles/submit", (route) => route.fulfill({ json: { puzzleId: null } }));
+  // Analysis and practice own separate draft/navigation state. Exercise both,
+  // including the practice panel's distinct layout at mobile width.
+  for (const route of ["/analysis", "/practice"]) {
+    if (route === "/practice") await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(route);
+    const pgn = page.getByRole("textbox", { name: "PGN", exact: true });
+    const launch = page.getByRole("button", { name: "Submit puzzle", exact: true });
+    await expect(launch).toBeEnabled();
+    const sourcePgn = await pgn.inputValue();
+    await launch.click();
+    const composer = page.getByRole("form", { name: "Puzzle draft" });
+    const toolbar = page.getByLabel(
+      route === "/analysis" ? "Analysis menu" : "Practice navigation",
+      { exact: true },
+    );
+    const toggle = toolbar.getByRole("button", {
+      name: /(?:Show|Hide) (?:opening explorer|database moves)/,
+    });
+    await expect(toggle).toBeEnabled();
+    await expect(toggle).toHaveAttribute("aria-label", /^Show /);
+    await toggle.click();
+    const explorer = page.getByRole("region", { name: "Opening explorer", exact: true });
+    await explorer.getByRole("button", { name: "Play e4", exact: true }).click();
+    await expect(pgn).toHaveValue(/^1\. e4(?: \*)?$/);
+    await explorer.getByRole("button", { name: "Play e5", exact: true }).click();
+    await expect(pgn).toHaveValue(/^1\. e4 e5(?: \*)?$/);
+    await toggle.click();
+    await expect(explorer).not.toBeVisible();
+    await expect(composer).toBeVisible();
+    await expect(pgn).toHaveValue(/^1\. e4 e5(?: \*)?$/);
+    await composer.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(pgn).toHaveValue(sourcePgn);
+  }
+});
+
 test("game URLs retain side and exact ply and wait for navigation to settle", async ({ page }) => {
   await page.route("**/api/archive-data?**", (route) =>
     route.fulfill({
