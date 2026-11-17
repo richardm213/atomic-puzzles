@@ -146,6 +146,8 @@ test("opening explorer extends puzzle drafts without changing the source board",
     const launch = page.getByRole("button", { name: "Submit puzzle", exact: true });
     await expect(launch).toBeEnabled();
     const sourcePgn = await pgn.inputValue();
+    const fen = page.getByRole("textbox", { name: "FEN", exact: true });
+    const sourceFen = await fen.inputValue();
     await launch.click();
     const composer = page.getByRole("form", { name: "Puzzle draft" });
     const toolbar = page.getByLabel(
@@ -161,8 +163,14 @@ test("opening explorer extends puzzle drafts without changing the source board",
     const explorer = page.getByRole("region", { name: "Opening explorer", exact: true });
     await explorer.getByRole("button", { name: "Play e4", exact: true }).click();
     await expect(pgn).toHaveValue(/^1\. e4(?: \*)?$/);
+    await expect(fen).toHaveValue(/^rnbqkbnr\/pppppppp\/8\/8\/4P3\/8\/PPPP1PPP\/RNBQKBNR b /);
     await explorer.getByRole("button", { name: "Play e5", exact: true }).click();
     await expect(pgn).toHaveValue(/^1\. e4 e5(?: \*)?$/);
+    await expect(fen).toHaveValue(/^rnbqkbnr\/pppp1ppp\/8\/4p3\/4P3\/8\/PPPP1PPP\/RNBQKBNR w /);
+    await toolbar.getByRole("button", { name: "Previous move", exact: true }).click();
+    await expect(fen).toHaveValue(/^rnbqkbnr\/pppppppp\/8\/8\/4P3\/8\/PPPP1PPP\/RNBQKBNR b /);
+    await toolbar.getByRole("button", { name: "Go to start", exact: true }).click();
+    await expect(fen).toHaveValue(sourceFen);
     await toggle.click();
     await expect(explorer).not.toBeVisible();
     await expect(composer).toBeVisible();

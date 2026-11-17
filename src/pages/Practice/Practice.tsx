@@ -1666,7 +1666,7 @@ export const PracticePage = () => {
                 puzzleDraft
                   ? {
                       ...draftDocument,
-                      fen: { value: puzzleDraft.fen, readOnly: true, error: "" },
+                      fen: { value: draftBoard.currentFen, readOnly: true, error: "" },
                       pgn: { ...draftDocument.pgn, readOnly: puzzleSaving },
                     }
                   : practiceMoveText

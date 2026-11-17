@@ -1714,7 +1714,7 @@ export const AnalysisPage = ({
           puzzleDraft
             ? {
                 ...boardDocument,
-                fen: { value: puzzleDraft.fen, readOnly: true, error: "" },
+                fen: { value: currentFen, readOnly: true, error: "" },
                 pgn: { ...boardDocument.pgn, readOnly: puzzleSaving },
               }
             : (workspace?.document ?? boardDocument)
