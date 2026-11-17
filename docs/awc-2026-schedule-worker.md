@@ -2,18 +2,21 @@
 
 The **AWC 2026 schedule sync** GitHub workflow checks the official
 [rounds-and-results thread](https://lichess.org/forum/team-atomic-wc/2026-awc-rounds-and-results)
-from page 18 through its current last page. It runs at **00:17, 04:17, 08:17,
-12:17, 16:17, and 20:17 UTC**, through **December 8, 2026 UTC**. Its next scheduled
+from page 18 through its current last page. It runs **every two hours at minute 17 UTC**
+(00:17, 02:17, …, 22:17), every day through **December 8, 2026 UTC**. Its next scheduled
 run disables the workflow. The script and database credential independently reject
 publishing after the cutoff. GitHub can delay scheduled runs.
 
 This worker changes `tournament_matches.scheduled_at` for a uniquely matched,
 unplayed `awc2026` fixture. In the same transaction, a database trigger sets active
 `prediction_admin` order expirations to kickoff for that match market and the two
-players' AWC 2026 championship markets. Explicit reschedules update those expirations
+players' AWC 2026 championship markets, plus fixture-linked side bets such as Jude's
+3+ points semifinal strike. Main and losers bracket matches use the same linkage.
+Explicit reschedules update those expirations
 too; expired or cancelled quotes are never revived. Other users' orders and
 unscheduled players are left alone. New admin orders are also capped at their
-related kickoff, preserving an explicitly earlier expiration.
+related kickoff, preserving an explicitly earlier expiration. Side bets are linked explicitly
+in `prediction_market_fixture_links`; ordinary match markets are identified by their fixture ID.
 
 The deployed bracket and linked countdown page already read `scheduled_at`. The
 worker cannot publish scores, advancement, archived match IDs, tour points, market

@@ -1,6 +1,18 @@
 -- Scheduling worker and manual kickoff edits share one atomic expiry rule.
 begin;
 
+-- Explicit links extend the standard match-ID rule to match-specific props.
+create table if not exists public.prediction_market_fixture_links (
+  market_id text not null references public.prediction_markets(id) on delete cascade,
+  tournament text not null,
+  fixture_id text not null,
+  primary key (market_id, tournament, fixture_id),
+  foreign key (tournament, fixture_id) references public.tournament_matches(tournament, id) on delete cascade
+);
+alter table public.prediction_market_fixture_links enable row level security;
+revoke all on public.prediction_market_fixture_links from public, anon, authenticated;
+grant all on public.prediction_market_fixture_links to service_role;
+
 drop trigger if exists prediction_orders_cap_awc_champion_expiry on public.prediction_orders;
 drop trigger if exists tournament_matches_refresh_awc_champion_expiry on public.tournament_matches;
 drop function if exists public.cap_awc_champion_admin_quote_expiry();
@@ -16,6 +28,8 @@ as $$
   from public.tournament_matches f
   join public.prediction_markets m on m.id = p_market_id and (
     m.id = 'awc2026-' || f.id
+    or exists (select 1 from public.prediction_market_fixture_links l
+      where l.market_id = m.id and l.tournament = f.tournament and l.fixture_id = f.id)
     or (m.group_id = 'awc-2026-champion' and lower(btrim(m.display_name)) in
       (lower(btrim(f.p1)), lower(btrim(f.p2))))
   )
@@ -52,6 +66,8 @@ as $$
     from public.tournament_matches f
     join public.prediction_markets m on m.status = 'open' and (
       m.id = 'awc2026-' || f.id
+      or exists (select 1 from public.prediction_market_fixture_links l
+        where l.market_id = m.id and l.tournament = f.tournament and l.fixture_id = f.id)
       or (m.group_id = 'awc-2026-champion' and lower(btrim(m.display_name)) in
         (lower(btrim(f.p1)), lower(btrim(f.p2))))
     )
@@ -96,6 +112,13 @@ revoke all on function public.awc_2026_market_kickoff(text),
   public.cap_awc_scheduled_admin_order_expiry(), public.sync_awc_2026_admin_order_expiry(text),
   public.refresh_awc_scheduled_admin_order_expiry() from public, anon, authenticated;
 grant execute on function public.sync_awc_2026_admin_order_expiry(text) to service_role;
+
+insert into public.prediction_market_fixture_links (market_id, tournament, fixture_id)
+select m.id, f.tournament, f.id
+from public.prediction_markets m join public.tournament_matches f
+  on f.tournament = 'awc2026' and f.id = 'wb-r3-m2'
+where m.id = 'awc-2026-semifinal-jude-3-plus-points'
+on conflict do nothing;
 
 -- Only currently active quotes are changed: expired/cancelled orders are never revived.
 select changed.* from public.tournament_matches f
