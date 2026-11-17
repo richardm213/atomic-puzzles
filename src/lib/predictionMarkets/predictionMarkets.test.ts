@@ -114,6 +114,12 @@ describe("predictionMarketVolume", () => {
 describe("sortPredictionMarketsByChance", () => {
   it("orders strikes from highest to lowest probability and keeps ties stable", () => {
     const definitions = [
+      {
+        id: "awc-2026-semifinal-jude-3-plus-points",
+        username: "jude 3+ pts vs max",
+        countryCode: "US",
+        startingChance: 95,
+      },
       { id: "low", username: "low", countryCode: "US", startingChance: 10 },
       { id: "high", username: "high", countryCode: "US", startingChance: 70 },
       { id: "tie", username: "tie", countryCode: "US", startingChance: 70 },
@@ -122,7 +128,7 @@ describe("sortPredictionMarketsByChance", () => {
 
     expect(
       sortPredictionMarketsByChance(definitions, new Map()).map((market) => market.id),
-    ).toEqual(["high", "tie", "low", "unknown"]);
+    ).toEqual(["high", "tie", "low", "unknown", "awc-2026-semifinal-jude-3-plus-points"]);
   });
 
   it("puts resolved strikes after every open strike", () => {

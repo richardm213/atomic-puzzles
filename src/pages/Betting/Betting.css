@@ -104,7 +104,7 @@
 
 .bettingCategories {
   display: grid;
-  grid-template-rows: repeat(2, minmax(44px, auto));
+  grid-template-rows: minmax(44px, auto);
   grid-auto-flow: column;
   grid-auto-columns: max-content;
   justify-content: start;

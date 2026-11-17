@@ -23,7 +23,7 @@ select
   'Resolves Yes if judebaetorrens scores at least 3.0 game points against maxwellssilvrhammer in their AWC 2026 winners'' semifinal, counting each win as 1 point and each draw as 0.5 points. Otherwise resolves No when the match ends. Use the official score from games actually played; an advancement or forfeit alone does not award points for this strike. If the match starts but ends early through withdrawal or disqualification, count only the points from games actually played. If the match is cancelled or either player withdraws or is banned before play begins, settle at the last fair traded price before confirmation, excluding manipulative trades; if there is no fair trade, refund bets. The official AWC 2026 bracket and linked match games are the resolution sources.',
   resolution_source_url, closes_at, 'open',
   group_id, group_path, group_title, group_description, group_order,
-  'jude 3+ pts', 'US', null, 3
+  'jude 3+ pts vs max', 'US', null, 3
 from public.prediction_markets
 where id = 'awc2026-wb-r3-m2'
 on conflict (id) do nothing;

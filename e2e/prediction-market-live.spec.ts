@@ -6,6 +6,7 @@ test("side bets have their own route and secondary markets stay in the dropdown"
   page,
 }) => {
   const groups = [
+    ["awc-2026-semifinals", "AWC 2026 Semifinals"],
     ["awc-2026-side-bets", "2026 AWC Side Bets"],
     ["awc-2026-losers-round-2", "AWC 2026 Losers Round 2"],
     ["awc-2026-round-of-16", "AWC 2026 Round of 16"],
@@ -13,13 +14,13 @@ test("side bets have their own route and secondary markets stay in the dropdown"
     ["awc-2027-champion", "Who will win 2027 AWC"],
   ];
   const catalog = groups.map(([id, title], index) => ({
-    id: `${id}-strike`,
+    id: id === "awc-2026-semifinals" ? "awc-2026-semifinal-jude-3-plus-points" : `${id}-strike`,
     group_id: id,
     group_path: `/betting/${id}`,
     group_title: title,
     group_description: "",
     group_order: index,
-    display_name: "Will there be Armageddon?",
+    display_name: id === "awc-2026-semifinals" ? "jude 3+ pts vs max" : "Will there be Armageddon?",
     country_code: "",
     starting_chance: null,
     display_order: 1,
@@ -53,7 +54,10 @@ test("side bets have their own route and secondary markets stay in the dropdown"
               settlement_price_cents: null,
               settlement_reference_fill_id: null,
             },
-            book: { yes: { bids: [], asks: [] }, no: { bids: [], asks: [] } },
+            book: {
+              yes: { bids: [], asks: [{ priceCents: 65, quantity: 1538 }] },
+              no: { bids: [], asks: [{ priceCents: 50, quantity: 2000 }] },
+            },
             fills: [],
             positions: [],
             historyPositions: [],
@@ -64,8 +68,24 @@ test("side bets have their own route and secondary markets stay in the dropdown"
     return route.fulfill({ status: 400, json: { error: "Unexpected fixture request" } });
   });
   await page.goto("/betting");
-  await page.getByRole("button", { name: "2026 AWC Side Bets", exact: true }).click();
-  await expect(page.getByText("2026 AWC Side Bets", { exact: true })).toHaveCount(2);
+  const categories = page.getByLabel("Market categories", { exact: true });
+  await expect(categories.getByRole("button", { name: "AWC Champion", exact: true })).toBeVisible();
+  const tops = await categories
+    .locator("button, select")
+    .evaluateAll((items) => items.map((item) => item.getBoundingClientRect().top));
+  expect(Math.max(...tops) - Math.min(...tops)).toBeLessThan(2);
+  const sportsbookInitial = page.getByRole("button", { name: "Sportsbook view", exact: true });
+  await sportsbookInitial.click();
+  await page.getByRole("button", { name: /jude less than 3 pts vs max/ }).click();
+  await expect(page.locator(".betSlipContract strong")).toHaveText("jude less than 3 pts vs max");
+  await expect(page.locator(".betSlipContract em")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /jude 3\+ pts vs max/ })).toBeVisible();
+  await page.getByRole("button", { name: "Order book view", exact: true }).click();
+  await expect(page.getByText("jude 3+ pts vs max", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /jude less than 3 pts vs max/ })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "AWC Side Bets", exact: true }).click();
+  await expect(page.getByText("2026 AWC Side Bets", { exact: true })).toHaveCount(1);
   const losers2 = page.getByRole("button", { name: "AWC Losers 2", exact: true });
   await losers2.click();
   await expect(losers2).toHaveAttribute("aria-pressed", "true");

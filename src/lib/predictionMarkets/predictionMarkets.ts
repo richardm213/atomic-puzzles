@@ -145,6 +145,36 @@ export const predictionOutcomeLabel = (
   outcome: PredictionOutcome,
 ): string => definition?.outcomeLabels?.[outcome] ?? (outcome === "yes" ? "Yes" : "No");
 
+const marketPresentation: Record<
+  string,
+  {
+    sportsbookLabels: Record<PredictionOutcome, string>;
+    sortLast: boolean;
+  }
+> = {
+  "awc-2026-semifinal-jude-3-plus-points": {
+    sportsbookLabels: {
+      yes: "jude 3+ pts vs max",
+      no: "jude less than 3 pts vs max",
+    },
+    sortLast: true,
+  },
+};
+
+export const predictionSportsbookOutcomeLabel = (
+  definition: PredictionMarketDefinition | undefined,
+  outcome: PredictionOutcome,
+): string =>
+  marketPresentation[definition?.id ?? ""]?.sportsbookLabels[outcome] ??
+  predictionOutcomeLabel(definition, outcome);
+
+export const comparePredictionMarketPriority = (
+  left: PredictionMarketDefinition,
+  right: PredictionMarketDefinition,
+): number =>
+  Number(Boolean(marketPresentation[left.id]?.sortLast)) -
+  Number(Boolean(marketPresentation[right.id]?.sortLast));
+
 export const predictionOutcomeAbbreviation = (
   definition: PredictionMarketDefinition | undefined,
   outcome: PredictionOutcome,
@@ -436,6 +466,8 @@ export const sortPredictionMarketsByChance = (
       resolved: states.get(definition.id)?.market.status === "resolved",
     }))
     .sort((left, right) => {
+      const priority = comparePredictionMarketPriority(left.definition, right.definition);
+      if (priority) return priority;
       if (left.resolved !== right.resolved) return left.resolved ? 1 : -1;
       if (left.chance === undefined && right.chance === undefined) return left.index - right.index;
       if (left.chance === undefined) return 1;

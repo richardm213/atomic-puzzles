@@ -47,6 +47,7 @@ import {
 import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predictionMarketRealtime";
 import {
   availablePredictionContracts,
+  comparePredictionMarketPriority,
   formatPredictionChance,
   MAX_PREDICTION_ORDER_QUANTITY,
   placePredictionOrder,
@@ -58,6 +59,7 @@ import {
   predictionOutcomeCountryCode,
   predictionOutcomeLabel,
   predictionOutcomes,
+  predictionSportsbookOutcomeLabel,
   predictionTakerFee,
   quotePredictionBuy,
   quotePredictionSell,
@@ -299,6 +301,8 @@ export const BettingPage = () => {
       ? winnerPosition
       : "yes";
     return [...definitions].sort((left, right) => {
+      const priority = comparePredictionMarketPriority(left, right);
+      if (priority) return priority;
       const leftResolved = predictionStateByMarketId.get(left.id)?.market.status === "resolved";
       const rightResolved = predictionStateByMarketId.get(right.id)?.market.status === "resolved";
       if (leftResolved !== rightResolved) return leftResolved ? 1 : -1;
@@ -754,7 +758,7 @@ export const BettingPage = () => {
                       onClick={() => selectMarketCategory(category)}
                       key={category}
                     >
-                      {category}
+                      {category.replace(/^2026 /, "")}
                     </button>
                   ))}
                 <select
@@ -922,7 +926,7 @@ export const BettingPage = () => {
                                 : predictionOutcomeCountryCode(definition, entry);
                               const entryLabel = compactSportsbookCard
                                 ? definition.username
-                                : predictionOutcomeLabel(definition, entry);
+                                : predictionSportsbookOutcomeLabel(definition, entry);
                               return (
                                 <button
                                   type="button"
@@ -1114,21 +1118,25 @@ export const BettingPage = () => {
                               aria-hidden="true"
                             />
                             <strong>
-                              {predictionOutcomeLabel(
+                              {predictionSportsbookOutcomeLabel(
                                 selectedPredictionDefinition,
                                 predictionSelection.outcome,
                               )}
                             </strong>
-                            <em>
-                              {selectedPredictionGroup?.id === "ban-2026"
-                                ? predictionSelection.outcome === "yes"
-                                  ? "banned"
-                                  : "not banned"
-                                : selectedPredictionDefinition?.outcomeLabels ||
-                                    predictionSelection.outcome === "yes"
-                                  ? "to win"
-                                  : "not to win"}
-                            </em>
+                            {marketCategory === "Ban" ||
+                            isWinnerCategory(marketCategory) ||
+                            selectedPredictionDefinition?.outcomeLabels ? (
+                              <em>
+                                {selectedPredictionGroup?.id === "ban-2026"
+                                  ? predictionSelection.outcome === "yes"
+                                    ? "banned"
+                                    : "not banned"
+                                  : selectedPredictionDefinition?.outcomeLabels ||
+                                      predictionSelection.outcome === "yes"
+                                    ? "to win"
+                                    : "not to win"}
+                              </em>
+                            ) : null}
                           </span>
                           <b>{validPredictionPrice ? `${predictionPrice}%` : "—"}</b>
                         </div>
