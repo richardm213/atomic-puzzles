@@ -52,9 +52,9 @@ export const strengthDefaults = (strength: number) => {
   const weakness = (12 - strength) / 11;
   return {
     variety: 0.25 + weakness * 0.65,
-    inaccuracy: Math.round(30 * weakness),
-    mistake: Math.round(24 * weakness ** 1.5),
-    blunder: Math.round(16 * weakness ** 2),
+    inaccuracy: Math.round(30 * weakness ** 2),
+    mistake: Math.round(24 * weakness ** 3),
+    blunder: Math.round(16 * weakness ** 4),
   };
 };
 export const presetDefaults = (preset: PracticePreset): PracticeStyle => {
@@ -75,9 +75,21 @@ export const normalizePracticeEngineSettings = (input: unknown): PracticeEngineS
     raw.advanced && typeof raw.advanced === "object"
       ? (raw.advanced as Record<string, unknown>)
       : {};
+  // Saved settings include defaults as well as custom overrides. Retune only an
+  // untouched strength profile so existing users receive the corrected curve.
+  const weakness = (12 - strength) / 11;
+  const legacyStrength = {
+    variety: 0.25 + weakness * 0.65,
+    inaccuracy: Math.round(30 * weakness),
+    mistake: Math.round(24 * weakness ** 1.5),
+    blunder: Math.round(16 * weakness ** 2),
+  };
+  const legacyDefaults = Object.entries(legacyStrength).every(
+    ([key, value]) => stored[key] === value,
+  );
   for (const k of Object.keys(defaults) as Array<keyof PracticeAdvanced>) {
     advanced[k] = bounded(
-      stored[k],
+      legacyDefaults && k in legacyStrength ? defaults[k] : stored[k],
       defaults[k],
       k === "variety" ? 0.05 : k in presetDefaults(preset) ? -1 : 0,
       k === "variety" || k in presetDefaults(preset) ? 1 : 100,

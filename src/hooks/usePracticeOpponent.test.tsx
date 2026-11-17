@@ -46,7 +46,8 @@ it("keeps engine handoff on its branch, restores the database on another branch,
       fallbackToEngine: true,
       engineThinkTimeMs: 700,
       engineMaxDepth: 10,
-      candidateLimit: 64,
+      candidateLimit: 5,
+      lineCount: 5,
     }),
   );
   mocks.database.moves = [{ uci: "d7d5", games: 100 }];

@@ -76,10 +76,12 @@ export const practiceEngineSearchOptions = (
 ) => ({
   enabled,
   debounceMs: 0,
-  lineCount: Math.min(64, Math.max(1, atomicLegalMoveCount(fen))),
+  // Keep the time budget focused on a few credible alternatives. Searching every
+  // legal move made even high strengths rely on shallow evaluations.
+  lineCount: Math.min(settings.strength >= 8 ? 5 : 64, Math.max(1, atomicLegalMoveCount(fen))),
   plyCount: 5,
   fallbackToEngine: true,
-  candidateLimit: 64,
+  candidateLimit: settings.strength >= 8 ? 5 : 64,
   engineThinkTimeMs: settings.maxThinkTimeMs,
   engineMaxDepth: PRACTICE_SEARCH_LIMITS[settings.speed - 1]!.depth,
 });

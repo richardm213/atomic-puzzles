@@ -48,17 +48,23 @@ export const choosePracticeEngineMove = (
   const root = createAtomicPosition(fen);
   const us = root.turn;
   const them = us === "white" ? "black" : "white";
-  const candidates = position.moves.flatMap((candidate) => {
+  const legalCandidates = position.moves.flatMap((candidate) => {
     const move = moveFromUci(root, candidate.uci);
     const score = scoreFor(candidate, fen);
     return move && root.isLegal(move) && score ? [{ candidate, move, score }] : [];
   });
+  const candidates = legalCandidates.sort(
+    (left, right) => comparable(right.score) - comparable(left.score),
+  );
+  // Strong opponents draw from the engine's top five, including AtomicDB results.
+  if (settings.strength >= 8) candidates.splice(5);
   const best = candidates.reduce<(typeof candidates)[number] | null>(
     (best, c) => (!best || comparable(c.score) > comparable(best.score) ? c : best),
     null,
   );
   if (!best) return null;
   const a = settings.advanced;
+  const goodMoveGap = 20 + 80 * ((12 - settings.strength) / 11);
   const roll = random() * 100;
   const requested =
     roll < a.blunder
@@ -72,14 +78,19 @@ export const choosePracticeEngineMove = (
   let pool: typeof candidates = [];
   for (let category = requested; category >= 0 && !pool.length; category--) {
     const suitable = candidates.filter(
-      (c) => classifyPracticeMove(best.score, c.score) === categories[category],
+      (c) =>
+        classifyPracticeMove(best.score, c.score) === categories[category] &&
+        (category !== 0 || comparable(best.score) - comparable(c.score) <= goodMoveGap),
     );
     pool = suitable.filter((c) => !excluded.has(c.candidate.uci));
     if (!pool.length && category === 0) pool = suitable;
   }
+  pool.sort((left, right) => comparable(right.score) - comparable(left.score));
+  const rankWeights = [0.4, 0.25, 0.15, 0.12, 0.08];
   const weighted = pool.map((c) => {
     const after = root.clone();
     after.play(c.move);
+    const givesCheck = after.isCheck();
     // Measure the full explosion AND the principal reply, rather than treating every capture as a gain.
     const reply = lines[c.candidate.uci]?.[1];
     if (reply) {
@@ -88,6 +99,18 @@ export const choosePracticeEngineMove = (
     }
     const gain =
       material(after, us) - material(after, them) - (material(root, us) - material(root, them));
+    // Follow the available principal line through four move pairs so material
+    // threats count, while later recaptures and explosions offset temporary gains.
+    const materialPosition = after.clone();
+    for (const uci of lines[c.candidate.uci]?.slice(2, 8) ?? []) {
+      const move = moveFromUci(materialPosition, uci);
+      if (!move || !materialPosition.isLegal(move)) break;
+      materialPosition.play(move);
+    }
+    const materialGain =
+      material(materialPosition, us) -
+      material(materialPosition, them) -
+      (material(root, us) - material(root, them));
     const ownPressure = pressure(after, us);
     const safety = pressure(root, them) - pressure(after, them);
     const simplification = (root.board.occupied.size() - after.board.occupied.size()) / 4;
@@ -97,17 +120,23 @@ export const choosePracticeEngineMove = (
       (ownPressure + Math.max(0, gain) / 6) *
       (pressure(root, them) + (comparable(best.score) < 0 ? 0.5 : 0));
     const style =
-      a.kingPressure * (ownPressure - safety) +
-      a.material * Math.tanh(gain / 3) +
+      a.kingPressure * (ownPressure - pressure(root, us)) +
+      0.5 * safety +
+      a.material * Math.tanh(materialGain / 3) +
       a.simplification * Math.tanh(simplification) +
       a.counterplay * counterplay;
     // Quiet and Patient differ in activity: Quiet avoids immediate forcing moves; Patient keeps tension.
-    const quiet = settings.preset === "quiet" && !isCapture && !after.isCheck() ? 0.4 : 0;
+    const quiet = settings.preset === "quiet" && !isCapture && !givesCheck ? 0.4 : 0;
     const gap = Math.min(1000, Math.max(0, comparable(best.score) - comparable(c.score)));
-    const temperature = (15 + 250 * a.variety) * PRACTICE_PRESETS[settings.preset].spread;
+    const temperature = (12 + 60 * a.variety) * PRACTICE_PRESETS[settings.preset].spread;
+    // Preserve the old preference for engine-ranked moves. Equal evaluations
+    // share a rank so style can still distinguish equally sound alternatives.
+    const rank = pool.findIndex((other) => comparable(other.score) === comparable(c.score));
     return {
       uci: c.candidate.uci,
-      weight: Math.exp(Math.max(-20, Math.min(8, style * 2 + quiet - gap / temperature))),
+      weight:
+        (rankWeights[rank] ?? 0.05) *
+        Math.exp(Math.max(-20, Math.min(1, style * 2 + quiet) - gap / temperature)),
     };
   });
   let choice = random() * weighted.reduce((sum, c) => sum + c.weight, 0);
