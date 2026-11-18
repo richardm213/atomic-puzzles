@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
+import { PuzzleAttemptResult } from "../../components/PuzzleAttemptResult/PuzzleAttemptResult";
 import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
@@ -76,11 +77,14 @@ const Attempts = ({ rows }: { rows: PuzzleProgressWithUsernameRow[] }) => {
               <PlayerLink username={attempt.username} variant="puzzles">
                 {attempt.username}
               </PlayerLink>
-              <span className={attempt.puzzle_correct ? "correct" : "incorrect"}>
-                {attempt.puzzle_correct ? "Correct" : "Incorrect"}
-                {attempt.rated === false ? " · Unrated" : ""}
+              <span className="puzzleRecentAttemptOutcome">
+                <PuzzleAttemptResult
+                  color={attempt.attempt_color ?? (attempt.puzzle_correct ? "green" : "red")}
+                  correct={attempt.puzzle_correct}
+                  move={attempt.puzzle_correct ? attempt.correct_move : attempt.incorrect_move}
+                />
+                {attempt.rated === false ? <span>Unrated</span> : null}
               </span>
-              <span>{attempt.correct_move || attempt.incorrect_move || "—"}</span>
               <time dateTime={attempt.first_attempt_at}>
                 {new Date(attempt.first_attempt_at).toLocaleString()}
               </time>

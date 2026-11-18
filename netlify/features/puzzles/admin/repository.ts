@@ -88,7 +88,7 @@ export class PuzzleAdminRepository {
       this.supabase
         .from("puzzle_progress")
         .select(
-          "username,puzzle_id,first_attempt_at,first_attempt_duration_ms,puzzle_correct,rated,incorrect_move,correct_move",
+          "username,puzzle_id,first_attempt_at,first_attempt_duration_ms,puzzle_correct,rated,incorrect_move,correct_move,attempt_color",
         )
         .eq("puzzle_id", String(id))
         .order("first_attempt_at", { ascending: false })
