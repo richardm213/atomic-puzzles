@@ -1697,6 +1697,7 @@
   color: inherit;
   font-family: var(--font-mono);
   font-weight: 700;
+  letter-spacing: -0.02em;
   text-decoration: none;
 }
 
