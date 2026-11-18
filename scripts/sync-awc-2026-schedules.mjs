@@ -1,5 +1,6 @@
 import { appendFile, readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
+import { createForumBrowserReader } from "./awc-forum-browser.mjs";
 import { parseForumPage } from "./sync-awc-2026-forum.mjs";
 
 export const FORUM = "https://lichess.org/forum/team-atomic-wc/2026-awc-rounds-and-results";
@@ -210,21 +211,44 @@ export function chooseScheduleFixture(rows, report, historical = false) {
   return candidates.length === 1 ? candidates[0] : null;
 }
 
-export async function fetchSchedulingPosts(first = 18, last = Infinity, saveDirectory) {
+export async function fetchSchedulingPosts(
+  first = 18,
+  last = Infinity,
+  saveDirectory,
+  { request = fetch, createBrowser = createForumBrowserReader } = {},
+) {
   const posts = new Map();
-  for (let page = first, end = first; page <= Math.min(end, last); page++) {
-    const response = await fetch(`${FORUM}?page=${page}`, {
-      redirect: "error",
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!response.ok) throw new Error(`Forum page ${page}: HTTP ${response.status}`);
-    const html = await response.text();
-    if (saveDirectory) await writeFile(`${saveDirectory}/page-${page}.html`, html);
-    const parsed = parseForumPage(html, page);
-    for (const post of parsed.posts) posts.set(post.id, post);
-    end = Math.max(end, parsed.lastPage);
+  let browser;
+  try {
+    for (let page = first, end = first; page <= Math.min(end, last); page++) {
+      const url = `${FORUM}?page=${page}`;
+      let html;
+      if (browser) html = await browser.read(url);
+      else {
+        const response = await request(url, {
+          redirect: "error",
+          signal: AbortSignal.timeout(20_000),
+        });
+        html = await response.text();
+        if (!response.ok) {
+          if (response.status !== 403 || !/cloudflare|cf-chl-|Just a moment/i.test(html))
+            throw new Error(`Forum page ${page}: HTTP ${response.status}`);
+          console.warn("Lichess challenged HTTP fetching; reading the public forum with Firefox.");
+          browser = await createBrowser();
+          html = await browser.read(url);
+        }
+      }
+      // Preserve strict title, page, original author, post ID and timestamp checks
+      // for both transports. A challenge page can never become an empty success.
+      const parsed = parseForumPage(html, page);
+      if (saveDirectory) await writeFile(`${saveDirectory}/page-${page}.html`, html);
+      for (const post of parsed.posts) posts.set(post.id, post);
+      end = Math.max(end, parsed.lastPage);
+    }
+    return [...posts.values()].sort((a, b) => a.time - b.time);
+  } finally {
+    await browser?.close();
   }
-  return [...posts.values()].sort((a, b) => a.time - b.time);
 }
 
 export async function syncSchedules({ posts, rows, publish, now = Date.now() }) {
@@ -406,5 +430,10 @@ async function run() {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
   run().catch((error) => {
     console.error(error.message);
+    if (process.env.GITHUB_STEP_SUMMARY)
+      appendFile(
+        process.env.GITHUB_STEP_SUMMARY,
+        `## AWC schedule sync failed\n\n${error.message}\n`,
+      ).catch(() => {});
     process.exitCode = 1;
   });

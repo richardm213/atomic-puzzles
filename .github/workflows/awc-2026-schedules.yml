@@ -52,6 +52,8 @@ jobs:
         with:
           node-version: 24
       - run: npm ci --ignore-scripts
+      - name: Install Firefox for challenged forum pages
+        run: npx playwright install --with-deps firefox
       - name: Publish verified AWC kickoff announcements
         env:
           AWC_SUPABASE_URL: ${{ vars.AWC_SUPABASE_URL }}

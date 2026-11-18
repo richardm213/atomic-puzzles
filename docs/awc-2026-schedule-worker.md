@@ -7,6 +7,12 @@ from page 18 through its current last page. It runs **every two hours at minute 
 run disables the workflow. The script and database credential independently reject
 publishing after the cutoff. GitHub can delay scheduled runs.
 
+If Lichess challenges direct HTTP fetching with a Cloudflare 403, the worker reads the
+public thread using a normal headless Firefox session. Firefox is installed in the workflow,
+reused for every remaining pagination page, and closed on success or failure. Both transports
+use the same strict original-post and pagination validation. An unreadable or challenged
+page fails the run and appears in its summary; it cannot become a successful empty scan.
+
 This worker changes `tournament_matches.scheduled_at` for a uniquely matched,
 unplayed `awc2026` fixture. In the same transaction, a database trigger sets active
 `prediction_admin` order expirations to kickoff for that match market and the two

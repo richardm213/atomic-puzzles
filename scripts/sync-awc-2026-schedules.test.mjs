@@ -1,8 +1,9 @@
-import { deepEqual, equal, ok } from "node:assert/strict";
+import { deepEqual, equal, ok, rejects } from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import {
   chooseScheduleFixture,
+  fetchSchedulingPosts,
   parseSchedulingPost,
   syncSchedules,
 } from "./sync-awc-2026-schedules.mjs";
@@ -115,4 +116,65 @@ test("publishes only the latest future schedule for one unplayed pairing and is 
     null,
   );
   ok(!("s1" in applied[0]) && !("match_id" in applied[0]));
+});
+
+test("Firefox challenge fallback reads every pagination page and closes its browser", async () => {
+  const pages = [];
+  let requests = 0,
+    closed = 0;
+  const html = (
+    page,
+  ) => `<title>2026 AWC Rounds and Results • page ${page}/20 • Atomic WC • lichess.org</title>
+    <article class="forum-post" data-post-id="POST00${page}"><div class="forum-post__metas">
+    <a class="author" href="/@/ReChesster">ReChesster</a><time datetime="2026-11-17T22:00:00Z"></time></div>
+    <div class="forum-post__message-source">@ReChesster vs. @Maracker scheduled for Sunday, November 22nd at 17:00 UTC</div></article>`;
+  const posts = await fetchSchedulingPosts(18, Infinity, undefined, {
+    request: async () => {
+      requests++;
+      return new Response("<title>Just a moment...</title><div>Cloudflare</div>", { status: 403 });
+    },
+    createBrowser: async () => ({
+      read: async (url) => {
+        const page = Number(new URL(url).searchParams.get("page"));
+        pages.push(page);
+        return html(page);
+      },
+      close: async () => {
+        closed++;
+      },
+    }),
+  });
+  equal(requests, 1);
+  equal(closed, 1);
+  deepEqual(pages, [18, 19, 20]);
+  equal(posts.length, 3);
+  equal(parseSchedulingPost(posts[2]).schedules[0].at, Date.parse("2026-11-22T17:00:00Z"));
+});
+
+test("forum failures cannot become partial or empty scheduling successes", async () => {
+  let launched = 0,
+    closed = 0;
+  await rejects(
+    fetchSchedulingPosts(18, 18, undefined, {
+      request: async () => new Response("Forbidden", { status: 403 }),
+      createBrowser: async () => {
+        launched++;
+      },
+    }),
+    /HTTP 403/,
+  );
+  equal(launched, 0);
+  await rejects(
+    fetchSchedulingPosts(18, 18, undefined, {
+      request: async () => new Response("Just a moment: Cloudflare", { status: 403 }),
+      createBrowser: async () => ({
+        read: async () => "<title>Just a moment...</title>",
+        close: async () => {
+          closed++;
+        },
+      }),
+    }),
+    /Unexpected Lichess pagination/,
+  );
+  equal(closed, 1);
 });
