@@ -1694,10 +1694,10 @@
 }
 
 .gameCommentsMessages a {
+  margin-inline-end: var(--space-1);
   color: inherit;
   font-family: var(--font-mono);
-  font-style: italic;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   text-decoration: none;
 }
