@@ -464,7 +464,11 @@ test("tournament game details show post-game scores and clear the clinch marker 
     (element) => getComputedStyle(element.closest("li")!).color,
   );
   await expect(author).toHaveCSS("color", messageColor);
-  await expect(author).toHaveCSS("font-weight", "650");
+  await expect(author).toHaveCSS("font-weight", "700");
+  const messageFont = await author.evaluate(
+    (element) => getComputedStyle(element.closest("li")!).fontFamily,
+  );
+  await expect(author).not.toHaveCSS("font-family", messageFont);
   await expect(author).toHaveCSS("text-decoration-line", "none");
   await author.hover();
   await expect(author).toHaveCSS("color", messageColor);

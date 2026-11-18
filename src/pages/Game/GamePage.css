@@ -1695,7 +1695,8 @@
 
 .gameCommentsMessages a {
   color: inherit;
-  font-weight: 650;
+  font-family: var(--font-mono);
+  font-weight: 700;
   text-decoration: none;
 }
 
