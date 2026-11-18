@@ -1694,7 +1694,15 @@
 }
 
 .gameCommentsMessages a {
-  font-weight: 600;
+  color: inherit;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.gameCommentsMessages a:hover,
+.gameCommentsMessages a:focus-visible {
+  color: inherit;
+  text-decoration: underline;
 }
 .gameCommentsEmpty {
   margin: 0;

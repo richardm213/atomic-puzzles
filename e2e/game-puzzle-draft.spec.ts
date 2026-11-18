@@ -454,11 +454,23 @@ test("tournament game details show post-game scores and clear the clinch marker 
     return route.fulfill({ json: [] });
   });
   await page.goto("/game/score-9");
-  const comments = page.getByRole("region", { name: "Spectator comments", exact: true });
+  const comments = page.getByRole("region", { name: "Spectator chat", exact: true });
   await expect(comments.getByRole("listitem")).toHaveText([
-    "SpectatorName <b>Great move!</b>",
-    "Other Nice game",
+    /SpectatorName <b>Great move!<\/b>/i,
+    /Other Nice game/i,
   ]);
+  const author = comments.getByRole("link", { name: /^SpectatorName$/i });
+  const messageColor = await author.evaluate(
+    (element) => getComputedStyle(element.closest("li")!).color,
+  );
+  await expect(author).toHaveCSS("color", messageColor);
+  await expect(author).toHaveCSS("font-weight", "650");
+  await expect(author).toHaveCSS("text-decoration-line", "none");
+  await author.hover();
+  await expect(author).toHaveCSS("color", messageColor);
+  await expect(author).toHaveCSS("text-decoration-line", "underline");
+  await page.mouse.move(0, 0);
+  await expect(author).toHaveCSS("text-decoration-line", "none");
   await expect(comments.locator("b")).toHaveCount(0);
   await expect(comments.getByRole("textbox")).toHaveCount(0);
   await comments.getByRole("checkbox", { name: "Hide chat", exact: true }).check();
@@ -472,7 +484,7 @@ test("tournament game details show post-game scores and clear the clinch marker 
   await expect(details.getByLabel("Alice: 5 match points", { exact: true })).toBeVisible();
   await expect(details.getByRole("img", { name: "Match clinched" })).toHaveCount(0);
   await page.getByRole("link", { name: "Next game, game 10", exact: true }).click();
-  await expect(comments.getByText("No spectator comments.", { exact: true })).toBeVisible();
+  await expect(comments.getByText("No spectator chat.", { exact: true })).toBeVisible();
   await expect(details.getByLabel("Alice: 5.5 match points", { exact: true })).toBeVisible();
   await expect(details.getByRole("img", { name: "Match clinched" })).toBeVisible();
   await expect(details.getByText("1900", { exact: true })).toBeVisible();

@@ -11,9 +11,9 @@ export const GameComments = ({ game }: { game: ArchiveGame }) => {
   if (!isTournament) return null;
   const messages = game.spectator_chat;
   return (
-    <section className="gameComments" aria-label="Spectator comments">
+    <section className="gameComments" aria-label="Spectator chat">
       <header className="gameCommentsHeader">
-        <h2>Comments</h2>
+        <h2>Chat</h2>
         <label>
           <input
             type="checkbox"
@@ -33,7 +33,7 @@ export const GameComments = ({ game }: { game: ArchiveGame }) => {
         </ol>
       ) : (
         <p className="gameCommentsEmpty">
-          {messages ? "No spectator comments." : "Spectator chat hasn’t been captured yet."}
+          {messages ? "No spectator chat." : "Spectator chat hasn’t been captured yet."}
         </p>
       )}
     </section>
