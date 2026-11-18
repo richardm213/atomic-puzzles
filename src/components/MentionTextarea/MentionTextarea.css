@@ -1,0 +1,65 @@
+.mentionTextarea {
+  position: relative;
+  min-width: 0;
+}
+
+.mentionTextarea > textarea {
+  display: block;
+  width: 100%;
+}
+
+.mentionTextareaPopup {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 42;
+  width: min(340px, 100%);
+  max-height: 264px;
+  overflow-y: auto;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-ui);
+  background: var(--dropdown-panel-bg);
+  box-shadow: var(--shadow-panel);
+}
+
+.mentionTextareaPopup [role="option"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-ui);
+  background: transparent;
+  color: var(--color-text);
+  font-size: 14px;
+  text-align: left;
+}
+
+.mentionTextareaPopup [role="option"]:hover,
+.mentionTextareaPopup [aria-selected="true"] {
+  border-color: color-mix(in srgb, var(--color-primary) 34%, transparent);
+  background: color-mix(in srgb, var(--color-panel-strong) 78%, var(--color-primary) 22%);
+  color: var(--color-heading);
+}
+
+.mentionTextareaPopup span,
+.mentionTextareaPopup small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mentionTextareaPopup small {
+  color: var(--color-muted);
+}
+
+.mentionTextareaStatus {
+  padding: var(--space-2);
+  color: var(--color-muted);
+  font-size: 14px;
+}

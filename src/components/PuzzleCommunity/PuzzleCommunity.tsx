@@ -30,33 +30,14 @@ import {
   saveCommunityCommentVote,
   savePuzzleVote,
 } from "../../lib/community/puzzleCommunity";
-import type { UsernameSearchSuggestion } from "../../lib/users/usernameSearch";
 import { getErrorMessage } from "../../utils/errors";
 import { formatCommentAge, formatLocalDateTime } from "../../utils/formatters";
 import { CommentMarkdown } from "../CommentMarkdown/CommentMarkdown";
+import { MentionTextarea } from "../MentionTextarea/MentionTextarea";
 
-const MENTION_SEARCH_DELAY_MS = 180;
 const collapsedCommentsSchema = z.array(z.number().int().positive());
 
-type ActiveMention = {
-  start: number;
-  end: number;
-  query: string;
-};
-
 type CommentSort = "recent" | "top";
-
-const mentionAtCaret = (value: string, caret: number): ActiveMention | null => {
-  const prefix = value.slice(0, caret);
-  const match = prefix.match(/(?:^|[^a-z0-9_-])@([a-z0-9_-]*)$/i);
-  const query = match?.[1];
-  if (!query || query.length < 3) return null;
-  return {
-    start: caret - query.length - 1,
-    end: caret,
-    query: query.toLowerCase(),
-  };
-};
 
 type PuzzleCommunityProps = {
   puzzleId: number | undefined;
@@ -102,9 +83,6 @@ export const CommunityDiscussion = ({
   const { isAuthenticated, login, user } = useAuth();
   const [pendingCommentVotes, setPendingCommentVotes] = useState<Set<number>>(() => new Set());
   const [commentBody, setCommentBody] = useState("");
-  const [activeMention, setActiveMention] = useState<ActiveMention | null>(null);
-  const [mentionSuggestions, setMentionSuggestions] = useState<UsernameSearchSuggestion[]>([]);
-  const [activeMentionIndex, setActiveMentionIndex] = useState(0);
   const [replyingTo, setReplyingTo] = useState<PuzzleComment | null>(null);
   const [editDraft, setEditDraft] = useState<{ id: number; body: string; original: string } | null>(
     null,
@@ -127,7 +105,6 @@ export const CommunityDiscussion = ({
   const [voteTarget, setVoteTarget] = useState<HTMLElement | null>(null);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const communityRef = useRef<HTMLElement>(null);
-  const mentionRequestIdRef = useRef(0);
   const optimisticCommentIdRef = useRef(-1);
   const [discussionReady, setDiscussionReady] = useState(
     () => !deferUntilVisible || window.location.hash.startsWith("#comment-"),
@@ -344,61 +321,9 @@ export const CommunityDiscussion = ({
     setReplyingTo(null);
     setEditDraft(null);
     setCommentBody("");
-    setActiveMention(null);
-    setMentionSuggestions([]);
     setActionError("");
     setCommentSort(targetType === "tournament" || !allowCommentVotes ? "recent" : "top");
   }, [allowCommentVotes, targetContext, targetId, targetType]);
-
-  useEffect(() => {
-    const requestId = mentionRequestIdRef.current + 1;
-    mentionRequestIdRef.current = requestId;
-    setActiveMentionIndex(0);
-    if (!activeMention) {
-      setMentionSuggestions([]);
-      return undefined;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      void import("../../lib/users/usernameSearch")
-        .then(({ searchUsernameSuggestions }) => searchUsernameSuggestions(activeMention.query, 6))
-        .then((suggestions) => {
-          if (requestId !== mentionRequestIdRef.current) return;
-          setMentionSuggestions(
-            suggestions.filter(
-              (suggestion) =>
-                suggestion.accountUsername && suggestion.accountUsername !== user?.username,
-            ),
-          );
-        })
-        .catch(() => {
-          if (requestId === mentionRequestIdRef.current) setMentionSuggestions([]);
-        });
-    }, MENTION_SEARCH_DELAY_MS);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [activeMention, user?.username]);
-
-  const updateActiveMention = (value: string, caret: number): void => {
-    setActiveMention(mentionAtCaret(value, caret));
-  };
-
-  const insertMention = (suggestion: UsernameSearchSuggestion): void => {
-    if (!activeMention || !suggestion.accountUsername) return;
-    const replacement = `@${suggestion.accountUsername} `;
-    const nextBody =
-      commentBody.slice(0, activeMention.start) +
-      replacement +
-      commentBody.slice(activeMention.end);
-    const nextCaret = activeMention.start + replacement.length;
-    setCommentBody(nextBody);
-    setActiveMention(null);
-    setMentionSuggestions([]);
-    window.requestAnimationFrame(() => {
-      commentInputRef.current?.focus();
-      commentInputRef.current?.setSelectionRange(nextCaret, nextCaret);
-    });
-  };
 
   const childrenByParent = useMemo(() => {
     const children = new Map<number | null, PuzzleComment[]>();
@@ -521,7 +446,7 @@ export const CommunityDiscussion = ({
             </button>
           </div>
         ) : null}
-        <textarea
+        <MentionTextarea
           id={`${target.type}-comment-input`}
           ref={commentInputRef}
           aria-label={replyingTo ? `Reply to ${replyingTo.username}` : "Add a comment"}
@@ -529,71 +454,8 @@ export const CommunityDiscussion = ({
           maxLength={10_000}
           rows={3}
           placeholder={replyingTo ? `Reply to ${replyingTo.username}…` : "Add a comment…"}
-          aria-autocomplete="list"
-          aria-controls={
-            mentionSuggestions.length ? `${target.type}-mention-suggestions` : undefined
-          }
-          aria-activedescendant={
-            mentionSuggestions.length
-              ? `${target.type}-mention-suggestion-${activeMentionIndex}`
-              : undefined
-          }
-          onChange={(event) => {
-            setCommentBody(event.target.value);
-            updateActiveMention(event.target.value, event.target.selectionStart);
-          }}
-          onClick={(event) =>
-            updateActiveMention(event.currentTarget.value, event.currentTarget.selectionStart)
-          }
-          onKeyUp={(event) => {
-            if (["ArrowDown", "ArrowUp", "Enter", "Tab", "Escape"].includes(event.key)) return;
-            updateActiveMention(event.currentTarget.value, event.currentTarget.selectionStart);
-          }}
-          onKeyDown={(event) => {
-            if (!mentionSuggestions.length) return;
-            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-              event.preventDefault();
-              setActiveMentionIndex((current) =>
-                event.key === "ArrowDown"
-                  ? (current + 1) % mentionSuggestions.length
-                  : (current - 1 + mentionSuggestions.length) % mentionSuggestions.length,
-              );
-            } else if (event.key === "Enter" || event.key === "Tab") {
-              event.preventDefault();
-              const selectedSuggestion = mentionSuggestions[activeMentionIndex];
-              if (selectedSuggestion) insertMention(selectedSuggestion);
-            } else if (event.key === "Escape") {
-              event.preventDefault();
-              setActiveMention(null);
-              setMentionSuggestions([]);
-            }
-          }}
+          onValueChange={setCommentBody}
         />
-        {mentionSuggestions.length ? (
-          <ul
-            className="commentMentionSuggestions"
-            id={`${target.type}-mention-suggestions`}
-            role="listbox"
-            aria-label="Matching users"
-          >
-            {mentionSuggestions.map((suggestion, index) => (
-              <li
-                id={`${target.type}-mention-suggestion-${index}`}
-                key={suggestion.accountUsername}
-                role="option"
-                aria-selected={index === activeMentionIndex}
-              >
-                <button
-                  type="button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => insertMention(suggestion)}
-                >
-                  @{suggestion.accountUsername}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
         <div className="commentComposerActions">
           <button
             type="button"
@@ -665,14 +527,14 @@ export const CommunityDiscussion = ({
                   }
                 }}
               >
-                <textarea
+                <MentionTextarea
                   ref={editInputRef}
                   aria-label="Edit comment (Markdown)"
                   maxLength={10_000}
                   rows={3}
                   value={draft.body}
                   readOnly={editCommentMutation.isPending}
-                  onChange={(event) => setEditDraft({ ...draft, body: event.target.value })}
+                  onValueChange={(body) => setEditDraft({ ...draft, body })}
                   onKeyDown={(event) => {
                     if (event.key === "Escape" && !editCommentMutation.isPending)
                       closeEditor(draft.id);

@@ -473,7 +473,7 @@ describe("PuzzleCommunity", () => {
     await user.type(input, "Thanks @sea");
 
     const suggestion = await screen.findByRole("option", { name: "@seaside_tiramisu" });
-    await user.click(within(suggestion).getByRole("button"));
+    await user.click(suggestion);
 
     expect(input).toHaveValue("Thanks @seaside_tiramisu ");
   });
