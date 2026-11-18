@@ -1164,6 +1164,8 @@ describe("PuzzleSolverPage solution options", () => {
       mocks.puzzleAuthor = "Puzzle_Author";
       mocks.attemptedPuzzleIds = new Set();
       mocks.puzzleExplanation = "";
+      const studyUrl = "https://lichess.org/study/Iv9L9LTR/emsqp5QX";
+      const content = `The king move escapes the atomic threat. See ${studyUrl}.`;
       const user = userEvent.setup();
       render(<PuzzleSolverPage />);
 
@@ -1190,20 +1192,14 @@ describe("PuzzleSolverPage solution options", () => {
       await waitFor(() => expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true));
       await user.click(explanationTab);
       await user.click(screen.getByRole("button", { name: "Add explanation" }));
-      await user.type(
-        screen.getByRole("textbox", { name: "Puzzle explanation" }),
-        "The king move escapes the atomic threat.",
-      );
+      await user.type(screen.getByRole("textbox", { name: "Puzzle explanation" }), content);
       await user.click(screen.getByRole("button", { name: "Save explanation" }));
 
       await waitFor(() =>
-        expect(mocks.updatePuzzleExplanation).toHaveBeenCalledWith(
-          1369,
-          "The king move escapes the atomic threat.",
-        ),
+        expect(mocks.updatePuzzleExplanation).toHaveBeenCalledWith(1369, content),
       );
       expect(await screen.findByText("Explanation saved.")).toBeInTheDocument();
-      expect(screen.getByText("The king move escapes the atomic threat.")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: studyUrl })).toHaveAttribute("href", studyUrl);
     },
   );
 

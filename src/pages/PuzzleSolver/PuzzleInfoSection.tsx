@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { type FormEvent, type ReactNode, useState } from "react";
 
+import { CommentMarkdown } from "../../components/CommentMarkdown/CommentMarkdown";
 import { CommunityCommentsLink } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
 import { PuzzleAttemptResult } from "../../components/PuzzleAttemptResult/PuzzleAttemptResult";
 import type { PuzzleProgressWithUsernameRow } from "../../lib/supabase/puzzleProgress";
@@ -221,7 +222,7 @@ export const PuzzleInfoSection = ({
               </div>
             </form>
           ) : explanation.hasContent ? (
-            <p>{explanation.content}</p>
+            <CommentMarkdown className="puzzleExplanationContent" body={explanation.content} />
           ) : (
             <p className="puzzleExplanationEmpty">No explanation has been added yet.</p>
           )}
