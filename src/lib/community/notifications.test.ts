@@ -37,6 +37,13 @@ describe("safeNotificationPath", () => {
 });
 
 describe("notificationCopy", () => {
+  it("shows the combined creation reward rounded to the nearest tenth", () => {
+    expect(
+      notificationCategory({ ...makeNotification("puzzle_approved"), coin_amount: 8.45 }),
+    ).toBe("8.5 coins");
+    expect(notificationCategory(makeNotification("puzzle_approved"))).toBe("10.0 coins");
+  });
+
   it("shows a fine notice as a fine rather than a feature announcement", () => {
     const notification = {
       ...makeNotification("feature"),

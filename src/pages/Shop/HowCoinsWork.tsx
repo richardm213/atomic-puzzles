@@ -288,6 +288,8 @@ export const HowCoinsWorkPage = () => (
         </dl>
         <p>
           No repeat rewards for the same tag, its parents, or subtags. Changing votes earns nothing.
+          Only tags you originally submit that remain in the final puzzle earn these rewards on
+          approval or publication, together with the creation reward.
         </p>
       </section>
 

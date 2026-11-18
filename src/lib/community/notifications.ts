@@ -118,7 +118,10 @@ export const notificationCategory = (notification: UserNotification): string => 
   if (notification.notification_type === "feature") return "New feature";
   if (notification.notification_type === "shop_redemption") return "Shop purchase";
   if (notification.notification_type === "puzzle_rating_added") return "Puzzle rating";
-  if (notification.notification_type === "puzzle_approved") return "10 coins";
+  if (notification.notification_type === "puzzle_approved") {
+    const coins = Math.round((notification.coin_amount ?? 10) * 10) / 10;
+    return `${coins.toFixed(1)} coins`;
+  }
   return `Puzzle #${notification.puzzle_id}`;
 };
 
