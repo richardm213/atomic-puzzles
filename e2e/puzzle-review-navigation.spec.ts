@@ -302,7 +302,18 @@ test("tag popups close on the backdrop and dismiss only the topmost dialog", asy
   await page.route("**/api/puzzles/tags?**", (route) =>
     route.fulfill({ json: { votes: [{ tag: "fork", up: 3, down: 0, vote: 0 }] } }),
   );
+  await page.route("**/api/puzzles/admin", (route) =>
+    route.fulfill({
+      json: {
+        puzzle: { ...queuePuzzle, id: 101, author: "admin", tags: ["fork"], deleted_at: null },
+        olderPuzzleId: null,
+        newerPuzzleId: null,
+        attempts: [],
+      },
+    }),
+  );
   await page.goto("/admin/puzzle-test/101");
+  await expect(page).toHaveURL(/\/puzzles\/recent\/101\?test=true$/);
   const tag = page.getByRole("button", { name: /^View definition for Fork\b/ });
   const definition = page.getByRole("dialog", { name: "Fork", exact: true });
   await tag.click();
@@ -476,4 +487,68 @@ test("recent puzzle URLs restore selection and ignore stale loads during history
   await page.goForward();
   await expect(page).toHaveURL(/\/puzzles\/recent\/301$/);
   await expect(idInput).toHaveValue("301");
+});
+
+test("recent puzzles toggles the existing test solver without losing selection or writing progress", async ({
+  page,
+}) => {
+  const playRequests: Array<{ puzzleIds: number[]; testMode?: boolean }> = [];
+  const progressRequests: unknown[] = [];
+  await page.route("**/api/auth/session", (route) =>
+    route.fulfill({ json: { user: { username: "seaside_tiramisu" } } }),
+  );
+  await page.route("**/api/puzzles/admin", (route) => {
+    const body = route.request().postDataJSON();
+    if (body.action !== "get") return route.fulfill({ json: { rows: [], nextCursor: null } });
+    const id = body.puzzleId ?? 102;
+    return route.fulfill({
+      json: {
+        puzzle: { ...queuePuzzle, id, author: "admin", tags: [], deleted_at: null },
+        olderPuzzleId: id === 102 ? 101 : null,
+        newerPuzzleId: id === 101 ? 102 : null,
+        attempts: [],
+      },
+    });
+  });
+  await page.route("**/api/puzzles/play", async (route) => {
+    const body = route.request().postDataJSON();
+    playRequests.push(body);
+    await route.fulfill({
+      json: {
+        puzzles: body.puzzleIds.map((id: number) => ({
+          ...queuePuzzle,
+          id,
+          tags: [],
+          author: "admin",
+        })),
+      },
+    });
+  });
+  await page.route("**/api/puzzles/progress", (route) => {
+    progressRequests.push(route.request().postDataJSON());
+    return route.fulfill({ json: {} });
+  });
+  await page.goto("/puzzles/recent");
+  const mode = page.getByRole("button", { name: "Test mode", exact: true });
+  const idInput = page.getByRole("spinbutton", { name: "Puzzle ID", exact: true });
+  await expect(idInput).toHaveValue("102");
+  await expect(mode).toHaveAttribute("aria-pressed", "false");
+  await mode.click();
+  await expect(page).toHaveURL(/\/puzzles\/recent\/102\?test=true$/);
+  await expect(page.getByRole("heading", { name: "Test puzzle 102", exact: true })).toBeVisible();
+  expect(playRequests.some((request) => request.testMode === true)).toBe(true);
+  await expect(page.getByRole("button", { name: "Edit puzzle", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Previous puzzle", exact: true }).click();
+  await expect(idInput).toHaveValue("101");
+  await expect(page).toHaveURL(/\/puzzles\/recent\/101\?test=true$/);
+  await expect(page.getByRole("heading", { name: "Test puzzle 101", exact: true })).toBeVisible();
+  await page.reload();
+  await expect(mode).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("heading", { name: "Test puzzle 101", exact: true })).toBeVisible();
+  await mode.click();
+  await expect(page).toHaveURL(/\/puzzles\/recent\/101$/);
+  await expect(idInput).toHaveValue("101");
+  await expect(page.getByRole("button", { name: "Edit puzzle", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Solution moves" })).toBeVisible();
+  expect(progressRequests).toHaveLength(0);
 });

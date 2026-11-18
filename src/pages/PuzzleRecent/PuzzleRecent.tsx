@@ -3,14 +3,15 @@ import "../PuzzleSubmission/PuzzleSubmission.css";
 import {
   faArrowLeft,
   faArrowRight,
+  faFlask,
   faFloppyDisk,
   faPen,
   faRotateLeft,
   faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
@@ -40,6 +41,9 @@ import { PuzzleEditor } from "../PuzzleSubmission/PuzzleEditor";
 import { PuzzleTagVoteHistory } from "./PuzzleTagVoteHistory";
 
 const ADMIN = "seaside_tiramisu";
+const PuzzleTest = lazy(() =>
+  import("../PuzzleSolver/PuzzleSolver").then((module) => ({ default: module.PuzzleTestPage })),
+);
 
 const puzzleValue = (puzzle: AdminPuzzle): PuzzleSubmissionValue => ({
   fen: puzzle.fen,
@@ -69,7 +73,14 @@ const Attempts = ({ rows }: { rows: PuzzleProgressWithUsernameRow[] }) => {
       open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
-      <summary>Other attempts</summary>
+      <summary
+        onClick={(event) => {
+          event.preventDefault();
+          setOpen((current) => !current);
+        }}
+      >
+        Other attempts
+      </summary>
       {rows.length ? (
         <ul>
           {rows.map((attempt) => (
@@ -81,7 +92,9 @@ const Attempts = ({ rows }: { rows: PuzzleProgressWithUsernameRow[] }) => {
                 <PuzzleAttemptResult
                   color={attempt.attempt_color ?? (attempt.puzzle_correct ? "green" : "red")}
                   correct={attempt.puzzle_correct}
-                  move={attempt.puzzle_correct ? attempt.correct_move : attempt.incorrect_move}
+                  move={
+                    (attempt.puzzle_correct ? attempt.correct_move : attempt.incorrect_move) ?? null
+                  }
                 />
                 {attempt.rated === false ? <span>Unrated</span> : null}
               </span>
@@ -101,6 +114,7 @@ const Attempts = ({ rows }: { rows: PuzzleProgressWithUsernameRow[] }) => {
 
 export const PuzzleRecentPage = () => {
   const { puzzleId: routePuzzleId } = useParams({ from: "/puzzles/recent/{-$puzzleId}" });
+  const { test: testMode = false } = useSearch({ from: "/puzzles/recent/{-$puzzleId}" });
   const navigate = useNavigate();
   const { isLoading: authLoading, user } = useAuth();
   const isAdmin = normalizeUsername(user?.username) === ADMIN;
@@ -148,6 +162,7 @@ export const PuzzleRecentPage = () => {
         void navigate({
           to: "/puzzles/recent/{-$puzzleId}",
           params: { puzzleId: String(loadedPuzzleId) },
+          search: { test: testMode || undefined },
           replace: true,
         });
       }
@@ -171,11 +186,15 @@ export const PuzzleRecentPage = () => {
     return () => {
       current = false;
     };
-  }, [applyResponse, authLoading, isAdmin, loadedPuzzleId, navigate, routePuzzleId]);
+  }, [applyResponse, authLoading, isAdmin, loadedPuzzleId, navigate, routePuzzleId, testMode]);
 
   const selectPuzzle = (puzzleId: number | null | undefined): void => {
     if (!puzzleId || loading || saving) return;
-    void navigate({ to: "/puzzles/recent/{-$puzzleId}", params: { puzzleId: String(puzzleId) } });
+    void navigate({
+      to: "/puzzles/recent/{-$puzzleId}",
+      params: { puzzleId: String(puzzleId) },
+      search: { test: testMode || undefined },
+    });
   };
 
   const resetDraft = (): void => {
@@ -254,8 +273,12 @@ export const PuzzleRecentPage = () => {
   const explanation = puzzle?.explanation?.trim();
 
   return (
-    <section className="puzzleQueuePage puzzleRecentPage">
-      <Seo title="Recent puzzles" description="Administer recent atomic chess puzzles." />
+    <section
+      className={`puzzleQueuePage puzzleRecentPage${testMode ? " puzzleRecentTestMode" : ""}`}
+    >
+      {!testMode ? (
+        <Seo title="Recent puzzles" description="Administer recent atomic chess puzzles." />
+      ) : null}
       <header className="puzzleQueueHeader puzzleAdminHeader">
         <div className="puzzleRecentHeaderMain">
           <div className="puzzleRecentNavigation" aria-label="Puzzle navigation">
@@ -302,34 +325,57 @@ export const PuzzleRecentPage = () => {
             >
               <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
             </button>
-            <button
-              type="button"
-              className={`queueSecondaryButton puzzleRecentEditToggle${editing ? " active" : ""}`}
-              aria-label={editing ? "Return to view mode" : "Edit puzzle"}
-              aria-pressed={editing}
-              disabled={loading || saving || deleted}
-              onClick={() => {
-                if (editing) resetDraft();
-                else {
-                  setEditing(true);
-                  setMessage("");
-                  setError("");
-                }
-              }}
-            >
-              <FontAwesomeIcon icon={faPen} aria-hidden="true" />
-            </button>
+            {!testMode ? (
+              <button
+                type="button"
+                className={`queueSecondaryButton puzzleRecentEditToggle${editing ? " active" : ""}`}
+                aria-label={editing ? "Return to view mode" : "Edit puzzle"}
+                aria-pressed={editing}
+                disabled={loading || saving || deleted}
+                onClick={() => {
+                  if (editing) resetDraft();
+                  else {
+                    setEditing(true);
+                    setMessage("");
+                    setError("");
+                  }
+                }}
+              >
+                <FontAwesomeIcon icon={faPen} aria-hidden="true" />
+              </button>
+            ) : null}
           </div>
         </div>
-        <Link className="queueSecondaryButton" to="/puzzles/issues">
-          Puzzle issues
-        </Link>
-        <Link className="queueSecondaryButton" to="/puzzles/review">
-          Review queue
-        </Link>
+        <button
+          type="button"
+          className={`queueSecondaryButton puzzleRecentModeToggle${testMode ? " active" : ""}`}
+          aria-pressed={testMode}
+          disabled={loading || saving || editing || (!testMode && deleted)}
+          title={editing ? "Save or cancel your edits before testing" : undefined}
+          onClick={() => {
+            void navigate({
+              to: "/puzzles/recent/{-$puzzleId}",
+              params: { puzzleId: routePuzzleId },
+              search: { test: testMode ? undefined : true },
+            });
+          }}
+        >
+          <FontAwesomeIcon icon={faFlask} aria-hidden="true" />
+          Test mode
+        </button>
+        {!testMode ? (
+          <>
+            <Link className="queueSecondaryButton" to="/puzzles/issues">
+              Puzzle issues
+            </Link>
+            <Link className="queueSecondaryButton" to="/puzzles/review">
+              Review queue
+            </Link>
+          </>
+        ) : null}
       </header>
 
-      {puzzle ? (
+      {!testMode && puzzle ? (
         <div className="puzzleReviewEditor">
           <div className="puzzleRecentMeta">
             <span>{new Date(puzzle.created_at).toLocaleString()}</span>
@@ -500,6 +546,15 @@ export const PuzzleRecentPage = () => {
         </div>
       ) : error ? (
         <p className="queueMessage error">{error}</p>
+      ) : null}
+      {testMode ? (
+        error ? null : loading || !puzzle || routePuzzleId !== String(puzzle.id) ? (
+          <RouteLoadingFallback />
+        ) : (
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <PuzzleTest key={puzzle.id} />
+          </Suspense>
+        )
       ) : null}
     </section>
   );

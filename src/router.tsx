@@ -131,10 +131,6 @@ const PuzzleSolverPage = lazyRouteComponent(
   () => import("./pages/PuzzleSolver/PuzzleSolver"),
   "PuzzleSolverPage",
 );
-const PuzzleTestPage = lazyRouteComponent(
-  () => import("./pages/PuzzleSolver/PuzzleSolver"),
-  "PuzzleTestPage",
-);
 const GuestPuzzleTrial = lazyRouteComponent(
   () => import("./pages/PuzzleSolver/GuestPuzzleTrial"),
   "GuestPuzzleTrial",
@@ -706,7 +702,14 @@ const coinRankingsRoute = createRoute({
 const puzzleTestRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/puzzle-test/{-$puzzleId}",
-  component: PuzzleTestPage,
+  beforeLoad: ({ params }) => {
+    throw redirect({
+      to: "/puzzles/recent/{-$puzzleId}",
+      params: { puzzleId: params.puzzleId },
+      search: { test: true },
+      replace: true,
+    });
+  },
 });
 
 const marketAdminRoute = createRoute({
@@ -787,6 +790,9 @@ const puzzleReviewRoute = createRoute({
 const puzzleRecentRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/puzzles/recent/{-$puzzleId}",
+  validateSearch: (search: Record<string, unknown>) => ({
+    test: search.test === true || search.test === "true" ? true : undefined,
+  }),
   component: AuthenticatedPuzzleRecentPage,
 });
 

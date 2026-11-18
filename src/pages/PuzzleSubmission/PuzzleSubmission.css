@@ -916,6 +916,22 @@
   width: min(1360px, 100%);
 }
 
+.puzzleRecentTestMode {
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+}
+
+.puzzleRecentTestMode > .puzzleQueueHeader {
+  width: min(1360px, 100%);
+  margin: 0 auto;
+  padding: clamp(16px, 3vw, 32px) var(--page-gutter) 20px;
+}
+
+.puzzleRecentModeToggle {
+  min-height: 44px;
+}
+
 .puzzleRecentHeaderMain {
   min-width: 0;
   display: flex;
@@ -935,7 +951,8 @@
   justify-content: center;
 }
 
-.puzzleRecentEditToggle.active {
+.puzzleRecentEditToggle.active,
+.puzzleRecentModeToggle.active {
   border-color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 14%, var(--color-panel-strong));
   color: var(--color-heading);

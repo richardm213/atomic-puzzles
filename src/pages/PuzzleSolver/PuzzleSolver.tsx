@@ -384,8 +384,9 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     (puzzleId: string | number): void => {
       if (testMode) {
         void navigate({
-          to: "/admin/puzzle-test/{-$puzzleId}",
+          to: "/puzzles/recent/{-$puzzleId}",
           params: { puzzleId: String(puzzleId) },
+          search: { test: true },
           replace: true,
         });
       } else if (isDashboardSetSolveMode) {
@@ -2072,7 +2073,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         }
         path={
           testMode
-            ? "/admin/puzzle-test"
+            ? "/puzzles/recent"
             : activePuzzleId
               ? isDashboardSetSolveMode
                 ? `/solve/dashboard/${encodeURIComponent(routeDashboardSetId)}/${activePuzzleId}`
