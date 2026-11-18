@@ -79,11 +79,40 @@ test("recent matches keep unrated and banned states usable on mobile", async ({ 
   );
 });
 
-test("unrated match detail retains its score and game links", async ({ page }) => {
+test("match detail retains score and game links and hides tournament source metadata", async ({
+  page,
+}) => {
   await mockUnratedArchive(page);
   await page.goto("/match/unrated-match");
 
   await expect(page.getByLabel("Score 1.5 to 0.5", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "game1234", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "game5678", exact: true })).toBeVisible();
+  const header = page.getByRole("region", { name: "Match result" });
+  await expect(header.getByText("arena", { exact: true })).toBeVisible();
+
+  // Site tournament matches are identified by their bracket association even
+  // when the archive has no tournament_id.
+  await page.route("**/__e2e_supabase/**/tournament_matches?**", (route) =>
+    route.fulfill({
+      json: [
+        {
+          tournament: "awc2026",
+          bracket: "main",
+          round: "Quarterfinals",
+          order: 1,
+          id: "wb-r2-m1",
+          match_id: "unrated-match",
+          p1: "alice",
+          p2: "bob",
+          s1: 1.5,
+          s2: 0.5,
+        },
+      ],
+    }),
+  );
+  await page.reload();
+  await expect(header.getByRole("link", { name: /AWC 2026 Quarterfinals/ })).toBeVisible();
+  await expect(header.getByText("arena", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "game1234", exact: true })).toBeVisible();
 });

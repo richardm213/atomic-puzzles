@@ -117,7 +117,9 @@ const MatchPageContent = ({ decodedMatchId }: { decodedMatchId: string }) => {
                   {modeLabel ? <span className="matchPageMetaPill">{modeLabel}</span> : null}
                   <span className="matchPageMetaPill">{formatLocalDateTime(match.startTs)}</span>
                   <span className="matchPageMetaPill timeControlValue">{match.timeControl}</span>
-                  <span className="matchPageMetaPill">{match.sourceValue}</span>
+                  {!tournamentLocation && !matchQuery.data?.match?.tournament_id ? (
+                    <span className="matchPageMetaPill">{match.sourceValue}</span>
+                  ) : null}
                 </div>
                 <div className="matchPageHeaderActions">
                   {tournamentLocation ? (

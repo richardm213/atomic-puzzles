@@ -1,5 +1,9 @@
 # Repository Instructions
 
+## Git workflow
+
+- Never push commits unless the user explicitly asks you to push. A request to commit does not authorize a push.
+
 ## AWC 2026 result checklist
 
 Whenever the user reports a new AWC 2026 result, follow
