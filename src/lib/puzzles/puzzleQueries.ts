@@ -1,6 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { fetchPrimaryPlayerNicknames } from "../supabase/playerNicknames";
 import { fetchPuzzleProgressRowsForUsername } from "../supabase/puzzleProgress";
 import {
   fetchPuzzleCreatorLeaderboard,
@@ -9,6 +8,7 @@ import {
   fetchPuzzleRatingEventsForUsername,
   fetchPuzzleUserRating,
 } from "../supabase/puzzleUserRatings";
+import { playerNameQueryKeys, playerNicknamesQueryOptions } from "../users/playerNameQueries";
 import { loadPuzzleCatalog } from "./puzzleLibrary";
 
 export const puzzleQueryKeys = {
@@ -16,7 +16,7 @@ export const puzzleQueryKeys = {
   progress: ["puzzle-progress"] as const,
   userRating: ["puzzle-user-rating"] as const,
   ratingEvents: ["puzzle-rating-events"] as const,
-  nicknames: ["puzzles", "player-nicknames"] as const,
+  nicknames: playerNameQueryKeys.nicknames,
 };
 
 export const puzzleCatalogQueryOptions = () =>
@@ -26,12 +26,7 @@ export const puzzleCatalogQueryOptions = () =>
     staleTime: 10 * 60 * 1_000,
   });
 
-export const puzzlePlayerNicknamesQueryOptions = () =>
-  queryOptions({
-    queryKey: puzzleQueryKeys.nicknames,
-    queryFn: fetchPrimaryPlayerNicknames,
-    staleTime: 60 * 60 * 1_000,
-  });
+export const puzzlePlayerNicknamesQueryOptions = playerNicknamesQueryOptions;
 
 export const puzzleProgressForUserQueryOptions = (username: string) =>
   queryOptions({

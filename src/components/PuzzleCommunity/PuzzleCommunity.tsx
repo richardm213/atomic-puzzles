@@ -17,6 +17,7 @@ import type { VoteValue } from "../../../shared/domain/voting";
 import { useAuth } from "../../context/AuthContext";
 import { useMinuteClock } from "../../hooks/useMinuteClock";
 import { usePersistedState } from "../../hooks/usePersistedState";
+import { usePlayerDisplayNames } from "../../hooks/usePlayerDisplayNames";
 import {
   communityDiscussionQueryOptions,
   communityQueryKeys,
@@ -121,6 +122,8 @@ export const CommunityDiscussion = ({
     enabled: Boolean(targetId) && discussionReady,
   });
   const community = discussionQuery.data ?? null;
+  const displayName = usePlayerDisplayNames(Boolean(community?.comments.length));
+  const replyName = replyingTo ? displayName(replyingTo.username).label : "";
   const commentClock = useMinuteClock(Boolean(community?.comments.length));
   const loading = discussionQuery.isPending;
   const queryError = discussionQuery.error
@@ -440,7 +443,7 @@ export const CommunityDiscussion = ({
       <div className={`puzzleCommentComposer ${isReply ? "replyComposer" : ""}`}>
         {replyingTo ? (
           <div className="commentComposerHeading">
-            <strong>{`Replying to ${replyingTo.username}`}</strong>
+            <strong>{`Replying to ${replyName}`}</strong>
             <button type="button" onClick={() => setReplyingTo(null)}>
               Cancel reply
             </button>
@@ -449,11 +452,11 @@ export const CommunityDiscussion = ({
         <MentionTextarea
           id={`${target.type}-comment-input`}
           ref={commentInputRef}
-          aria-label={replyingTo ? `Reply to ${replyingTo.username}` : "Add a comment"}
+          aria-label={replyingTo ? `Reply to ${replyName}` : "Add a comment"}
           value={commentBody}
           maxLength={10_000}
           rows={3}
-          placeholder={replyingTo ? `Reply to ${replyingTo.username}…` : "Add a comment…"}
+          placeholder={replyingTo ? `Reply to ${replyName}…` : "Add a comment…"}
           onValueChange={setCommentBody}
         />
         <div className="commentComposerActions">
@@ -494,7 +497,7 @@ export const CommunityDiscussion = ({
             <button
               className="commentBranchToggle"
               type="button"
-              aria-label={`${isCollapsed ? "Expand" : "Collapse"} thread by ${comment.username}`}
+              aria-label={`${isCollapsed ? "Expand" : "Collapse"} thread by ${displayName(comment.username).label}`}
               aria-controls={`${contentId} ${repliesId}`}
               aria-expanded={!isCollapsed}
               onClick={() => toggleCollapsed(comment.id, isCollapsed)}
@@ -507,7 +510,7 @@ export const CommunityDiscussion = ({
             <span className="commentBranchLeaf" aria-hidden="true"></span>
           )}
           <header className="puzzleCommentMeta">
-            <strong>{comment.username}</strong>
+            <strong>{displayName(comment.username).label}</strong>
             <time dateTime={comment.created_at} title={formatLocalDateTime(comment.created_at)}>
               {formatCommentAge(comment.created_at, commentClock)}
             </time>

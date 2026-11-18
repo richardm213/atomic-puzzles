@@ -13,6 +13,7 @@ import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/Rout
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
 import { useMinuteClock } from "../../hooks/useMinuteClock";
+import { usePlayerDisplayNames } from "../../hooks/usePlayerDisplayNames";
 import { siteCommunityCommentsQueryOptions } from "../../lib/community/communityQueries";
 import {
   type CommunityCommentTargetFilter,
@@ -42,6 +43,7 @@ export const CommentsPage = () => {
     placeholderData: keepPreviousData,
   });
   const comments = commentsQuery.data?.comments ?? [];
+  const displayName = usePlayerDisplayNames(comments.length > 0);
   const commentClock = useMinuteClock(comments.length > 0);
   const total = commentsQuery.data?.total ?? 0;
   const loading = commentsQuery.isFetching;
@@ -166,8 +168,11 @@ export const CommentsPage = () => {
                   </div>
                   <div className="siteCommentContent">
                     <div className="siteCommentMeta">
-                      <PlayerLink className="siteCommentAuthor" username={comment.username}>
-                        {comment.username}
+                      <PlayerLink
+                        className="siteCommentAuthor"
+                        username={displayName(comment.username).username}
+                      >
+                        {displayName(comment.username).label}
                       </PlayerLink>
                       <span className={`siteCommentTarget ${comment.target_type}`}>
                         <CommunityCommentTargetLink {...comment} />
