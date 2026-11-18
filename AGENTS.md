@@ -32,6 +32,10 @@ have all been handled and verified.
 
 ## Puzzle attempts and coin corrections
 
+When organizing puzzles into match sets, create a dedicated set only when the match has at
+least two active puzzles. Keep verified game, match, event, and move-history metadata on
+single puzzles without creating a dedicated set for them.
+
 When asked to archive puzzle attempts or remove previously archived attempts from active progress,
 follow [the puzzle attempt archiving protocol](docs/puzzle-attempt-archiving.md).
 
