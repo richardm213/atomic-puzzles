@@ -10,7 +10,10 @@ import {
   openingLineSans,
   type OpeningProgress,
 } from "../../../shared/domain/openings/repertoire";
-import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
+import {
+  AnalysisContinuationChoices,
+  TranspositionJump,
+} from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import { boardShortcutCommand } from "../../components/Chessboard/boardShortcuts";
 import {
   type AnnotationMenuPosition,
@@ -19,13 +22,11 @@ import {
   type MoveMenuAction,
 } from "../../components/MoveAnnotationMenu/MoveAnnotationMenu";
 import { useKeyboardShortcutSettings } from "../../context/AppSettings";
+import { formatSolutionMove, movePrefix, startingPlyFromFen } from "../../lib/chess/pgn";
 import {
-  buildIndexedSolutionMoveTree,
-  formatSolutionMove,
-  type IndexedSolutionMoveNode,
-  movePrefix,
-  startingPlyFromFen,
-} from "../../lib/chess/pgn";
+  buildTranspositionMoveTree,
+  type TranspositionMoveNode,
+} from "../../lib/chess/transpositions";
 
 type Props = {
   document: OpeningDocument;
@@ -40,7 +41,7 @@ type Props = {
   moveActions: (lineIndex: number, ply: number) => MoveMenuAction[];
 };
 
-type TreeMove = { node: IndexedSolutionMoveNode; path: string[]; ply: number };
+type TreeMove = { node: TranspositionMoveNode; path: string[]; ply: number };
 
 export const OpeningTree = ({
   document,
@@ -61,7 +62,10 @@ export const OpeningTree = ({
     () => lines.map((line) => openingLineSans(document, line.moves)),
     [document, lines],
   );
-  const tree = useMemo(() => buildIndexedSolutionMoveTree(sans), [sans]);
+  const tree = useMemo(
+    () => buildTranspositionMoveTree(document.startFen, sans),
+    [document.startFen, sans],
+  );
   const kinds = useMemo(() => openingLineKinds(document), [document]);
   const knownMoves = useMemo(() => openingKnownMoves(document, progress), [document, progress]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -100,7 +104,7 @@ export const OpeningTree = ({
     panelRef.current?.focus({ preventScroll: true });
     onNavigate(index, ply);
   };
-  const targetIndex = (node: IndexedSolutionMoveNode) =>
+  const targetIndex = (node: TranspositionMoveNode) =>
     [...node.lineIndexes].find((index) =>
       currentMoves.every((move, ply) => sans[index]?.[ply] === move),
     ) ??
@@ -130,6 +134,7 @@ export const OpeningTree = ({
 
   const renderMove = ({ node, path, ply }: TreeMove, first: boolean) => {
     const index = targetIndex(node);
+    const transposition = node.transposition;
     const known = knownMoves.get(lines[index]?.id ?? "")?.[ply] ?? false;
     const kind = kinds.get(lines[index]?.id ?? "")?.[ply] ?? "essential";
     const active =
@@ -161,12 +166,17 @@ export const OpeningTree = ({
         >
           {formatSolutionMove(node.move!)}
         </button>
+        {transposition ? (
+          <TranspositionJump
+            onClick={() => navigate(transposition.lineIndex, transposition.moveIndex)}
+          />
+        ) : null}
       </span>
     );
   };
 
   const render = (
-    parent: IndexedSolutionMoveNode,
+    parent: TranspositionMoveNode,
     path: string[],
     ply: number,
     depth: number,

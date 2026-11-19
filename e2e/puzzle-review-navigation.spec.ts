@@ -328,7 +328,7 @@ test("tag popups close on the backdrop and dismiss only the topmost dialog", asy
   await expect(replay).toBeFocused();
 });
 
-test("recent puzzle editing links multiple transpositions while view mode keeps full PGN", async ({
+test("recent puzzle viewing and editing link transpositions while saving full PGN", async ({
   page,
 }) => {
   const fixture = transpositionFixtures.find((puzzle) => puzzle.id === 1209)!;
@@ -368,8 +368,8 @@ test("recent puzzle editing links multiple transpositions while view mode keeps 
   await page.goto("/puzzles/recent");
   const moves = page.getByRole("region", { name: "Solution moves" });
   const jumps = moves.getByRole("button", { name: "Go to original continuation" });
-  await expect(moves.getByRole("button", { name: /Rf2/ })).toHaveCount(4);
-  await expect(jumps).toHaveCount(0);
+  await expect(moves.getByRole("button", { name: /Rf2/ })).toHaveCount(1);
+  await expect(jumps).toHaveCount(3);
   await page.getByRole("button", { name: "Edit puzzle", exact: true }).click();
   await expect(jumps).toHaveCount(3);
   const followup = moves.getByRole("button", { name: /Rf2/ });
@@ -396,8 +396,8 @@ test("recent puzzle editing links multiple transpositions while view mode keeps 
     "step",
   );
   finishSave();
-  await expect(jumps).toHaveCount(0);
-  await expect(moves.getByRole("button", { name: /Rf2\?/ })).toHaveCount(4);
+  await expect(jumps).toHaveCount(3);
+  await expect(moves.getByRole("button", { name: /Rf2\?/ })).toHaveCount(1);
   expect(stored).not.toMatch(/→|transposition/i);
   const savedLines = parseSolutionUciLines(fixture.fen, stored);
   expect(savedLines).toHaveLength(4);

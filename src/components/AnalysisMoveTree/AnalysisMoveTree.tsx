@@ -8,7 +8,6 @@ import { useCallback, useMemo, useState } from "react";
 import {
   buildIndexedSolutionMoveTree,
   formatSolutionMove,
-  type IndexedSolutionMoveNode,
   movePrefix,
   orderedChildren,
   splitSolutionMove,
@@ -104,16 +103,28 @@ export const AnalysisContinuationChoices = ({
 
 const BLOCK_VARIATION_MIN_PLIES = 5;
 
+export const TranspositionJump = ({ onClick }: { onClick: () => void }) => (
+  <button
+    type="button"
+    className="analysisTreeMove transpositionJump"
+    aria-label="Go to original continuation"
+    title="Go to original continuation"
+    onClick={onClick}
+  >
+    <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
+  </button>
+);
+
 const visibleMoveNode = (
-  tree: IndexedSolutionMoveNode,
+  tree: TranspositionMoveNode,
   lines: string[][],
   lineIndex: number,
   currentPly: number,
-): IndexedSolutionMoveNode | undefined => {
-  let node: IndexedSolutionMoveNode | undefined = tree;
+): TranspositionMoveNode | undefined => {
+  let node: TranspositionMoveNode | undefined = tree;
   for (let ply = 0; ply < currentPly; ply++) {
-    const target = (node as TranspositionMoveNode | undefined)?.transposition;
-    if (target) {
+    const target = node?.transposition;
+    if (target?.sharedContinuation) {
       node = tree;
       for (let index = 0; index <= target.moveIndex; index++) {
         node = node?.children.get(lines[target.lineIndex]?.[index] ?? "");
@@ -124,9 +135,10 @@ const visibleMoveNode = (
   return node;
 };
 
-const isLongVariation = (node: IndexedSolutionMoveNode): boolean => {
-  let current: IndexedSolutionMoveNode | undefined = node;
+const isLongVariation = (node: TranspositionMoveNode): boolean => {
+  let current: TranspositionMoveNode | undefined = node;
   for (let plies = 1; current; plies++) {
+    if (current.transposition?.sharedContinuation) return false;
     if (plies >= BLOCK_VARIATION_MIN_PLIES || current.children.size > 1) return true;
     current = current.children.values().next().value;
   }
@@ -175,7 +187,7 @@ export const AnalysisMoveTree = ({
     position: AnnotationMenuPosition;
   } | null>(null);
   const closeAnnotationMenu = useCallback(() => setAnnotationTarget(null), []);
-  const tree = useMemo(
+  const tree = useMemo<TranspositionMoveNode>(
     () =>
       initialFen
         ? buildTranspositionMoveTree(initialFen, lines)
@@ -191,7 +203,7 @@ export const AnalysisMoveTree = ({
   const activeMove = initialFen ? visibleMoveNode(tree, lines, activeLine, currentPly) : undefined;
 
   const renderMove = (
-    node: IndexedSolutionMoveNode,
+    node: TranspositionMoveNode,
     ply: number,
     keyPrefix: string,
     forceMoveNumber = false,
@@ -246,31 +258,27 @@ export const AnalysisMoveTree = ({
   };
 
   const renderContinuations = (
-    parent: IndexedSolutionMoveNode,
+    parent: TranspositionMoveNode,
     ply: number,
     keyPrefix: string,
     preferredLine: number,
     forceMoveNumber = false,
   ): ReactNode[] => {
-    const target = (parent as TranspositionMoveNode).transposition;
-    if (target)
-      return [
-        <button
-          key={`${keyPrefix}-transposition`}
-          type="button"
-          className="analysisTreeMove transpositionJump"
-          aria-label="Go to original continuation"
-          title="Go to original continuation"
-          onClick={() => onSelect(target.lineIndex, target.moveIndex)}
-        >
-          <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
-        </button>,
-      ];
-    const children = orderedChildren(parent);
+    const target = parent.transposition;
+    const jump = target
+      ? [
+          <TranspositionJump
+            key={`${keyPrefix}-transposition`}
+            onClick={() => onSelect(target.lineIndex, target.moveIndex)}
+          />,
+        ]
+      : [];
+    const children: TranspositionMoveNode[] = orderedChildren(parent);
     const main = children.find((child) => child.lineIndexes.has(preferredLine)) ?? children[0];
-    if (!main) return [];
+    if (target?.sharedContinuation || !main) return jump;
     const variations = children.filter((child) => child !== main);
     return [
+      ...jump,
       renderMove(main, ply, keyPrefix, forceMoveNumber),
       ...variations.map((variation, index) => {
         const key = `${keyPrefix}-variation-${ply}-${index}`;

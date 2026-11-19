@@ -13,8 +13,19 @@ import {
 
 type MoveLocation = { lineIndex: number; moveIndex: number };
 export type TranspositionMoveNode = Omit<IndexedSolutionMoveNode, "children"> & {
-  transposition?: MoveLocation;
+  transposition?: MoveLocation & { sharedContinuation: boolean };
   children: Map<string, TranspositionMoveNode>;
+};
+
+const containsContinuation = (
+  original: TranspositionMoveNode,
+  alternate: TranspositionMoveNode,
+): boolean => {
+  for (const [san, child] of alternate.children) {
+    const match = original.children.get(san);
+    if (!match || !containsContinuation(match, child)) return false;
+  }
+  return true;
 };
 
 // Counters do not affect legal continuations. Turn, castling and legal en passant do.
@@ -36,7 +47,7 @@ const indexLines = (fen: string, lines: string[][], displayOnly = false) => {
   const position = createAtomicPosition(fen);
   const rootKey = positionKey(position);
   const occurrences = new Map<string, Occurrence>();
-  const originals = new Map<string, MoveLocation>();
+  const originals = new Map<string, TranspositionMoveNode>();
   const ancestors = new Set([rootKey]);
 
   const visit = (
@@ -69,10 +80,14 @@ const indexLines = (fen: string, lines: string[][], displayOnly = false) => {
       });
       if (displayOnly && !repeats) {
         const original = originals.get(nextKey);
-        if (original) child.transposition = original;
-        else originals.set(nextKey, child.firstOccurrence!);
+        if (original?.firstOccurrence) {
+          child.transposition = {
+            ...original.firstOccurrence,
+            sharedContinuation: containsContinuation(original, child),
+          };
+        } else originals.set(nextKey, child);
       }
-      if (displayOnly && child.transposition) continue;
+      if (child.transposition?.sharedContinuation) continue;
       if (!repeats) ancestors.add(nextKey);
       visit(child, next, nextPath, nextKey, repeats);
       if (!repeats) ancestors.delete(nextKey);
@@ -85,8 +100,16 @@ const indexLines = (fen: string, lines: string[][], displayOnly = false) => {
 export const buildTranspositionMoveTree = (
   fen: string,
   lines: string[][],
-): TranspositionMoveNode =>
-  lines.length < 2 ? buildIndexedSolutionMoveTree(lines) : indexLines(fen, lines, true).tree;
+): TranspositionMoveNode => {
+  if (lines.length > 1) {
+    try {
+      return indexLines(fen, lines, true).tree;
+    } catch {
+      // Keep notation navigable while a position or move list is being edited or loaded.
+    }
+  }
+  return buildIndexedSolutionMoveTree(lines);
+};
 
 /** Materialize shared continuations as ordinary PGN branches. Compare surviving
  * move-order prefixes with the previous edit so deletions/annotations override

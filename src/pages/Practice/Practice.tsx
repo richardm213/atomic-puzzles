@@ -1530,7 +1530,6 @@ export const PracticePage = () => {
                   initialFen={puzzleDraft.fen}
                   moves={draftBoard.moveList}
                   currentPly={draftBoard.currentPly}
-                  initialPly={startingPlyFromFen(puzzleDraft.fen)}
                   pinnedLineIndex={draftBoard.activeLineIndex}
                   inline
                   onNavigate={(ply) => setDraftNavigation({ type: "history", ply })}
@@ -1549,6 +1548,7 @@ export const PracticePage = () => {
             ) : (
               <MoveNotation
                 lines={analysisLines}
+                initialFen={practiceRootFen}
                 moves={moveList}
                 currentPly={currentPly}
                 pinnedLineIndex={activeLineIndex}
@@ -1566,6 +1566,7 @@ export const PracticePage = () => {
                 lines={analysisLines}
                 moves={moveList}
                 currentPly={currentPly}
+                initialPly={startingPlyFromFen(practiceRootFen)}
                 pinnedLineIndex={activeLineIndex}
                 onSelect={navigateToAnalysisMove}
               />

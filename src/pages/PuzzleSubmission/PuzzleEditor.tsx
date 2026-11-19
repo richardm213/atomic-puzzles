@@ -29,7 +29,6 @@ import {
   sameSolutionMove,
   serializeSanLinesToPgn,
   splitSolutionMove,
-  startingPlyFromFen,
 } from "../../lib/chess/pgn";
 import { synchronizeTranspositions } from "../../lib/chess/transpositions";
 import {
@@ -543,11 +542,10 @@ export const PuzzleEditor = ({
   const moveNotation = (
     <MoveNotation
       lines={solutionLines}
-      initialFen={readOnly ? undefined : appliedFen}
+      initialFen={appliedFen}
       moves={boardState?.lineMoves ?? solutionLines[activeLineIndex] ?? []}
       currentPly={currentPly}
       pinnedLineIndex={activeLineIndex}
-      initialPly={startingPlyFromFen(appliedFen)}
       inline
       onNavigate={(ply) => navigateToMove(activeLineIndex, Math.max(0, ply - 1))}
       onSelectVariation={navigateToMove}

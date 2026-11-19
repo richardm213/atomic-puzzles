@@ -23,10 +23,10 @@ const initialEngineSettings = (): AtomicDbEngineSettings => ({
 });
 
 export const PuzzleAnalysisPanel = ({
-  fen,
+  initialFen,
+  currentFen,
   analysisActive,
   moveEditing,
-  initialPly,
   previousMove,
   beforePreviousMove,
   terminalOutcome,
@@ -46,10 +46,10 @@ export const PuzzleAnalysisPanel = ({
   playback,
   onNavigateMoves,
 }: {
-  fen: string;
+  initialFen: string;
+  currentFen: string;
   analysisActive: boolean;
   moveEditing: ReturnType<typeof useBoardMoveEditing>;
-  initialPly: number;
   previousMove?: PuzzleIntro | null | undefined;
   beforePreviousMove?: boolean | undefined;
   terminalOutcome: "white" | "black" | "draw" | null;
@@ -79,7 +79,7 @@ export const PuzzleAnalysisPanel = ({
   }, [onHoverMove]);
 
   const { analysis, engineMoves } = useAtomicDbBoardAnalysis({
-    currentFen: fen,
+    currentFen,
     enabled: analysisActive && engineSettings.enabled,
     atomicDbEnabled: engineSettings.atomicDbEnabled !== false,
     navigation: null,
@@ -102,7 +102,7 @@ export const PuzzleAnalysisPanel = ({
       {analysisActive ? (
         <div className="puzzleAnalysisEngine">
           <AtomicDbAnalysisBlock
-            fen={fen}
+            fen={currentFen}
             analysis={analysis}
             settings={engineSettings}
             setSettings={setEngineSettings}
@@ -117,7 +117,7 @@ export const PuzzleAnalysisPanel = ({
       <div className="puzzleAnalysisMoves" aria-label="Played moves">
         <MoveNotation
           reserveFirstRow
-          initialPly={initialPly}
+          initialFen={initialFen}
           lines={analysisActive ? lines : []}
           moves={moves}
           previousMove={

@@ -1786,10 +1786,10 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   const puzzleAnalysisPanel = (
     <PuzzleAnalysisPanel
       key={activePuzzleId ?? "empty"}
-      fen={currentFen}
+      initialFen={fen}
+      currentFen={currentFen}
       analysisActive={isAnalysisMode}
       moveEditing={analysisMoveEditing}
-      initialPly={startingPlyFromFen(fen)}
       previousMove={introPending ? undefined : activePuzzle?.intro}
       beforePreviousMove={baseLineState.beforeIntro}
       terminalOutcome={

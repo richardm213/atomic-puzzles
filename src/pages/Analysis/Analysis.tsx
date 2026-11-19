@@ -1130,7 +1130,7 @@ export const AnalysisPage = ({
       lines={analysisLines}
       moves={moveList}
       currentPly={currentPly}
-      initialPly={puzzleDraft ? startingPlyFromFen(rootFen) : 0}
+      initialPly={startingPlyFromFen(rootFen)}
       pinnedLineIndex={activeLineIndex}
       onSelect={navigateToAnalysisMove}
     />
@@ -1138,10 +1138,9 @@ export const AnalysisPage = ({
   const moveNotation = (
     <MoveNotation
       lines={analysisLines}
-      initialFen={puzzleDraft?.fen ?? (workspace ? rootFen : undefined)}
+      initialFen={rootFen}
       moves={moveList}
       currentPly={currentPly}
-      initialPly={puzzleDraft || workspace ? startingPlyFromFen(rootFen) : 0}
       pinnedLineIndex={activeLineIndex}
       inline={notationLayout === "inline"}
       onNavigate={navigateToPly}

@@ -1,3 +1,4 @@
+import { startingPlyFromFen } from "../../lib/chess/pgn";
 import type { GameMoveAssessment } from "../../lib/gameAnalysis/gameAnalysis";
 import type { PlaybackCommand } from "../../types/chessboard";
 import { AnalysisMoveTree, type PreviousMove } from "../AnalysisMoveTree/AnalysisMoveTree";
@@ -5,6 +6,7 @@ import type { MoveMenuAction } from "../MoveAnnotationMenu/MoveAnnotationMenu";
 import { PlayedMoves } from "../PlayedMoves/PlayedMoves";
 
 export const MoveNotation = ({
+  initialFen,
   lines,
   moves,
   currentPly,
@@ -12,7 +14,6 @@ export const MoveNotation = ({
   previousMove,
   beforePreviousMove,
   reserveFirstRow = false,
-  initialPly = previousMove ? previousMove.ply + 1 : 0,
   inline,
   onNavigate,
   onSelectVariation,
@@ -21,13 +22,12 @@ export const MoveNotation = ({
   onDelete,
   moveActions,
   assessments,
-  initialFen,
 }: {
+  initialFen: string;
   lines: string[][];
   moves: string[];
   currentPly: number;
   pinnedLineIndex?: number | undefined;
-  initialPly?: number | undefined;
   previousMove?: PreviousMove | undefined;
   beforePreviousMove?: boolean | undefined;
   reserveFirstRow?: boolean;
@@ -41,8 +41,8 @@ export const MoveNotation = ({
   onDelete?: ((lineIndex: number, moveIndex: number) => void) | undefined;
   moveActions?: ((lineIndex: number, moveIndex: number) => MoveMenuAction[]) | undefined;
   assessments?: GameMoveAssessment[] | undefined;
-  initialFen?: string | undefined;
 }) => {
+  const initialPly = startingPlyFromFen(initialFen);
   if (reserveFirstRow && !lines.length && !moves.length && !previousMove) {
     return <div className="analysisTree" aria-hidden="true" />;
   }

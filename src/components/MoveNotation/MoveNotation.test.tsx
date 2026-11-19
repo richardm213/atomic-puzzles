@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { INITIAL_FEN } from "chessops/fen";
 import { describe, expect, it, vi } from "vitest";
 
 import { MoveNotation } from "./MoveNotation";
@@ -7,6 +8,7 @@ describe("MoveNotation", () => {
   it("reserves a noninteractive row before puzzle or move data is available", () => {
     const { container } = render(
       <MoveNotation
+        initialFen={INITIAL_FEN}
         reserveFirstRow
         lines={[]}
         moves={[]}
@@ -24,6 +26,7 @@ describe("MoveNotation", () => {
     const onNavigate = vi.fn();
     const onSelectVariation = vi.fn();
     const props = {
+      initialFen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
       lines: [["e5", "Nf3"]],
       moves: ["e5", "Nf3"],
       previousMove: { san: "e4", ply: 0 },
@@ -50,6 +53,7 @@ describe("MoveNotation", () => {
 
     render(
       <MoveNotation
+        initialFen={INITIAL_FEN}
         lines={[["e4", "e5"]]}
         moves={["e4", "e5"]}
         currentPly={0}
@@ -70,6 +74,7 @@ describe("MoveNotation", () => {
 
     render(
       <MoveNotation
+        initialFen={INITIAL_FEN}
         lines={[]}
         moves={["e4", "e5"]}
         currentPly={0}
@@ -82,5 +87,28 @@ describe("MoveNotation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "e5" }));
     expect(onNavigate).toHaveBeenCalledWith(2);
+  });
+
+  it("jumps to the original move order without hiding a distinct continuation", () => {
+    const lines = [
+      ["Nf3", "Nf6", "Nc3", "Nc6", "d4"],
+      ["Nc3", "Nc6", "Nf3", "Nf6", "e4"],
+    ];
+    const onSelectVariation = vi.fn();
+    render(
+      <MoveNotation
+        initialFen={INITIAL_FEN}
+        lines={lines}
+        moves={lines[1]!}
+        currentPly={5}
+        inline={false}
+        onNavigate={vi.fn()}
+        onSelectVariation={onSelectVariation}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "3. e4", current: "step" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Go to original continuation" }));
+    expect(onSelectVariation).toHaveBeenCalledWith(0, 3);
   });
 });
