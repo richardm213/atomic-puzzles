@@ -40,7 +40,7 @@ const attemptExamples: {
 ];
 
 const CoinAmount = ({ amount }: { amount: number }) => (
-  <span className={amount < 0 ? "coinAmount coinAmountPenalty" : "coinAmount"}>
+  <span className={amount < 0 ? "coinGuideAmount coinGuideAmountPenalty" : "coinGuideAmount"}>
     <img src={appAssetPath("/images/coins/gold-coin-stack-v2.png")} alt="" />
     {formatCoinAmount(amount)}
   </span>

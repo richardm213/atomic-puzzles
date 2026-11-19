@@ -5,17 +5,10 @@ test.beforeEach(async ({ page }) => {
   await page.route("**/api/archive-data?**", (route) => route.fulfill({ json: [] }));
 });
 
-test("profile and rankings widths stay stable when navigation preloads other pages", async ({
+test("profile and rankings layouts stay stable when links preload other pages", async ({
   page,
 }) => {
-  const preloadRankingsPage = async (label: string, moduleName: string) => {
-    const moduleResponse = page.waitForResponse((response) => {
-      const path = new URL(response.url()).pathname;
-      return path.startsWith(`/assets/${moduleName}-`) && path.endsWith(".js");
-    });
-    await page.getByRole("button", { name: "Rankings", exact: true }).hover();
-    await page.getByRole("menuitem", { name: label, exact: true }).hover();
-    await (await moduleResponse).finished();
+  const waitForStylesheets = async () => {
     await page.evaluate(async () => {
       await Promise.all(
         [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].map((link) =>
@@ -27,6 +20,16 @@ test("profile and rankings widths stay stable when navigation preloads other pag
         ),
       );
     });
+  };
+  const preloadRankingsPage = async (label: string, moduleName: string) => {
+    const moduleResponse = page.waitForResponse((response) => {
+      const path = new URL(response.url()).pathname;
+      return path.startsWith(`/assets/${moduleName}-`) && path.endsWith(".js");
+    });
+    await page.getByRole("button", { name: "Rankings", exact: true }).hover();
+    await page.getByRole("menuitem", { name: label, exact: true }).hover();
+    await (await moduleResponse).finished();
+    await waitForStylesheets();
   };
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto("/@/e2e-player");
@@ -42,6 +45,29 @@ test("profile and rankings widths stay stable when navigation preloads other pag
   const rankingsWidth = await rankings.evaluate((panel) => panel.clientWidth);
   await preloadRankingsPage("Coin rankings", "CoinRankings");
   await expect(rankings).toHaveJSProperty("clientWidth", rankingsWidth);
+
+  await page.route("**/api/coins", (route) =>
+    route.fulfill({
+      json: { result: [{ username: "e2e-player", balance: 100, inBets: 20, netWorth: 120 }] },
+    }),
+  );
+  // Load coin rankings directly so the guide has not been preloaded.
+  await page.goto("/rankings/coins");
+  const coins = page.locator(".coinRankingsPanel");
+  await expect(coins.getByRole("cell", { name: "e2e-player", exact: true })).toBeVisible();
+  const guideStyles = page.waitForResponse((response) => {
+    const path = new URL(response.url()).pathname;
+    return path.startsWith("/assets/HowCoinsWork-") && path.endsWith(".css");
+  });
+  await page.getByRole("link", { name: "How to earn coins", exact: true }).hover();
+  await (await guideStyles).finished();
+  await waitForStylesheets();
+  for (const amount of ["120", "100", "20"]) {
+    await expect(coins.getByRole("cell", { name: amount, exact: true })).toHaveCSS(
+      "display",
+      "table-cell",
+    );
+  }
 });
 
 test("rankings support January 2016 as the earliest month", async ({ page }) => {

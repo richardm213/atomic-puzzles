@@ -92,7 +92,7 @@
   margin: 0;
 }
 
-.coinAmount {
+.coinGuideAmount {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -102,11 +102,11 @@
   white-space: nowrap;
 }
 
-.coinAmountPenalty {
+.coinGuideAmountPenalty {
   color: var(--color-danger);
 }
 
-.coinAmount img {
+.coinGuideAmount img {
   width: 28px;
   height: 28px;
   object-fit: contain;
