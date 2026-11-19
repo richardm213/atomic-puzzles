@@ -317,6 +317,12 @@ test("tag popups close on the backdrop and dismiss only the topmost dialog", asy
   const tag = page.getByRole("button", { name: /^View definition for Fork\b/ });
   const definition = page.getByRole("dialog", { name: "Fork", exact: true });
   await tag.click();
+  const replay = definition.getByRole("group", { name: "Fork replay", exact: true });
+  await expect(replay).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(replay.getByRole("status")).toContainText("move 1 of");
+  await page.keyboard.press("ArrowLeft");
+  await expect(replay.getByRole("status")).toHaveText("Starting position");
   await definition.getByRole("heading", { name: "Fork", exact: true }).click();
   await expect(definition).toBeVisible();
   await definition.getByRole("button", { name: "Rename Fork", exact: true }).click();
@@ -329,6 +335,7 @@ test("tag popups close on the backdrop and dismiss only the topmost dialog", asy
   await expect(definition).toHaveCount(0);
   await tag.click();
   await expect(definition).toBeVisible();
+  await expect(replay).toBeFocused();
 });
 
 test("recent puzzle editing links multiple transpositions while view mode keeps full PGN", async ({
