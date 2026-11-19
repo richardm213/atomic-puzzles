@@ -43,3 +43,38 @@ it("shares changes with practice immediately and restores engine preferences aft
   ).toBe(checked);
   vi.unstubAllGlobals();
 });
+
+it("selects the local human model and remembers independently editable ratings", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({ json: async () => ({ models: { human: true, rechesster: true } }) })),
+  );
+  localStorage.clear();
+  const contents = (
+    <AppSettingsProvider>
+      <EngineSettings practice />
+    </AppSettingsProvider>
+  );
+  const view = render(contents);
+  await screen.findByRole("option", { name: "Human model (local)" });
+  fireEvent.change(screen.getByRole("combobox", { name: "Opponent" }), {
+    target: { value: "human" },
+  });
+  const engine = screen.getByRole("spinbutton", { name: "Engine target rating" });
+  expect(engine).toHaveValue(2300);
+  fireEvent.change(engine, { target: { value: "1" } });
+  expect(engine).toHaveValue(1);
+  fireEvent.change(engine, { target: { value: "1600" } });
+  fireEvent.click(screen.getByText("Advanced", { exact: true }));
+  fireEvent.change(screen.getByRole("spinbutton", { name: "Assumed opponent rating" }), {
+    target: { value: "2200" },
+  });
+  view.unmount();
+  render(contents);
+  await screen.findByRole("option", { name: "Human model (local)" });
+  expect(screen.getByRole("combobox", { name: "Opponent" })).toHaveValue("human");
+  expect(screen.getByRole("spinbutton", { name: "Engine target rating" })).toHaveValue(1600);
+  fireEvent.click(screen.getByText("Advanced", { exact: true }));
+  expect(screen.getByRole("spinbutton", { name: "Assumed opponent rating" })).toHaveValue(2200);
+  vi.unstubAllGlobals();
+});

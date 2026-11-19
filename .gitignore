@@ -21,3 +21,7 @@ benchmarks/opening-explorer/results/*.json
 
 # Local Atomic Stockfish player-replica training workspace
 /nnue/
+
+# Generated Python bytecode
+__pycache__/
+*.py[cod]

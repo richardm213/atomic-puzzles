@@ -4,18 +4,63 @@ import { useAppSettings } from "../../context/AppSettings";
 import { PracticeEngineSettings } from "../../pages/Practice/PracticeEngineSettings";
 import { usePracticeSettings } from "../../pages/Practice/usePracticeSettings";
 
+const RatingInput = ({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) => {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  return (
+    <div className="navSettingsField">
+      <label className="navSettingsLabel" htmlFor={id}>
+        {label}
+      </label>
+      <input
+        id={id}
+        className="navRatingInput"
+        type="number"
+        min="500"
+        max="3000"
+        step="50"
+        value={draft}
+        onChange={(event) => {
+          const text = event.target.value;
+          setDraft(text);
+          const number = Number(text);
+          if (text && Number.isFinite(number) && number >= 500 && number <= 3000) onChange(number);
+        }}
+        onBlur={() => {
+          const number = draft.trim() ? Number(draft) : value;
+          const normalized = Number.isFinite(number)
+            ? Math.min(3000, Math.max(500, Math.round(number)))
+            : value;
+          setDraft(String(normalized));
+          onChange(normalized);
+        }}
+      />
+    </div>
+  );
+};
+
 export const EngineSettings = ({ practice }: { practice: boolean }) => {
   const { localAnalysisEngine, setLocalAnalysisEngine, showBestMoveArrow, setShowBestMoveArrow } =
     useAppSettings();
   const { settings, updateSettings } = usePracticeSettings();
-  const [replicaAvailable, setReplicaAvailable] = useState(false);
+  const [localModels, setLocalModels] = useState({ rechesster: false, human: false });
   useEffect(() => {
     if (!import.meta.env.DEV || !practice) return;
     const controller = new AbortController();
     void fetch("/api/practice-replica", { signal: controller.signal })
       .then((response) => response.json())
-      .then((data: { available?: boolean }) => {
-        if (!controller.signal.aborted) setReplicaAvailable(data.available === true);
+      .then((data: { models?: { rechesster: boolean; human: boolean } }) => {
+        if (!controller.signal.aborted && data.models) setLocalModels(data.models);
       })
       .catch(() => {});
     return () => controller.abort();
@@ -60,15 +105,41 @@ export const EngineSettings = ({ practice }: { practice: boolean }) => {
               value={settings.opponentModel}
               onChange={(event) =>
                 updateSettings({
-                  opponentModel: event.target.value === "rechesster" ? "rechesster" : "database",
+                  opponentModel:
+                    event.target.value === "rechesster" || event.target.value === "human"
+                      ? event.target.value
+                      : "database",
                 })
               }
             >
               <option value="database">Database / engine</option>
-              {replicaAvailable ? <option value="rechesster">Rechesster</option> : null}
+              {localModels.rechesster ? <option value="rechesster">Rechesster</option> : null}
+              {localModels.human ? <option value="human">Human model (local)</option> : null}
             </select>
           </div>
-          {settings.opponentModel !== "rechesster" ? (
+          {settings.opponentModel === "human" ? (
+            <>
+              <RatingInput
+                id="practice-humanRating"
+                label="Engine target rating"
+                value={settings.humanRating}
+                onChange={(humanRating) => updateSettings({ humanRating })}
+              />
+              <details className="navSettingsAdvanced">
+                <summary>Advanced</summary>
+                <RatingInput
+                  id="practice-humanOpponentRating"
+                  label="Assumed opponent rating"
+                  value={settings.humanOpponentRating}
+                  onChange={(humanOpponentRating) => updateSettings({ humanOpponentRating })}
+                />
+              </details>
+              <p className="navSettingsHint">
+                Experimental rating inputs; playing strength is not calibrated yet.
+              </p>
+            </>
+          ) : null}
+          {settings.opponentModel === "database" ? (
             <PracticeEngineSettings
               value={settings.engine}
               onChange={(engine) => updateSettings({ engine })}

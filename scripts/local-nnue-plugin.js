@@ -11,9 +11,25 @@ export const localNnuePlugin = () => ({
   configureServer(server) {
     const python = resolve("nnue/.venv/bin/python");
     const entry = resolve("scripts/practice-opponent.py");
-    const checkpoint = resolve("nnue/runs/rechesster/native-player-v1/best.pt");
-    const available = () =>
-      [python, entry, checkpoint, resolve("nnue/src/predict_native_player.py")].every(existsSync);
+    const commonFiles = [
+      python,
+      entry,
+      resolve("nnue/engine/Atomic-Stockfish/src/atomic-ft3b-1p2B.nnue"),
+    ];
+    const modelFiles = {
+      rechesster: [
+        "nnue/runs/rechesster/native-player-v1/best.pt",
+        "nnue/src/predict_native_player.py",
+      ],
+      human: ["nnue/runs/general-human-v2/model/best.pt", "nnue/src/predict_general_human.py"],
+    };
+    const availableModels = () =>
+      Object.fromEntries(
+        Object.entries(modelFiles).map(([model, files]) => [
+          model,
+          [...commonFiles, ...files.map((file) => resolve(file))].every(existsSync),
+        ]),
+      );
     let worker;
     let sequence = 0;
     const pending = new Map();
@@ -50,7 +66,10 @@ export const localNnuePlugin = () => ({
         res.statusCode = status;
         res.end(JSON.stringify(body));
       };
-      if (req.method === "GET") return reply(200, { available: available() });
+      if (req.method === "GET") {
+        const models = availableModels();
+        return reply(200, { available: Object.values(models).some(Boolean), models });
+      }
       if (req.method !== "POST") return reply(405, { error: "Method not allowed" });
       if (req.headers.origin) {
         let allowed = false;
@@ -61,7 +80,6 @@ export const localNnuePlugin = () => ({
         }
         if (!allowed) return reply(403, { error: "Origin not allowed" });
       }
-      if (!available()) return reply(503, { error: "Local Rechesster model is unavailable" });
       if (pending.size >= 8) return reply(503, { error: "Local opponent is busy. Try again." });
       let body = "";
       try {
@@ -70,6 +88,13 @@ export const localNnuePlugin = () => ({
           if (body.length > 32_000) return reply(413, { error: "Request is too large" });
         }
         const request = JSON.parse(body);
+        if (!request || typeof request !== "object" || Array.isArray(request))
+          return reply(400, { error: "Invalid opponent request" });
+        const model = request.model ?? "rechesster";
+        if (!Object.hasOwn(modelFiles, model))
+          return reply(400, { error: "Unknown local opponent" });
+        if (!availableModels()[model])
+          return reply(503, { error: "Local opponent model is unavailable" });
         const id = ++sequence;
         const process = start();
         const cleanup = () => {

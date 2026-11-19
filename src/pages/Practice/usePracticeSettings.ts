@@ -27,7 +27,9 @@ export type PlayerContinuation = "general" | "engine";
 
 type StoredPracticeSettings = {
   engine: PracticeEngineSettings;
-  opponentModel: "database" | "rechesster";
+  opponentModel: "database" | "rechesster" | "human";
+  humanRating: number;
+  humanOpponentRating: number;
   side: PracticeSide;
   opponentMode: OpponentMode;
   opponentSource: OpponentSource;
@@ -46,6 +48,8 @@ const DEFAULT_SETTINGS: StoredPracticeSettings = {
   ...DEFAULT_PRACTICE_MOVE_SETTINGS,
   side: "white",
   opponentModel: "database",
+  humanRating: 2300,
+  humanOpponentRating: 2000,
   opponentSource: "general",
   opponentUsernames: [],
   allowMultiplePlayers: false,
@@ -89,7 +93,15 @@ const practiceSettingsSchema = z
     return {
       engine: normalizePracticeEngineSettings(value.engine),
       opponentModel:
-        import.meta.env.DEV && value.opponentModel === "rechesster" ? "rechesster" : "database",
+        import.meta.env.DEV &&
+        (value.opponentModel === "rechesster" || value.opponentModel === "human")
+          ? value.opponentModel
+          : "database",
+      humanRating: Math.max(500, normalizeClockValue(value.humanRating, 2300, 3000)),
+      humanOpponentRating: Math.max(
+        500,
+        normalizeClockValue(value.humanOpponentRating, 2000, 3000),
+      ),
       side: value.side === "black" ? "black" : "white",
       opponentMode:
         value.opponentMode === "random" || value.opponentMode === "popular"

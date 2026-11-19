@@ -11,6 +11,9 @@ const responseSchema = z.object({
 
 type Props = {
   enabled: boolean;
+  model: "rechesster" | "human";
+  rating: number;
+  opponentRating: number;
   fen: string;
   rootFen: string;
   moves: string[];
@@ -25,7 +28,7 @@ export const usePracticeReplica = (props: Props) => {
   const [error, setError] = useState("");
   const latest = useRef(props);
   latest.current = props;
-  const { enabled, fen, rootFen, retry } = props;
+  const { enabled, fen, rootFen, retry, model, rating, opponentRating } = props;
   const moveKey = props.moves.join(" ");
   const controlKey = props.timeControl.join(" ");
   useEffect(() => {
@@ -34,7 +37,7 @@ export const usePracticeReplica = (props: Props) => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = setTimeout(() => {
-      setError("Rechesster took too long. Pause and resume to retry.");
+      setError("The local opponent took too long. Pause and resume to retry.");
       controller.abort();
     }, 30_000);
     const started = performance.now();
@@ -42,14 +45,24 @@ export const usePracticeReplica = (props: Props) => {
     void fetch("/api/practice-replica", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fen, rootFen, moves, clockMs, timeControl, exclude }),
+      body: JSON.stringify({
+        fen,
+        rootFen,
+        moves,
+        clockMs,
+        timeControl,
+        exclude,
+        model,
+        rating,
+        opponentRating,
+      }),
       signal: controller.signal,
     })
       .then(async (response) => {
         const payload: unknown = await response.json();
         if (!response.ok)
           throw new Error(
-            (payload as { error?: string }).error || "Could not load Rechesster's move",
+            (payload as { error?: string }).error || "Could not load the local opponent’s move",
           );
         const result = responseSchema.parse(payload);
         if (controller.signal.aborted || result.fen !== fen || !result.move) return;
@@ -61,7 +74,10 @@ export const usePracticeReplica = (props: Props) => {
               latest.current.enabled &&
               latest.current.fen === fen &&
               latest.current.moves.join(" ") === moveKey &&
-              latest.current.retry === retry
+              latest.current.retry === retry &&
+              latest.current.model === model &&
+              latest.current.rating === rating &&
+              latest.current.opponentRating === opponentRating
             )
               latest.current.onMove(move);
           },
@@ -70,7 +86,9 @@ export const usePracticeReplica = (props: Props) => {
       })
       .catch((reason: unknown) => {
         if (!controller.signal.aborted)
-          setError(reason instanceof Error ? reason.message : "Could not load Rechesster's move");
+          setError(
+            reason instanceof Error ? reason.message : "Could not load the local opponent’s move",
+          );
       })
       .finally(() => clearTimeout(timeout));
     return () => {
@@ -78,6 +96,6 @@ export const usePracticeReplica = (props: Props) => {
       clearTimeout(timeout);
       clearTimeout(timer);
     };
-  }, [enabled, fen, rootFen, moveKey, controlKey, retry]);
+  }, [enabled, fen, rootFen, moveKey, controlKey, retry, model, rating, opponentRating]);
   return error;
 };

@@ -15,6 +15,9 @@ it("keeps one request across clock ticks and discards replies after pausing or c
   const onMove = vi.fn();
   const initial = {
     enabled: true,
+    model: "human" as const,
+    rating: 1800,
+    opponentRating: 2000,
     fen: "position-a",
     rootFen: "start",
     moves: [] as string[],
@@ -27,6 +30,9 @@ it("keeps one request across clock ticks and discards replies after pausing or c
   const { rerender } = renderHook(usePracticeReplica, { initialProps: initial });
   rerender({ ...initial, clockMs: 179000 });
   expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(
+    JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string),
+  ).toMatchObject({ model: "human", rating: 1800, opponentRating: 2000 });
   const signal = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].signal!;
   rerender({ ...initial, enabled: false });
   expect(signal.aborted).toBe(true);
@@ -35,8 +41,13 @@ it("keeps one request across clock ticks and discards replies after pausing or c
   );
   expect(onMove).not.toHaveBeenCalled();
   rerender({ ...initial, fen: "position-b" });
+  rerender({ ...initial, fen: "position-b", rating: 1600 });
   await act(async () =>
-    replies[1]!({ ok: true, json: async () => ({ fen: "position-b", move: "d2d4" }) }),
+    replies[1]!({ ok: true, json: async () => ({ fen: "position-b", move: "e2e4" }) }),
+  );
+  expect(onMove).not.toHaveBeenCalled();
+  await act(async () =>
+    replies[2]!({ ok: true, json: async () => ({ fen: "position-b", move: "d2d4" }) }),
   );
   await waitFor(() => expect(onMove).toHaveBeenCalledExactlyOnceWith("d2d4"));
 });

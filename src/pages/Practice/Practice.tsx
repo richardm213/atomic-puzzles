@@ -225,7 +225,7 @@ export const PracticePage = () => {
     restoredBoard?.engineHandoff ?? null,
   );
   const [exhaustedFen, setExhaustedFen] = useState<string | null>(null);
-  const [movesOpen, setMovesOpen] = usePersistedState(MOVES_OPEN_STORAGE_KEY, z.boolean(), true);
+  const [movesOpen, setMovesOpen] = usePersistedState(MOVES_OPEN_STORAGE_KEY, z.boolean(), false);
   const [draftExplorerOpen, setDraftExplorerOpen] = useState(false);
   const explorerOpen = puzzleDraft ? draftExplorerOpen : !movesOpen;
   const toggleExplorer = () => {
@@ -307,7 +307,8 @@ export const PracticePage = () => {
   const currentTurn = boardState?.turn || "white";
   const gameFinished = terminalOutcome !== null;
   const opponentSide = oppositeSide(side);
-  const isReplica = import.meta.env.DEV && settings.opponentModel === "rechesster";
+  const isReplica = import.meta.env.DEV && settings.opponentModel !== "database";
+  const replicaName = settings.opponentModel === "human" ? "Human model" : "Rechesster";
   const [replicaRetry, setReplicaRetry] = useState(0);
   const canUsePlayerSource =
     isReplica || opponentSource === "general" || opponentUsernames.length > 0;
@@ -364,7 +365,7 @@ export const PracticePage = () => {
     status,
     error,
   } = useOpeningExplorer({
-    enabled: puzzleDraft ? explorerOpen : !handoffActive && !isReplica,
+    enabled: !puzzleDraft || explorerOpen,
     fen: analysisFen,
     playerColor: opponentSide,
     showPerformance: opponentSource === "player" && showPerformance,
@@ -405,6 +406,9 @@ export const PracticePage = () => {
   } = usePracticeClocks(clockMinutes, clockIncrementSeconds, runningSide);
   const clockExpired = expiredSide !== null;
   const replicaError = usePracticeReplica({
+    model: settings.opponentModel === "human" ? "human" : "rechesster",
+    rating: settings.humanRating,
+    opponentRating: settings.humanOpponentRating,
     enabled:
       isReplica &&
       !gamePaused &&
@@ -722,6 +726,7 @@ export const PracticePage = () => {
     if (!canRunPractice) return;
 
     if (gamePaused) {
+      setAtomicDbEngineSettings((current) => ({ ...current, enabled: false }));
       lastAutoFenRef.current = "";
       setReplicaRetry((value) => value + 1);
       setSessionStarted(true);
@@ -732,7 +737,7 @@ export const PracticePage = () => {
     lastAutoFenRef.current = "";
     setPendingAutoMove(null);
     setGamePaused(true);
-  }, [canRunPractice, gamePaused]);
+  }, [canRunPractice, gamePaused, setAtomicDbEngineSettings]);
 
   useEffect(() => {
     if (!gameFinished) return;
@@ -1072,13 +1077,13 @@ export const PracticePage = () => {
   };
 
   const showGeneralOpponent = (): void => {
-    updateSettings({ opponentSource: "general", opponentModel: "database" });
+    updateSettings({ opponentSource: "general" });
     navigateToPracticeOpponents([]);
     resetOpponentMoveChoices();
   };
 
   const showPlayerOpponent = (): void => {
-    updateSettings({ opponentSource: "player", opponentModel: "database" });
+    updateSettings({ opponentSource: "player" });
     navigateToPracticeOpponents(opponentUsernames);
     resetOpponentMoveChoices();
 
@@ -1327,8 +1332,8 @@ export const PracticePage = () => {
           <button
             type="button"
             role="tab"
-            className={!isReplica && opponentSource === "general" ? "active" : ""}
-            aria-selected={!isReplica && opponentSource === "general"}
+            className={opponentSource === "general" ? "active" : ""}
+            aria-selected={opponentSource === "general"}
             onClick={showGeneralOpponent}
           >
             <FontAwesomeIcon icon={faBookOpen} />
@@ -1337,8 +1342,8 @@ export const PracticePage = () => {
           <button
             type="button"
             role="tab"
-            className={!isReplica && opponentSource === "player" ? "active" : ""}
-            aria-selected={!isReplica && opponentSource === "player"}
+            className={opponentSource === "player" ? "active" : ""}
+            aria-selected={opponentSource === "player"}
             title={`${selectedPlayerSummary} as ${opponentSide}`}
             onClick={showPlayerOpponent}
           >
@@ -1410,12 +1415,12 @@ export const PracticePage = () => {
       >
         <div className="practiceSessionControls" role="group" aria-label="Practice session">
           <div className="practiceHeaderTitle">
-            <h1>{isReplica ? "Practice against Rechesster" : "Opening Database Practice"}</h1>
+            <h1>{isReplica ? `Practice against ${replicaName}` : "Opening Database Practice"}</h1>
           </div>
           <div className="practiceStatus" aria-live="polite">
             <strong>
               {isReplica
-                ? "Rechesster"
+                ? `${replicaName}${settings.opponentModel === "human" ? ` · ${settings.humanRating}` : ""}`
                 : totalGames
                   ? `${formatGameCount(totalGames)} games`
                   : "0 games"}
