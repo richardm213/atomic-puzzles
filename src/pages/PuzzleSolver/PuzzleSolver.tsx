@@ -226,8 +226,9 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     ...puzzleUserRatingQueryOptions(normalizedUsername),
     enabled: Boolean(normalizedUsername),
   });
-  const { showPuzzleTimer, blindPuzzles, excludeOwnPuzzles } = useAppSettings();
+  const { showPuzzleTimer, blindPuzzles, excludeOwnPuzzles, newPuzzlesOnly } = useAppSettings();
   const skipOwnPuzzles = !testMode && excludeOwnPuzzles && Boolean(normalizedUsername);
+  const skipAttemptedPuzzles = !testMode && newPuzzlesOnly && Boolean(normalizedUsername);
   const authorIdentityQuery = useQuery({
     ...profileAliasQueryOptions(normalizedUsername),
     enabled: skipOwnPuzzles,
@@ -513,7 +514,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     const loadAttemptedPuzzleIds = async () => {
       try {
         const [progressRows, exclusions] = await Promise.all([
-          fetchPuzzleProgressRowsForUsername(username),
+          fetchPuzzleProgressRowsForUsername(username, { throwOnError: true }),
           fetchPuzzleRatingExclusions(username),
         ]);
         if (isCurrent) {
@@ -609,13 +610,36 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     },
     [puzzles, shouldSkipAuthor, unavailablePuzzleIds],
   );
+  const hasRecordedAttempt = useCallback(
+    (key: string) =>
+      attemptedPuzzleIds.has(key) ||
+      unratedPuzzleIds.has(key) ||
+      countedTodayPuzzleIdsRef.current.has(key),
+    [attemptedPuzzleIds, unratedPuzzleIds],
+  );
+  const canReceivePuzzle = useCallback(
+    (index: number) => {
+      if (!isSelectablePuzzle(index)) return false;
+      if (!skipAttemptedPuzzles) return true;
+      const key = String(puzzles[index]!.puzzleId);
+      return attemptedPuzzleIdsReady && !hasRecordedAttempt(key) && !gradingAvailability.has(key);
+    },
+    [
+      attemptedPuzzleIdsReady,
+      gradingAvailability,
+      hasRecordedAttempt,
+      isSelectablePuzzle,
+      puzzles,
+      skipAttemptedPuzzles,
+    ],
+  );
   const upcomingPuzzleIndexes = useMemo(() => {
     if (!attemptedPuzzleIdsReady || waitingForAuthorAliases) return [];
 
     const now = new Date();
     const isEligible = (index: number): boolean => {
       const puzzle = puzzles[index];
-      if (!puzzle || index === activePuzzleIndex || !isSelectablePuzzle(index)) return false;
+      if (!puzzle || index === activePuzzleIndex || !canReceivePuzzle(index)) return false;
       const key = String(puzzle.puzzleId);
       if (visitedPuzzleIds.has(key)) return false;
       if (gradingAvailability.has(key)) {
@@ -650,13 +674,13 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   }, [
     activePuzzleIndex,
     attemptedPuzzleIdsReady,
+    canReceivePuzzle,
     normalizedUsername,
     permanentUnratedIds,
     puzzles,
     ratingExclusions,
     shuffledPuzzleIndexes,
     gradingAvailability,
-    isSelectablePuzzle,
     unratedPuzzleIds,
     visitedPuzzleIds,
     waitingForAuthorAliases,
@@ -736,18 +760,11 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   const previousPuzzle =
     previousPuzzleIndex === undefined ? undefined : puzzles[previousPuzzleIndex];
   const canGoToPreviousPuzzle = !waitingForAuthorAliases && previousPuzzle !== undefined;
-  const hasRecordedAttempt = useCallback(
-    (key: string) =>
-      attemptedPuzzleIds.has(key) ||
-      unratedPuzzleIds.has(key) ||
-      countedTodayPuzzleIdsRef.current.has(key),
-    [attemptedPuzzleIds, unratedPuzzleIds],
-  );
   const nextPuzzleIndex = isSetSolveMode
     ? activeSetPuzzlePosition >= 0
       ? selectableSetPuzzleIndexes[activeSetPuzzlePosition + 1]
       : undefined
-    : ((historyIndex >= 0 ? history.slice(historyIndex + 1).find(isSelectablePuzzle) : undefined) ??
+    : ((historyIndex >= 0 ? history.slice(historyIndex + 1).find(canReceivePuzzle) : undefined) ??
       (dailyLimitReached ? undefined : nextRandomPuzzleIndex));
   const nextCandidate = nextPuzzleIndex === undefined ? undefined : puzzles[nextPuzzleIndex];
   const nextPuzzle =
@@ -2313,6 +2330,16 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
           <div className="errorText" role="alert">
             {displayError}
           </div>
+        ) : null}
+        {skipAttemptedPuzzles &&
+        !isSetSolveMode &&
+        !catalogLoading &&
+        attemptedPuzzleIdsReady &&
+        !waitingForAuthorAliases &&
+        !dailyLimitReached &&
+        !displayError &&
+        !activePuzzleId ? (
+          <p role="status">No new puzzles available.</p>
         ) : null}
         {hasCompletedPuzzleSet ? (
           <section className="puzzleSetComplete" role="status" aria-live="polite">

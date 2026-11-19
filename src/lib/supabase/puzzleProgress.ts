@@ -463,6 +463,7 @@ export const fetchPuzzleProgressPage = async (
 
 export const fetchPuzzleProgressRowsForUsername = async (
   username: string,
+  { throwOnError = false }: { throwOnError?: boolean } = {},
 ): Promise<PuzzleProgressRow[]> => {
   const normalizedUsername = normalizeUsername(username);
   if (!normalizedUsername) return [];
@@ -480,8 +481,8 @@ export const fetchPuzzleProgressRowsForUsername = async (
         .eq("username", normalizedUsername)
         .order("first_attempt_at", { ascending: false }),
     );
-  } catch {
-    serverRows = [];
+  } catch (error) {
+    if (throwOnError) throw error;
   }
 
   return normalizePuzzleProgressRows(serverRows);

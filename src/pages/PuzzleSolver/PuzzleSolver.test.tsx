@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   }>,
   attemptedPuzzleIds: new Set(["1369"]),
   excludeOwnPuzzles: false,
+  newPuzzlesOnly: false,
   blindPuzzles: { enabled: false, plies: 5 },
   fetchPuzzleProgressRowsForUsername: vi.fn(),
   fetchPuzzleRatingExclusions: vi.fn(),
@@ -94,6 +95,7 @@ vi.mock("../../context/AppSettings", async (importOriginal) => ({
   useAppSettings: () => ({
     showPuzzleTimer: true,
     excludeOwnPuzzles: mocks.excludeOwnPuzzles,
+    newPuzzlesOnly: mocks.newPuzzlesOnly,
     puzzleAnalysisTarget: "atomic-puzzles",
     blindPuzzles: mocks.blindPuzzles,
   }),
@@ -342,6 +344,7 @@ describe("PuzzleSolverPage solution options", () => {
     mocks.navigate.mockReset();
     mocks.username = "solver";
     mocks.excludeOwnPuzzles = false;
+    mocks.newPuzzlesOnly = false;
     mocks.fetchProfileAliasRow.mockReset().mockResolvedValue(null);
     mocks.setOwnPuzzlePermanentlyUnrated.mockReset().mockResolvedValue(undefined);
     mocks.fetchPuzzleGradingState.mockReset().mockImplementation(async (puzzleId: string) => ({
@@ -743,6 +746,62 @@ describe("PuzzleSolverPage solution options", () => {
         replace: true,
       }),
     );
+  });
+
+  it("starts with a new puzzle when older attempts are eligible for grading again", async () => {
+    mocks.newPuzzlesOnly = true;
+    mocks.routeParams = { puzzleId: "" };
+    mocks.loadPuzzleCatalog.mockResolvedValueOnce(await mocks.loadPuzzlesById([1369, 1370, 1371]));
+    mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValueOnce([
+      {
+        puzzle_id: "1369",
+        rated: true,
+        puzzle_correct: false,
+        grading_available_at: "2020-01-01T00:00:00Z",
+      },
+      { puzzle_id: "1370", rated: false, grading_available_at: "2020-01-01T00:00:00Z" },
+    ]);
+
+    render(<PuzzleSolverPage />);
+
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: "/solve/$puzzleId",
+        params: { puzzleId: "1371" },
+        replace: true,
+      }),
+    );
+  });
+
+  it("skips attempted puzzles in forward history while new puzzles only is enabled", async () => {
+    mocks.loadPuzzleCatalog.mockResolvedValueOnce(await mocks.loadPuzzlesById([1369, 1370, 1371]));
+    mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValueOnce([
+      {
+        puzzle_id: "1370",
+        rated: true,
+        puzzle_correct: false,
+        grading_available_at: "2020-01-01T00:00:00Z",
+      },
+    ]);
+    const view = render(<PuzzleSolverPage />);
+    await waitFor(() => expect(screen.getAllByRole("button", { name: "Next" })[0]).toBeEnabled());
+
+    for (const puzzleId of ["1370", "1371", "1369"]) {
+      mocks.routeParams = { puzzleId };
+      view.rerender(<PuzzleSolverPage />);
+      expect(await screen.findByRole("heading", { name: `Puzzle ${puzzleId}` })).toBeVisible();
+    }
+
+    mocks.newPuzzlesOnly = true;
+    view.rerender(<PuzzleSolverPage />);
+    const next = screen.getAllByRole("button", { name: "Next" })[0]!;
+    fireEvent.click(next);
+    expect(mocks.navigate.mock.calls.at(-1)?.[0].params.puzzleId).toBe("1371");
+
+    mocks.newPuzzlesOnly = false;
+    view.rerender(<PuzzleSolverPage />);
+    fireEvent.click(next);
+    expect(mocks.navigate.mock.calls.at(-1)?.[0].params.puzzleId).toBe("1370");
   });
 
   it("lets an author permanently opt out before attempting and restores the checked state", async () => {

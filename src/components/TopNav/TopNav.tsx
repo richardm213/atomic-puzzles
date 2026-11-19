@@ -194,6 +194,8 @@ export const TopNav = () => {
     setShowRatingGraphLines,
     excludeOwnPuzzles,
     setExcludeOwnPuzzles,
+    newPuzzlesOnly,
+    setNewPuzzlesOnly,
     showPuzzleTimer,
     setShowPuzzleTimer,
     blindPuzzles,
@@ -1165,6 +1167,26 @@ export const TopNav = () => {
               ) : null}
               {showBoardSettings ? (
                 <>
+                  {showPuzzleTimerSetting ? (
+                    <div className="navSettingsSection">
+                      <label className="navSettingsCheckbox">
+                        <span>New puzzles only</span>
+                        <input
+                          type="checkbox"
+                          checked={newPuzzlesOnly}
+                          onChange={(event) => setNewPuzzlesOnly(event.target.checked)}
+                        />
+                      </label>
+                      <label className="navSettingsCheckbox">
+                        <span>Skip my puzzles</span>
+                        <input
+                          type="checkbox"
+                          checked={excludeOwnPuzzles}
+                          onChange={(event) => setExcludeOwnPuzzles(event.target.checked)}
+                        />
+                      </label>
+                    </div>
+                  ) : null}
                   {showBlindPuzzleSetting ? (
                     <div className="navSettingsSection navBlindPuzzleSettings">
                       <label className="navSettingsCheckbox">
@@ -1200,18 +1222,6 @@ export const TopNav = () => {
                           </select>
                         </label>
                       ) : null}
-                    </div>
-                  ) : null}
-                  {showPuzzleTimerSetting ? (
-                    <div className="navSettingsSection">
-                      <label className="navSettingsCheckbox">
-                        <span>Skip my puzzles</span>
-                        <input
-                          type="checkbox"
-                          checked={excludeOwnPuzzles}
-                          onChange={(event) => setExcludeOwnPuzzles(event.target.checked)}
-                        />
-                      </label>
                     </div>
                   ) : null}
                   {showPuzzleTimerSetting ? (

@@ -50,6 +50,7 @@ const STORAGE_KEYS = {
   // v3 makes the timer visible by default for everyone while preserving later changes.
   showPuzzleTimer: "atomic-puzzles.puzzles.show-timer-v3",
   excludeOwnPuzzles: "atomic-puzzles.puzzles.exclude-own",
+  newPuzzlesOnly: "atomic-puzzles.puzzles.new-only",
   blindPuzzles: "atomic-puzzles.puzzles.blind",
   puzzleAnalysisTarget: "atomic-puzzles.puzzles.analysis-link-target",
   lichessLinkTarget: "atomic-puzzles.games.lichess-link-target",
@@ -253,6 +254,8 @@ export type AppSettingsContextValue = {
   setShowRatingGraphLines: Dispatch<SetStateAction<boolean>>;
   excludeOwnPuzzles: boolean;
   setExcludeOwnPuzzles: Dispatch<SetStateAction<boolean>>;
+  newPuzzlesOnly: boolean;
+  setNewPuzzlesOnly: Dispatch<SetStateAction<boolean>>;
   showPuzzleTimer: boolean;
   setShowPuzzleTimer: Dispatch<SetStateAction<boolean>>;
   blindPuzzles: BlindPuzzleSettings;
@@ -538,6 +541,11 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
     z.boolean(),
     false,
   );
+  const [newPuzzlesOnly, setNewPuzzlesOnly] = usePersistedState(
+    STORAGE_KEYS.newPuzzlesOnly,
+    z.boolean(),
+    false,
+  );
   const [blindPuzzles, setBlindPuzzles] = usePersistedState(
     STORAGE_KEYS.blindPuzzles,
     blindPuzzlesSchema,
@@ -670,6 +678,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowRatingGraphLines,
       excludeOwnPuzzles,
       setExcludeOwnPuzzles,
+      newPuzzlesOnly,
+      setNewPuzzlesOnly,
       showPuzzleTimer,
       setShowPuzzleTimer,
       blindPuzzles,
@@ -723,6 +733,8 @@ export const AppSettingsProvider = ({ children }: { children: ReactNode }) => {
       setShowRatingGraphLines,
       excludeOwnPuzzles,
       setExcludeOwnPuzzles,
+      newPuzzlesOnly,
+      setNewPuzzlesOnly,
       showPuzzleTimer,
       setShowPuzzleTimer,
       blindPuzzles,
