@@ -60,6 +60,7 @@ import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
 import { boardLineNavigation, getBoardLineState } from "../../lib/analysis/boardState";
 import { ApiError } from "../../lib/api/postApi";
 import { movePrefix, startingPlyFromFen } from "../../lib/chess/pgn";
+import { previewCoinChange } from "../../lib/coins/coinEvents";
 import {
   fetchCustomPuzzleSet,
   getOrderedPuzzleIndexesForCustomSet,
@@ -130,6 +131,7 @@ import {
   shuffleIndexes,
   toPuzzleKey,
 } from "./puzzleSolverState";
+import { previewPuzzleRatingChanges, testPuzzleCoinDelta } from "./puzzleTestFeedback";
 import { usePuzzleCatalog } from "./usePuzzleCatalog";
 
 const ATTEMPTED_PUZZLE_BADGE_LABEL = "You've already attempted this puzzle before";
@@ -202,10 +204,12 @@ export const PuzzleTestPage = () => {
       </div>
     );
   }
-  return <PuzzleSolverPage testMode />;
+  return <PuzzleSolver testMode />;
 };
 
-export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) => {
+export const PuzzleSolverPage = () => <PuzzleSolver testMode={false} />;
+
+const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const {
@@ -273,9 +277,10 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   );
   const puzzleSessionRef = useRef(puzzleSession);
   puzzleSessionRef.current = puzzleSession;
-  const [attemptRatingFeedback, setAttemptRatingFeedback] = useState<PuzzleRatingEvent | null>(
-    null,
-  );
+  const [attemptRatingFeedback, setAttemptRatingFeedback] = useState<Pick<
+    PuzzleRatingEvent,
+    "puzzleId" | "userRatingAfter" | "userRatingChange" | "puzzleRatingChange"
+  > | null>(null);
   const [feedbackBadgeId, setFeedbackBadgeId] = useState(0);
   const [explanationEditorOpen, setExplanationEditorOpen] = useState(false);
   const [explanationDraft, setExplanationDraft] = useState("");
@@ -309,6 +314,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   const elapsedTimeMsRef = useRef(0);
   const elapsedTimerStartedAtRef = useRef<number | null>(null);
   const elapsedTimerExpiredRef = useRef(false);
+  const testMissesRef = useRef(0);
   const [finishedIntroKey, setFinishedIntroKey] = useState("");
   const [elapsedTimeMs, setElapsedTimeMs] = useState(0);
   const [elapsedTimerRunning, setElapsedTimerRunning] = useState(false);
@@ -384,9 +390,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     (puzzleId: string | number): void => {
       if (testMode) {
         void navigate({
-          to: "/puzzles/recent/{-$puzzleId}",
+          to: "/admin/puzzle-test/{-$puzzleId}",
           params: { puzzleId: String(puzzleId) },
-          search: { test: true },
           replace: true,
         });
       } else if (isDashboardSetSolveMode) {
@@ -781,7 +786,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
-  const gradingState = gradingQuery.data;
+  const gradingState = testMode ? undefined : gradingQuery.data;
   const gradingReady = testMode || Boolean(gradingState);
   useEffect(() => {
     if (!gradingState) return;
@@ -1186,8 +1191,25 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         setSolutionNavigation(null);
         setPinnedSolutionLineIndex(puzzleCorrect ? null : 0);
       }
-      // Test attempts drive the same board and analysis states, but never reach either write path.
-      if (testMode) return;
+      if (testMode) {
+        const misses = testMissesRef.current;
+        if (!puzzleCorrect) testMissesRef.current += 1;
+        previewCoinChange(
+          testPuzzleCoinDelta(activePuzzleRating.level, puzzleCorrect, misses, attemptDurationMs),
+          puzzleCorrect ? "Test puzzle solved" : "Test incorrect attempt",
+        );
+        if (misses === 0 && userPuzzleRatingQuery.isSuccess) {
+          setAttemptRatingFeedback({
+            puzzleId: activePuzzleKey,
+            ...previewPuzzleRatingChanges(
+              userPuzzleRatingQuery.data ?? { rating: 2000, ratingDeviation: 350 },
+              activePuzzleRating,
+              puzzleCorrect,
+            ),
+          });
+        }
+        return;
+      }
 
       enqueuePuzzleProgressWrite({
         puzzleId: normalizedPuzzleId,
@@ -1198,7 +1220,14 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         ...(attemptPgn ? { attemptPgn } : {}),
       });
     },
-    [activePuzzleKey, enqueuePuzzleProgressWrite, testMode],
+    [
+      activePuzzleKey,
+      activePuzzleRating,
+      enqueuePuzzleProgressWrite,
+      testMode,
+      userPuzzleRatingQuery.data,
+      userPuzzleRatingQuery.isSuccess,
+    ],
   );
 
   const resetPuzzleUiState = useCallback(() => {
@@ -1224,6 +1253,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
   }
 
   useLayoutEffect(() => {
+    testMissesRef.current = 0;
     setFinishedIntroKey("");
     setBoardState(createInitialBoardState());
     setMobileFeedback(null);
@@ -1960,6 +1990,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     if (!normalizedUsername) return null;
 
     const ratingChange = currentRatingFeedback?.userRatingChange;
+    const isRatingPreview = testMode && ratingChange !== undefined;
+    const ratingLabel = isRatingPreview ? "Test rating" : "Your puzzle rating";
     const changeDirection =
       ratingChange === undefined ? "" : ratingChange >= 0 ? "positive" : "negative";
     const changeDescription =
@@ -1968,8 +2000,8 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
           ? "Your puzzle rating is unavailable"
           : "Loading your puzzle rating"
         : ratingChange === undefined
-          ? `Your puzzle rating is ${displayedUserPuzzleRating}`
-          : `Your puzzle rating is ${displayedUserPuzzleRating}, ${
+          ? `${ratingLabel} is ${displayedUserPuzzleRating}`
+          : `${ratingLabel} is ${displayedUserPuzzleRating}, ${
               ratingChange >= 0 ? "increased" : "decreased"
             } by ${Math.abs(ratingChange)}`;
 
@@ -1980,7 +2012,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         aria-live="polite"
         aria-atomic="true"
       >
-        <span>Your rating</span>
+        <span>{isRatingPreview ? "Test rating" : "Your rating"}</span>
         <strong>{displayedUserPuzzleRating ?? "—"}</strong>
         {ratingChange !== undefined ? <small>{formatSignedDecimal(ratingChange)}</small> : null}
       </div>
@@ -2080,7 +2112,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         }
         path={
           testMode
-            ? "/puzzles/recent"
+            ? "/admin/puzzle-test"
             : activePuzzleId
               ? isDashboardSetSolveMode
                 ? `/solve/dashboard/${encodeURIComponent(routeDashboardSetId)}/${activePuzzleId}`
@@ -2423,7 +2455,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
         <div className="puzzleSolveRail">
           {blindPuzzlePanel ?? puzzleAnalysisPanel}
           {permanentUnratedControl}
-          {progressSaveError || gradingQuery.error ? (
+          {progressSaveError || (!testMode && gradingQuery.error) ? (
             <p className="errorText" role="alert">
               {progressSaveError || "Unable to check grading eligibility. Please reload."}
               {progressSaveError && retryProgressWriteRef.current ? (
@@ -2520,7 +2552,7 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
             </div>
             {renderPlayerRows(true)}
             {permanentUnratedControl}
-            {progressSaveError || gradingQuery.error ? (
+            {progressSaveError || (!testMode && gradingQuery.error) ? (
               <p className="errorText" role="alert">
                 {progressSaveError || "Unable to check grading eligibility. Please reload."}
                 {progressSaveError && retryProgressWriteRef.current ? (

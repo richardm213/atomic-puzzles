@@ -302,18 +302,8 @@ test("tag popups close on the backdrop and dismiss only the topmost dialog", asy
   await page.route("**/api/puzzles/tags?**", (route) =>
     route.fulfill({ json: { votes: [{ tag: "fork", up: 3, down: 0, vote: 0 }] } }),
   );
-  await page.route("**/api/puzzles/admin", (route) =>
-    route.fulfill({
-      json: {
-        puzzle: { ...queuePuzzle, id: 101, author: "admin", tags: ["fork"], deleted_at: null },
-        olderPuzzleId: null,
-        newerPuzzleId: null,
-        attempts: [],
-      },
-    }),
-  );
   await page.goto("/admin/puzzle-test/101");
-  await expect(page).toHaveURL(/\/puzzles\/recent\/101\?test=true$/);
+  await expect(page).toHaveURL(/\/admin\/puzzle-test\/101$/);
   const tag = page.getByRole("button", { name: /^View definition for Fork\b/ });
   const definition = page.getByRole("dialog", { name: "Fork", exact: true });
   await tag.click();
@@ -496,7 +486,7 @@ test("recent puzzle URLs restore selection and ignore stale loads during history
   await expect(idInput).toHaveValue("301");
 });
 
-test("recent puzzles toggles the existing test solver without losing selection or writing progress", async ({
+test("puzzle testing has its own solver route and previews coins without writing progress", async ({
   page,
 }) => {
   const playRequests: Array<{ puzzleIds: number[]; testMode?: boolean }> = [];
@@ -525,6 +515,7 @@ test("recent puzzles toggles the existing test solver without losing selection o
         puzzles: body.puzzleIds.map((id: number) => ({
           ...queuePuzzle,
           id,
+          solution: "1. e4",
           tags: [],
           author: "admin",
         })),
@@ -536,26 +527,44 @@ test("recent puzzles toggles the existing test solver without losing selection o
     return route.fulfill({ json: {} });
   });
   await page.goto("/puzzles/recent");
-  const mode = page.getByRole("button", { name: "Test mode", exact: true });
   const idInput = page.getByRole("spinbutton", { name: "Puzzle ID", exact: true });
   await expect(idInput).toHaveValue("102");
-  await expect(mode).toHaveAttribute("aria-pressed", "false");
-  await mode.click();
-  await expect(page).toHaveURL(/\/puzzles\/recent\/102\?test=true$/);
-  await expect(page.getByRole("heading", { name: "Test puzzle 102", exact: true })).toBeVisible();
-  expect(playRequests.some((request) => request.testMode === true)).toBe(true);
-  await expect(page.getByRole("button", { name: "Edit puzzle", exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Previous puzzle", exact: true }).click();
-  await expect(idInput).toHaveValue("101");
-  await expect(page).toHaveURL(/\/puzzles\/recent\/101\?test=true$/);
-  await expect(page.getByRole("heading", { name: "Test puzzle 101", exact: true })).toBeVisible();
-  await page.reload();
-  await expect(mode).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("heading", { name: "Test puzzle 101", exact: true })).toBeVisible();
-  await mode.click();
-  await expect(page).toHaveURL(/\/puzzles\/recent\/101$/);
-  await expect(idInput).toHaveValue("101");
-  await expect(page.getByRole("button", { name: "Edit puzzle", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Solution moves" })).toBeVisible();
+  await page.getByRole("link", { name: "Puzzle test", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/puzzle-test\/102$/);
+  await expect(page.getByRole("heading", { name: "Test puzzle 102" })).toBeVisible();
+  await expect(idInput).toHaveCount(0);
+
+  const playWhiteMove = async (file: number) => {
+    const board = page.locator("cg-board");
+    await expect(board).toBeVisible();
+    const bounds = (await board.boundingBox())!;
+    for (const rank of [2, 4]) {
+      await page.mouse.click(
+        bounds.x + ((file + 0.5) * bounds.width) / 8,
+        bounds.y + ((8.5 - rank) * bounds.height) / 8,
+      );
+    }
+  };
+  await playWhiteMove(3);
+  await expect(page.getByText("Test incorrect attempt", { exact: true })).toBeVisible();
+  await expect(page.getByText("-1.5 coins", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/puzzle-test\/101$/);
+  await expect(page.getByRole("heading", { name: "Test puzzle 101" })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const details = page.getByRole("region", { name: "Puzzle details" });
+  await expect(details.getByText("Test puzzle 101", { exact: true })).toBeVisible();
+  await playWhiteMove(4);
+  await expect(page.getByText("Test puzzle solved", { exact: true })).toBeVisible();
+  await expect(page.getByText(/\+\d+(?:\.\d+)? coins/)).toBeVisible();
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/puzzles\/recent\/102$/);
+  await expect(idInput).toHaveValue("102");
+  await page.goto("/puzzles/recent/101?test=true");
+  await expect(page).toHaveURL(/\/admin\/puzzle-test\/101$/);
+  expect(playRequests.length).toBeGreaterThan(0);
+  expect(playRequests.every((request) => request.testMode === true)).toBe(true);
   expect(progressRequests).toHaveLength(0);
 });

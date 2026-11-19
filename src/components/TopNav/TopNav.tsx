@@ -9,6 +9,7 @@ import {
   faChevronRight,
   faClipboardCheck,
   faCoins,
+  faFlask,
   faGear,
   faListCheck,
   faRightFromBracket,
@@ -110,7 +111,6 @@ export const TopNav = () => {
   const settingsOpen = openPanel?.type === "settings";
   const navigateToNotification = useNotificationNavigation();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const recentTestMode = useRouterState({ select: (state) => state.location.search.test === true });
   const { isAuthenticated, isLoading, user, login, logout } = useAuth();
   const queryClient = useQueryClient();
   const notificationViewerKey = isAuthenticated ? (user?.username ?? "authenticated") : "anonymous";
@@ -220,8 +220,7 @@ export const TopNav = () => {
   );
   const isPuzzleTestPage =
     normalizedAuthUsername === PUZZLE_ADMIN_USERNAME &&
-    (/^\/admin\/puzzle-test(?:\/[^/]+)?\/?$/.test(pathname) ||
-      (/^\/puzzles\/recent(?:\/[^/]+)?\/?$/.test(pathname) && recentTestMode));
+    /^\/admin\/puzzle-test(?:\/[^/]+)?\/?$/.test(pathname);
   const showBoardSettings =
     isPuzzleTestPage ||
     pathname === "/solve" ||
@@ -719,6 +718,18 @@ export const TopNav = () => {
                           <FontAwesomeIcon icon={faCoins} />
                         </span>
                         Markets
+                      </Link>
+                      <Link
+                        className="navProfileDropdownItem"
+                        to="/admin/puzzle-test/{-$puzzleId}"
+                        params={{ puzzleId: undefined }}
+                        role="menuitem"
+                        onClick={() => setOpenPanel(null)}
+                      >
+                        <span className="navProfileDropdownIcon" aria-hidden="true">
+                          <FontAwesomeIcon icon={faFlask} />
+                        </span>
+                        Puzzle test
                       </Link>
                     </>
                   ) : null}

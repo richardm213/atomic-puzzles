@@ -21,10 +21,12 @@ export const CoinEarnedToast = () => {
     const onCoinsEarned = (event: Event) => {
       const detail = (event as CustomEvent<CoinEarnedDetail>).detail;
       if (!detail || detail.amount === 0) return;
-      if (detail.username) {
-        updateCachedCoinBalanceByDelta(queryClient, detail.username, detail.amount);
+      if (!detail.preview) {
+        if (detail.username) {
+          updateCachedCoinBalanceByDelta(queryClient, detail.username, detail.amount);
+        }
+        void queryClient.invalidateQueries({ queryKey: ["coins"] });
       }
-      void queryClient.invalidateQueries({ queryKey: ["coins"] });
       if (!showCoinChangePopups) return;
       const id = ++nextId.current;
       setRewards((current) => [...current.slice(-2), { ...detail, id }]);
