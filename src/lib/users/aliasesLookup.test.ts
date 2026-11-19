@@ -1,6 +1,25 @@
+import { buildAliasIdentityRowsFromArchiveRows } from "../archive/aliases";
 import { buildAliasesLookup } from "./aliasesLookup";
 
 describe("buildAliasesLookup", () => {
+  it("resolves historical authors excluded from public aliases without changing banned status", () => {
+    const rows = buildAliasIdentityRowsFromArchiveRows([
+      {
+        alias: "ralionkaalyebenka",
+        username: "thuban",
+        banned: true,
+        count_games: "y",
+        openings: "{}",
+        bot: false,
+      },
+    ]);
+    expect(rows[0].aliases).toEqual([]);
+    const lookup = buildAliasesLookup(rows);
+    expect(lookup.get("ralionkaalyebenka")).toBe(lookup.get("thuban"));
+    expect(lookup.get("ralionkaalyebenka")?.primary).toBe("thuban");
+    expect(lookup.get("ralionkaalyebenka")?.banned).toBe(true);
+  });
+
   it("keeps platform aliases in their source order and preserves PyChess case", () => {
     const lookup = buildAliasesLookup([
       {

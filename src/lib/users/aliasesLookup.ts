@@ -18,7 +18,9 @@ export const buildAliasesLookup = (rows: AliasIdentityRow[]): AliasLookup => {
   rows.forEach((row) => {
     const username = row.username;
     const { aliases, openings } = row;
-    const members = [username, ...aliases];
+    // Banned/bot accounts are omitted from the public aliases list, but their
+    // historical chat authors still need to resolve to the canonical identity.
+    const members = [username, ...aliases, ...row.accounts.map((account) => account.alias)];
     const chessComAliases = [
       ...new Set(
         row.accounts
