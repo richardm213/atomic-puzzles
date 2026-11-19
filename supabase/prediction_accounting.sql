@@ -67,6 +67,34 @@ create or replace function public.post_coin_transaction(
 ) returns numeric language sql set search_path='' as $$
  select public.post_coin_transaction_internal(p_username,p_amount,p_reason,p_source_key,p_metadata,p_created_at,p_cap_debit,false);
 $$;
+
+-- Exchange fills still use the balance-returning API. Share the ledger writer so
+-- sale proceeds can repay part of a negative wallet and ordinary debits still require funds.
+create or replace function public.apply_coin_transaction(
+  p_username text,
+  p_amount numeric,
+  p_reason text,
+  p_source_key text,
+  p_metadata jsonb default '{}'::jsonb,
+  p_created_at timestamptz default now()
+)
+returns numeric
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  wallet numeric;
+begin
+  perform public.post_coin_transaction(
+    p_username, p_amount, p_reason, p_source_key, p_metadata, p_created_at
+  );
+  select balance into strict wallet from public.coin_accounts
+  where username = lower(btrim(p_username));
+  return wallet;
+end;
+$$;
+
 create or replace function public.post_prediction_reconciliation(
  p_username text,p_amount numeric,p_source_key text,p_metadata jsonb
 ) returns numeric language plpgsql security definer set search_path='' as $$

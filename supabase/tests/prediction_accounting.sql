@@ -72,6 +72,30 @@ begin
  if exists(select 1 from public.prediction_positions where market_id=secondary_market and username=trader and quantity<>0)
  then raise exception 'A fully sold position remains'; end if;
 
+ -- Holding contracts is sufficient to sell. Both maker and taker proceeds can
+ -- repay a negative wallet in installments, with the taker fee deducted from proceeds.
+ secondary_market:=fixture_market||'-debt-sale';
+ insert into public.prediction_markets(id,question,resolution_rules,resolution_source_url,closes_at,status)
+ values(secondary_market,'Sell with a negative wallet','Fixture','https://atomicpuzzles.org/betting',now()+interval '1 day','open');
+ insert into public.prediction_positions(market_id,username,outcome,quantity)
+ values(secondary_market,debtor,'yes',4);
+ order_result:=public.place_prediction_order_once(debtor,gen_random_uuid(),secondary_market,'yes','sell',50,2);
+ sell_id:=(order_result->>'orderId')::bigint;
+ if (order_result->>'balance')::numeric<>-3
+ or not exists(select 1 from public.prediction_orders where id=sell_id and status='open' and remaining_quantity=2)
+ then raise exception 'Resting sell required a funded wallet'; end if;
+ perform public.place_prediction_order(maker,secondary_market,'yes','buy',50,2);
+ if (select balance from public.coin_accounts where username=debtor)<>-2
+ or not exists(select 1 from public.prediction_orders where id=sell_id and status='filled')
+ then raise exception 'Maker sale did not credit the negative wallet'; end if;
+ perform public.place_prediction_order(maker,secondary_market,'yes','buy',50,2);
+ order_result:=public.place_prediction_order_once(debtor,gen_random_uuid(),secondary_market,'yes','sell',50,2);
+ if (order_result->>'balance')::numeric<>-1.02 or (order_result->>'cancelledForInsufficientBalance')::boolean
+ or not exists(select 1 from public.prediction_orders where id=(order_result->>'orderId')::bigint and status='filled')
+ or not exists(select 1 from public.prediction_positions where market_id=secondary_market and username=debtor and outcome='yes' and quantity=0 and reserved_quantity=0)
+ or (select sum(amount) from public.coin_transactions where username=debtor and metadata->>'marketId'=secondary_market)<>1.98
+ then raise exception 'Taker sale did not credit net proceeds and clear the sold shares'; end if;
+
  -- Imported positions settle through the same prediction resolver exactly once.
  secondary_market:=fixture_market||'-imported';
  insert into public.prediction_markets(id,question,resolution_rules,resolution_source_url,closes_at,status)
@@ -87,4 +111,4 @@ begin
 end;
 $$;
 rollback;
-select 'PASS: net exposure, all-in trade receipts, order balances, import settlement, idempotence and private debt handling' as result;
+select 'PASS: net exposure, trade receipts, sales with negative wallets, import settlement, idempotence and private debt handling' as result;
