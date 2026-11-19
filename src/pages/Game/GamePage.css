@@ -45,24 +45,11 @@
 }
 
 .gameAnalysisGameNavigation {
-  min-width: 0;
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  margin-top: 14px;
-}
-
-.gameAnalysisGameNumber {
-  color: var(--color-heading);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.gameAnalysisGameNavigationButtons {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-3);
 }
 
 .gameAnalysisGameNavigationButton {
@@ -467,6 +454,7 @@
 .gameUnderboard {
   container: game-underboard / inline-size;
   min-width: 0;
+  width: 100%;
   grid-column: 1 / -1;
   margin-top: 0;
 }
@@ -1056,6 +1044,13 @@
   user-select: none;
 }
 
+@media (width > 560px) {
+  .gameAnalysisPage .gameUnderboard {
+    /* Keep the workspace row gap after the clock inside the board column. */
+    margin-block-start: calc(clamp(8px, 1.2vw, 12px) - 2px);
+  }
+}
+
 @media (min-width: 980px) {
   .analysisPage.gameAnalysisPage {
     --game-details-width: clamp(184px, calc(22vw - 27px), clamp(300px, calc(2.5vw + 270px), 330px));
@@ -1089,12 +1084,7 @@
 
   .gameAnalysisPage .gameAnalysisRightRail {
     grid-column: 3;
-    grid-row: 1 / 3;
-  }
-
-  .gameAnalysisPage .gameUnderboard {
-    grid-column: 2;
-    grid-row: 2;
+    grid-row: 1;
   }
 }
 
@@ -1110,17 +1100,12 @@
 
   .gameAnalysisPage .gameAnalysisRightRail {
     grid-column: 2;
-    grid-row: 1 / 3;
-  }
-
-  .gameAnalysisPage .gameUnderboard {
-    grid-column: 1;
-    grid-row: 2;
+    grid-row: 1;
   }
 
   .gameAnalysisPage .gameAnalysisSidebarRail {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 2;
   }
 }
 
@@ -1148,14 +1133,6 @@
 
   .gameAnalysisPlayerName {
     line-height: var(--control-height-touch);
-  }
-
-  .gameAnalysisGameNavigation {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-3);
-    margin-top: var(--space-2);
   }
 
   .gameAnalysisGameNavigationButton {
@@ -1209,6 +1186,10 @@
 
   .gameUnderboard {
     order: 2;
+  }
+
+  .gameAnalysisPage > .gameComments {
+    order: 3;
   }
 
   .gameUnderboardTabs button {
@@ -1695,18 +1676,16 @@
 
 .gameCommentsMessages a {
   margin-inline-end: var(--space-1);
-  color: inherit;
-  font-family: var(--font-mono);
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  color: var(--link-color);
+  font: inherit;
+  letter-spacing: normal;
   text-decoration: none;
 }
 
-.gameCommentsMessages a:hover,
-.gameCommentsMessages a:focus-visible {
-  color: inherit;
+.gameCommentsMessages a:hover {
   text-decoration: underline;
 }
+
 .gameCommentsEmpty {
   margin: 0;
   color: var(--color-muted);

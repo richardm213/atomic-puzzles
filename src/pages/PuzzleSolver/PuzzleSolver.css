@@ -1791,12 +1791,18 @@ button.puzzleRatingBadge.editable:focus-visible {
   }
 }
 
-.emptyBoard {
-  display: grid;
-  place-content: center;
-  border: 1px solid var(--color-border);
-  color: var(--color-muted);
-  background: var(--color-panel-strong);
+.puzzleBoardPlaceholder {
+  background-image: var(--cg-board-background-image);
+  background-size: var(--cg-board-background-size, 100% 100%);
+  background-blend-mode: var(--cg-board-background-blend-mode, normal);
+}
+
+.puzzleBoardPlaceholder > .routeLoading {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--color-panel) 24%, transparent);
 }
 
 @media (min-width: 1280px) {
@@ -1805,14 +1811,17 @@ button.puzzleRatingBadge.editable:focus-visible {
     --puzzle-controls-width: clamp(400px, calc(6.25vw + 320px), 480px);
     --puzzle-moves-min: clamp(320px, calc(6.25vw + 240px), 400px);
 
-    --puzzle-board-column: var(--board-user-size, min(
-      clamp(600px, calc(12.5vw + 440px), 820px),
-      max(200px, calc(100svh - var(--nav-height) - 48px)),
-      calc(
-        100vw - var(--puzzle-details-width) - var(--puzzle-moves-min) - 2 *
-          (var(--board-layout-gap) + var(--board-layout-gutter))
+    --puzzle-board-column: var(
+      --board-user-size,
+      min(
+        clamp(600px, calc(12.5vw + 440px), 820px),
+        max(200px, calc(100svh - var(--nav-height) - 48px)),
+        calc(
+          100vw - var(--puzzle-details-width) - var(--puzzle-moves-min) - 2 *
+            (var(--board-layout-gap) + var(--board-layout-gutter))
+        )
       )
-    ));
+    );
   }
 
   .puzzlePage .boardFrame {

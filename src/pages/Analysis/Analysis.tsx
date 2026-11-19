@@ -1378,15 +1378,46 @@ export const AnalysisPage = ({
     </p>
   ) : null;
 
+  const gameUnderboard =
+    game && !puzzleDraft ? (
+      <GameUnderboard
+        game={game}
+        currentPly={currentPly}
+        moves={moveList}
+        document={boardDocument}
+        onNavigatePly={navigateToPly}
+        atomicDbHref={atomicDbHref}
+        computerAnalysis={
+          <GameComputerAnalysis
+            analysis={gameAnalysis.analysis}
+            isLoading={gameAnalysis.isLoading}
+            isRequesting={gameAnalysis.isRequesting}
+            requestError={gameAnalysis.requestError ?? gameAnalysis.loadError}
+            authenticated={auth.isAuthenticated}
+            onRequest={gameAnalysis.request}
+            onLogin={() => void auth.login(`/game/${encodeURIComponent(game.game_id)}`)}
+            moves={moveList}
+            currentPly={currentPly}
+            onNavigate={navigateToPly}
+            evaluationStartPly={game.mode === "wolfrandom" ? WOLFRANDOM_RANDOMIZED_PLIES : 0}
+          />
+        }
+        computerAnalysisEnabled={gameComputerAnalysisEnabled}
+        onActiveTabChange={setGameUnderboardTab}
+        {...(atomicDbRequest ? { atomicDbRequest } : {})}
+      />
+    ) : null;
+  const gameChat = game ? <GameComments game={game} /> : null;
+
   // Keep one set of match controls so shortcuts and tab order follow the visible layout.
   const gameDetails = game ? (
     <div className="gameAnalysisSidebarRail">
       <aside className="gameAnalysisSidebar" aria-label="Game details">
         <GameAnalysisHeader game={game} />
+        <GameMatchNavigation game={game} puzzleDraftOpen={Boolean(puzzleDraft)} />
       </aside>
-      <GameMatchNavigation game={game} puzzleDraftOpen={Boolean(puzzleDraft)} />
       {puzzleConfirmation}
-      <GameComments game={game} />
+      {!singleColumnLayout ? gameChat : null}
     </div>
   ) : null;
 
@@ -1692,6 +1723,7 @@ export const AnalysisPage = ({
           <>
             {boardStatus(orientation)}
             {workspace?.boardAfter}
+            {gameUnderboard}
           </>
         }
         boardOverlay={
@@ -1721,34 +1753,7 @@ export const AnalysisPage = ({
         }
         showDocument={!game || Boolean(puzzleDraft)}
       />
-      {game && !puzzleDraft ? (
-        <GameUnderboard
-          game={game}
-          currentPly={currentPly}
-          moves={moveList}
-          document={boardDocument}
-          onNavigatePly={navigateToPly}
-          atomicDbHref={atomicDbHref}
-          computerAnalysis={
-            <GameComputerAnalysis
-              analysis={gameAnalysis.analysis}
-              isLoading={gameAnalysis.isLoading}
-              isRequesting={gameAnalysis.isRequesting}
-              requestError={gameAnalysis.requestError ?? gameAnalysis.loadError}
-              authenticated={auth.isAuthenticated}
-              onRequest={gameAnalysis.request}
-              onLogin={() => void auth.login(`/game/${encodeURIComponent(game.game_id)}`)}
-              moves={moveList}
-              currentPly={currentPly}
-              onNavigate={navigateToPly}
-              evaluationStartPly={game.mode === "wolfrandom" ? WOLFRANDOM_RANDOMIZED_PLIES : 0}
-            />
-          }
-          computerAnalysisEnabled={gameComputerAnalysisEnabled}
-          onActiveTabChange={setGameUnderboardTab}
-          {...(atomicDbRequest ? { atomicDbRequest } : {})}
-        />
-      ) : null}
+      {singleColumnLayout ? gameChat : null}
       {!singleColumnLayout && !wideGameLayout ? gameDetails : null}
     </AnalysisWorkspaceLayout>
   );

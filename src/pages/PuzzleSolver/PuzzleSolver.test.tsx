@@ -39,6 +39,7 @@ const mocks = vi.hoisted(() => ({
   loadPuzzleSolverIndex: vi.fn(),
   loadPuzzlesById: vi.fn(),
   fetchPrimaryPlayerNicknames: vi.fn(),
+  fetchProfileAliasRow: vi.fn(),
   fetchPuzzleUserRating: vi.fn(),
   login: vi.fn(),
   navigate: vi.fn(),
@@ -144,6 +145,11 @@ vi.mock("../../lib/supabase/puzzleProgress", () => ({
 
 vi.mock("../../lib/supabase/playerNicknames", () => ({
   fetchPrimaryPlayerNicknames: mocks.fetchPrimaryPlayerNicknames,
+}));
+
+vi.mock("../../lib/archive/aliases", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/archive/aliases")>()),
+  fetchProfileAliasRow: mocks.fetchProfileAliasRow,
 }));
 
 vi.mock("../../lib/supabase/puzzleUserRatings", () => ({
@@ -336,6 +342,7 @@ describe("PuzzleSolverPage solution options", () => {
     mocks.navigate.mockReset();
     mocks.username = "solver";
     mocks.excludeOwnPuzzles = false;
+    mocks.fetchProfileAliasRow.mockReset().mockResolvedValue(null);
     mocks.setOwnPuzzlePermanentlyUnrated.mockReset().mockResolvedValue(undefined);
     mocks.fetchPuzzleGradingState.mockReset().mockImplementation(async (puzzleId: string) => ({
       runId: mocks.attemptedPuzzleIds.has(puzzleId) ? "bf6cd63f-c399-4d3c-905c-04ab563e8949" : null,
@@ -477,6 +484,57 @@ describe("PuzzleSolverPage solution options", () => {
     },
   );
 
+  it("loads the current puzzle and grading before the catalog and progress finish", async () => {
+    const puzzles = await mocks.loadPuzzlesById([1369, 1370]);
+    let finishCatalog!: (rows: typeof puzzles) => void;
+    let finishProgress!: (rows: []) => void;
+    mocks.loadPuzzleSolverIndex.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishCatalog = resolve;
+      }),
+    );
+    mocks.fetchPuzzleProgressRowsForUsername.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishProgress = resolve;
+      }),
+    );
+    render(<PuzzleSolverPage />);
+    expect(screen.getByRole("status", { name: "Loading page" })).toBeVisible();
+    await waitFor(() => expect(mocks.fetchPuzzleGradingState).toHaveBeenCalledWith("1369"));
+    expect(screen.queryByTestId("mock-board")).not.toBeInTheDocument();
+    act(() => finishProgress([]));
+    const board = await screen.findByTestId("mock-board");
+    expect(mocks.chessboardProps.at(-1)?.disabled).toBe(false);
+    expect(screen.getAllByRole("button", { name: "Next" })[0]).toBeDisabled();
+    act(() => finishCatalog(puzzles));
+    await waitFor(() => expect(screen.getAllByRole("button", { name: "Next" })[0]).toBeEnabled());
+    expect(screen.getByTestId("mock-board")).toBe(board);
+    expect(mocks.chessboardProps.every((props) => props.puzzleId === 1369)).toBe(true);
+  });
+
+  it("keeps a late previous-puzzle response off the current board", async () => {
+    const [previous, current] = await mocks.loadPuzzlesById([1369, 1370]);
+    let finishPrevious!: (rows: (typeof previous)[]) => void;
+    mocks.loadPuzzlesById.mockImplementation((ids: number[]) =>
+      ids.includes(1369)
+        ? new Promise((resolve) => {
+            finishPrevious = resolve;
+          })
+        : Promise.resolve([current]),
+    );
+    const view = render(<PuzzleSolverPage />);
+    await waitFor(() => expect(finishPrevious).toBeTypeOf("function"));
+    mocks.routeParams = { puzzleId: "1370" };
+    view.rerender(<PuzzleSolverPage />);
+    const board = await screen.findByTestId("mock-board");
+    act(() => finishPrevious([previous]));
+    await act(async () => Promise.resolve());
+    expect(screen.getByTestId("mock-board")).toBe(board);
+    expect(
+      mocks.chessboardProps.every((props) => props.puzzleId === 1370 && !props.showSolution),
+    ).toBe(true);
+  });
+
   it("loads only the active puzzle and a three-puzzle lookahead from the catalog", async () => {
     mocks.routeParams = { puzzleId: "", setKey: "" };
     mocks.attemptedPuzzleIds = new Set();
@@ -504,7 +562,7 @@ describe("PuzzleSolverPage solution options", () => {
     expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(false);
     expect(mocks.loadPuzzleSolverIndex).toHaveBeenCalledOnce();
     expect(mocks.loadPuzzlesById).toHaveBeenCalled();
-    expect(mocks.loadPuzzlesById.mock.calls[0]?.[0]).toHaveLength(4);
+    expect(mocks.loadPuzzlesById.mock.calls[0]?.[0]).toHaveLength(1);
     for (const [puzzleIds] of mocks.loadPuzzlesById.mock.calls) {
       expect(puzzleIds.length).toBeLessThanOrEqual(4);
     }
@@ -716,29 +774,69 @@ describe("PuzzleSolverPage solution options", () => {
     expect(restored).toBeEnabled();
   });
 
-  it("includes own puzzles by default and rebuilds the prepared queue when the setting changes", async () => {
-    const [active] = await mocks.loadPuzzlesById([1369]);
+  it("skips puzzles credited to a linked account, even in forward history", async () => {
+    const [active, own, other] = await mocks.loadPuzzlesById([1369, 1370, 1371]);
+    own.author = "SoLvEr_Alt";
+    mocks.fetchProfileAliasRow.mockResolvedValue({
+      username: "solver",
+      aliases: ["solver_alt"],
+      accounts: [{ alias: "solver_alt", source: "lichess" }],
+    });
     mocks.loadPuzzleCatalog.mockResolvedValueOnce([
       active,
-      { ...active, id: 2, puzzleId: 2, author: "SoLvEr", created_at: "2020-01-01T00:00:00Z" },
+      { ...own, created_at: "2020-01-01T00:00:00Z" },
+      other,
     ]);
     const view = render(<PuzzleSolverPage />);
     const next = screen.getAllByRole("button", { name: "Next" })[0]!;
     await waitFor(() => expect(next).toBeEnabled());
 
+    mocks.routeParams = { puzzleId: "1370" };
+    view.rerender(<PuzzleSolverPage />);
+    expect(await screen.findByRole("heading", { name: "Puzzle 1370" })).toBeVisible();
+    mocks.routeParams = { puzzleId: "1371" };
+    view.rerender(<PuzzleSolverPage />);
+    expect(await screen.findByRole("heading", { name: "Puzzle 1371" })).toBeVisible();
+
+    mocks.routeParams = { puzzleId: "1369" };
+    view.rerender(<PuzzleSolverPage />);
     mocks.excludeOwnPuzzles = true;
     view.rerender(<PuzzleSolverPage />);
-    expect(next).toBeDisabled();
+    await waitFor(() => expect(mocks.fetchProfileAliasRow).toHaveBeenCalledWith("solver"));
+    await waitFor(() => expect(next).toBeEnabled());
+    fireEvent.click(next);
+    expect(mocks.navigate.mock.calls.at(-1)?.[0].params.puzzleId).toBe("1371");
 
     mocks.excludeOwnPuzzles = false;
     view.rerender(<PuzzleSolverPage />);
     expect(next).toBeEnabled();
     fireEvent.click(next);
-    expect(mocks.navigate).toHaveBeenCalledWith({
+    expect(mocks.navigate).toHaveBeenLastCalledWith({
       to: "/solve/$puzzleId",
-      params: { puzzleId: "2" },
+      params: { puzzleId: "1370" },
       replace: true,
     });
+  });
+
+  it("skips own puzzles between other puzzles in a set without blocking direct links", async () => {
+    const [first, own, last] = await mocks.loadPuzzlesById([1369, 1370, 1371]);
+    own.author = " SoLvEr ";
+    mocks.excludeOwnPuzzles = true;
+    mocks.routeParams = { puzzleId: "1369", setKey: "1" };
+    mocks.loadPuzzleCatalog.mockResolvedValueOnce([first, own, last]);
+
+    const view = render(<PuzzleSolverPage />);
+    const next = screen.getAllByRole("button", { name: "Next" })[0]!;
+    await waitFor(() => expect(next).toBeEnabled());
+    fireEvent.click(next);
+    expect(mocks.navigate.mock.calls.at(-1)?.[0].params.puzzleId).toBe("1371");
+
+    mocks.routeParams = { puzzleId: "1370", setKey: "1" };
+    view.rerender(<PuzzleSolverPage />);
+    expect(await screen.findByRole("heading", { name: "Puzzle 1370" })).toBeVisible();
+    const previous = screen.getAllByRole("button", { name: "Previous" })[0]!;
+    fireEvent.click(previous);
+    expect(mocks.navigate.mock.calls.at(-1)?.[0].params.puzzleId).toBe("1369");
   });
 
   it("allows practice while grading is on cooldown", async () => {
@@ -853,17 +951,34 @@ describe("PuzzleSolverPage solution options", () => {
     await waitFor(() => expect(prefetchedIds).toHaveLength(3));
     expect(mocks.loadPuzzlesById).toHaveBeenCalledWith(prefetchedIds, { activePuzzleId: null });
 
+    act(() =>
+      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+        puzzleId: 1,
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: "12... O-O",
+      }),
+    );
+    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
     const nextButton = screen.getAllByRole("button", { name: "Next" })[0]!;
     await user.keyboard("{Shift>}{ArrowRight}{/Shift}");
     expect(screen.getByTestId("mock-board")).toBe(initialBoard);
+    const handoffStart = mocks.chessboardProps.length;
     commitNavigation();
-    expect(screen.getByText("Waiting for puzzle data...")).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Loading page" })).toBeInTheDocument();
+    expect(screen.queryByTestId("mock-board")).not.toBeInTheDocument();
 
     resolvePrefetch(prefetchedIds.map(puzzleDetails));
 
     await waitFor(() => expect(screen.getByTestId("mock-board")).toBeInTheDocument());
-    expect(screen.queryByText("Waiting for puzzle data...")).not.toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: "Loading page" })).not.toBeInTheDocument();
 
+    const selectedId = Number(mocks.routeParams.puzzleId);
+    for (const props of mocks.chessboardProps.slice(handoffStart)) {
+      expect(props.puzzleId).toBe(selectedId);
+      expect(props.showSolution).toBe(false);
+      expect(props.analysisMode).toBe(false);
+    }
     await user.click(nextButton);
     commitNavigation();
     const navigatedPuzzleIds = mocks.navigate.mock.calls.map(

@@ -86,7 +86,7 @@ export const shuffleIndexes = (indexes: number[]): number[] => {
 export const createInitialBoardState = (): ChessboardState => ({
   fen: "",
   turn: "",
-  status: "Loading puzzles...",
+  status: "",
   error: "",
   lineMoves: [],
   solutionLines: [],

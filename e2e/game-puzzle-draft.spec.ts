@@ -463,15 +463,19 @@ test("tournament game details show post-game scores and clear the clinch marker 
   const messageColor = await author.evaluate(
     (element) => getComputedStyle(element.closest("li")!).color,
   );
-  await expect(author).toHaveCSS("color", messageColor);
-  await expect(author).toHaveCSS("font-weight", "600");
+  await expect(author).not.toHaveCSS("color", messageColor);
+  const linkColor = await author.evaluate((element) => getComputedStyle(element).color);
+  const messageWeight = await author.evaluate(
+    (element) => getComputedStyle(element.closest("li")!).fontWeight,
+  );
+  await expect(author).toHaveCSS("font-weight", messageWeight);
   const messageFont = await author.evaluate(
     (element) => getComputedStyle(element.closest("li")!).fontFamily,
   );
-  await expect(author).not.toHaveCSS("font-family", messageFont);
+  await expect(author).toHaveCSS("font-family", messageFont);
   await expect(author).toHaveCSS("text-decoration-line", "none");
   await author.hover();
-  await expect(author).toHaveCSS("color", messageColor);
+  await expect(author).toHaveCSS("color", linkColor);
   await expect(author).toHaveCSS("text-decoration-line", "underline");
   await page.mouse.move(0, 0);
   await expect(author).toHaveCSS("text-decoration-line", "none");
@@ -487,14 +491,14 @@ test("tournament game details show post-game scores and clear the clinch marker 
   const details = page.getByRole("complementary", { name: "Game details", exact: true });
   await expect(details.getByLabel("Alice: 5 match points", { exact: true })).toBeVisible();
   await expect(details.getByRole("img", { name: "Match clinched" })).toHaveCount(0);
-  await page.getByRole("link", { name: "Next game, game 10", exact: true }).click();
+  await details.getByRole("link", { name: "Next game, game 10", exact: true }).click();
   await expect(comments.getByText("No spectator chat.", { exact: true })).toBeVisible();
   await expect(details.getByLabel("Alice: 5.5 match points", { exact: true })).toBeVisible();
   await expect(details.getByRole("img", { name: "Match clinched" })).toBeVisible();
   await expect(details.getByText("1900", { exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(details.getByLabel("Bob: 4.5 match points", { exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Previous game, game 9", exact: true }).click();
+  await details.getByRole("link", { name: "Previous game, game 9", exact: true }).click();
   await expect(details.getByRole("img", { name: "Match clinched" })).toHaveCount(0);
   await expect(comments.getByText("<b>Great move!</b>", { exact: true })).toBeVisible();
   await page.goto("/game/score-8");

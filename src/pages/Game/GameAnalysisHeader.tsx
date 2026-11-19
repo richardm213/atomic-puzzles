@@ -186,69 +186,64 @@ export const GameMatchNavigation = ({
 
   return (
     <nav className="gameAnalysisGameNavigation" aria-label="Games in this match">
-      <span className="gameAnalysisGameNumber">
-        Game {currentIndex + 1}/{games.length}
-      </span>
-      <div className="gameAnalysisGameNavigationButtons">
-        {previousGame ? (
-          <Link
-            className="gameAnalysisGameNavigationButton"
-            to="/game/$gameId"
-            params={{ gameId: previousGame.id }}
-            aria-label={`Previous game, game ${currentIndex}`}
-            title={`Previous game, game ${currentIndex}${previousHint ? ` (${previousHint})` : ""}`}
-            aria-keyshortcuts={previousAria}
-          >
-            <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
-          </Link>
-        ) : (
-          <button
-            type="button"
-            className="gameAnalysisGameNavigationButton"
-            aria-label={
-              puzzleDraftOpen
-                ? "Previous game unavailable while creating a puzzle"
-                : "No previous game"
-            }
-            title={
-              puzzleDraftOpen
-                ? "Finish creating the puzzle to switch games"
-                : `No previous game${previousHint ? ` (${previousHint})` : ""}`
-            }
-            disabled
-          >
-            <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
-          </button>
-        )}
-        {nextGame ? (
-          <Link
-            className="gameAnalysisGameNavigationButton"
-            to="/game/$gameId"
-            params={{ gameId: nextGame.id }}
-            aria-label={`Next game, game ${currentIndex + 2}`}
-            title={`Next game, game ${currentIndex + 2}${nextHint ? ` (${nextHint})` : ""}`}
-            aria-keyshortcuts={nextAria}
-          >
-            <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
-          </Link>
-        ) : (
-          <button
-            type="button"
-            className="gameAnalysisGameNavigationButton"
-            aria-label={
-              puzzleDraftOpen ? "Next game unavailable while creating a puzzle" : "No next game"
-            }
-            title={
-              puzzleDraftOpen
-                ? "Finish creating the puzzle to switch games"
-                : `No next game${nextHint ? ` (${nextHint})` : ""}`
-            }
-            disabled
-          >
-            <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
-          </button>
-        )}
-      </div>
+      {previousGame ? (
+        <Link
+          className="gameAnalysisGameNavigationButton"
+          to="/game/$gameId"
+          params={{ gameId: previousGame.id }}
+          aria-label={`Previous game, game ${currentIndex}`}
+          title={`Previous game, game ${currentIndex}${previousHint ? ` (${previousHint})` : ""}`}
+          aria-keyshortcuts={previousAria}
+        >
+          <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
+        </Link>
+      ) : (
+        <button
+          type="button"
+          className="gameAnalysisGameNavigationButton"
+          aria-label={
+            puzzleDraftOpen
+              ? "Previous game unavailable while creating a puzzle"
+              : "No previous game"
+          }
+          title={
+            puzzleDraftOpen
+              ? "Finish creating the puzzle to switch games"
+              : `No previous game${previousHint ? ` (${previousHint})` : ""}`
+          }
+          disabled
+        >
+          <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
+        </button>
+      )}
+      {nextGame ? (
+        <Link
+          className="gameAnalysisGameNavigationButton"
+          to="/game/$gameId"
+          params={{ gameId: nextGame.id }}
+          aria-label={`Next game, game ${currentIndex + 2}`}
+          title={`Next game, game ${currentIndex + 2}${nextHint ? ` (${nextHint})` : ""}`}
+          aria-keyshortcuts={nextAria}
+        >
+          <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
+        </Link>
+      ) : (
+        <button
+          type="button"
+          className="gameAnalysisGameNavigationButton"
+          aria-label={
+            puzzleDraftOpen ? "Next game unavailable while creating a puzzle" : "No next game"
+          }
+          title={
+            puzzleDraftOpen
+              ? "Finish creating the puzzle to switch games"
+              : `No next game${nextHint ? ` (${nextHint})` : ""}`
+          }
+          disabled
+        >
+          <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
+        </button>
+      )}
     </nav>
   );
 };

@@ -89,7 +89,6 @@ describe("GameMatchNavigation", () => {
 
     render(<GameMatchNavigation game={game} />);
 
-    expect(screen.getByText("Game 2/3")).toBeVisible();
     expect(screen.getByRole("link", { name: "Previous game, game 1" })).toHaveAttribute(
       "href",
       "/game/game-1",

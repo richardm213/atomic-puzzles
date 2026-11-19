@@ -96,6 +96,7 @@ import {
   setOwnPuzzlePermanentlyUnrated,
 } from "../../lib/supabase/puzzleProgress";
 import type { PuzzleRatingEvent } from "../../lib/supabase/puzzleUserRatings";
+import { profileAliasQueryOptions } from "../../lib/users/aliasQueries";
 import type { AsyncActionStatus } from "../../types/async";
 import {
   type AttemptResolved,
@@ -109,6 +110,7 @@ import { formatElapsedDuration, formatSignedDecimal } from "../../utils/formatte
 import { normalizeUsername } from "../../utils/playerNames";
 import { BlindPuzzlePanel } from "./BlindPuzzlePanel";
 import { PuzzleAnalysisPanel } from "./PuzzleAnalysisPanel";
+import { PuzzleBoardPlaceholder } from "./PuzzleBoardPlaceholder";
 import { PuzzleInfoSection, type PuzzleInfoTab } from "./PuzzleInfoSection";
 import { PuzzleIssueDialog, type PuzzleIssueStatus } from "./PuzzleIssueDialog";
 import { PuzzlePositionRows } from "./PuzzlePositionRows";
@@ -225,9 +227,46 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     enabled: Boolean(normalizedUsername),
   });
   const { showPuzzleTimer, blindPuzzles, excludeOwnPuzzles } = useAppSettings();
+  const skipOwnPuzzles = !testMode && excludeOwnPuzzles && Boolean(normalizedUsername);
+  const authorIdentityQuery = useQuery({
+    ...profileAliasQueryOptions(normalizedUsername),
+    enabled: skipOwnPuzzles,
+    retry: false,
+  });
+  const authorIdentity = authorIdentityQuery.data;
+  const waitingForAuthorAliases = skipOwnPuzzles && authorIdentityQuery.isPending;
+  const ownAuthorNames = useMemo(
+    () =>
+      new Set(
+        [
+          normalizedUsername,
+          authorIdentity?.username,
+          ...(authorIdentity?.accounts
+            .filter((account) => account.source === "lichess")
+            .map((account) => account.alias) ?? []),
+        ]
+          .map(normalizeUsername)
+          .filter(Boolean),
+      ),
+    [authorIdentity, normalizedUsername],
+  );
+  const shouldSkipAuthor = useCallback(
+    (author: unknown) => skipOwnPuzzles && ownAuthorNames.has(normalizeUsername(author)),
+    [ownAuthorNames, skipOwnPuzzles],
+  );
   const loadDetails = testMode ? loadTestPuzzlesById : loadPuzzlesById;
-  const { puzzles, setPuzzles, loadingError, setLoadingError, mergeLoadedPuzzles } =
-    usePuzzleCatalog(routePuzzleId, routeSetKey || routeDashboardSetId, loadDetails);
+  const {
+    puzzles,
+    setPuzzles,
+    loadingError,
+    catalogLoading,
+    setLoadingError,
+    loadPuzzleDetails,
+    unavailablePuzzleIds,
+  } = usePuzzleCatalog(routePuzzleId, routeSetKey || routeDashboardSetId, loadDetails);
+  const [detailError, setDetailError] = useState<{ puzzleId: number; message: string } | null>(
+    null,
+  );
   const gradingStatesRef = useRef(new Map<string, PuzzleGradingState>());
   const [gradingAtEntry, setGradingAtEntry] = useState<{ key: string; attempted: boolean } | null>(
     null,
@@ -306,7 +345,6 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   const boardPanelRef = useRef<HTMLDivElement | null>(null);
   const reportIssueDialogRef = useRef<HTMLDialogElement | null>(null);
   const [visitedPuzzleIds, setVisitedPuzzleIds] = useState<Set<string>>(() => new Set());
-  const loadingPuzzleIdsRef = useRef<Set<string>>(new Set());
   const isMountedRef = useRef(true);
   const progressWriteQueueRef = useRef(Promise.resolve());
   const countedTodayPuzzleIdsRef = useRef<Set<string>>(new Set());
@@ -531,28 +569,6 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     };
   }, [attemptedPuzzleIdsUsername, isAuthLoading, setLoadingError, testMode]);
 
-  useEffect(() => {
-    setBoardState((prev) => {
-      if (loadingError) {
-        return {
-          ...prev,
-          status: "Puzzle load error",
-          error: loadingError,
-        };
-      }
-
-      if (!loadingError && prev.error) {
-        return {
-          ...prev,
-          status: "",
-          error: "",
-        };
-      }
-
-      return prev;
-    });
-  }, [loadingError]);
-
   const routePuzzleIndex = useMemo(
     () => puzzleIndexFromParam(puzzles, routePuzzleId),
     [puzzles, routePuzzleId],
@@ -575,20 +591,31 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   const testPuzzleUnavailable =
     testMode && Boolean(routePuzzleId) && puzzles.length > 0 && routePuzzleIndex < 0;
 
-  const activePuzzleIndex = routePuzzleIndex >= 0 ? routePuzzleIndex : historyPuzzleIndex;
+  const activePuzzleIndex = routePuzzleId ? routePuzzleIndex : historyPuzzleIndex;
   const puzzleCountInCatalog = puzzles.length;
   // Shuffling the order separately keeps prefetched candidates stable as details load.
   const shuffledPuzzleIndexes = useMemo(
     () => shuffleIndexes(Array.from({ length: puzzleCountInCatalog }, (_, index) => index)),
     [puzzleCountInCatalog],
   );
+  const isSelectablePuzzle = useCallback(
+    (index: number) => {
+      const puzzle = puzzles[index];
+      return Boolean(
+        puzzle &&
+        !shouldSkipAuthor(puzzle.author) &&
+        !unavailablePuzzleIds.has(String(puzzle.puzzleId)),
+      );
+    },
+    [puzzles, shouldSkipAuthor, unavailablePuzzleIds],
+  );
   const upcomingPuzzleIndexes = useMemo(() => {
-    if (!attemptedPuzzleIdsReady) return [];
+    if (!attemptedPuzzleIdsReady || waitingForAuthorAliases) return [];
 
     const now = new Date();
     const isEligible = (index: number): boolean => {
       const puzzle = puzzles[index];
-      if (!puzzle || index === activePuzzleIndex) return false;
+      if (!puzzle || index === activePuzzleIndex || !isSelectablePuzzle(index)) return false;
       const key = String(puzzle.puzzleId);
       if (visitedPuzzleIds.has(key)) return false;
       if (gradingAvailability.has(key)) {
@@ -597,16 +624,8 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
         return (
           !permanentUnratedIds.has(key) &&
           !(excludedUntil && Date.parse(excludedUntil) > now.getTime()) &&
-          Boolean(availableAt && Date.parse(availableAt) <= now.getTime()) &&
-          !(excludeOwnPuzzles && normalizeUsername(puzzle.author) === normalizedUsername)
+          Boolean(availableAt && Date.parse(availableAt) <= now.getTime())
         );
-      }
-      if (
-        excludeOwnPuzzles &&
-        normalizedUsername &&
-        normalizeUsername(puzzle.author) === normalizedUsername
-      ) {
-        return false;
       }
       return (
         getPuzzleUnratedReason({
@@ -631,21 +650,23 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   }, [
     activePuzzleIndex,
     attemptedPuzzleIdsReady,
-    excludeOwnPuzzles,
     normalizedUsername,
     permanentUnratedIds,
     puzzles,
     ratingExclusions,
     shuffledPuzzleIndexes,
     gradingAvailability,
+    isSelectablePuzzle,
     unratedPuzzleIds,
     visitedPuzzleIds,
+    waitingForAuthorAliases,
   ]);
   const nextRandomPuzzleIndex = upcomingPuzzleIndexes[0];
 
   useEffect(() => {
     if (
       historyIndex >= 0 ||
+      routePuzzleId ||
       routePuzzleIndex >= 0 ||
       testPuzzleUnavailable ||
       nextRandomPuzzleIndex === undefined
@@ -664,6 +685,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     puzzles,
     replaceUrlWithPuzzle,
     routePuzzleIndex,
+    routePuzzleId,
     testPuzzleUnavailable,
   ]);
 
@@ -696,12 +718,24 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   const hasExplanation = explanation.trim().length > 0;
   const orientation = orientationFromFen(fen);
   const currentFen = boardState.fen || fen;
+  const selectableSetPuzzleIndexes = useMemo(
+    () =>
+      orderedSetPuzzleIndexes.filter(
+        (index) => index === activePuzzleIndex || isSelectablePuzzle(index),
+      ),
+    [activePuzzleIndex, orderedSetPuzzleIndexes, isSelectablePuzzle],
+  );
   const activeSetPuzzlePosition = isSetSolveMode
-    ? orderedSetPuzzleIndexes.indexOf(activePuzzleIndex)
+    ? selectableSetPuzzleIndexes.indexOf(activePuzzleIndex)
     : -1;
-  const puzzleCount = isSetSolveMode ? orderedSetPuzzleIndexes.length : puzzles.length;
+  const puzzleCount = isSetSolveMode ? selectableSetPuzzleIndexes.length : puzzles.length;
   const dailyLimitReached = dailyAttemptCount >= DAILY_PUZZLE_ATTEMPT_LIMIT;
-  const canGoToPreviousPuzzle = isSetSolveMode ? activeSetPuzzlePosition > 0 : historyIndex > 0;
+  const previousPuzzleIndex = isSetSolveMode
+    ? selectableSetPuzzleIndexes[activeSetPuzzlePosition - 1]
+    : history.slice(0, Math.max(0, historyIndex)).reverse().find(isSelectablePuzzle);
+  const previousPuzzle =
+    previousPuzzleIndex === undefined ? undefined : puzzles[previousPuzzleIndex];
+  const canGoToPreviousPuzzle = !waitingForAuthorAliases && previousPuzzle !== undefined;
   const hasRecordedAttempt = useCallback(
     (key: string) =>
       attemptedPuzzleIds.has(key) ||
@@ -711,17 +745,20 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   );
   const nextPuzzleIndex = isSetSolveMode
     ? activeSetPuzzlePosition >= 0
-      ? orderedSetPuzzleIndexes[activeSetPuzzlePosition + 1]
+      ? selectableSetPuzzleIndexes[activeSetPuzzlePosition + 1]
       : undefined
-    : ((historyIndex >= 0 ? history[historyIndex + 1] : undefined) ??
+    : ((historyIndex >= 0 ? history.slice(historyIndex + 1).find(isSelectablePuzzle) : undefined) ??
       (dailyLimitReached ? undefined : nextRandomPuzzleIndex));
   const nextCandidate = nextPuzzleIndex === undefined ? undefined : puzzles[nextPuzzleIndex];
   const nextPuzzle =
-    nextCandidate && (!dailyLimitReached || hasRecordedAttempt(String(nextCandidate.puzzleId)))
+    nextCandidate &&
+    !waitingForAuthorAliases &&
+    (!dailyLimitReached || hasRecordedAttempt(String(nextCandidate.puzzleId)))
       ? nextCandidate
       : undefined;
   const canGoToNextPuzzle = nextPuzzle !== undefined;
-  const hasCompletedPuzzleSet = isSetSolveMode && !canGoToNextPuzzle && boardState.solved;
+  const hasCompletedPuzzleSet =
+    isSetSolveMode && !waitingForAuthorAliases && !canGoToNextPuzzle && boardState.solved;
 
   useEffect(() => {
     if (!dailyLimitReached) return undefined;
@@ -782,7 +819,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   const gradingQuery = useQuery({
     queryKey: ["puzzle-grading", normalizedUsername, activePuzzleKey],
     queryFn: () => fetchPuzzleGradingState(activePuzzleKey),
-    enabled: !testMode && Boolean(normalizedUsername && activePuzzleKey) && attemptedPuzzleIdsReady,
+    enabled: !testMode && !isAuthLoading && Boolean(normalizedUsername && activePuzzleKey),
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
@@ -922,19 +959,6 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     boardState.solutionLines?.length === 1 ? boardState.solutionLines[0]?.[0] : null;
 
   useEffect(() => {
-    setUnratedMarkStatus({ state: "idle" });
-    setRatingEditorOpen(false);
-    setRatingSaveStatus({ state: "idle" });
-    setExplanationEditorOpen(false);
-    setExplanationDraft("");
-    setExplanationSaveStatus({ state: "idle" });
-    setReportIssueOpen(false);
-    setReportIssueCategory("missing_alternate_solution");
-    setReportIssueDetails("");
-    setReportIssueStatus({ state: "idle" });
-  }, [activePuzzleId]);
-
-  useEffect(() => {
     const dialog = reportIssueDialogRef.current;
     if (reportIssueOpen && dialog && !dialog.open) dialog.showModal();
     if (!reportIssueOpen && dialog?.open) dialog.close();
@@ -950,73 +974,59 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   }, [activePuzzleKey]);
 
   useEffect(() => {
-    if (activePuzzleIndex < 0 || !activePuzzleId) return undefined;
+    if (!activePuzzleId || fen) return;
+    let active = true;
+    void loadPuzzleDetails([activePuzzleId], activePuzzleId)
+      .then((loaded) => {
+        if (active && !loaded.length)
+          setDetailError({
+            puzzleId: activePuzzleId,
+            message: `Puzzle #${activePuzzleId} is unavailable or has no playable solution.`,
+          });
+      })
+      .catch((error: unknown) => {
+        if (active)
+          setDetailError({
+            puzzleId: activePuzzleId,
+            message: getErrorMessage(error, "Failed to load puzzle data"),
+          });
+      });
+    return () => {
+      active = false;
+    };
+  }, [activePuzzleId, fen, loadPuzzleDetails]);
 
-    const candidateIndexes = isSetSolveMode
-      ? orderedSetPuzzleIndexes.slice(
+  useEffect(() => {
+    // Finish the current board first; future details are cached without mounting another board.
+    if (!fen) return;
+    const candidates = isSetSolveMode
+      ? selectableSetPuzzleIndexes.slice(
           activeSetPuzzlePosition + 1,
           activeSetPuzzlePosition + 1 + PUZZLE_PREFETCH_COUNT,
         )
       : upcomingPuzzleIndexes;
-
-    const missingIds = [...new Set([activePuzzleIndex, ...candidateIndexes])].flatMap((index) => {
+    const missingIds = candidates.flatMap((index) => {
       const puzzle = puzzles[index];
-      if (!puzzle || puzzle.fen) return [];
-      const key = String(puzzle.puzzleId);
-      if (loadingPuzzleIdsRef.current.has(key)) return [];
-      if (dailyLimitReached && !hasRecordedAttempt(key)) {
-        return [];
-      }
-      return [puzzle.puzzleId];
+      return puzzle &&
+        !puzzle.fen &&
+        (!dailyLimitReached || hasRecordedAttempt(String(puzzle.puzzleId)))
+        ? [puzzle.puzzleId]
+        : [];
     });
-    if (missingIds.length === 0) return undefined;
-
-    missingIds.forEach((puzzleId) => loadingPuzzleIdsRef.current.add(String(puzzleId)));
-    void loadDetails(missingIds, {
-      activePuzzleId: missingIds.find((id) => String(id) === activePuzzleKey) ?? null,
-    })
-      .then((loadedPuzzles) => {
-        if (!isMountedRef.current) return;
-        mergeLoadedPuzzles(loadedPuzzles);
-
-        const loadedIds = new Set(loadedPuzzles.map((puzzle) => String(puzzle.puzzleId)));
-        const activeRequestedId = missingIds.find(
-          (puzzleId) => String(puzzleId) === activePuzzleKeyRef.current,
-        );
-        if (activeRequestedId !== undefined && !loadedIds.has(String(activeRequestedId))) {
-          setLoadingError(
-            `Puzzle #${activeRequestedId} is unavailable or has no playable solution.`,
-          );
-        }
-      })
-      .catch((error) => {
-        if (!isMountedRef.current) return;
-        const requestIncludesActivePuzzle = missingIds.some(
-          (puzzleId) => String(puzzleId) === activePuzzleKeyRef.current,
-        );
-        if (requestIncludesActivePuzzle) {
-          setLoadingError(getErrorMessage(error, "Failed to load puzzle data"));
-        } else {
-          globalThis.console?.error(error);
-        }
-      })
-      .finally(() => {
-        missingIds.forEach((puzzleId) => loadingPuzzleIdsRef.current.delete(String(puzzleId)));
-      });
+    if (missingIds.length)
+      void loadPuzzleDetails(missingIds).catch((error: unknown) =>
+        globalThis.console?.error(error),
+      );
   }, [
-    activePuzzleId,
-    activePuzzleIndex,
-    activePuzzleKey,
+    fen,
+    isSetSolveMode,
+    selectableSetPuzzleIndexes,
     activeSetPuzzlePosition,
+    upcomingPuzzleIndexes,
+    puzzles,
     dailyLimitReached,
     hasRecordedAttempt,
-    isSetSolveMode,
-    loadDetails,
-    mergeLoadedPuzzles,
-    orderedSetPuzzleIndexes,
-    puzzles,
-    setLoadingError,
-    upcomingPuzzleIndexes,
+    loadPuzzleDetails,
   ]);
 
   const enqueuePuzzleProgressWrite = useCallback(
@@ -1230,40 +1240,50 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     ],
   );
 
-  const resetPuzzleUiState = useCallback(() => {
+  const uiVisitKey = JSON.stringify([puzzleVisitKey, blindMode, fen]);
+  const [previousUiVisitKey, setPreviousUiVisitKey] = useState(uiVisitKey);
+  if (previousUiVisitKey !== uiVisitKey) {
+    // Reset the entire visit before its board renders, including while details are pending.
+    setPreviousUiVisitKey(uiVisitKey);
+    setDetailError(null);
+    setUnratedMarkStatus({ state: "idle" });
+    setRatingEditorOpen(false);
+    setRatingSaveStatus({ state: "idle" });
+    setExplanationEditorOpen(false);
+    setExplanationDraft("");
+    setExplanationSaveStatus({ state: "idle" });
+    setReportIssueOpen(false);
+    setReportIssueCategory("missing_alternate_solution");
+    setReportIssueDetails("");
+    setReportIssueStatus({ state: "idle" });
     setResignArmed(false);
     if (!retryProgressWriteRef.current) setProgressSaveError("");
     setActivePuzzleInfoTab(null);
     setSolutionNavigation(null);
     setAnalysisPreviewMove(null);
     setAnalysisEngineMoves(null);
+    setAnalysisDocument(null);
     dispatchPuzzleSession({ type: "reset" });
     setAttemptRatingFeedback(null);
     setFeedbackBadgeId(0);
     setPinnedSolutionLineIndex(null);
     setCustomSetRefreshState({ status: "idle" });
-  }, []);
-
-  const uiVisitKey = JSON.stringify([puzzleVisitKey, blindMode, fen]);
-  const [previousUiVisitKey, setPreviousUiVisitKey] = useState(uiVisitKey);
-  if (previousUiVisitKey !== uiVisitKey) {
-    // Reset before React renders the new board; an effect lets stale reveal props reach it.
-    setPreviousUiVisitKey(uiVisitKey);
-    resetPuzzleUiState();
-  }
-
-  useLayoutEffect(() => {
     testMissesRef.current = 0;
     setFinishedIntroKey("");
     setBoardState(createInitialBoardState());
     setMobileFeedback(null);
     setCorrectAttemptsOnly(false);
     previousBoardSnapshotRef.current = createInitialBoardSnapshot();
-  }, [puzzleVisitKey, blindMode, fen]);
+  }
 
   useLayoutEffect(() => {
     const shouldStartTimer = Boolean(
-      activePuzzleKey && fen && attemptedPuzzleIdsReady && !hasSolvedPuzzle && !introPending,
+      activePuzzleKey &&
+      fen &&
+      attemptedPuzzleIdsReady &&
+      gradingReady &&
+      !hasSolvedPuzzle &&
+      !introPending,
     );
     const elapsedBeforePageLoad =
       shouldStartTimer && !testMode
@@ -1281,6 +1301,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   }, [
     activePuzzleKey,
     attemptedPuzzleIdsReady,
+    gradingReady,
     fen,
     hasSolvedPuzzle,
     introPending,
@@ -1384,12 +1405,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   };
 
   const handlePreviousPuzzle = () => {
-    if (!canGoToPreviousPuzzle) return;
-    const previousIndex = isSetSolveMode
-      ? orderedSetPuzzleIndexes[activeSetPuzzlePosition - 1]
-      : history[historyIndex - 1];
-    const previousPuzzle = previousIndex === undefined ? undefined : puzzles[previousIndex];
-    if (previousPuzzle) replaceUrlWithPuzzle(previousPuzzle.puzzleId);
+    if (canGoToPreviousPuzzle && previousPuzzle) replaceUrlWithPuzzle(previousPuzzle.puzzleId);
   };
 
   const { previousHint, nextHint, previousAria, nextAria } = useBoardItemShortcuts({
@@ -2090,8 +2106,19 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     : activePuzzleId
       ? `Puzzle ${activePuzzleId}`
       : "Puzzle";
+  const boardReady = Boolean(
+    fen && attemptedPuzzleIdsReady && gradingReady && (!blindPlies || blindEntryReady),
+  );
+  const puzzleLoading =
+    !boardReady &&
+    !dailyLimitReached &&
+    !gradingQuery.isError &&
+    Boolean(
+      activePuzzleId || catalogLoading || !attemptedPuzzleIdsReady || waitingForAuthorAliases,
+    );
   const displayError =
     loadingError ||
+    (detailError && detailError.puzzleId === activePuzzleId ? detailError.message : "") ||
     (testPuzzleUnavailable
       ? "That puzzle is unavailable."
       : !blindPosition
@@ -2388,10 +2415,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
                 </span>
               </div>
             ) : null}
-            {fen &&
-            attemptedPuzzleIdsReady &&
-            (!autoplayIntro || attemptedPuzzleIdsReady) &&
-            (!blindPlies || blindEntryReady) ? (
+            {boardReady ? (
               <Chessboard
                 key={`${puzzleVisitKey}:${blindMode}`}
                 intro={activePuzzle?.intro}
@@ -2413,7 +2437,6 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
                 disabled={
                   dailyLimitReached ||
                   unratedMarkStatus.state === "saving" ||
-                  !gradingReady ||
                   progressSaving ||
                   Boolean(progressSaveError)
                 }
@@ -2427,10 +2450,8 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
                 onAttemptResolved={handleAttemptResolved}
                 onStateChange={handleBoardStateChange}
               />
-            ) : dailyLimitReached ? null : (
-              <div className="emptyBoard">
-                {displayError ? "Puzzle unavailable." : "Waiting for puzzle data..."}
-              </div>
+            ) : (
+              <PuzzleBoardPlaceholder loading={puzzleLoading && !displayError} />
             )}
           </div>
           {isMobileLayout && mobileFeedback ? (
