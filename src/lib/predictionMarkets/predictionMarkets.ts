@@ -359,9 +359,11 @@ export const predictionHistoryPositionSchema = z
     reserved_quantity: z.number().nonnegative(),
     average_price_cents: z.number().nullable(),
     updated_at: z.string(),
+    remaining_cost_coins: z.number().nonnegative().optional(),
     closed_cost_coins: z.number().nonnegative().optional(),
     closed_proceeds_coins: z.number().nonnegative().optional(),
     fees_coins: z.number().nonnegative().optional(),
+    terminal_return_coins: z.number().optional(),
   })
   .transform((position) => ({
     marketId: position.market_id,
@@ -371,6 +373,12 @@ export const predictionHistoryPositionSchema = z
     reservedQuantity: position.reserved_quantity,
     averagePriceCents: position.average_price_cents,
     updatedAt: position.updated_at,
+    ...(position.remaining_cost_coins === undefined
+      ? {}
+      : { remainingCost: position.remaining_cost_coins }),
+    ...(position.terminal_return_coins === undefined
+      ? {}
+      : { terminalReturn: position.terminal_return_coins }),
     ...(position.closed_cost_coins === undefined
       ? {}
       : {

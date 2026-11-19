@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  isPredictionMarketRefund,
   type PredictionPositionCredit,
   type PredictionPositionFill,
   type PredictionPositionNetting,
@@ -36,9 +37,11 @@ type CreditRow = PredictionPositionCredit & { market_id: string; username: strin
 
 export type PredictionHistoryRow = PositionRow & {
   average_price_cents: number | null;
+  remaining_cost_coins: number;
   closed_cost_coins: number;
   closed_proceeds_coins: number;
   fees_coins: number;
+  terminal_return_coins: number;
 };
 
 type RowQuery = {
@@ -103,23 +106,30 @@ export const loadPredictionPositions = async (
     if (username) query = query.eq("username", username);
     return query;
   };
-  const feeQuery = () => {
+  const receiptQuery = () => {
     let query = supabase
       .from("coin_transactions")
-      .select("username,amount,reason,metadata,created_at")
-      .in("reason", ["prediction_trade_fee", "prediction_order_reserve", "prediction_trade_credit"])
+      .select("username,amount,reason,source_key,metadata,created_at")
+      .in("reason", [
+        "prediction_trade_fee",
+        "prediction_order_reserve",
+        "prediction_trade_credit",
+        "prediction_market_payout",
+        "prediction_order_refund",
+        "prediction_reconciliation",
+      ])
       .neq("username", "prediction_admin")
       .order("id");
     if (marketIds) query = query.in("metadata->>marketId", [...marketIds]);
     if (username) query = query.eq("username", username);
     return query;
   };
-  const [rawPositions, rawFills, rawCredits, rawNettings, rawFees] = await Promise.all([
+  const [rawPositions, rawFills, rawCredits, rawNettings, rawReceipts] = await Promise.all([
     readPredictionRows(positionQuery, "prediction positions"),
     readPredictionRows(fillQuery, "prediction trades"),
     readPredictionRows(creditQuery, "prediction position credits"),
     readPredictionRows(nettingQuery, "prediction pair redemptions"),
-    readPredictionRows(feeQuery, "prediction trading fees"),
+    readPredictionRows(receiptQuery, "prediction coin receipts"),
   ]);
   type Owner = {
     marketId: string;
@@ -128,7 +138,8 @@ export const loadPredictionPositions = async (
     credits: PredictionPositionCredit[];
     nettings: PredictionPositionNetting[];
     receipts: { reason: string; amount: number; metadata: Record<string, unknown> }[];
-    feeDate: string;
+    receiptDate: string;
+    terminalReturn: number;
     reserved: Partial<Record<"yes" | "no", number>>;
     held: Record<"yes" | "no", number>;
   };
@@ -147,7 +158,8 @@ export const loadPredictionPositions = async (
         credits: [],
         nettings: [],
         receipts: [],
-        feeDate: "",
+        receiptDate: "",
+        terminalReturn: 0,
         reserved: {},
         held: { yes: 0, no: 0 },
       };
@@ -174,20 +186,27 @@ export const loadPredictionPositions = async (
     username: string;
   })[])
     ownerFor(net.market_id, net.username)?.nettings.push(net);
-  for (const fee of rawFees as {
+  for (const receipt of rawReceipts as {
     username: string;
     amount: number;
     reason: string;
-    metadata: { marketId?: string; fee?: number };
+    source_key: string;
+    metadata: { marketId?: string; fee?: number; kind?: string } | null;
     created_at: string;
   }[]) {
-    if (!fee.metadata.marketId) continue;
-    const owner = ownerFor(fee.metadata.marketId, fee.username);
-    if (owner) {
-      owner.receipts.push(fee);
-      if (predictionTradingFee(fee) !== 0 && fee.created_at > owner.feeDate)
-        owner.feeDate = fee.created_at;
-    }
+    const metadata = receipt.metadata;
+    if (!metadata?.marketId) continue;
+    const terminal =
+      receipt.reason === "prediction_market_payout" ||
+      isPredictionMarketRefund(receipt) ||
+      (receipt.reason === "prediction_reconciliation" &&
+        metadata.kind === "duplicate-legacy-payout");
+    if (!terminal && predictionTradingFee(receipt) === 0) continue;
+    const owner = ownerFor(metadata.marketId, receipt.username);
+    if (!owner) continue;
+    if (terminal) owner.terminalReturn += receipt.amount;
+    else owner.receipts.push({ ...receipt, metadata });
+    if (receipt.created_at > owner.receiptDate) owner.receiptDate = receipt.created_at;
   }
   const history: PredictionHistoryRow[] = [];
   for (const owner of owners.values()) {
@@ -215,7 +234,12 @@ export const loadPredictionPositions = async (
           ? "no"
           : replay.lastOutcome;
     const position = replay.positions[outcome];
-    if (position.quantity === 0 && replay.closed.quantity === 0 && replay.unallocatedFees === 0)
+    if (
+      position.quantity === 0 &&
+      replay.closed.quantity === 0 &&
+      replay.unallocatedFees === 0 &&
+      owner.terminalReturn === 0
+    )
       continue;
     history.push({
       market_id: owner.marketId,
@@ -223,16 +247,18 @@ export const loadPredictionPositions = async (
       outcome,
       quantity: position.quantity,
       reserved_quantity: Math.min(position.quantity, owner.reserved[outcome] ?? 0),
-      updated_at: owner.feeDate > replay.updatedAt ? owner.feeDate : replay.updatedAt,
+      updated_at: owner.receiptDate > replay.updatedAt ? owner.receiptDate : replay.updatedAt,
       average_price_cents:
         position.quantity > 0
           ? position.costCents / position.quantity
           : replay.closed.quantity > 0
             ? replay.closed.costCents / replay.closed.quantity
             : 0,
+      remaining_cost_coins: position.costCents / 100,
       closed_cost_coins: replay.closed.costCents / 100,
       closed_proceeds_coins: replay.closed.proceedsCents / 100,
       fees_coins: replay.unallocatedFees,
+      terminal_return_coins: owner.terminalReturn,
     });
   }
   return history;

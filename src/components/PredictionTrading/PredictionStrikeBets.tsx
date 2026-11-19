@@ -5,9 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import {
-  allPredictionPositionsQueryOptions,
-} from "../../lib/betting/bettingQueries";
+import { allPredictionPositionsQueryOptions } from "../../lib/betting/bettingQueries";
 import {
   predictionMarketBatchQueryOptions,
   predictionMarketCatalogQueryOptions,
@@ -43,7 +41,6 @@ const StrikeBetList = ({
     predictionPositions: positions.data ?? [],
     predictionMarketGroups: catalog.data ?? [],
     predictionMarketStates: states.data ?? [],
-    minimumPositionCost: 0,
     realizedOnly: true,
   }).filter((bet) => bet.marketId === definition.id);
   return (

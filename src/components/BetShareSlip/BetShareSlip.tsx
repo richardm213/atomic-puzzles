@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useAppSettings } from "../../context/AppSettings";
+import { formatCoinValue } from "../../lib/coins/coinDisplay";
 import { type BetHistoryEntry, betHistoryReturn } from "../../pages/Betting/bettingHistoryModel";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
-import { formatPricePercentageValue } from "../../utils/formatters";
 
 export const BetShareSlip = ({
   bet,
@@ -36,12 +36,12 @@ export const BetShareSlip = ({
     (bet.predictionOutcome
       ? `${bet.predictionOutcome === "yes" ? "Yes" : "No"} · ${bet.selection}`
       : bet.selection);
-  const odds = `${formatPricePercentageValue(bet.priceCents)}% chance`;
+  const averagePrice = `${formatCoinValue(bet.priceCents)}¢`;
   const cost = `${bet.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} coins`;
   const payout = betHistoryReturn(bet);
-  const payoutLabel = bet.status === "open" ? "To win" : "Paid out";
-  const payoutText = `${payout.toLocaleString(undefined, { maximumFractionDigits: 0 })} coins`;
-  const description = `${marketTitle}. ${selection}${countryCode ? ` (${countryCode})` : ""}. Odds ${odds}. Cost ${cost}. ${payoutLabel} ${payoutText}.`;
+  const payoutLabel = bet.status === "open" ? "If won" : "Return";
+  const payoutText = `${formatCoinValue(payout)} coins`;
+  const description = `${marketTitle}. ${selection}${countryCode ? ` (${countryCode})` : ""}. Average price ${averagePrice}. Cost ${cost}. ${payoutLabel} ${payoutText}.`;
 
   const filename = `atomic-puzzles-${bet.marketId}-${bet.username}.png`.replace(
     /[^a-zA-Z0-9._-]/g,
@@ -218,7 +218,7 @@ export const BetShareSlip = ({
       context.lineTo(384, divider + 10);
       context.stroke();
       const rows = [
-        ["Odds", odds],
+        ["Avg. price", averagePrice],
         ["Cost", cost],
         [payoutLabel, payoutText],
       ];
@@ -269,7 +269,7 @@ export const BetShareSlip = ({
     marketTitle,
     countryCode,
     selection,
-    odds,
+    averagePrice,
     cost,
     payout,
     payoutLabel,

@@ -256,6 +256,20 @@ describe("betting function", () => {
           metadata: { marketId: "strike" },
           created_at: "2026-11-14T01:00:00Z",
         },
+        {
+          username: "switched",
+          amount: 1020,
+          reason: "prediction_market_payout",
+          metadata: { marketId: "strike" },
+          created_at: "2026-11-15T01:00:00Z",
+        },
+        {
+          username: "switched",
+          amount: -20,
+          reason: "prediction_reconciliation",
+          metadata: { marketId: "strike", kind: "duplicate-legacy-payout" },
+          created_at: "2026-11-16T01:00:00Z",
+        },
       ],
     };
     rows.prediction_fills!.push(
@@ -313,6 +327,7 @@ describe("betting function", () => {
     expect(result.find((row: { username: string }) => row.username === "trader")).toMatchObject({
       outcome: "yes",
       quantity: 0,
+      remaining_cost_coins: 0,
       closed_cost_coins: 2,
       closed_proceeds_coins: 6,
       fees_coins: 0.1,
@@ -320,8 +335,10 @@ describe("betting function", () => {
     expect(result.find((row: { username: string }) => row.username === "switched")).toMatchObject({
       outcome: "no",
       quantity: 1000,
+      remaining_cost_coins: 600,
       closed_cost_coins: 800,
       closed_proceeds_coins: 1000,
+      terminal_return_coins: 1000,
     });
     const bootstrap = await handler({
       httpMethod: "POST",

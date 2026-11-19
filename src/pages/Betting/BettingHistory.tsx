@@ -90,7 +90,7 @@ export const BetHistoryTable = ({
   emptyMessage,
   showUsername = false,
   returnDisplay,
-  priceLabel = "Price",
+  priceLabel = "Avg. price",
   showStatus = true,
   showMarket = true,
   sortable = false,
@@ -152,7 +152,9 @@ export const BetHistoryTable = ({
     <th
       scope="col"
       title={
-        column === "cost" ? "Cost of the shares still held, including purchase fees." : undefined
+        column === "cost"
+          ? "Cost basis, including purchase fees. Fully exited positions show the cost of the shares closed."
+          : undefined
       }
       aria-sort={sortable ? (sort.column === column ? sort.direction : "none") : undefined}
     >
@@ -296,7 +298,7 @@ export const BetHistoryTable = ({
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}
-                      <span className="betHistoryPriceSuffix">%</span>
+                      <span className="betHistoryPriceSuffix">¢</span>
                     </strong>
                   </td>
                   <td className="betHistoryNumber" data-label="Cost">

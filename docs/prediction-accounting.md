@@ -20,6 +20,10 @@ and realizes that part of the gain or loss. Sale fees reduce sale proceeds. Aver
 remaining all-in cost divided by remaining quantity. The UI consumes that one server summary;
 it does not net holdings a second time or reconstruct P&L from lifetime spending.
 
+An open position's possible payout is one coin per remaining contract. Earlier sales and
+redemptions contribute to realized P&L. After settlement the return is the amount posted for
+the remaining contracts. A fully exited position pairs its sold cost basis with its net proceeds.
+
 Historical fees are embedded in their original purchase or sale receipts under `metadata.fee`.
 Original fee rows and trade receipts are retained in the private fee-history archive. Consolidating
 these rows preserves every wallet and ledger total; fee metadata prevents double counting.

@@ -34,6 +34,15 @@ export type PredictionPositionEvent = {
 export const isPredictionPairRedemption = (fill: PredictionPositionFill): boolean =>
   fill.pair_key !== null && fill.seller_username !== null;
 
+export const isPredictionMarketRefund = (receipt: {
+  reason: string;
+  source_key: string;
+  metadata: Record<string, unknown> | null;
+}): boolean =>
+  receipt.reason === "prediction_order_refund" &&
+  (receipt.metadata?.kind === "market-refund" ||
+    receipt.source_key.startsWith("prediction-market-refund:"));
+
 export const predictionTradingFee = (receipt: {
   reason: string;
   amount: number;

@@ -45,7 +45,7 @@ export const predictionPnlByMarketId = (
   return pnlByMarketId;
 };
 
-const roundCoins = (value: number) => Math.round(value * 10_000) / 10_000;
+const roundCoins = (value: number) => Math.round(value * 1_000_000) / 1_000_000;
 
 const predictionSettlement = (
   state: PredictionMarketState | undefined,
@@ -76,13 +76,11 @@ export const buildBetHistory = ({
   predictionPositions,
   predictionMarketGroups,
   predictionMarketStates,
-  minimumPositionCost = 1,
   realizedOnly = false,
 }: {
   predictionPositions: PredictionHistoryPosition[];
   predictionMarketGroups: PredictionMarketGroup[];
   predictionMarketStates: PredictionMarketState[];
-  minimumPositionCost?: number;
   realizedOnly?: boolean;
 }): BetHistoryEntry[] => {
   const stateByMarketId = new Map(predictionMarketStates.map((state) => [state.market.id, state]));
@@ -102,27 +100,35 @@ export const buildBetHistory = ({
     if (!predictionMarket || position.averagePriceCents === null) return [];
     const { definition, title } = predictionMarket;
     const state = stateByMarketId.get(position.marketId);
-    const remainingCost = roundCoins((position.averagePriceCents * position.quantity) / 100);
+    const remainingCost = roundCoins(
+      position.remainingCost ?? (position.averagePriceCents * position.quantity) / 100,
+    );
     const closedCost = position.closedCost ?? 0;
     const closedProceeds = position.closedProceeds ?? 0;
     const fees = position.fees ?? 0;
-    if (remainingCost < minimumPositionCost && closedCost === 0 && fees === 0) return [];
+    const hasRemainingShares = position.quantity > 0;
+    if (
+      !hasRemainingShares &&
+      closedCost === 0 &&
+      closedProceeds === 0 &&
+      fees === 0 &&
+      !position.terminalReturn
+    )
+      return [];
     const settlement = predictionSettlement(
       state,
       position.outcome,
       position.quantity,
       remainingCost,
     );
-    if (position.quantity === 0) settlement.status = "settled";
     const realizedPnl = roundCoins(closedProceeds - closedCost - fees);
-    const isResolved = state?.market.status === "resolved" || state?.market.status === "refunded";
+    const isResolved = settlement.status !== "open";
+    const terminalReturn = isResolved ? (position.terminalReturn ?? settlement.payout) : 0;
+    const payout = hasRemainingShares ? terminalReturn : closedProceeds + terminalReturn;
     const pnl = roundCoins(
-      realizedPnl +
-        (isResolved
-          ? settlement.payout - remainingCost
-          : realizedOnly
-            ? 0
-            : position.quantity - remainingCost),
+      !isResolved && hasRemainingShares && !realizedOnly
+        ? position.quantity - remainingCost
+        : realizedPnl + (isResolved ? terminalReturn - remainingCost : 0),
     );
     const hasNamedOutcomes = Boolean(definition.outcomeLabels);
     return [
@@ -131,11 +137,10 @@ export const buildBetHistory = ({
         username: position.username,
         selection: definition.username,
         priceCents: position.averagePriceCents,
-        totalCost: remainingCost,
-        potentialPayout: position.quantity + closedProceeds,
-        ...settlement,
-        ...(realizedOnly ? { status: "settled" as const } : {}),
-        payout: settlement.payout + closedProceeds,
+        totalCost: hasRemainingShares ? remainingCost : roundCoins(closedCost + fees),
+        potentialPayout: position.quantity,
+        status: hasRemainingShares && !realizedOnly ? settlement.status : "settled",
+        payout: roundCoins(payout),
         realizedPnl,
         pnl,
         placedAt: position.updatedAt,

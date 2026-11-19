@@ -148,12 +148,8 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
       verifyHoldings: true,
     });
     for (const position of positions) {
-      if (position.quantity > 0 && position.average_price_cents !== null)
-        addAmount(
-          openBetCosts,
-          position.username,
-          (position.quantity * position.average_price_cents) / 100,
-        );
+      if (position.quantity > 0)
+        addAmount(openBetCosts, position.username, position.remaining_cost_coins);
     }
   }
 
