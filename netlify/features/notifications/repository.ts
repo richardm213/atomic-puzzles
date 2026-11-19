@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { loadPuzzlePublicationAwards } from "../../lib/puzzlePublicationAwards";
 import { requireSupabaseRows, requireSupabaseSuccess } from "../../platform/supabase";
 
 type NotificationWithCommentId = {
@@ -94,7 +95,27 @@ export class NotificationRepository {
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(100);
-    const notifications = requireSupabaseRows({ data, error }, "Unable to load notifications");
+    const rows = requireSupabaseRows({ data, error }, "Unable to load notifications");
+    const missingApprovalAmounts = rows.filter(
+      (row) => row.notification_type === "puzzle_approved" && typeof row.coin_amount !== "number",
+    );
+    const awards = await loadPuzzlePublicationAwards(
+      this.supabase,
+      username,
+      missingApprovalAmounts
+        .map((row) => Number(row.puzzle_id))
+        .filter((id) => Number.isSafeInteger(id) && id > 0),
+    );
+    const notifications = awards.size
+      ? rows.map((row) => {
+          const amount = awards.get(Number(row.puzzle_id));
+          return row.notification_type === "puzzle_approved" &&
+            typeof row.coin_amount !== "number" &&
+            amount !== undefined
+            ? { ...row, coin_amount: amount }
+            : row;
+        })
+      : rows;
     const commentIds = [
       ...new Set(
         notifications

@@ -1,5 +1,6 @@
 import { formatCalendarMonth } from "../../utils/formatters";
 import { createPostApi } from "../api/postApi";
+import { formatCoinValue } from "../coins/coinDisplay";
 
 export type NotificationType =
   | "puzzle_comment"
@@ -119,8 +120,9 @@ export const notificationCategory = (notification: UserNotification): string => 
   if (notification.notification_type === "shop_redemption") return "Shop purchase";
   if (notification.notification_type === "puzzle_rating_added") return "Puzzle rating";
   if (notification.notification_type === "puzzle_approved") {
-    const coins = Math.round((notification.coin_amount ?? 10) * 10) / 10;
-    return `${coins.toFixed(1)} coins`;
+    return typeof notification.coin_amount !== "number"
+      ? "Puzzle approved"
+      : `${formatCoinValue(notification.coin_amount)} coins`;
   }
   return `Puzzle #${notification.puzzle_id}`;
 };

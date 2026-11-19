@@ -52,8 +52,6 @@ export const PuzzleSubmissionPage = () => {
     setSubmitting(true);
     setMessage("");
     setError("");
-    let submittedCount = 0;
-    const createdPuzzleIds: number[] = [];
     try {
       const submissions = batchMode && batchValues.length > 1 ? batchValues : [value];
       const normalizedSubmissions = submissions.map((submission, index) => {
@@ -64,42 +62,22 @@ export const PuzzleSubmissionPage = () => {
           throw new Error(submissions.length > 1 ? `Puzzle ${index + 1}: ${detail}` : detail);
         }
       });
-      if (publishesDirectly) {
-        const result = await submitPuzzleBatch(normalizedSubmissions, {
-          author: canSetAuthor ? author : undefined,
-        });
-        if (result.destination !== "published") {
-          throw new Error("Approved creator submission did not publish directly.");
-        }
-        createdPuzzleIds.push(...result.puzzleIds);
-        submittedCount = result.puzzleIds.length;
-      } else {
-        if (normalizedSubmissions.length > 1) {
-          const result = await submitPuzzleBatch(normalizedSubmissions, {
-            author: canSetAuthor ? author : undefined,
-          });
-          if (result.destination !== "review") {
-            throw new Error("Puzzle batch was not sent for review.");
-          }
-          submittedCount = result.puzzles.length;
-        } else {
-          const normalized = normalizedSubmissions[0];
-          if (!normalized) throw new Error("No puzzle was available to submit.");
-          await submitPuzzle(normalized, {
-            author: canSetAuthor ? author : undefined,
-          });
-          submittedCount = 1;
-        }
-      }
+      const options = { author: canSetAuthor ? author : undefined };
+      const result =
+        publishesDirectly || normalizedSubmissions.length > 1
+          ? await submitPuzzleBatch(normalizedSubmissions, options)
+          : await submitPuzzle(normalizedSubmissions[0]!, options);
       setValue(createEmptyPuzzleSubmission());
       setBatchValues([]);
       setActiveBatchIndex(0);
       setEditorVersion((version) => version + 1);
       if (!keepAuthor) setAuthor("");
-      if (publishesDirectly) {
-        announceCoinsEarned(createdPuzzleIds.length * 10, "Puzzle created");
+      if (result.destination === "published") {
+        const createdPuzzleIds = "puzzleIds" in result ? result.puzzleIds : [result.puzzleId];
+        if ("coinAward" in result) announceCoinsEarned(result.coinAward ?? 0, "Puzzle created");
         setMessage(formatCreatedPuzzleIds(createdPuzzleIds));
       } else {
+        const submittedCount = "puzzles" in result ? result.puzzles.length : 1;
         setMessage(
           submittedCount > 1
             ? `${submittedCount} puzzles submitted for review. They will be reviewed as a set.`
@@ -107,21 +85,7 @@ export const PuzzleSubmissionPage = () => {
         );
       }
     } catch (submitError) {
-      const detail = getErrorMessage(submitError, "Unable to submit puzzle.");
-      if (submittedCount > 0 && batchValues.length > submittedCount) {
-        const remaining = batchValues.slice(submittedCount);
-        setBatchValues(remaining);
-        setActiveBatchIndex(0);
-        setValue(remaining[0] ?? createEmptyPuzzleSubmission());
-        setEditorVersion((version) => version + 1);
-      }
-      setError(
-        submittedCount > 0
-          ? publishesDirectly
-            ? `${formatCreatedPuzzleIds(createdPuzzleIds).replace(/\.$/, "")} before an error: ${detail}`
-            : `${submittedCount} puzzle${submittedCount === 1 ? " was" : "s were"} submitted before an error: ${detail}`
-          : detail,
-      );
+      setError(getErrorMessage(submitError, "Unable to submit puzzle."));
     } finally {
       setSubmitting(false);
     }

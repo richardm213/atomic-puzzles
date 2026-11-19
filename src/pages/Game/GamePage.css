@@ -168,7 +168,7 @@
   padding: 2px 0;
 }
 
-.gameAnalysisPlayer--tournament {
+.gameAnalysisPlayer--withScore {
   grid-template-columns: 14px minmax(0, 1fr) auto auto;
   padding-inline: 6px;
   border-radius: var(--radius-sm);

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { isPuzzleMotifTag } from "../../../../shared/domain/puzzles/puzzleMotifs";
 import { startingFenKey } from "../../../../shared/domain/puzzles/submissionDuplicates";
+import { loadPuzzlePublicationAwards } from "../../../lib/puzzlePublicationAwards";
 import {
   authenticateRequest,
   requireSameOrigin,
@@ -89,10 +90,12 @@ export const puzzleSubmissionRoute = async (
     const context = await loadMatchPuzzleContext(db, input.gameId, fetchGame);
     return jsonResponse(201, await service.submitMatchPuzzle(username, input, context));
   }
-  return jsonResponse(
-    201,
-    "submissions" in input
-      ? await service.submitBatch(username, input.submissions)
-      : await service.submit(username, input),
-  );
+  if (!("submissions" in input)) return jsonResponse(201, await service.submit(username, input));
+
+  const result = await service.submitBatch(username, input.submissions);
+  if (result.destination !== "published") return jsonResponse(201, result);
+
+  const awards = await loadPuzzlePublicationAwards(db, username, result.puzzleIds);
+  const coinAward = [...awards.values()].reduce((total, amount) => total + amount, 0);
+  return jsonResponse(201, { ...result, coinAward });
 };

@@ -18,7 +18,7 @@ export type PuzzleSubmissionResult =
 
 export type PuzzleBatchSubmissionResult =
   | { destination: "review"; puzzles: PuzzleQueueRow[] }
-  | { destination: "published"; puzzleIds: number[] };
+  | { destination: "published"; puzzleIds: number[]; coinAward?: number };
 
 type PuzzleSubmissionOptions = {
   author?: string | undefined;
@@ -96,7 +96,13 @@ export const submitPuzzleBatch = async (
     Array.isArray(body.puzzleIds) &&
     body.puzzleIds.every((id) => Number.isSafeInteger(id))
   ) {
-    return { destination: "published", puzzleIds: body.puzzleIds };
+    return {
+      destination: "published",
+      puzzleIds: body.puzzleIds,
+      ...(typeof body.coinAward === "number" && Number.isFinite(body.coinAward)
+        ? { coinAward: body.coinAward }
+        : {}),
+    };
   }
   if (body.destination === "review" && Array.isArray(body.puzzles)) {
     return { destination: "review", puzzles: body.puzzles };

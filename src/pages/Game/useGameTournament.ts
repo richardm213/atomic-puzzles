@@ -15,7 +15,7 @@ export const useGameTournament = (game: ArchiveGame) => {
   const matchQuery = useQuery({
     queryKey: ["games", "match-crosstable", game.external_match_id],
     queryFn: () => loadRawMatchById(game.external_match_id),
-    enabled: Boolean((tournamentLocation || game.tournament) && game.external_match_id),
+    enabled: Boolean(game.external_match_id),
     staleTime: 10 * 60 * 1_000,
   });
   return {

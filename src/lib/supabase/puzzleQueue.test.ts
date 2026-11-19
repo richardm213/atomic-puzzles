@@ -93,9 +93,9 @@ describe("puzzle queue review client", () => {
     ).resolves.toEqual({ destination: "published", puzzleId: 1801 });
   });
 
-  it("submits a direct-publication batch in one request and returns its ids", async () => {
+  it("returns the published batch ids and the confirmed award", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
-      jsonResponse({ destination: "published", puzzleIds: [1801, 1802] }, 201),
+      jsonResponse({ destination: "published", puzzleIds: [1801, 1802], coinAward: 16.2 }, 201),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -116,7 +116,7 @@ describe("puzzle queue review client", () => {
           explanation: "",
         },
       ]),
-    ).resolves.toEqual({ destination: "published", puzzleIds: [1801, 1802] });
+    ).resolves.toEqual({ destination: "published", puzzleIds: [1801, 1802], coinAward: 16.2 });
     const [, request] = fetchMock.mock.calls[0] ?? [];
     expect(JSON.parse(String(request?.body))).toEqual({
       submissions: [

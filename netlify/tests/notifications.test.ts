@@ -148,6 +148,50 @@ describe("notifications function", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("restores missing approval amounts from the recipient's creation and submission tag receipts", async () => {
+    const approval = { notification_type: "puzzle_approved", comment_id: null };
+    const order = vi.fn(() => ({
+      order: () => ({
+        limit: async () => ({
+          data: [
+            { ...approval, puzzle_id: 42, coin_amount: null },
+            { ...approval, puzzle_id: 43, coin_amount: 5.2 },
+            { ...approval, puzzle_id: 44, coin_amount: null },
+            { ...approval, notification_type: "coin_gift", puzzle_id: 42, coin_amount: null },
+          ],
+          error: null,
+        }),
+      }),
+    }));
+    const or = vi.fn(async () => ({
+      data: [
+        { reason: "puzzle_created", source_key: "puzzle:42", amount: 8 },
+        { reason: "puzzle_tagging", metadata: { puzzleId: 42 }, amount: 0.2 },
+      ],
+      error: null,
+    }));
+    const receiptOwner = vi.fn(() => ({ or }));
+    mocks.createClient.mockReturnValue({
+      from: (table: string) => ({
+        select: () => ({ eq: table === "coin_transactions" ? receiptOwner : () => ({ order }) }),
+      }),
+    });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: { cookie: createSiteSessionCookie("NotificationViewer", {}).split(";")[0] },
+      body: JSON.stringify({ action: "list" }),
+    });
+    expect(response.statusCode).toBe(200);
+    expect(receiptOwner).toHaveBeenCalledWith("username", "notificationviewer");
+    expect(or).toHaveBeenCalledWith(expect.stringContaining("source_key.in.(puzzle:42,puzzle:44)"));
+    expect(
+      JSON.parse(response.body).notifications.map(
+        (row: { coin_amount: number | null }) => row.coin_amount,
+      ),
+    ).toEqual([8.2, 5.2, null, null]);
+  });
+
   it("rejects cross-site notification mutations", async () => {
     const response = await handler({
       httpMethod: "POST",

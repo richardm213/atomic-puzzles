@@ -61,9 +61,9 @@ const PlayerRating = ({ game, username }: { game: ArchiveGame; username: string 
 
 export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
   const { white, black } = decodeGameResult(game);
-  const { tournamentLocation, match, isTournament } = useGameTournament(game);
+  const { tournamentLocation, match } = useGameTournament(game);
   const matchScore =
-    isTournament && match
+    match && match.games.length > 2
       ? tournamentGameScore(
           match,
           game.game_id,
@@ -77,7 +77,7 @@ export const GameAnalysisHeader = ({ game }: { game: ArchiveGame }) => {
     const clinched = matchScore?.clinchedBy === username.toLowerCase();
     return (
       <div
-        className={`gameAnalysisPlayer${matchScore ? " gameAnalysisPlayer--tournament" : ""}${clinched ? " gameAnalysisPlayer--clinched" : ""}`}
+        className={`gameAnalysisPlayer${matchScore ? " gameAnalysisPlayer--withScore" : ""}${clinched ? " gameAnalysisPlayer--clinched" : ""}`}
       >
         <span className={`playerColorMarker ${color}`} aria-label={`${color} pieces`} />
         <PlayerLink username={username} className="gameAnalysisPlayerName">

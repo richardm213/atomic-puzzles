@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 
 import type { ArchiveGame } from "../../lib/archive/games";
-import { GameMatchNavigation } from "./GameAnalysisHeader";
+import { GameAnalysisHeader, GameMatchNavigation } from "./GameAnalysisHeader";
 
 const mocks = vi.hoisted(() => ({
   useQuery: vi.fn(),
@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({ useQuery: mocks.useQuery }));
+vi.mock("../../components/PlayerLink/PlayerLink", () => ({
+  PlayerLink: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+}));
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
   Link: ({
@@ -35,6 +38,41 @@ const game = {
   game_id: "game-2",
   external_match_id: "match-1",
 } as ArchiveGame;
+
+it("shows running scores for a three-game casual match and hides them for a two-game match", () => {
+  const casualGame: ArchiveGame = {
+    ...game,
+    mode: "blitz",
+    source: "friend",
+    start_ts: 0,
+    player_1: "Alice",
+    player_2: "Bob",
+    result: 1,
+    time_control: "3+2",
+    tournament: null,
+  };
+  const games = [
+    { id: "game-1", game_index: 1, white: "Alice", black: "Bob", winner: "white" },
+    { id: "game-2", game_index: 2, white: "Bob", black: "Alice", winner: "draw" },
+    { id: "game-3", game_index: 3, white: "Alice", black: "Bob", winner: "black" },
+  ];
+  let length = 3;
+  mocks.useQuery.mockImplementation(({ queryKey, enabled }) => ({
+    data:
+      enabled && queryKey[0] === "games"
+        ? { players: ["Alice", "Bob"], games: games.slice(0, length) }
+        : null,
+  }));
+
+  const { rerender } = render(<GameAnalysisHeader game={casualGame} />);
+  expect(screen.getByLabelText("Alice: 1.5 match points")).toBeVisible();
+  expect(screen.getByLabelText("Bob: 0.5 match points")).toBeVisible();
+  expect(screen.queryByLabelText("Match clinched")).not.toBeInTheDocument();
+
+  length = 2;
+  rerender(<GameAnalysisHeader game={casualGame} />);
+  expect(screen.queryByLabelText(/match points/)).not.toBeInTheDocument();
+});
 
 describe("GameMatchNavigation", () => {
   beforeEach(() => {

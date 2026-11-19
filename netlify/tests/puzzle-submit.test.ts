@@ -509,7 +509,18 @@ describe("puzzle-submit function", () => {
   it("publishes an approved creator batch in one database transaction", async () => {
     const upsert = vi.fn(async () => ({ error: null }));
     const rpc = vi.fn(async () => ({ data: [1801, 1802], error: null }));
-    const from = vi.fn(() => ({ upsert }));
+    const or = vi.fn(async () => ({
+      data: [
+        { reason: "puzzle_created", source_key: "puzzle:1801", amount: 8 },
+        { reason: "puzzle_created", source_key: "puzzle:1802", amount: 8 },
+        { reason: "puzzle_tagging", metadata: { puzzleId: 1801 }, amount: 0.2 },
+      ],
+      error: null,
+    }));
+    const eq = vi.fn(() => ({ or }));
+    const from = vi.fn((table: string) =>
+      table === "coin_transactions" ? { select: () => ({ eq }) } : { upsert },
+    );
     mocks.createClient.mockReturnValue({ from, rpc });
 
     const response = await handler({
@@ -535,7 +546,9 @@ describe("puzzle-submit function", () => {
     expect(JSON.parse(response.body)).toEqual({
       destination: "published",
       puzzleIds: [1801, 1802],
+      coinAward: 16.2,
     });
+    expect(eq).toHaveBeenCalledWith("username", "wolfram_ep");
     expect(rpc).toHaveBeenCalledOnce();
     expect(rpc).toHaveBeenCalledWith(
       "publish_approved_puzzle_batch",
