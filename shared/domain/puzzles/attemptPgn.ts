@@ -8,19 +8,18 @@ export const formatPuzzleAttemptPgn = (fen: string, lines: string[][]): string =
     .filter(Boolean)
     .join(" ")}`;
 
-// Show the played branch choice; otherwise use the first branching point or opening move.
+// Show the first choice in the solution, or the opening move if the line never branches.
 export const correctAttemptMoveIndex = (
   solutionLines: readonly UciSolutionLine[],
-  playedKeys: readonly string[],
+  playedLength: number,
 ): number => {
   const mainLine = solutionLines[0] ?? [];
-  const playedBranch = playedKeys.findIndex((key, index) => key !== mainLine[index]?.key);
   return Math.max(
     0,
-    playedBranch >= 0
-      ? playedBranch
-      : mainLine.findIndex((move, index) =>
-          solutionLines.some((line) => line[index]?.key !== move.key),
-        ),
+    mainLine.findIndex(
+      (move, index) =>
+        index < playedLength &&
+        solutionLines.some((line) => line[index] && line[index].key !== move.key),
+    ),
   );
 };

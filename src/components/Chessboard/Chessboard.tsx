@@ -391,11 +391,12 @@ const ChessboardComponent = ({
   const getCorrectLineMove = useCallback((): string | null => {
     if (!solutionEntriesRef.current[0]?.moveEntries.length) return null;
 
+    const playedMoves = historyMoveSans(historyRef.current);
     const displayedMoveIndex = correctAttemptMoveIndex(
       solutionEntriesRef.current.map((entry) => entry.moveEntries),
-      historyMoveKeys(historyRef.current),
+      playedMoves.length,
     );
-    const playedSan = historyMoveSans(historyRef.current)[displayedMoveIndex];
+    const playedSan = playedMoves[displayedMoveIndex];
     return playedSan
       ? `${movePrefix(startingPlyFromFen(fenRef.current) + displayedMoveIndex, true)}${playedSan}`
       : null;

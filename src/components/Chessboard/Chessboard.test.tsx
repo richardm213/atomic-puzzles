@@ -757,12 +757,12 @@ describe("Chessboard orchestration", () => {
     vi.useRealTimers();
   });
 
-  it("reports the main-line move at a later solution branch", () => {
+  it("reports the first solution choice when the player takes a later variation", () => {
     vi.useFakeTimers();
     const onAttemptResolved = vi.fn();
     renderBoard({
       analysisMode: false,
-      solution: "1. e4 e5 2. Nf3 Nc6 3. Bb5 (3. Bc4)",
+      solution: "1. e4 (1. d4) e5 2. Nf3 Nc6 3. Bb5 (3. Bc4)",
       onAttemptResolved,
     });
 
@@ -774,7 +774,7 @@ describe("Chessboard orchestration", () => {
     act(() => {
       vi.advanceTimersByTime(250);
     });
-    play("f1", "b5");
+    play("f1", "c4");
     act(() => {
       vi.advanceTimersByTime(250);
     });
@@ -784,7 +784,8 @@ describe("Chessboard orchestration", () => {
         puzzleId: "test",
         puzzleCorrect: true,
         incorrectMove: null,
-        correctMove: "3. Bb5",
+        correctMove: "1. e4",
+        attemptPgn: expect.stringContaining("1. e4 e5 2. Nf3 Nc6 3. Bc4 *"),
       }),
     );
     vi.useRealTimers();
