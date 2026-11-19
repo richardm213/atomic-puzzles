@@ -1215,14 +1215,21 @@ export const PuzzleSolverPage = ({ testMode = false }: { testMode?: boolean }) =
     setCustomSetRefreshState({ status: "idle" });
   }, []);
 
-  useLayoutEffect(() => {
+  const uiVisitKey = JSON.stringify([puzzleVisitKey, blindMode, fen]);
+  const [previousUiVisitKey, setPreviousUiVisitKey] = useState(uiVisitKey);
+  if (previousUiVisitKey !== uiVisitKey) {
+    // Reset before React renders the new board; an effect lets stale reveal props reach it.
+    setPreviousUiVisitKey(uiVisitKey);
     resetPuzzleUiState();
+  }
+
+  useLayoutEffect(() => {
     setFinishedIntroKey("");
     setBoardState(createInitialBoardState());
     setMobileFeedback(null);
     setCorrectAttemptsOnly(false);
     previousBoardSnapshotRef.current = createInitialBoardSnapshot();
-  }, [puzzleVisitKey, blindMode, fen, resetPuzzleUiState]);
+  }, [puzzleVisitKey, blindMode, fen]);
 
   useLayoutEffect(() => {
     const shouldStartTimer = Boolean(

@@ -15,6 +15,7 @@ import type { AttemptResolved, SolutionNavigation } from "../../types/chessboard
 
 const mocks = vi.hoisted(() => ({
   chessboardProps: [] as Array<{
+    puzzleId?: string | number;
     disabled?: boolean;
     blindFen?: string;
     autoplayIntro?: boolean;
@@ -577,6 +578,37 @@ describe("PuzzleSolverPage solution options", () => {
     expect(await screen.findByText("No more puzzles today")).toBeInTheDocument();
     await waitFor(() => expect(mocks.chessboardProps.at(-1)?.disabled).toBe(true));
     expect(screen.getByText(/come back after 00:00 UTC/i)).toBeInTheDocument();
+  });
+
+  it("never reveals the next puzzle during the navigation handoff", async () => {
+    mocks.routeParams = { puzzleId: "1369", setKey: "1" };
+    mocks.loadPuzzleCatalog.mockResolvedValueOnce(await mocks.loadPuzzlesById([1369, 1370]));
+    const view = render(<PuzzleSolverPage />);
+    await waitFor(() => expect(mocks.chessboardProps.at(-1)?.disabled).toBe(false));
+    act(() => {
+      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+        puzzleId: 1369,
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: "12... O-O",
+      });
+    });
+    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
+    fireEvent.click(screen.getAllByRole("button", { name: "Next" })[0]!);
+    expect(mocks.navigate.mock.calls.at(-1)?.[0].params.puzzleId).toBe("1370");
+    const handoffStart = mocks.chessboardProps.length;
+    mocks.routeParams = { puzzleId: "1370", setKey: "1" };
+    view.rerender(<PuzzleSolverPage />);
+    await waitFor(() => expect(mocks.chessboardProps.at(-1)?.puzzleId).toBe(1370));
+    const nextPuzzleRenders = mocks.chessboardProps
+      .slice(handoffStart)
+      .filter((props) => props.puzzleId === 1370);
+    expect(nextPuzzleRenders.length).toBeGreaterThan(0);
+    for (const props of nextPuzzleRenders) {
+      expect(props.showSolution).toBe(false);
+      expect(props.analysisMode).toBe(false);
+      expect(props.solutionNavigation).toBeNull();
+    }
   });
 
   it("keeps set order at the daily limit and only advances to an attempted puzzle", async () => {
