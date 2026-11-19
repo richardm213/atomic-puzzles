@@ -72,7 +72,46 @@ test("puzzle next and previous controls update the route", async ({ page }) => {
   await expect(page.getByRole("button", { name: /Previous/ }).first()).toBeEnabled();
 });
 
-test("board resizing supports dragging, keyboard adjustment, saved size, and reset", async ({ page }) => {
+test("piece selection and legal moves keep Default's markers across site themes", async ({
+  page,
+}) => {
+  const fen = "4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1";
+  await page.goto(`/analysis/${encodeURIComponent(fen)}`);
+  const board = page.locator("cg-board");
+  await expect(board.locator("piece.white.pawn")).toBeVisible();
+  const bounds = await board.boundingBox();
+  if (!bounds) throw new Error("Analysis board is missing");
+  await page.mouse.click(bounds.x + (bounds.width * 4.5) / 8, bounds.y + (bounds.height * 4.5) / 8);
+  await expect(board.locator("square.selected")).toBeVisible();
+  await expect(board.locator("square.move-dest:not(.oc)")).toBeVisible();
+  await expect(board.locator("square.move-dest.oc")).toBeVisible();
+  const markers = () =>
+    board.evaluate((element) => {
+      const selected = getComputedStyle(element.querySelector("square.selected")!);
+      return {
+        selected: selected.backgroundColor,
+        outline: selected.boxShadow,
+        move: getComputedStyle(element.querySelector("square.move-dest:not(.oc)")!).backgroundImage,
+        capture: getComputedStyle(element.querySelector("square.move-dest.oc")!).backgroundImage,
+      };
+    });
+  const baseline = await markers();
+  expect(baseline.move).not.toBe("none");
+  expect(baseline.capture).not.toBe("none");
+  // Gemstone palettes share one recipe; Black has its own palette overrides.
+  for (const palette of ["ruby", "black"]) {
+    await page.evaluate((palette) => {
+      const root = document.documentElement;
+      root.dataset.palette = palette;
+      root.toggleAttribute("data-gemstone-theme", palette === "ruby");
+    }, palette);
+    await expect.poll(markers).toEqual(baseline);
+  }
+});
+
+test("board resizing supports dragging, keyboard adjustment, saved size, and reset", async ({
+  page,
+}) => {
   await page.goto("/analysis");
   const board = page.locator(".cg-boardShell:visible");
   const grip = page.getByRole("button", { name: "Resize board", exact: true });
@@ -81,7 +120,9 @@ test("board resizing supports dragging, keyboard adjustment, saved size, and res
   const corner = (await grip.boundingBox())!;
   await page.mouse.move(corner.x + corner.width / 2, corner.y + corner.height / 2);
   await page.mouse.down();
-  await page.mouse.move(corner.x + corner.width / 2 - 100, corner.y + corner.height / 2 - 100, { steps: 5 });
+  await page.mouse.move(corner.x + corner.width / 2 - 100, corner.y + corner.height / 2 - 100, {
+    steps: 5,
+  });
   await page.mouse.up();
   await expect.poll(async () => (await board.boundingBox())!.width).toBeLessThan(original - 50);
   const dragged = (await board.boundingBox())!.width;

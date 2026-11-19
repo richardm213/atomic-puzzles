@@ -5,17 +5,9 @@ cg-board {
   background-blend-mode: var(--cg-board-background-blend-mode, normal);
 }
 
-/* Keep the familiar blue cues on Default; give tonal boards stronger markers. */
-:root:not([data-palette="default"])[data-palette] cg-board {
-  --cg-move-dot-strength: 82%;
-  --cg-move-capture-strength: 65%;
-  --cg-move-selection-strength: 65%;
-  --cg-move-selection-edge: color-mix(in srgb, var(--board-move-ink) 24%, white);
-}
-
 cg-board square.move-dest {
   background: radial-gradient(
-    color-mix(in srgb, var(--board-move-ink) var(--cg-move-dot-strength, 50%), transparent) 22%,
+    color-mix(in srgb, var(--board-move-ink) 50%, transparent) 22%,
     transparent 22%
   );
 }
@@ -30,7 +22,7 @@ cg-board square.premove-dest {
 cg-board square.oc.move-dest {
   background: radial-gradient(
     transparent 80%,
-    color-mix(in srgb, var(--board-move-ink) var(--cg-move-capture-strength, 35%), transparent) 80%
+    color-mix(in srgb, var(--board-move-ink) 35%, transparent) 80%
   );
 }
 
@@ -47,12 +39,7 @@ cg-board square.last-move {
 
 cg-board square.selected,
 [data-blind-board] cg-board square.last-move {
-  background-color: color-mix(
-    in srgb,
-    var(--board-move-ink) var(--cg-move-selection-strength, 45%),
-    transparent
-  );
-  box-shadow: inset 0 0 0 2px var(--cg-move-selection-edge, transparent);
+  background-color: color-mix(in srgb, var(--board-move-ink) 45%, transparent);
 }
 
 cg-board square.check {
