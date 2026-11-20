@@ -18,7 +18,6 @@ import {
   predictionSportsbookOutcomeLabel,
   suggestedPredictionPrice,
 } from "../../lib/predictionMarkets/predictionMarkets";
-import { appAssetPath } from "../../utils/appAssetPath";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { getErrorMessage } from "../../utils/errors";
 import {
@@ -72,10 +71,6 @@ export const BettingMarketBrowser = ({
       ? predictionOrderRestrictionMessage(restriction, activePredictionGroup?.id)
       : undefined;
   const groupHeader = activePredictionGroup && {
-    iconSrc:
-      activePredictionGroup.id === "november-atomic-shield-2026"
-        ? appAssetPath("/images/arenas/atomic-shield.png")
-        : undefined,
     isLoading: activePredictionGroupLoading,
     isOpen: activePredictionGroupOpen,
     path: activePredictionGroup.path,

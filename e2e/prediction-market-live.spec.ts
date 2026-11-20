@@ -2,9 +2,7 @@ import type { WebSocketRoute } from "@playwright/test";
 
 import { expect, test } from "./fixtures";
 
-test("Ban is on the main row and the retired side bets route returns to betting", async ({
-  page,
-}) => {
+test("Betting categories show active groups and omit retired markets", async ({ page }) => {
   const initialMarketId = "awc-2026-semifinal-jude-3-plus-points";
   const bettingRequests: { action: string; marketIds?: string[] }[] = [];
   const groups = [
@@ -13,6 +11,7 @@ test("Ban is on the main row and the retired side bets route returns to betting"
     ["awc-2026-losers-round-2", "AWC 2026 Losers Round 2"],
     ["awc-2026-round-of-16", "AWC 2026 Round of 16"],
     ["november-atomic-shield-2026", "November Atomic Shield"],
+    ["awc-2026-champion", "Who will win 2026 AWC"],
     ["awc-2027-champion", "Who will win 2027 AWC"],
   ];
   const catalog = groups.map(([id, title], index) => ({
@@ -122,12 +121,13 @@ test("Ban is on the main row and the retired side bets route returns to betting"
   await page.reload();
   await expect(losers2).toHaveAttribute("aria-pressed", "true");
   const other = page.getByRole("combobox", { name: "Other markets", exact: true });
-  const shield = page.getByRole("button", { name: "Nov Shield", exact: true });
-  await shield.click();
-  await expect(shield).toHaveAttribute("aria-pressed", "true");
+  await expect(categories.getByRole("button", { name: "Nov Shield", exact: true })).toHaveCount(0);
   await expect(other.getByRole("option", { name: "Nov Shield", exact: true })).toHaveCount(0);
+  const champion = categories.getByRole("button", { name: "AWC Champion", exact: true });
+  await champion.click();
+  await expect(champion).toHaveAttribute("aria-pressed", "true");
   await page.reload();
-  await expect(shield).toHaveAttribute("aria-pressed", "true");
+  await expect(champion).toHaveAttribute("aria-pressed", "true");
   const sportsbook = page.getByRole("button", { name: "Sportsbook view", exact: true });
   const orderBook = page.getByRole("button", { name: "Order book view", exact: true });
   await sportsbook.click();
@@ -151,6 +151,10 @@ test("Ban is on the main row and the retired side bets route returns to betting"
   await page.setViewportSize({ width: 390, height: 844 });
   await other.selectOption("AWC Round of 16");
   await expect(other).toHaveValue("AWC Round of 16");
+  await page.goto("/betting?market=shield");
+  await expect(
+    categories.getByRole("button", { name: "AWC Semifinals", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   await page.goto("/betting/awc-2026-side-bets");
   await expect(page).toHaveURL(/\/betting\?/);
   await expect(page.getByRole("heading", { name: "Betting", exact: true })).toBeVisible();

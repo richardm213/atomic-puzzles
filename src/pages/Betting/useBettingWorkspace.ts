@@ -55,7 +55,6 @@ const predictionGroupIdByCategory = {
   "AWC Semifinals": "awc-2026-semifinals",
   "AWC Losers 2": "awc-2026-losers-round-2",
   "AWC Quarterfinals": "awc-2026-quarterfinals",
-  "Nov Shield": "november-atomic-shield-2026",
   "2026 AWC Champion": "awc-2026-champion",
   Ban: "ban-2026",
   "AWC Round of 16": "awc-2026-round-of-16",
@@ -66,7 +65,7 @@ export const predictionMarketCategories = Object.keys(
   predictionGroupIdByCategory,
 ) as PredictionMarketCategory[];
 export const isWinnerCategory = (category: string): boolean =>
-  category === "2026 AWC Champion" || category === "AWC 2027" || category === "Nov Shield";
+  category === "2026 AWC Champion" || category === "AWC 2027";
 const marketCategorySlug = (category: string): string => {
   const normalizedCategory = category
     .trim()
@@ -81,7 +80,6 @@ const marketCategoryFromSearch = (search: string): PredictionMarketCategory => {
   const requestedMarket = new URLSearchParams(search).get("market") ?? "";
   if (requestedMarket === "markets") return "Ban";
   if (requestedMarket === "champion") return "2026 AWC Champion";
-  if (requestedMarket === "shield") return "Nov Shield";
   return (
     predictionMarketCategories.find(
       (category) => marketCategorySlug(category) === requestedMarket,
