@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { announceCoinChange, previewCoinChange } from "../../lib/coins/coinEvents";
 import { coinQueryKeys } from "../../lib/coins/coinQueries";
 import { CoinEarnedToast } from "./CoinEarnedToast";
 
@@ -12,9 +13,10 @@ vi.mock("../../context/AppSettings", () => ({
 afterEach(cleanup);
 
 describe("CoinEarnedToast", () => {
-  it("updates the cached balance immediately when a puzzle reward arrives", () => {
+  it("refreshes the wallet without adding a reward the balance already includes", () => {
     const queryClient = new QueryClient();
-    queryClient.setQueryData(coinQueryKeys.summary("Solver"), {
+    const summaryKey = coinQueryKeys.summary("Solver");
+    queryClient.setQueryData(summaryKey, {
       balance: 100.25,
       dailyClaimAvailable: false,
       awarded: 0,
@@ -25,16 +27,14 @@ describe("CoinEarnedToast", () => {
       </QueryClientProvider>,
     );
 
-    act(() => {
-      window.dispatchEvent(
-        new CustomEvent("atomic-puzzles:coins-earned", {
-          detail: { amount: 2.5, label: "Puzzle solved", username: "Solver" },
-        }),
-      );
-    });
+    act(() => previewCoinChange(2.5, "Puzzle test"));
+    expect(queryClient.getQueryState(summaryKey)?.isInvalidated).toBe(false);
 
-    expect(queryClient.getQueryData(coinQueryKeys.summary("Solver"))).toMatchObject({
-      balance: 102.75,
+    act(() => announceCoinChange(2.5, "Puzzle solved"));
+
+    expect(queryClient.getQueryState(summaryKey)).toMatchObject({
+      data: { balance: 100.25 },
+      isInvalidated: true,
     });
   });
 });

@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import { useAppSettings } from "../../context/AppSettings";
 import { formatCoinAmount } from "../../lib/coins/coinDisplay";
 import { type CoinEarnedDetail, COINS_EARNED_EVENT } from "../../lib/coins/coinEvents";
-import { updateCachedCoinBalanceByDelta } from "../../lib/coins/coinQueries";
 import { appAssetPath } from "../../utils/appAssetPath";
 
 type Reward = CoinEarnedDetail & { id: number };
@@ -20,11 +19,8 @@ export const CoinEarnedToast = () => {
   useEffect(() => {
     const onCoinsEarned = (event: Event) => {
       const detail = (event as CustomEvent<CoinEarnedDetail>).detail;
-      if (!detail || detail.amount === 0) return;
+      if (!detail) return;
       if (!detail.preview) {
-        if (detail.username) {
-          updateCachedCoinBalanceByDelta(queryClient, detail.username, detail.amount);
-        }
         void queryClient.invalidateQueries({ queryKey: ["coins"] });
       }
       if (!showCoinChangePopups) return;

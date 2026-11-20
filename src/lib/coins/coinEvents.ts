@@ -1,7 +1,6 @@
 export type CoinEarnedDetail = {
   amount: number;
   label: string;
-  username?: string;
   precise?: boolean;
   preview?: boolean;
 };
@@ -14,19 +13,8 @@ const dispatchCoinChange = (detail: CoinEarnedDetail): void => {
   window.dispatchEvent(new CustomEvent<CoinEarnedDetail>(COINS_EARNED_EVENT, { detail }));
 };
 
-export const announceCoinChange = (
-  amount: number,
-  label: string,
-  username?: string,
-  precise = false,
-): void => {
-  dispatchCoinChange({
-    amount,
-    label,
-    ...(username ? { username } : {}),
-    ...(precise ? { precise } : {}),
-  });
-};
+export const announceCoinChange = (amount: number, label: string, precise = false): void =>
+  dispatchCoinChange({ amount, label, precise });
 
 export const previewCoinChange = (amount: number, label: string): void =>
   dispatchCoinChange({ amount, label, precise: true, preview: true });

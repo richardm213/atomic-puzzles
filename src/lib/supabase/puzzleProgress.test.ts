@@ -97,9 +97,32 @@ describe("fetchPuzzleProgressPage", () => {
     expect((coinChangeListener.mock.calls[0]?.[0] as CustomEvent).detail).toEqual({
       amount: -3.21644,
       label: "Incorrect attempt",
-      username: "Solver",
+      precise: true,
     });
     window.removeEventListener("atomic-puzzles:coins-earned", coinChangeListener);
+  });
+
+  it("records a solve without announcing an impossible reward", async () => {
+    vi.spyOn(window, "fetch").mockResolvedValue(
+      Response.json({ coinDelta: 1_000_000, graded: true, rated: true }),
+    );
+    const listener = vi.fn();
+    window.addEventListener("atomic-puzzles:coins-earned", listener);
+    try {
+      const result = await recordPuzzleProgress({
+        username: "Solver",
+        puzzleId: "42",
+        puzzleCorrect: true,
+        attemptDurationMs: 4_321,
+        incorrectMove: null,
+        correctMove: "1. Qg5",
+      });
+
+      expect(result).toMatchObject({ rated: true, graded: true });
+      expect(listener).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener("atomic-puzzles:coins-earned", listener);
+    }
   });
 
   it("coalesces concurrent submissions and announces a replayed debit only once", async () => {

@@ -6,6 +6,7 @@ import {
 } from "../../../shared/domain/puzzles/puzzleGrading";
 import { normalizeUsername } from "../../utils/playerNames";
 import { ApiError, postApi } from "../api/postApi";
+import { announceCoinChange } from "../coins/coinEvents";
 import { getSupabaseClient } from "./client";
 import { type PuzzleRatingEvent, puzzleRatingEventResponseSchema } from "./puzzleUserRatings";
 import { fetchAllSupabaseRows, loadSupabasePage, loadSupabaseRows } from "./rows";
@@ -69,6 +70,9 @@ const PUZZLE_PROGRESS_PAGE_RPC = (import.meta.env.VITE_SUPABASE_PUZZLE_PROGRESS_
   "get_puzzle_progress_page_v3") as keyof Database["public"]["Functions"];
 const ATTEMPTED_PUZZLE_IDS_RPC = (import.meta.env.VITE_SUPABASE_ATTEMPTED_PUZZLE_IDS_RPC?.trim() ??
   "get_rated_puzzle_ids") as keyof Database["public"]["Functions"];
+// Limits for a single attempt in supabase/puzzle_grading_runs.sql.
+const MAX_PUZZLE_REWARD = 10;
+const MAX_PUZZLE_PENALTY = 5;
 const announcedAttempts = new Set<string>();
 const puzzleProgressWriteRequests = new Map<string, Promise<RecordPuzzleProgressResult>>();
 const puzzleProgressResponseSchema = z.object({
@@ -309,7 +313,8 @@ export const recordPuzzleProgress = async ({
 
   if (!normalizedUsername || !normalizedPuzzleId) return null;
 
-  const requestKey = attempt?.id ?? `${normalizedUsername}:${normalizedPuzzleId}`;
+  const attemptId = attempt?.id;
+  const requestKey = attemptId ?? `${normalizedUsername}:${normalizedPuzzleId}`;
   const existingRequest = puzzleProgressWriteRequests.get(requestKey);
   if (existingRequest) {
     return existingRequest;
@@ -343,15 +348,17 @@ export const recordPuzzleProgress = async ({
       result = await write();
     }
     const coinDelta = result.coinDelta ?? result.coinAward;
-    if (coinDelta !== 0 && !announcedAttempts.has(requestKey)) {
-      announcedAttempts.add(requestKey);
-      const { announceCoinChange } = await import("../coins/coinEvents");
-      announceCoinChange(
-        coinDelta,
-        puzzleCorrect ? "Puzzle solved" : "Incorrect attempt",
-        username,
-        result.graded ?? false,
-      );
+    const validCoinChange = puzzleCorrect
+      ? coinDelta > 0 && coinDelta <= MAX_PUZZLE_REWARD
+      : coinDelta < 0 && coinDelta >= -MAX_PUZZLE_PENALTY;
+    if (
+      validCoinChange &&
+      result.graded !== false &&
+      !attempt?.resigned &&
+      !(attemptId && announcedAttempts.has(attemptId))
+    ) {
+      if (attemptId) announcedAttempts.add(attemptId);
+      announceCoinChange(coinDelta, puzzleCorrect ? "Puzzle solved" : "Incorrect attempt", true);
     }
     return {
       rated: result.rated,
