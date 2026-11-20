@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PLAYER_FLAIRS } from "../../../shared/domain/playerSocial";
+import { isImagePlayerFlair, PLAYER_FLAIRS } from "../../../shared/domain/playerSocial";
 import {
   authenticateRequest,
   identityResponse,
@@ -40,7 +40,7 @@ const getPlayerSocial = async (event: FunctionEvent) => {
   const [profileResult, countryResult, tourResult] = await Promise.all([
     supabase
       .from("player_social_profiles")
-      .select("flair,country_code,archive_start_date,total_games")
+      .select("flair,image_flair,country_code,archive_start_date,total_games")
       .eq("username", username)
       .maybeSingle(),
     supabase
@@ -66,6 +66,7 @@ const getPlayerSocial = async (event: FunctionEvent) => {
   return jsonResponse(200, {
     username,
     flair: profileResult.data?.flair ?? null,
+    imageFlair: profileResult.data?.image_flair ?? null,
     countryCode: profileCountryCode || tournamentCountryCode,
     countryCodeSource: profileCountryCode ? "profile" : tournamentCountryCode ? "tournament" : null,
     tournamentCountryCode,
@@ -84,8 +85,14 @@ const mutatePlayerSocial = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, mutationSchema, "Invalid player social request.");
   const supabase = createServerSupabase("Player social service");
 
+  const imageFlair =
+    input.action === "setFlair" && input.flair && isImagePlayerFlair(input.flair)
+      ? input.flair
+      : null;
   const profileUpdate =
-    input.action === "setFlair" ? { flair: input.flair } : { country_code: input.countryCode };
+    input.action === "setFlair"
+      ? { flair: imageFlair ? null : input.flair, image_flair: imageFlair }
+      : { country_code: input.countryCode };
   const { error } = await supabase.from("player_social_profiles").upsert(
     {
       username: viewerUsername,

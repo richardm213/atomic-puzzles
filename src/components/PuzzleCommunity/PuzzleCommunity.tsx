@@ -33,8 +33,9 @@ import {
 } from "../../lib/community/puzzleCommunity";
 import { getErrorMessage } from "../../utils/errors";
 import { formatCommentAge, formatLocalDateTime } from "../../utils/formatters";
+import { CommentEditor } from "../CommentEditor/CommentEditor";
 import { CommentMarkdown } from "../CommentMarkdown/CommentMarkdown";
-import { MentionTextarea } from "../MentionTextarea/MentionTextarea";
+import { ProfileReactions } from "../ProfileReactions/ProfileReactions";
 
 const collapsedCommentsSchema = z.array(z.number().int().positive());
 
@@ -51,6 +52,13 @@ type CommunityDiscussionProps = {
   deferUntilVisible?: boolean;
   allowCommentVotes?: boolean;
 };
+
+type CommentDraft = { body: string; replyingTo: PuzzleComment | null };
+type DiscussionWrite = {
+  target: CommunityTarget;
+  queryKey: ReturnType<typeof communityDiscussionQueryOptions>["queryKey"];
+};
+const emptyDraft: CommentDraft = { body: "", replyingTo: null };
 
 const emptyCommunity = (target: CommunityTarget): CommunityDiscussionData => ({
   ...(target.type === "puzzle"
@@ -83,12 +91,12 @@ export const CommunityDiscussion = ({
   const targetContext = target.context;
   const { isAuthenticated, login, user } = useAuth();
   const [pendingCommentVotes, setPendingCommentVotes] = useState<Set<number>>(() => new Set());
-  const [commentBody, setCommentBody] = useState("");
-  const [replyingTo, setReplyingTo] = useState<PuzzleComment | null>(null);
+  const [draft, setDraft] = useState(emptyDraft);
+  const { body: commentBody, replyingTo } = draft;
   const [editDraft, setEditDraft] = useState<{ id: number; body: string; original: string } | null>(
     null,
   );
-  const editInputRef = useRef<HTMLTextAreaElement>(null);
+  const editInputRef = useRef<HTMLElement>(null);
   const editCommentId = editDraft?.id;
   const [collapsedIds, setCollapsedIds] = usePersistedState(
     "community:collapsed-comments:v1",
@@ -104,7 +112,7 @@ export const CommunityDiscussion = ({
   );
   const [actionError, setActionError] = useState("");
   const [voteTarget, setVoteTarget] = useState<HTMLElement | null>(null);
-  const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  const commentInputRef = useRef<HTMLElement>(null);
   const communityRef = useRef<HTMLElement>(null);
   const optimisticCommentIdRef = useRef(-1);
   const [discussionReady, setDiscussionReady] = useState(
@@ -171,31 +179,27 @@ export const CommunityDiscussion = ({
   });
   const postCommentMutation = useMutation({
     mutationFn: ({
-      body,
-      parentId,
-    }: {
-      body: string;
-      parentId: number | null;
+      target,
+      draft,
+    }: DiscussionWrite & {
+      draft: CommentDraft;
       optimisticId: number;
-    }) => postCommunityComment(currentTarget, body, parentId),
-    onMutate: ({ body, parentId, optimisticId }) => {
-      const previous = queryClient.getQueryData<CommunityDiscussionData>(
-        discussionOptions.queryKey,
-      );
-      void queryClient.cancelQueries({ queryKey: discussionOptions.queryKey }, { revert: false });
-      queryClient.setQueryData<CommunityDiscussionData>(discussionOptions.queryKey, (current) => ({
-        ...(current ?? emptyCommunity(currentTarget)),
+    }) => postCommunityComment(target, draft.body, draft.replyingTo?.id ?? null),
+    onMutate: ({ target, queryKey, draft, optimisticId }) => {
+      void queryClient.cancelQueries({ queryKey }, { revert: false });
+      queryClient.setQueryData<CommunityDiscussionData>(queryKey, (current) => ({
+        ...(current ?? emptyCommunity(target)),
         comments: [
           ...(current?.comments ?? []),
           {
             id: optimisticId,
-            ...(targetType === "puzzle" ? { puzzle_id: Number(targetId) } : {}),
-            target_type: targetType,
-            target_id: targetId,
-            target_context: targetContext ?? "",
+            ...(target.type === "puzzle" ? { puzzle_id: Number(target.id) } : {}),
+            target_type: target.type,
+            target_id: target.id,
+            target_context: target.context ?? "",
             username: user?.username ?? "",
-            parent_id: parentId,
-            body,
+            parent_id: draft.replyingTo?.id ?? null,
+            body: draft.body,
             created_at: new Date().toISOString(),
             upvotes: 1,
             downvotes: 0,
@@ -204,21 +208,22 @@ export const CommunityDiscussion = ({
           },
         ],
       }));
-      return { previous };
     },
-    onError: (error, variables, context) => {
-      if (context?.previous) updateDiscussion(context.previous);
-      setCommentBody((current) => current || variables.body);
-      setReplyingTo((current) => {
-        if (current || variables.parentId === null || !context?.previous) return current;
-        return (
-          context.previous.comments.find((comment) => comment.id === variables.parentId) ?? null
-        );
-      });
+    onError: (error, { target, queryKey, draft, optimisticId }) => {
+      queryClient.setQueryData<CommunityDiscussionData>(
+        queryKey,
+        (current) =>
+          current && {
+            ...current,
+            comments: current.comments.filter(({ id }) => id !== optimisticId),
+          },
+      );
+      if (target !== currentTarget) return;
+      setDraft((current) => (current.body || current.replyingTo ? current : draft));
       setActionError(getErrorMessage(error, "Unable to post comment."));
     },
-    onSuccess: (result) => {
-      updateDiscussion(result);
+    onSuccess: (result, { queryKey }) => {
+      queryClient.setQueryData(queryKey, result);
       void queryClient.invalidateQueries({ queryKey: communityQueryKeys.siteComments });
       void queryClient.invalidateQueries({ queryKey: communityQueryKeys.users });
     },
@@ -271,10 +276,10 @@ export const CommunityDiscussion = ({
     });
   };
   const editCommentMutation = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: string }) =>
-      editCommunityComment(currentTarget, id, body),
-    onSuccess: ({ id, body }) => {
-      queryClient.setQueryData<CommunityDiscussionData>(discussionOptions.queryKey, (current) =>
+    mutationFn: ({ target, id, body }: DiscussionWrite & { id: number; body: string }) =>
+      editCommunityComment(target, id, body),
+    onSuccess: ({ id, body }, { target, queryKey }) => {
+      queryClient.setQueryData<CommunityDiscussionData>(queryKey, (current) =>
         current
           ? {
               ...current,
@@ -284,9 +289,9 @@ export const CommunityDiscussion = ({
             }
           : current,
       );
-      void queryClient.invalidateQueries({ queryKey: discussionOptions.queryKey });
+      void queryClient.invalidateQueries({ queryKey });
       void queryClient.invalidateQueries({ queryKey: communityQueryKeys.siteComments });
-      closeEditor(id);
+      if (target === currentTarget) closeEditor(id);
     },
   });
   const pendingVote = voteMutation.isPending;
@@ -321,9 +326,8 @@ export const CommunityDiscussion = ({
 
   useEffect(() => {
     setOverriddenLinkBranches(new Set());
-    setReplyingTo(null);
     setEditDraft(null);
-    setCommentBody("");
+    setDraft(emptyDraft);
     setActionError("");
     setCommentSort(targetType === "tournament" || !allowCommentVotes ? "recent" : "top");
   }, [allowCommentVotes, targetContext, targetId, targetType]);
@@ -400,14 +404,13 @@ export const CommunityDiscussion = ({
     if (!target.id || !body.trim() || postingComment) return;
     if (!requireLogin()) return;
     setActionError("");
-    const replyTarget = replyingTo;
     const optimisticId = optimisticCommentIdRef.current;
     optimisticCommentIdRef.current -= 1;
-    setCommentBody("");
-    setReplyingTo(null);
+    setDraft(emptyDraft);
     postCommentMutation.mutate({
-      body,
-      parentId: replyTarget?.id ?? null,
+      target: currentTarget,
+      queryKey: discussionOptions.queryKey,
+      draft,
       optimisticId,
     });
   };
@@ -444,20 +447,21 @@ export const CommunityDiscussion = ({
         {replyingTo ? (
           <div className="commentComposerHeading">
             <strong>{`Replying to ${replyName}`}</strong>
-            <button type="button" onClick={() => setReplyingTo(null)}>
+            <button
+              type="button"
+              onClick={() => setDraft((current) => ({ ...current, replyingTo: null }))}
+            >
               Cancel reply
             </button>
           </div>
         ) : null}
-        <MentionTextarea
+        <CommentEditor
           id={`${target.type}-comment-input`}
           ref={commentInputRef}
           aria-label={replyingTo ? `Reply to ${replyName}` : "Add a comment"}
           value={commentBody}
-          maxLength={10_000}
-          rows={3}
           placeholder={replyingTo ? `Reply to ${replyName}…` : "Add a comment…"}
-          onValueChange={setCommentBody}
+          onValueChange={(body) => setDraft((current) => ({ ...current, body }))}
         />
         <div className="commentComposerActions">
           <button
@@ -526,21 +530,23 @@ export const CommunityDiscussion = ({
                     draft.body !== draft.original &&
                     !editCommentMutation.isPending
                   ) {
-                    editCommentMutation.mutate(draft);
+                    editCommentMutation.mutate({
+                      target: currentTarget,
+                      queryKey: discussionOptions.queryKey,
+                      id: draft.id,
+                      body: draft.body,
+                    });
                   }
                 }}
               >
-                <MentionTextarea
+                <CommentEditor
                   ref={editInputRef}
                   aria-label="Edit comment (Markdown)"
-                  maxLength={10_000}
-                  rows={3}
                   value={draft.body}
                   readOnly={editCommentMutation.isPending}
                   onValueChange={(body) => setEditDraft({ ...draft, body })}
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape" && !editCommentMutation.isPending)
-                      closeEditor(draft.id);
+                  onEscape={() => {
+                    if (!editCommentMutation.isPending) closeEditor(draft.id);
                   }}
                 />
                 {editCommentMutation.error ? (
@@ -609,7 +615,7 @@ export const CommunityDiscussion = ({
                     type="button"
                     onClick={() => {
                       if (!requireLogin()) return;
-                      setReplyingTo(comment);
+                      setDraft((current) => ({ ...current, replyingTo: comment }));
                     }}
                   >
                     <FontAwesomeIcon icon={faReply} aria-hidden="true" />
@@ -695,6 +701,9 @@ export const CommunityDiscussion = ({
         className="puzzleCommunity"
         aria-label="Comments"
       >
+        {target.type === "profile" ? (
+          <ProfileReactions key={target.id} username={target.id} />
+        ) : null}
         {!replyingTo ? renderCommentComposer(false) : null}
 
         {target.type === "tournament" && allowCommentVotes && data.comments.length > 0 ? (

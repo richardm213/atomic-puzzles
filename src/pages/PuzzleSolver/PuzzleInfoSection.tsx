@@ -223,7 +223,11 @@ export const PuzzleInfoSection = ({
               </div>
             </form>
           ) : explanation.hasContent ? (
-            <CommentMarkdown className="puzzleExplanationContent" body={explanation.content} />
+            <CommentMarkdown
+              className="puzzleExplanationContent"
+              body={explanation.content}
+              emotes={false}
+            />
           ) : (
             <p className="puzzleExplanationEmpty">No explanation has been added yet.</p>
           )}

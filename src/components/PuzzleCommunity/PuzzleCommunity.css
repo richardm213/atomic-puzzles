@@ -114,25 +114,6 @@
   font-size: 12px;
 }
 
-.puzzleCommentComposer textarea {
-  width: 100%;
-  min-height: 76px;
-  resize: vertical;
-  padding: 10px 11px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 9px;
-  background: var(--color-panel-deep);
-  color: var(--color-text);
-  font-size: 14px;
-  line-height: 1.45;
-}
-
-.puzzleCommentComposer textarea:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-ring);
-}
-
 .commentComposerActions {
   display: flex;
   align-items: center;
@@ -155,15 +136,6 @@
 .commentComposerActions button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
-}
-
-:root[data-theme="light"] .puzzleCommentComposer textarea {
-  border-color: color-mix(in srgb, var(--color-border-strong) 68%, var(--color-border));
-  background: color-mix(in srgb, var(--color-panel-strong) 94%, var(--color-surface-soft));
-}
-
-:root[data-theme="light"] .puzzleCommentComposer textarea::placeholder {
-  color: var(--color-subtle);
 }
 
 :root[data-theme="light"] .commentComposerActions button,
@@ -516,14 +488,6 @@
 
   .puzzleCommentComposer {
     gap: 8px;
-  }
-
-  .puzzleCommentComposer textarea {
-    min-height: 92px;
-    padding: 12px;
-    resize: none;
-    border-radius: 8px;
-    font-size: 16px;
   }
 
   .commentComposerActions {

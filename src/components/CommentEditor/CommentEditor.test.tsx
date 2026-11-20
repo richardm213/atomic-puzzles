@@ -4,7 +4,7 @@ import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { UsernameSearchSuggestion } from "../../lib/users/usernameSearch";
-import { MentionTextarea } from "./MentionTextarea";
+import { CommentEditor } from "./CommentEditor";
 
 const { search } = vi.hoisted(() => ({ search: vi.fn() }));
 vi.mock("../../lib/users/usernameSearch", () => ({ searchUsernameSuggestions: search }));
@@ -20,12 +20,24 @@ const suggestion = (
   banned: false,
   hasAtomicTourPoints: false,
 });
-const Editor = ({ initial = "" }: { initial?: string }) => {
-  const [value, setValue] = useState(initial);
-  return <MentionTextarea aria-label="Comment" value={value} onValueChange={setValue} />;
+const moveCaret = (editor: HTMLElement, offset: number) => {
+  const text = editor.querySelector("p")?.firstChild;
+  if (!text) throw new Error("The editor has no text");
+  const selection = window.getSelection();
+  const range = new Range();
+  range.setStart(text, offset);
+  range.collapse(true);
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+  fireEvent(document, new Event("selectionchange"));
 };
 
-describe("MentionTextarea", () => {
+const Editor = ({ initial = "" }: { initial?: string }) => {
+  const [value, setValue] = useState(initial);
+  return <CommentEditor aria-label="Comment" value={value} onValueChange={setValue} />;
+};
+
+describe("CommentEditor", () => {
   beforeEach(() => search.mockReset());
 
   it("waits for three mention characters and replaces the full name at the caret using the keyboard", async () => {
@@ -39,17 +51,17 @@ describe("MentionTextarea", () => {
     const input = screen.getByRole("textbox", { name: "Comment" });
     await user.click(input);
     // Editing an existing mention must replace the suffix as well as the typed prefix.
-    (input as HTMLTextAreaElement).setSelectionRange(7, 7);
+    moveCaret(input, 7);
     fireEvent.click(input);
     expect(search).not.toHaveBeenCalled();
-    (input as HTMLTextAreaElement).setSelectionRange(8, 8);
+    moveCaret(input, 8);
     fireEvent.click(input);
     expect(await screen.findAllByRole("option")).toHaveLength(2);
     await user.keyboard("{Enter}");
-    expect(input).toHaveValue("Ask @seaside_tiramisu later");
+    expect(input.textContent).toBe("Ask @seaside_tiramisu later");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(input).toHaveFocus();
-    await waitFor(() => expect((input as HTMLTextAreaElement).selectionStart).toBe(21));
+    await waitFor(() => expect(window.getSelection()?.anchorOffset).toBe(21));
   });
 
   it("discards stale requests and dismisses suggestions on Escape or loss of focus", async () => {
@@ -79,7 +91,8 @@ describe("MentionTextarea", () => {
     );
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    await user.click(input);
+    moveCaret(input, 4);
+    fireEvent.click(input);
     await screen.findByRole("option", { name: "@rechesster" });
     await user.click(screen.getByRole("button", { name: "Elsewhere" }));
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
@@ -92,8 +105,40 @@ describe("MentionTextarea", () => {
     const input = screen.getByRole("textbox", { name: "Comment" });
     await user.type(input, "mail@example.com ");
     expect(search).not.toHaveBeenCalled();
-    await user.type(input, "@new");
+    await user.keyboard("@new");
     await user.click(await screen.findByRole("option", { name: "@new_player" }));
-    expect(input).toHaveValue("mail@example.com @new_player ");
+    expect(input.textContent).toBe("mail@example.com @new_player ");
+  });
+
+  it("replaces the complete shortcode at the caret and accepts Tab without searching for users", async () => {
+    const user = userEvent.setup();
+    render(<Editor initial="Nice :kekwrong: move" />);
+    const input = screen.getByRole("textbox", { name: "Comment" });
+    await user.click(input);
+    moveCaret(input, 10);
+    fireEvent.click(input);
+    const options = await screen.findAllByRole("option");
+    expect(options[0]).toHaveAccessibleName(":kekw:");
+    await user.keyboard("{Tab}");
+    expect(input.textContent).toBe("Nice  move");
+    expect(screen.getByRole("img", { name: "kekw" })).toBeVisible();
+    expect(search).not.toHaveBeenCalled();
+    expect(input).toHaveFocus();
+  });
+
+  it("lists custom emotes first and inserts native emoji from picker search", async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    const input = screen.getByRole("textbox", { name: "Comment" });
+    await user.type(input, "Good move ");
+    await user.click(screen.getByRole("button", { name: "Choose an emote" }));
+    expect(screen.getByRole("button", { name: ":kekw:" })).toBeVisible();
+    expect(screen.getByRole("button", { name: ":atomic-ruby:" })).toBeVisible();
+    const searchInput = screen.getByRole("searchbox", { name: "Search emotes" });
+    expect(searchInput).toHaveFocus();
+    await user.type(searchInput, "rofl");
+    await user.click(await screen.findByRole("button", { name: ":rofl:" }));
+    expect(input.textContent).toBe("Good move 🤣 ");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

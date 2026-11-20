@@ -5,37 +5,58 @@ import Markdown, { type Components } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 
+import {
+  commentEmojiByCode,
+  commentShortcode,
+  type NativeEmojiCatalog,
+  useNativeCommentEmojis,
+} from "../../lib/community/commentEmojis";
+import { PlayerFlairIcon } from "../PlayerFlair/PlayerFlair";
 import { PlayerLink } from "../PlayerLink/PlayerLink";
 
-const mentionPattern = /(^|[^a-z0-9_-])@([a-z0-9_-]+)/gi;
+const inlinePattern = new RegExp(`(?<![a-z0-9_-])@([a-z0-9_-]+)|${commentShortcode.source}`, "giu");
 
-const linkMentions = () => (root: Root) => {
-  const visit = (parent: Root | Element): void => {
-    parent.children = parent.children.flatMap((node): RootContent[] => {
-      if (node.type === "element" && !["a", "code", "pre"].includes(node.tagName)) visit(node);
-      if (node.type !== "text") return [node];
+const renderInlineContent =
+  ({ emotes, native }: { emotes: boolean; native: NativeEmojiCatalog | null }) =>
+  (root: Root) => {
+    const visit = (parent: Root | Element): void => {
+      parent.children = parent.children.flatMap((node): RootContent[] => {
+        if (node.type === "element" && !["a", "code", "pre"].includes(node.tagName)) visit(node);
+        if (node.type !== "text") return [node];
 
-      const parts: Array<Element | Text> = [];
-      let cursor = 0;
-      for (const match of node.value.matchAll(mentionPattern)) {
-        const [, prefix = "", username] = match;
-        if (!username) continue;
-        const start = match.index + prefix.length;
-        parts.push({ type: "text", value: node.value.slice(cursor, start) });
-        parts.push({
-          type: "element",
-          tagName: "a",
-          properties: { href: `/@/${username.toLowerCase()}`, dataCommentMention: username },
-          children: [{ type: "text", value: `@${username}` }],
-        });
-        cursor = start + username.length + 1;
-      }
-      if (!parts.length) return [node];
-      return [...parts, { type: "text", value: node.value.slice(cursor) }];
-    });
+        const parts: Array<Element | Text> = [];
+        let cursor = 0;
+        for (const match of node.value.matchAll(inlinePattern)) {
+          const [text, username, shortcode] = match;
+          const emoji = emotes && shortcode ? commentEmojiByCode(shortcode, native) : undefined;
+          if (!username && !emoji) continue;
+
+          parts.push({ type: "text", value: node.value.slice(cursor, match.index) });
+          if (username) {
+            parts.push({
+              type: "element",
+              tagName: "a",
+              properties: { href: `/@/${username.toLowerCase()}`, dataCommentMention: username },
+              children: [{ type: "text", value: text }],
+            });
+          } else if (emoji?.kind === "custom") {
+            parts.push({
+              type: "element",
+              tagName: "span",
+              properties: { dataCommentEmoji: emoji.code },
+              children: [{ type: "text", value: text }],
+            });
+          } else if (emoji) {
+            parts.push({ type: "text", value: emoji.unicode });
+          }
+          cursor = match.index + text.length;
+        }
+        if (!parts.length) return [node];
+        return [...parts, { type: "text", value: node.value.slice(cursor) }];
+      });
+    };
+    visit(root);
   };
-  visit(root);
-};
 
 const components: Components = {
   a: ({ node, children, href, title }) => {
@@ -54,6 +75,15 @@ const components: Components = {
       </a>
     );
   },
+  span: ({ node, children }) => {
+    const code = node?.properties.dataCommentEmoji;
+    const emoji = typeof code === "string" ? commentEmojiByCode(code, null) : undefined;
+    return emoji?.kind === "custom" ? (
+      <PlayerFlairIcon className="commentEmoteImage" flair={emoji.code} />
+    ) : (
+      <span>{children}</span>
+    );
+  },
   // Don't make visitors' browsers load remote images from untrusted comment text.
   img: ({ alt }) => <span>{alt}</span>,
   table: ({ children }) => (
@@ -63,15 +93,32 @@ const components: Components = {
   ),
 };
 
-export const CommentMarkdown = ({ body, className }: { body: string; className: string }) => (
-  <div className={`commentMarkdown ${className}`}>
-    <Markdown
-      skipHtml
-      remarkPlugins={[remarkGfm, remarkBreaks]}
-      rehypePlugins={[linkMentions]}
-      components={components}
-    >
-      {body}
-    </Markdown>
-  </div>
-);
+export const CommentMarkdown = ({
+  body,
+  className,
+  emotes = true,
+}: {
+  body: string;
+  className: string;
+  emotes?: boolean;
+}) => {
+  const hasNativeShortcode =
+    emotes &&
+    [...body.matchAll(commentShortcode)].some(
+      ([, code]) => code && !commentEmojiByCode(code, null),
+    );
+  const native = useNativeCommentEmojis(hasNativeShortcode);
+
+  return (
+    <div className={`commentMarkdown ${className}`}>
+      <Markdown
+        skipHtml
+        remarkPlugins={[remarkGfm, remarkBreaks]}
+        rehypePlugins={[[renderInlineContent, { emotes, native }]]}
+        components={components}
+      >
+        {body}
+      </Markdown>
+    </div>
+  );
+};

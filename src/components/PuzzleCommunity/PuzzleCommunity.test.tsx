@@ -121,7 +121,7 @@ describe("PuzzleCommunity", () => {
           id: 9,
           username: "alice",
           parent_id: null,
-          body: "**Seeds:** [this table](https://example.com/table)\nhttps://example.com/legacy\n@Bob `@code` [bad](javascript:alert(1)) <img src=x onerror=alert(1)>",
+          body: "**Seeds:** [this table](https://example.com/table)\nhttps://example.com/legacy\n@Bob :KEKW: :rofl: :unknown_emote: `@code :kekw: :rofl:` [bad](javascript:alert(1)) <img src=x onerror=alert(1)>",
           created_at: "2026-01-01T00:00:00Z",
           upvotes: 0,
           downvotes: 0,
@@ -142,7 +142,13 @@ describe("PuzzleCommunity", () => {
     );
     expect(comment.getByRole("link", { name: "@Bob" })).toHaveAttribute("href", "/@/bob");
     expect(comment.queryByRole("link", { name: /bad|@code/ })).not.toBeInTheDocument();
-    expect(comment.queryByRole("img")).not.toBeInTheDocument();
+    expect(comment.getAllByRole("img")).toHaveLength(1);
+    expect(comment.getByRole("img", { name: "kekw" })).toHaveAttribute(
+      "src",
+      expect.stringContaining("/images/flairs/kekw.webp"),
+    );
+    expect(await comment.findByText(/🤣 :unknown_emote:/)).toBeVisible();
+    expect(comment.getByText("@code :kekw: :rofl:")).toBeVisible();
     expect(comment.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
   });
 
@@ -172,7 +178,7 @@ describe("PuzzleCommunity", () => {
     render(<CommunityDiscussion target={target} />);
     await user.click(await screen.findByRole("button", { name: "Edit" }));
     const editor = screen.getByRole("textbox", { name: "Edit comment (Markdown)" });
-    expect(editor).toHaveValue(original);
+    expect(editor.textContent).toBe(original.replaceAll("\n", ""));
     expect(editor).toHaveFocus();
     await user.clear(editor);
     await user.paste(next);
@@ -314,7 +320,7 @@ describe("PuzzleCommunity", () => {
     await user.click(screen.getByRole("button", { name: "Post comment" }));
 
     expect(await screen.findByText("Fast feedback")).toBeVisible();
-    expect(composer).toHaveValue("");
+    expect(composer.textContent).toBe("");
     expect(mocks.postCommunityComment).toHaveBeenCalledWith(
       { type: "puzzle", id: "42", context: "" },
       "Fast feedback",
@@ -339,6 +345,31 @@ describe("PuzzleCommunity", () => {
       viewerVote: 0,
     });
     await screen.findByRole("button", { name: "Post comment" });
+  });
+
+  it("removes a failed optimistic reply and restores its emote draft", async () => {
+    const user = userEvent.setup();
+    mocks.postCommunityComment.mockRejectedValueOnce(new Error("Write failed"));
+    render(<PuzzleCommunity puzzleId={42} voteTargetId="missing-slot" />);
+    const parent = within(await screen.findByRole("article"));
+    await user.click(parent.getByRole("button", { name: "Reply" }));
+    const editor = parent.getByRole("textbox", { name: "Reply to alice" });
+    await user.paste("Nice :kekw:");
+    await user.click(parent.getByRole("button", { name: "Post reply" }));
+
+    await screen.findByText("Write failed");
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+    expect(
+      within(parent.getByRole("textbox", { name: "Reply to alice" })).getByRole("img", {
+        name: "kekw",
+      }),
+    ).toBeVisible();
+    expect(mocks.postCommunityComment).toHaveBeenCalledWith(
+      { type: "puzzle", id: "42", context: "" },
+      "Nice :kekw:",
+      7,
+    );
+    expect(editor).not.toBeInTheDocument();
   });
 
   it("shows only the login action and empty state when signed out with no comments", async () => {
@@ -493,6 +524,6 @@ describe("PuzzleCommunity", () => {
     const suggestion = await screen.findByRole("option", { name: "@seaside_tiramisu" });
     await user.click(suggestion);
 
-    expect(input).toHaveValue("Thanks @seaside_tiramisu ");
+    expect(input.textContent).toBe("Thanks @seaside_tiramisu ");
   });
 });

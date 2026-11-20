@@ -5,16 +5,19 @@ import { PLAYER_FLAIRS, type PlayerFlair } from "../../../shared/domain/playerSo
 import { normalizeUsername } from "../../utils/playerNames";
 import { apiRequest } from "../api/postApi";
 
-const playerSocialSchema = z.object({
-  username: z.string(),
-  flair: z.enum(PLAYER_FLAIRS).nullable(),
-  countryCode: z.string(),
-  countryCodeSource: z.enum(["profile", "tournament"]).nullable(),
-  tournamentCountryCode: z.string(),
-  tourRank: z.number().int().positive().nullable(),
-  startDate: z.string().nullable(),
-  totalGames: z.number().nonnegative(),
-});
+const playerSocialSchema = z
+  .object({
+    username: z.string(),
+    flair: z.enum(PLAYER_FLAIRS).nullable(),
+    imageFlair: z.enum(PLAYER_FLAIRS).nullish().catch(null),
+    countryCode: z.string(),
+    countryCodeSource: z.enum(["profile", "tournament"]).nullable(),
+    tournamentCountryCode: z.string(),
+    tourRank: z.number().int().positive().nullable(),
+    startDate: z.string().nullable(),
+    totalGames: z.number().nonnegative(),
+  })
+  .transform(({ imageFlair, ...social }) => ({ ...social, flair: imageFlair ?? social.flair }));
 
 const mutationResponseSchema = z.object({ ok: z.boolean() }).passthrough();
 

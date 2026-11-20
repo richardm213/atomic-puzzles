@@ -20,6 +20,7 @@ import { z } from "zod";
 import { CoinProfileActions } from "../../components/CoinProfileActions/CoinProfileActions";
 import { CommunityCommentCount } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
+import { PlayerFlairIcon } from "../../components/PlayerFlair/PlayerFlair";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
 import { Seo } from "../../components/Seo/Seo";
@@ -658,12 +659,7 @@ export const PlayerProfilePage = ({
               >
                 <h1>{profileDisplayUsername}</h1>
                 {profileSocialQuery.data?.flair ? (
-                  <span
-                    className="profileFlair"
-                    aria-label={`Flair ${profileSocialQuery.data.flair}`}
-                  >
-                    {profileSocialQuery.data.flair}
-                  </span>
+                  <PlayerFlairIcon className="profileFlair" flair={profileSocialQuery.data.flair} />
                 ) : null}
                 {tourRankingStatsQuery.data?.currentRank ? (
                   <Link

@@ -44,24 +44,27 @@ describe("player social function", () => {
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
-  it("stores flair against the signed session identity rather than request input", async () => {
+  it.each([
+    { selection: "🐺", flair: "🐺", image_flair: null },
+    { selection: "kappabrug", flair: null, image_flair: "kappabrug" },
+    { selection: null, flair: null, image_flair: null },
+  ])("stores $selection against the signed session identity", async ({ selection, ...stored }) => {
     const upsert = vi.fn(async () => ({ error: null }));
     mocks.createClient.mockReturnValue({ from: vi.fn(() => ({ upsert })) });
 
     const response = await handler({
       httpMethod: "POST",
       headers: ownerHeaders("Alice"),
-      body: JSON.stringify({ action: "setFlair", flair: "🐺" }),
+      body: JSON.stringify({ action: "setFlair", flair: selection }),
     });
 
     expect(response.statusCode).toBe(200);
-    expect(upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ username: "alice", flair: "🐺" }),
-      { onConflict: "username" },
-    );
+    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({ username: "alice", ...stored }), {
+      onConflict: "username",
+    });
   });
 
-  it("rejects flair outside the curated native emoji set", async () => {
+  it("rejects flair outside the curated catalog", async () => {
     const response = await handler({
       httpMethod: "POST",
       headers: ownerHeaders("Alice"),

@@ -15,8 +15,15 @@ create table if not exists public.player_social_profiles (
     check (country_code is null or country_code ~ '^[A-Z]{2}$')
 );
 
+-- Keep image IDs separate so clients that only support emoji can still read flair.
 alter table public.player_social_profiles
-  add column if not exists country_code text;
+  add column if not exists country_code text,
+  add column if not exists image_flair text;
+
+alter table public.player_social_profiles
+  drop constraint if exists player_social_profiles_image_flair_check,
+  add constraint player_social_profiles_image_flair_check
+    check (image_flair is null or image_flair ~ '^[a-z0-9-]{1,32}$');
 
 alter table public.player_social_profiles
   drop constraint if exists player_social_profiles_country_code_check,
@@ -30,6 +37,7 @@ alter table public.player_social_profiles
 
 alter table public.player_social_profiles enable row level security;
 revoke all on public.player_social_profiles from anon, authenticated;
-grant select (username, flair, country_code) on public.player_social_profiles to anon, authenticated;
+grant select (username, flair, image_flair, country_code)
+  on public.player_social_profiles to anon, authenticated;
 
 commit;

@@ -1,6 +1,6 @@
 // Native Unicode emoji use the current platform artwork (Apple artwork on Apple devices).
 // Chess-piece emoji are intentionally omitted so flair stays distinct from rating modes.
-export const PLAYER_FLAIR_GROUPS = [
+const PLAYER_EMOJI_GROUPS = [
   {
     label: "Faces",
     flairs: [
@@ -628,9 +628,73 @@ export const PLAYER_FLAIR_GROUPS = [
   },
 ] as const;
 
+const PLAYER_EMOTES = [
+  "kekw",
+  "kekhands",
+  "ayaya",
+  "cmonbrug",
+  "pausechamp",
+  "scam",
+  "poggers",
+  "kreygasm",
+  "hyperkreygasm",
+  "hyperbrug",
+  "kekwbrug",
+  "kekega",
+  "peepolove",
+  "kappa",
+  "kekwfacepalm",
+  "kekwdistorted",
+  "kekwait",
+  "peepobusiness",
+  "pepelaugh",
+  "kappabrug",
+  "weirdchamp",
+  "wutface",
+  "thonk",
+  "thonkhyper",
+  "lel",
+  "feelsbadman",
+  "pepehands",
+] as const;
+
+const ATOMIC_LOGOS = {
+  "atomic-dark": { label: "Atomic Dark", path: "/favicon.ico" },
+  "atomic-blue": { label: "Atomic Blue", path: "/images/brand/atomic-logo-light.png" },
+  "atomic-amethyst": {
+    label: "Atomic Amethyst",
+    path: "/images/flairs/atomic-amethyst.png",
+  },
+  "atomic-ruby": { label: "Atomic Ruby", path: "/images/flairs/atomic-ruby.png" },
+  "atomic-emerald": { label: "Atomic Emerald", path: "/images/flairs/atomic-emerald.png" },
+  "atomic-black": { label: "Atomic Black", path: "/images/flairs/atomic-black.png" },
+} as const;
+
+type AtomicLogo = keyof typeof ATOMIC_LOGOS;
+const atomicLogoFlairs = Object.keys(ATOMIC_LOGOS) as AtomicLogo[];
+const emoteNames = new Set<string>(PLAYER_EMOTES);
+const isAtomicLogo = (flair: string): flair is AtomicLogo => Object.hasOwn(ATOMIC_LOGOS, flair);
+
+export const PLAYER_IMAGE_FLAIR_GROUPS = [
+  { label: "Emotes", flairs: PLAYER_EMOTES },
+  { label: "Atomic logos", flairs: atomicLogoFlairs },
+] as const;
+
+export const PLAYER_FLAIR_GROUPS = [...PLAYER_IMAGE_FLAIR_GROUPS, ...PLAYER_EMOJI_GROUPS] as const;
+
 export type PlayerFlair = (typeof PLAYER_FLAIR_GROUPS)[number]["flairs"][number];
 
-export const PLAYER_FLAIRS = PLAYER_FLAIR_GROUPS.flatMap(({ flairs }) => flairs) as [
+export const PLAYER_FLAIRS = PLAYER_FLAIR_GROUPS.flatMap<PlayerFlair>(({ flairs }) => flairs) as [
   PlayerFlair,
   ...PlayerFlair[],
 ];
+
+export const isImagePlayerFlair = (flair: string) => isAtomicLogo(flair) || emoteNames.has(flair);
+
+export const playerFlairLabel = (flair: PlayerFlair) =>
+  isAtomicLogo(flair) ? ATOMIC_LOGOS[flair].label : flair;
+
+export const playerFlairImagePath = (flair: PlayerFlair) => {
+  if (isAtomicLogo(flair)) return ATOMIC_LOGOS[flair].path;
+  return emoteNames.has(flair) ? `/images/flairs/${flair}.webp` : null;
+};

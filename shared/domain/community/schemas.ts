@@ -3,6 +3,7 @@ import { z } from "zod";
 import { voteValueSchema } from "../voting";
 
 const positiveIntegerSchema = z.coerce.number().int().positive().safe();
+export const MAX_COMMENT_LENGTH = 10_000;
 const usernameSchema = z
   .string()
   .trim()
@@ -36,6 +37,8 @@ export const communityRequestSchema = z
       "commentVote",
       "profileComments",
       "profileKarma",
+      "profileReactions",
+      "setProfileReaction",
       "siteComments",
       "puzzleRankings",
       "communityUsers",
@@ -53,10 +56,26 @@ export const communityRequestSchema = z
     commentId: positiveIntegerSchema.optional(),
     parentId: positiveIntegerSchema.nullish(),
     body: z.string().optional(),
+    reaction: z.string().min(1).max(80).optional(),
+    reacted: z.boolean().optional(),
   })
   .superRefine((input, context) => {
-    if (["profileComments", "profileKarma"].includes(input.action) && !input.username) {
+    if (
+      ["profileComments", "profileKarma", "profileReactions", "setProfileReaction"].includes(
+        input.action,
+      ) &&
+      !input.username
+    ) {
       context.addIssue({ code: "custom", message: "A profile username is required." });
+    }
+    if (
+      input.action === "setProfileReaction" &&
+      (input.reaction === undefined || input.reacted === undefined)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "A reaction and its selected state are required.",
+      });
     }
     if (["load", "vote"].includes(input.action) && !input.puzzleId) {
       context.addIssue({ code: "custom", message: "A puzzle identifier is required." });
@@ -82,6 +101,17 @@ export const communityRequestSchema = z
   });
 
 export type CommunityRequest = z.output<typeof communityRequestSchema>;
+
+export const profileReactionsSchema = z.object({
+  reactions: z.array(
+    z.object({
+      reaction: z.string().min(1).max(80),
+      count: z.number().int().positive(),
+      reacted: z.boolean(),
+    }),
+  ),
+});
+export type ProfileReaction = z.infer<typeof profileReactionsSchema>["reactions"][number];
 
 export const editedCommunityCommentSchema = z.object({
   id: positiveIntegerSchema,

@@ -327,6 +327,26 @@ export class CommunityRepository {
     if (result.error) throw new Error(`Unable to verify account: ${result.error.message}`);
   }
 
+  async loadProfileReactions(profile: string, viewer: string | null) {
+    const { data, error } = await this.supabase.rpc("get_player_profile_reactions", {
+      p_profile: profile,
+      p_viewer: viewer,
+    });
+    if (error) throw new Error(`Unable to load profile reactions: ${error.message}`);
+    return { reactions: data };
+  }
+
+  async setProfileReaction(profile: string, viewer: string, reaction: string, reacted: boolean) {
+    const { data, error } = await this.supabase.rpc("set_player_profile_reaction", {
+      p_profile: profile,
+      p_viewer: viewer,
+      p_reaction: reaction,
+      p_reacted: reacted,
+    });
+    if (error) throw new Error(`Unable to save profile reaction: ${error.message}`);
+    return { reactions: data };
+  }
+
   async savePuzzleVote(puzzleId: number, username: string, vote: VoteValue): Promise<void> {
     const result =
       vote === 0

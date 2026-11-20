@@ -45,6 +45,7 @@ export type SupabaseUser = {
 export type PlayerSocialProfileRow = {
   username: string;
   flair: string | null;
+  image_flair: string | null;
   country_code: string | null;
   archive_start_date: string | null;
   total_games: number;

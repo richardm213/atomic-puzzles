@@ -3,7 +3,11 @@ import "./PlayerSocialControls.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useRef } from "react";
 
-import { PLAYER_FLAIR_GROUPS, type PlayerFlair } from "../../../shared/domain/playerSocial";
+import {
+  PLAYER_FLAIR_GROUPS,
+  type PlayerFlair,
+  playerFlairLabel,
+} from "../../../shared/domain/playerSocial";
 import { useAuth } from "../../context/AuthContext";
 import {
   type PlayerSocial,
@@ -12,6 +16,7 @@ import {
   updatePlayerFlair,
 } from "../../lib/playerSocial/playerSocial";
 import { normalizeUsername } from "../../utils/playerNames";
+import { PlayerFlairIcon } from "../PlayerFlair/PlayerFlair";
 
 const countryDisplayNames = new Intl.DisplayNames(["en"], { type: "region" });
 const isoCountryCodes =
@@ -67,7 +72,13 @@ export const PlayerFlairPicker = ({ username }: { username: string }) => {
           dialogRef.current?.showModal();
         }}
       >
-        {social.flair ? `${social.flair} Change flair` : "Choose flair"}
+        {social.flair ? (
+          <>
+            <PlayerFlairIcon flair={social.flair} /> Change flair
+          </>
+        ) : (
+          "Choose flair"
+        )}
       </button>
       <dialog
         ref={dialogRef}
@@ -106,12 +117,13 @@ export const PlayerFlairPicker = ({ username }: { username: string }) => {
                   <button
                     key={flair}
                     type="button"
-                    aria-label={`Use ${flair} flair`}
+                    aria-label={`Use ${playerFlairLabel(flair)} flair`}
+                    title={playerFlairLabel(flair)}
                     aria-pressed={social.flair === flair}
                     disabled={flairMutation.isPending}
                     onClick={() => flairMutation.mutate(flair)}
                   >
-                    {flair}
+                    <PlayerFlairIcon flair={flair} decorative />
                   </button>
                 ))}
               </div>

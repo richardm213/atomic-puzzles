@@ -11,6 +11,7 @@ import { fetchPlayerRatingsRows } from "../../lib/archive/ratings";
 import { playerSocialQueryOptions } from "../../lib/playerSocial/playerSocial";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { normalizeUsername } from "../../utils/playerNames";
+import { PlayerFlairIcon } from "../PlayerFlair/PlayerFlair";
 import { lichessIcons } from "./lichessIcons";
 
 type PlayerHoverCardTriggerProps = {
@@ -103,7 +104,13 @@ const PlayerHoverCardContent = ({
   return (
     <div className="playerHoverCardBody" onMouseEnter={onRemainOpen}>
       <header className="playerHoverCardHeader">
-        <strong>{canonicalUsername}</strong>
+        <Link
+          className="playerHoverCardUsername"
+          to="/@/$username"
+          params={{ username: canonicalUsername }}
+        >
+          {canonicalUsername}
+        </Link>
         {social?.tourRank ? (
           <Link
             className="playerHoverCardTourRank"
@@ -115,7 +122,9 @@ const PlayerHoverCardContent = ({
             #{social.tourRank}
           </Link>
         ) : null}
-        {social?.flair ? <span className="playerHoverCardFlair">{social.flair}</span> : null}
+        {social?.flair ? (
+          <PlayerFlairIcon className="playerHoverCardFlair" flair={social.flair} />
+        ) : null}
         {countryCode ? (
           <span className="playerHoverCardCountry" title={countryName(countryCode)}>
             <img

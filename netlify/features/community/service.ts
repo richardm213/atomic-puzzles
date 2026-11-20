@@ -1,4 +1,7 @@
-import type { CommunityRequest } from "../../../shared/domain/community/schemas";
+import {
+  type CommunityRequest,
+  MAX_COMMENT_LENGTH,
+} from "../../../shared/domain/community/schemas";
 import type { VoteValue } from "../../../shared/domain/voting";
 import { loadAllPages } from "../../../shared/lib/pagination";
 import { HttpError } from "../../platform/errors";
@@ -13,8 +16,6 @@ import type {
   PuzzleAttemptRecord,
 } from "./model";
 import type { CommunityRepository } from "./repository";
-
-const MAX_COMMENT_LENGTH = 10_000;
 
 const validateCommentBody = (body: string): string => {
   if (!body.trim() || body.length > MAX_COMMENT_LENGTH) {
@@ -33,6 +34,7 @@ export const isPublicCommunityReadAction = (action: unknown): boolean =>
     "loadDiscussion",
     "profileComments",
     "profileKarma",
+    "profileReactions",
     "siteComments",
     "puzzleRankings",
     "communityUsers",

@@ -6,10 +6,17 @@ import { createServerSupabase } from "../../platform/environment";
 import { HttpError } from "../../platform/errors";
 import { jsonResponse } from "../../platform/response";
 import { parseJsonBody } from "../../platform/validation";
+import { validateProfileReaction } from "./profileReactions";
 import { CommunityRepository } from "./repository";
 import { CommunityService, isPublicCommunityReadAction, readCommunityTarget } from "./service";
 
-const mutationActions = new Set(["vote", "comment", "editComment", "commentVote"]);
+const mutationActions = new Set([
+  "vote",
+  "comment",
+  "editComment",
+  "commentVote",
+  "setProfileReaction",
+]);
 
 export const communityRoute = async (event: FunctionEvent) => {
   const input = parseJsonBody(event, communityRequestSchema, "Invalid community request.");
@@ -31,9 +38,29 @@ export const communityRoute = async (event: FunctionEvent) => {
     );
   }
 
-  const service = new CommunityService(
-    new CommunityRepository(createServerSupabase("Community service")),
-  );
+  const repository = new CommunityRepository(createServerSupabase("Community service"));
+  const service = new CommunityService(repository);
+
+  if (input.action === "profileReactions" || input.action === "setProfileReaction") {
+    const target = await service.canonicalizeTarget({
+      type: "profile",
+      id: input.username!,
+      context: "",
+    });
+    if (input.action === "setProfileReaction") {
+      const reaction = await validateProfileReaction(input.reaction!);
+      return respond(
+        200,
+        await repository.setProfileReaction(
+          target.id,
+          identity.username!,
+          reaction,
+          input.reacted!,
+        ),
+      );
+    }
+    return respond(200, await repository.loadProfileReactions(target.id, identity.username));
+  }
 
   if (input.action === "profileKarma") {
     return respond(200, await service.loadProfileCommentKarma(input.username!));

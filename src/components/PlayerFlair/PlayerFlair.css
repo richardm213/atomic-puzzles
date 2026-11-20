@@ -1,0 +1,14 @@
+.playerFlairImage {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  vertical-align: -0.125em;
+}
+
+.playerFlairImage.commentEmoteImage {
+  width: auto;
+  max-width: 2em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+}
