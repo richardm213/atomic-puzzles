@@ -74,4 +74,70 @@ describe("useBoardDocument", () => {
 
     expect(onCommitPgn).toHaveBeenCalledExactlyOnceWith("Ka2 Kh2", undefined);
   });
+
+  it("keeps FEN and PGN validation independent and ignores whitespace-only FEN edits", () => {
+    const onCommitFen = vi.fn();
+    const onCommitPgn = vi.fn();
+    const { result } = renderHook(() =>
+      useBoardDocument({
+        fen: STARTING_FEN,
+        pgn: "Ka2",
+        boardState: null,
+        onCommitFen,
+        onCommitPgn,
+        pgnAfterFenCommit: () => "",
+      }),
+    );
+    const edit = (field: "fen" | "pgn", value: string) => {
+      act(() => {
+        result.current[field].onChange?.({ target: { value } } as ChangeEvent<HTMLTextAreaElement>);
+        result.current[field].onBlur?.({
+          currentTarget: { value },
+        } as FocusEvent<HTMLTextAreaElement>);
+      });
+    };
+
+    edit("fen", STARTING_FEN.replaceAll(" ", "  "));
+    expect(result.current.fen.value).toBe(STARTING_FEN);
+    expect(result.current.pgn.value).toBe("Ka2");
+    expect(onCommitFen).not.toHaveBeenCalled();
+
+    edit("fen", "invalid");
+    edit("pgn", "Ka2 Kh2");
+    expect(result.current.fen.value).toBe("invalid");
+    expect(result.current.fen.error).not.toBe("");
+    expect(result.current.pgn.error).toBe("");
+    expect(onCommitPgn).toHaveBeenCalledExactlyOnceWith("Ka2 Kh2", undefined);
+  });
+
+  it("preserves a rejected PGN and keeps its FEN out of the board fields", () => {
+    const rejectedPgn = `[FEN "${IMPORTED_FEN}"]\n\n23... Kh2`;
+    const { result, rerender } = renderHook(
+      ({ pgn }) =>
+        useBoardDocument({
+          fen: STARTING_FEN,
+          pgn,
+          boardState: null,
+          onCommitFen: vi.fn(),
+          onCommitPgn: () => {
+            throw new Error("Keep the selected starting position.");
+          },
+        }),
+      { initialProps: { pgn: "" } },
+    );
+
+    act(() => {
+      result.current.pgn.onChange?.({
+        target: { value: rejectedPgn },
+      } as ChangeEvent<HTMLTextAreaElement>);
+      result.current.pgn.onBlur?.({
+        currentTarget: { value: rejectedPgn },
+      } as FocusEvent<HTMLTextAreaElement>);
+    });
+    rerender({ pgn: "Ka2" });
+
+    expect(result.current.fen.value).toBe(STARTING_FEN);
+    expect(result.current.pgn.value).toBe(rejectedPgn);
+    expect(result.current.pgn.error).toBe("Keep the selected starting position.");
+  });
 });
