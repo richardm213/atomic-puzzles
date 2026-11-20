@@ -72,7 +72,7 @@ test("puzzle next and previous controls update the route", async ({ page }) => {
   await expect(page.getByRole("button", { name: /Previous/ }).first()).toBeEnabled();
 });
 
-test("piece selection and legal moves keep Default's markers across site themes", async ({
+test("piece selection stays borderless and legal-move markers follow the site theme", async ({
   page,
 }) => {
   const fen = "4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1";
@@ -96,6 +96,7 @@ test("piece selection and legal moves keep Default's markers across site themes"
       };
     });
   const baseline = await markers();
+  expect(baseline.outline).toBe("none");
   expect(baseline.move).not.toBe("none");
   expect(baseline.capture).not.toBe("none");
   // Gemstone palettes share one recipe; Black has its own palette overrides.
@@ -105,7 +106,12 @@ test("piece selection and legal moves keep Default's markers across site themes"
       root.dataset.palette = palette;
       root.toggleAttribute("data-gemstone-theme", palette === "ruby");
     }, palette);
-    await expect.poll(markers).toEqual(baseline);
+    await expect.poll(async () => (await markers()).move).not.toBe(baseline.move);
+    const themed = await markers();
+    expect(themed.outline).toBe("none");
+    expect(themed.move).not.toBe("none");
+    expect(themed.capture).not.toBe("none");
+    expect(themed.capture).not.toBe(baseline.capture);
   }
 });
 

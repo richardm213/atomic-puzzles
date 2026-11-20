@@ -7,14 +7,15 @@ cg-board {
 
 cg-board square.move-dest {
   background: radial-gradient(
-    color-mix(in srgb, var(--board-move-ink) 50%, transparent) 22%,
+    color-mix(in srgb, var(--board-move-ink) var(--board-move-dot-strength, 50%), transparent) 22%,
     transparent 22%
   );
 }
 
 cg-board square.premove-dest {
   background: radial-gradient(
-    color-mix(in srgb, var(--board-premove-ink) 45%, transparent) 22%,
+    color-mix(in srgb, var(--board-premove-ink) var(--board-move-dot-strength, 45%), transparent)
+      22%,
     transparent 22%
   );
 }
@@ -22,14 +23,20 @@ cg-board square.premove-dest {
 cg-board square.oc.move-dest {
   background: radial-gradient(
     transparent 80%,
-    color-mix(in srgb, var(--board-move-ink) 35%, transparent) 80%
+    color-mix(in srgb, var(--board-move-ink) var(--board-move-capture-strength, 35%), transparent)
+      80%
   );
 }
 
 cg-board square.oc.premove-dest {
   background: radial-gradient(
     transparent 80%,
-    color-mix(in srgb, var(--board-premove-ink) 25%, transparent) 80%
+    color-mix(
+        in srgb,
+        var(--board-premove-ink) var(--board-move-capture-strength, 25%),
+        transparent
+      )
+      80%
   );
 }
 
