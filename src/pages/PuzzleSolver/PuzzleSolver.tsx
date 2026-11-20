@@ -1456,15 +1456,8 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
 
   useEffect(() => {
     if (!resignArmed) return;
-    const cancelOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setResignArmed(false);
-    };
-    const timer = window.setTimeout(() => setResignArmed(false), 5000);
-    window.addEventListener("keydown", cancelOnEscape);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("keydown", cancelOnEscape);
-    };
+    const timer = window.setTimeout(() => setResignArmed(false), 3000);
+    return () => window.clearTimeout(timer);
   }, [resignArmed]);
 
   const handleGiveUp = () => {
@@ -1836,7 +1829,6 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
       canGiveUp={canGiveUp}
       resignArmed={resignArmed}
       onGiveUp={handleGiveUp}
-      onCancelGiveUp={() => setResignArmed(false)}
       playback={playback}
       onNavigateMoves={handlePlaybackCommand}
     />
@@ -1858,7 +1850,6 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
           : solutionButtonTitle,
         mobileAnalysis: mobile ? puzzleAnalysisPanel : undefined,
         onToggle: canGiveUp ? handleGiveUp : handleSelectSolutionTab,
-        onCancelGiveUp: () => setResignArmed(false),
       }}
       explanation={{
         available: hasExplanation || isPuzzleExplanationEditor,
@@ -2097,7 +2088,6 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
       canGiveUp={!isMobileLayout && canGiveUp}
       resignArmed={resignArmed}
       onGiveUp={handleGiveUp}
-      onCancelGiveUp={() => setResignArmed(false)}
     />
   ) : null;
 

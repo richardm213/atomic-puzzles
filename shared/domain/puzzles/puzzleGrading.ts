@@ -48,5 +48,5 @@ export const puzzleGradingLabel = (state: PuzzleGradingState, now = Date.now()):
   const remaining = Date.parse(state.availableAt ?? "") - now;
   if (!Number.isFinite(remaining) || remaining <= 0) return state.runId ? "Ungraded" : "Graded";
   const months = Math.max(0.1, remaining / (30.4375 * 24 * 60 * 60 * 1000));
-  return `Ungraded · grading returns in ${months.toFixed(1)} months`;
+  return `Ungraded for ${months.toFixed(1)} months`;
 };

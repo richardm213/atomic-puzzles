@@ -122,7 +122,7 @@
 }
 
 .puzzleGiveUpButton {
-  color: var(--color-warning);
+  color: var(--color-danger);
 }
 
 .puzzleGiveUpButton:hover:not(:disabled) {
@@ -130,55 +130,13 @@
 }
 
 .puzzleGiveUpButton.isArmed,
-.puzzleInfoTab.isArmed {
-  color: var(--color-warning);
-  border-color: var(--color-warning);
-  background: color-mix(in srgb, var(--color-warning) 22%, var(--color-panel-deep));
-}
-
-.puzzleResignConfirm {
-  display: flex;
-  grid-column: 1 / -1;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border: 1px solid var(--color-warning);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-warning) 16%, var(--color-panel-deep));
-  color: var(--color-heading);
-  font-size: 12px;
-}
-
-.puzzleResignConfirm button {
-  min-height: 32px;
-  padding: 4px 8px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--color-panel-deep);
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.puzzleResignConfirm button:first-of-type {
-  border-color: var(--color-warning);
-  color: var(--color-warning);
-}
-
-.puzzleResignConfirm button:hover {
-  background: var(--color-panel-strong);
-}
-
-.puzzleResignConfirm button:focus-visible {
-  outline: 2px solid var(--color-warning);
-  outline-offset: 2px;
-}
-
-@media (max-width: 780px) {
-  .puzzleResignConfirm button {
-    min-height: 44px;
-  }
+.puzzleGiveUpButton.isArmed:hover:not(:disabled),
+.puzzleInfoTabs .puzzleInfoTab.isArmed,
+.puzzleInfoTabs .puzzleInfoTab.isArmed:hover:not(:disabled) {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 28%, var(--color-panel-deep));
+  box-shadow: inset 0 0 0 1px var(--color-danger);
 }
 
 :root[data-theme="light"] .puzzlePage {

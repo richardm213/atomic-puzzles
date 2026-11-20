@@ -469,14 +469,6 @@ describe("PuzzleSolverPage solution options", () => {
         await user.click(
           await screen.findByRole("button", { name: "Resign and reveal the solution" }),
         );
-        expect(screen.getByRole("group", { name: "Resignation confirmation" })).toBeVisible();
-        await user.click(screen.getByRole("button", { name: "Cancel resignation" }));
-        expect(
-          screen.queryByRole("group", { name: "Resignation confirmation" }),
-        ).not.toBeInTheDocument();
-        expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
-        expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
-        await user.click(screen.getByRole("button", { name: "Resign and reveal the solution" }));
         fireEvent.click(await screen.findByRole("button", { name: "Confirm resignation" }));
       }
 
@@ -518,7 +510,7 @@ describe("PuzzleSolverPage solution options", () => {
       if (graded) {
         expect(screen.queryByText(/^Ungraded/)).not.toBeInTheDocument();
       } else {
-        expect(screen.getByText(/^Ungraded · grading returns in/)).toBeVisible();
+        expect(screen.getByText(/^Ungraded for/)).toBeVisible();
       }
       expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
     },
@@ -1548,7 +1540,7 @@ See ${studyUrl}.`;
 
     expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
     await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledOnce());
-    const gradingBadges = await screen.findAllByLabelText(/Ungraded · grading returns in/);
+    const gradingBadges = await screen.findAllByLabelText(/Ungraded for/);
     expect(gradingBadges.length).toBeGreaterThan(0);
     gradingBadges.forEach((badge) => expect(badge).not.toHaveAttribute("title"));
     const explanationTab = await screen.findByRole("tab", { name: "Explain" });
@@ -2026,7 +2018,7 @@ See ${studyUrl}.`;
       const otherAttempts = screen.getByRole("tab", { name: "Other attempts" });
       expect(otherAttempts).toBeDisabled();
       if (old) expect(screen.getByText("Graded", { exact: true })).toBeVisible();
-      else expect(screen.getByText(/^Ungraded · grading returns in/)).toBeVisible();
+      else expect(screen.getByText(/^Ungraded for/)).toBeVisible();
       act(() =>
         mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
           puzzleId: "1369",

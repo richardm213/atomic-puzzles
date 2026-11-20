@@ -17,8 +17,6 @@ import type { AsyncActionStatus } from "../../types/async";
 import { formatElapsedDuration, formatLocalDateTime } from "../../utils/formatters";
 
 export type PuzzleInfoTab = "solution" | "explanation" | "attempts" | "comments";
-import { PuzzleResignConfirmation } from "./PuzzleResignConfirmation";
-
 type SaveStatus = AsyncActionStatus;
 
 type PuzzleInfoSectionProps = {
@@ -32,7 +30,6 @@ type PuzzleInfoSectionProps = {
     buttonTitle: string;
     mobileAnalysis?: ReactNode;
     onToggle: () => void;
-    onCancelGiveUp?: () => void;
   };
   explanation: {
     available: boolean;
@@ -254,12 +251,6 @@ export const PuzzleInfoSection = ({
 
   return (
     <div className={`puzzleInfoStack ${panel ? "hasContent" : ""}`}>
-      {mobile && solution.canGiveUp && solution.resignArmed && solution.onCancelGiveUp ? (
-        <PuzzleResignConfirmation
-          onConfirm={solution.onToggle}
-          onCancel={solution.onCancelGiveUp}
-        />
-      ) : null}
       <div className="puzzleInfoTabs" role="tablist" aria-label="Puzzle details">
         {mobile ? (
           <button

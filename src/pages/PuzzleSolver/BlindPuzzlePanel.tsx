@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 
 import type { PuzzleLeadIn } from "../../../shared/domain/puzzles/gameHistory";
 import { movePrefix, startingPlyFromFen } from "../../lib/chess/pgn";
-import { PuzzleResignConfirmation } from "./PuzzleResignConfirmation";
 
 export const BlindPuzzlePanel = ({
   leadIn,
@@ -10,7 +9,6 @@ export const BlindPuzzlePanel = ({
   error,
   canGiveUp,
   onGiveUp,
-  onCancelGiveUp,
   resignArmed,
 }: {
   leadIn: PuzzleLeadIn;
@@ -18,7 +16,6 @@ export const BlindPuzzlePanel = ({
   error: string;
   canGiveUp: boolean;
   onGiveUp: () => void;
-  onCancelGiveUp: () => void;
   resignArmed?: boolean;
 }) => {
   const listRef = useRef<HTMLOListElement>(null);
@@ -57,16 +54,13 @@ export const BlindPuzzlePanel = ({
       </div>
       {canGiveUp ? (
         <div className="puzzleBlindActions">
-          {resignArmed ? (
-            <PuzzleResignConfirmation onConfirm={onGiveUp} onCancel={onCancelGiveUp} />
-          ) : null}
           <button
             type="button"
             className={`analysisToolbarButton puzzleGiveUpButton${resignArmed ? " isArmed" : ""}`}
             aria-pressed={Boolean(resignArmed)}
             onClick={onGiveUp}
           >
-            Resign
+            {resignArmed ? "Confirm resignation" : "Resign"}
           </button>
         </div>
       ) : null}
