@@ -36,7 +36,7 @@ insert into public.puzzle_tag_hierarchy (tag, parent_tag) values
   ('draw', null),
   ('blocking', 'defensive'),
   ('king_walk', 'defensive'),
-  ('king_sidestep', 'king_walk'),
+  ('king_sidestep', 'defensive'),
   ('avoiding_perpetual', 'defensive'),
   ('pin', null),
   ('unpinning', null),

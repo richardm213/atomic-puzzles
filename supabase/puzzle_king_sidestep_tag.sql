@@ -1,7 +1,7 @@
 -- Apply in Firefox on the current database. Preserve the existing allowed tags.
 begin;
 insert into public.puzzle_tag_hierarchy (tag, parent_tag)
-values ('king_sidestep', 'king_walk')
+values ('king_sidestep', 'defensive')
 on conflict (tag) do update set parent_tag = excluded.parent_tag;
 
 do $$

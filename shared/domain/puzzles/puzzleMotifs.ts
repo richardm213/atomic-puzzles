@@ -182,9 +182,9 @@ export const puzzleMotifs: PuzzleMotif[] = [
   {
     tag: "king_sidestep",
     name: "King sidestep",
-    parentTag: "king_walk",
+    parentTag: "defensive",
     description:
-      "The king steps out of danger, often clearing a square for a rook or preventing follow-up attacks.",
+      "The king steps out of danger to prepare an attack, often breaking a pin and/or clearing a square for an attacking piece.",
   },
   {
     tag: "avoiding_perpetual",

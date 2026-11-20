@@ -1,8 +1,8 @@
 # King sidestep candidates
 
-Reviewed on 2026-11-19 against the current database. No candidate puzzles were retagged.
+Reviewed on 2026-11-19 against the current database. The 15 shortlisted puzzles were subsequently tagged at the user’s request.
 
-The motif is a short king move out of danger, often clearing a rook square or preventing follow-up attacks. It is a child of King walk. A forced king move by itself is not enough to establish the motif.
+The revised motif is a king move out of danger to prepare an attack, often breaking a pin and/or clearing a square for an attacking piece. It now sits directly under Defensive, separately from King walk. A forced king move by itself is not enough to establish the motif.
 
 ## Search and validation
 
@@ -16,7 +16,7 @@ The motif is a short king move out of danger, often clearing a rook square or pr
 
 | Puzzle | Move | Existing tags | Why it fits |
 | --- | --- | --- | --- |
-| [2851](https://atomicpuzzles.org/solve/2851) | **11. Kd1** | King walk | Best teaching example: vacates e1 for Re1+. The existing explanation explicitly describes this idea. One-move solution; engine selected Kd1. |
+| [2851](https://atomicpuzzles.org/solve/2851) | **11. Kd1** | King walk | Clear existing-puzzle example: vacates e1 for Re1+. The existing explanation explicitly describes this idea. One-move solution; engine selected Kd1. |
 | [1272](https://atomicpuzzles.org/solve/1272) | **15. Kd1** | King walk, Defensive | Steps away from the explosion threat against e1; the short line continues …Ne3+ fxe3. Engine selected Kd1. |
 | [2824](https://atomicpuzzles.org/solve/2824) | **7…Kf8** | King walk | Existing explanation describes escaping the d-file pin and Bb5+ tactics. Engine selected Kf8. |
 | [215](https://atomicpuzzles.org/solve/215) | **15…Kd8** | King walk, Defensive | Leaves the danger around e8 and permits …Rf7/…Rf8 against Qg7/Qg8+. Engine selected Kd8; this is a defensive resource, not a forced win. |
@@ -64,4 +64,4 @@ The motif is a short king move out of danger, often clearing a rook square or pr
 | 2635 | Queenless multi-move walk; outside the requested target. |
 | 2815 | Kf2 breaks the pin; candidate above. |
 | 2824 | Strong Kf8 candidate above. |
-| 2851 | Clearest single-move example; used for the motif's interactive demonstration. |
+| 2851 | Clear single-move puzzle example; the interactive demonstration now uses a simpler teaching position. |
