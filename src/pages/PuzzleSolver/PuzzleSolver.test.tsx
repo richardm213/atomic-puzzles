@@ -469,6 +469,14 @@ describe("PuzzleSolverPage solution options", () => {
         await user.click(
           await screen.findByRole("button", { name: "Resign and reveal the solution" }),
         );
+        expect(screen.getByRole("group", { name: "Resignation confirmation" })).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "Cancel resignation" }));
+        expect(
+          screen.queryByRole("group", { name: "Resignation confirmation" }),
+        ).not.toBeInTheDocument();
+        expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
+        expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
+        await user.click(screen.getByRole("button", { name: "Resign and reveal the solution" }));
         fireEvent.click(await screen.findByRole("button", { name: "Confirm resignation" }));
       }
 

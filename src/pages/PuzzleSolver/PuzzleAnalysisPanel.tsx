@@ -13,6 +13,7 @@ import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings
 import type { useBoardMoveEditing } from "../../hooks/useBoardMoveEditing";
 import { startingPlyFromFen } from "../../lib/chess/pgn";
 import type { PlaybackAvailability, PlaybackCommand } from "../../types/chessboard";
+import { PuzzleResignConfirmation } from "./PuzzleResignConfirmation";
 
 export const PuzzleAnalysisPanel = ({
   initialFen,
@@ -34,6 +35,7 @@ export const PuzzleAnalysisPanel = ({
   onEngineMovesChange,
   canGiveUp,
   onGiveUp,
+  onCancelGiveUp,
   resignArmed,
   playback,
   onNavigateMoves,
@@ -57,6 +59,7 @@ export const PuzzleAnalysisPanel = ({
   onEngineMovesChange: (moves: readonly string[] | null) => void;
   canGiveUp: boolean;
   onGiveUp: () => void;
+  onCancelGiveUp: () => void;
   resignArmed?: boolean;
   playback: PlaybackAvailability | undefined;
   onNavigateMoves: (
@@ -136,7 +139,8 @@ export const PuzzleAnalysisPanel = ({
             <button
               type="button"
               className={`analysisToolbarButton puzzleGiveUpButton${resignArmed ? " isArmed" : ""}`}
-              aria-label={resignArmed ? "Confirm resignation" : "Resign and reveal the solution"}
+              aria-label="Resign and reveal the solution"
+              aria-expanded={Boolean(resignArmed)}
               title={resignArmed ? "Confirm resignation" : "Resign and reveal the solution"}
               aria-pressed={Boolean(resignArmed)}
               onClick={onGiveUp}
@@ -152,6 +156,9 @@ export const PuzzleAnalysisPanel = ({
             canEnd={Boolean(playback?.end)}
             onNavigate={onNavigateMoves}
           />
+          {canGiveUp && resignArmed ? (
+            <PuzzleResignConfirmation onConfirm={onGiveUp} onCancel={onCancelGiveUp} />
+          ) : null}
         </div>
       </div>
     </section>
