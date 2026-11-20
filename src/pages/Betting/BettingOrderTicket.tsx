@@ -1,333 +1,314 @@
+import type { FormEvent } from "react";
+
 import { InlineState } from "../../components/InlineState/InlineState";
 import { PredictionOrderComposer } from "../../components/PredictionTrading/PredictionOrderComposer";
-import { MIN_BET_AMOUNT, predictionOrderRestrictionMessage } from "../../lib/betting/betting";
+import { usePredictionOrderSide } from "../../hooks/usePredictionOrderSide";
+import {
+  MAX_BET_STAKE,
+  MIN_BET_AMOUNT,
+  predictionOrderRestrictionMessage,
+} from "../../lib/betting/betting";
 import { formatCoinValue } from "../../lib/coins/coinDisplay";
 import {
+  isPredictionPrice,
   predictionOutcomeCountryCode,
   predictionSportsbookOutcomeLabel,
+  predictionTakerFee,
+  quotePredictionBuy,
+  quotePredictionOrder,
   suggestedPredictionPrice,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { getErrorMessage } from "../../utils/errors";
 import type { useBettingWorkspace } from "./useBettingWorkspace";
-import { isWinnerCategory } from "./useBettingWorkspace";
+
 export const BettingOrderTicket = ({
-  activePredictionGroup,
-  activePredictionDisplayMode,
+  auth: { username, isAuthenticated, authLoading, login },
+  group,
+  mode,
+  winnerMarket,
+  definition,
+  state,
+  selection,
+  setOutcome,
+  restrictionFor,
+  balance,
+  currentTime,
   betSlipRef,
-  selectedPredictionDefinition,
-  predictionSelection,
-  submitPredictionSportsbookBet,
-  submitPredictionOrder,
-  selectedPredictionGroup,
-  marketCategory,
-  validPredictionPrice,
-  predictionPrice,
   predictionStakeRef,
-  predictionSportsbookStakeLimit,
-  predictionStakeInput,
-  setPredictionStakeInput,
-  setPredictionStakeTouched,
-  predictionSportsbookQuote,
-  predictionSportsbookQuantity,
-  validPredictionStake,
-  predictionSportsbookFullyMatched,
-  predictionSportsbookTotal,
-  predictionSportsbookFee,
-  predictionStakeTouched,
-  predictionSportsbookInsufficientBalance,
-  predictionSide,
-  canSell,
-  selectPredictionSide,
-  availableContracts,
-  predictionRestrictionFor,
-  selectedPredictionState,
-  predictionQuantityInput,
-  predictionPriceInput,
-  validPredictionQuantity,
-  predictionSellProceeds,
-  predictionEstimatedTotal,
-  selectedPredictionOutcome,
-  predictionQuantity,
-  predictionEstimatedProfit,
-  selectPredictionOutcome,
-  setPredictionPriceInput,
-  setPredictionQuantityInput,
-  placePredictionMutation,
-  username,
-  selectedPredictionRestriction,
+  side,
+  setSide,
+  priceInput,
+  setPriceInput,
+  quantityInput,
+  setQuantityInput,
+  stakeInput,
+  setStakeInput,
+  stakeTouched,
+  setStakeTouched,
+  mutation,
   successMessage,
-  isAuthenticated,
-  selectedPredictionOpen,
-  authLoading,
-  login,
-  hasSellInventory,
-  predictionBuyQuote,
-}: ReturnType<typeof useBettingWorkspace>["ticket"]) => (
-  <aside
-    className={`betSlip${
-      activePredictionGroup && activePredictionDisplayMode === "market"
-        ? " betSlip--predictionOrder"
-        : ""
-    }`}
-    aria-labelledby="bet-slip-title"
-    ref={betSlipRef}
-  >
-    <h2
-      id="bet-slip-title"
-      className={
-        activePredictionGroup && activePredictionDisplayMode === "market"
-          ? "betSlipVisuallyHiddenTitle"
-          : undefined
-      }
+  clearSuccess,
+}: ReturnType<typeof useBettingWorkspace>["ticket"]) => {
+  const sportsbook = mode === "book";
+  const outcome = selection?.outcome ?? "yes";
+  const book = state?.book[outcome];
+  const price = sportsbook ? (book?.asks[0]?.priceCents ?? 0) : Number(priceInput);
+  const validPrice = isPredictionPrice(price);
+  const {
+    availableByOutcome,
+    availableContracts,
+    canSell,
+    hasSellInventory,
+    quantity,
+    validQuantity,
+    selectOutcome,
+    selectSide,
+  } = usePredictionOrderSide({
+    positions: state?.positions,
+    isAuthenticated,
+    side,
+    outcome,
+    quantityInput,
+    onSideChange: setSide,
+    onOutcomeChange: setOutcome,
+    onQuantityChange: setQuantityInput,
+    onSelectionChange: clearSuccess,
+  });
+  const orderQuote = quotePredictionOrder(book, side, price, validQuantity ? quantity : 0);
+
+  const stake = Number(stakeInput);
+  const stakeLimit = validPrice ? Math.min(MAX_BET_STAKE, price * 100) : MAX_BET_STAKE;
+  const validStake = Number.isInteger(stake) && stake >= MIN_BET_AMOUNT && stake <= stakeLimit;
+  const payout = validStake && validPrice ? Math.floor((stake * 100) / price) : 0;
+  const quote = quotePredictionBuy(book?.asks ?? [], validPrice ? price : 0, payout);
+  const fee = predictionTakerFee(quote.fillCostCoins);
+  const cost = quote.fillCostCoins + fee;
+  const fills = payout > 0 && quote.restingQuantity === 0;
+  const insufficientBalance = isAuthenticated && cost > balance;
+  const restriction = definition && restrictionFor(definition, outcome, sportsbook ? "buy" : side);
+  const closesAt = Date.parse(state?.market.closesAt ?? "");
+  const open = state?.market.status === "open" && closesAt > currentTime;
+  const canSubmit =
+    isAuthenticated &&
+    open &&
+    validPrice &&
+    !restriction &&
+    !mutation.isPending &&
+    (sportsbook ? fills && !insufficientBalance : validQuantity && hasSellInventory);
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    clearSuccess();
+    if (sportsbook) setStakeTouched(true);
+    if (!selection || !canSubmit || closesAt <= Date.now()) return;
+
+    mutation.mutate({
+      username,
+      ...selection,
+      side: sportsbook ? "buy" : side,
+      priceCents: price,
+      quantity: sportsbook ? payout : quantity,
+      ...(sportsbook ? { budgetCoins: stake } : {}),
+    });
+  };
+
+  const originalOrder = mutation.variables;
+  const canRetry = isAuthenticated && !mutation.isPending && originalOrder?.username === username;
+  const submitLabel = sportsbook
+    ? fills
+      ? `Place bet · ${formatCoinValue(cost)} coins`
+      : "Place bet"
+    : `${side === "sell" ? "Sell" : orderQuote.action} ${outcome === "yes" ? "Yes" : "No"} · ${validPrice ? `${price}¢` : "—"}`;
+
+  return (
+    <aside
+      className={`betSlip${group && !sportsbook ? " betSlip--predictionOrder" : ""}`}
+      aria-labelledby="bet-slip-title"
+      ref={betSlipRef}
     >
-      {activePredictionGroup && activePredictionDisplayMode === "book"
-        ? "Sportsbook bet"
-        : "Bet slip"}
-    </h2>
-    {activePredictionGroup ? (
-      selectedPredictionDefinition && predictionSelection ? (
-        <form
-          onSubmit={
-            activePredictionDisplayMode === "book"
-              ? submitPredictionSportsbookBet
-              : submitPredictionOrder
-          }
-        >
-          {activePredictionDisplayMode === "book" ? (
-            <div className="betSlipSelection">
-              <small>{selectedPredictionGroup?.title ?? "Prediction market"}</small>
-              <div className="betSlipContract">
-                <span>
-                  <img
-                    src={countryCodeToFlagUrl(
-                      predictionOutcomeCountryCode(
-                        selectedPredictionDefinition,
-                        predictionSelection.outcome,
-                      ),
-                    )}
-                    alt=""
-                    crossOrigin="anonymous"
-                    aria-hidden="true"
-                  />
-                  <strong>
-                    {predictionSportsbookOutcomeLabel(
-                      selectedPredictionDefinition,
-                      predictionSelection.outcome,
-                    )}
-                  </strong>
-                  {marketCategory === "Ban" ||
-                  isWinnerCategory(marketCategory) ||
-                  selectedPredictionDefinition?.outcomeLabels ? (
-                    <em>
-                      {selectedPredictionGroup?.id === "ban-2026"
-                        ? predictionSelection.outcome === "yes"
-                          ? "banned"
-                          : "not banned"
-                        : selectedPredictionDefinition?.outcomeLabels ||
-                            predictionSelection.outcome === "yes"
-                          ? "to win"
-                          : "not to win"}
-                    </em>
-                  ) : null}
-                </span>
-                <b>{validPredictionPrice ? `${predictionPrice}%` : "—"}</b>
-              </div>
-            </div>
-          ) : null}
-          {activePredictionDisplayMode === "book" ? (
-            <>
-              <label htmlFor="prediction-sportsbook-stake">Bet amount</label>
-              <div className="betAmountField">
-                <input
-                  ref={predictionStakeRef}
-                  id="prediction-sportsbook-stake"
-                  type="number"
-                  inputMode="numeric"
-                  min={MIN_BET_AMOUNT}
-                  max={predictionSportsbookStakeLimit}
-                  step="1"
-                  placeholder="0"
-                  value={predictionStakeInput}
-                  onChange={(event) => {
-                    setPredictionStakeInput(event.target.value);
-                    setPredictionStakeTouched(true);
-                  }}
-                  aria-describedby="prediction-sportsbook-help"
-                />
-                <span>coins</span>
-              </div>
-              <small id="prediction-sportsbook-help" className="betSlipHelp">
-                Your bet fills immediately at the displayed price. A 2% taker fee applies.
-              </small>
-              <dl className="betQuote">
-                <div>
-                  <dt>Average price</dt>
-                  <dd>
-                    {predictionSportsbookQuote.averageFillPriceCents === undefined
-                      ? "—"
-                      : `${predictionSportsbookQuote.averageFillPriceCents.toFixed(1)}¢`}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Payout if correct</dt>
-                  <dd>
-                    {predictionSportsbookQuantity > 0
-                      ? `${predictionSportsbookQuantity.toLocaleString()} coins`
-                      : "—"}
-                  </dd>
-                </div>
-                <div className="betQuoteTotal">
-                  <dt>Total cost</dt>
-                  <dd>
-                    {validPredictionStake && predictionSportsbookFullyMatched
-                      ? `${formatCoinValue(predictionSportsbookTotal)} coins`
-                      : "—"}
-                  </dd>
-                </div>
-                <div className="betQuoteFee">
-                  <dt>Includes 2% fee</dt>
-                  <dd>
-                    {validPredictionStake && predictionSportsbookFullyMatched
-                      ? `${formatCoinValue(predictionSportsbookFee)} coins`
-                      : "—"}
-                  </dd>
-                </div>
-              </dl>
-              {predictionStakeTouched && !validPredictionStake ? (
-                <InlineState kind="error">
-                  {`Enter a whole coin amount from ${MIN_BET_AMOUNT} to ${predictionSportsbookStakeLimit}.`}
-                </InlineState>
-              ) : null}
-              {validPredictionStake && predictionSportsbookQuantity === 0 ? (
-                <InlineState kind="error">
-                  Increase the bet amount to buy at least one contract.
-                </InlineState>
-              ) : null}
-              {validPredictionStake &&
-              predictionSportsbookQuantity > 0 &&
-              !predictionSportsbookFullyMatched ? (
-                <InlineState kind="error">
-                  {`Only ${predictionSportsbookQuote.fillCostCoins.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })} coins are available at this price.`}
-                </InlineState>
-              ) : null}
-              {predictionSportsbookInsufficientBalance ? (
-                <InlineState kind="error">
-                  You need {formatCoinValue(predictionSportsbookTotal)} coins including the fee.
-                </InlineState>
-              ) : null}
-            </>
-          ) : (
-            <PredictionOrderComposer
-              definition={selectedPredictionDefinition}
-              density="compact"
-              idPrefix="prediction-betting-order"
-              outcome={predictionSelection.outcome}
-              side={predictionSide}
-              showSell={canSell}
-              onSideChange={selectPredictionSide}
-              outcomeDisabled={(entry) =>
-                (predictionSide === "sell" && availableContracts[entry] < 1) ||
-                Boolean(
-                  predictionRestrictionFor(
-                    selectedPredictionGroup?.id,
-                    selectedPredictionDefinition.username,
-                    entry,
-                    predictionSide,
-                  ),
-                )
-              }
-              outcomePrices={{
-                yes: selectedPredictionState?.book.yes.asks[0]?.priceCents,
-                no: selectedPredictionState?.book.no.asks[0]?.priceCents,
-              }}
-              quantityInput={predictionQuantityInput}
-              priceInput={predictionPriceInput}
-              primaryLabel={predictionSide === "sell" ? "Proceeds" : "Cost"}
-              primaryValue={
-                validPredictionPrice && validPredictionQuantity
-                  ? `${formatCoinValue(predictionSide === "sell" ? predictionSellProceeds : predictionEstimatedTotal)} coins`
-                  : "—"
-              }
-              secondaryLabel={predictionSide === "sell" ? "Available contracts" : "Max payout"}
-              secondaryValue={
-                predictionSide === "sell"
-                  ? availableContracts[selectedPredictionOutcome].toLocaleString()
-                  : validPredictionQuantity
-                    ? `${predictionQuantity.toLocaleString()} coins`
-                    : "—"
-              }
-              secondaryNote={
-                predictionSide === "buy" && validPredictionPrice && validPredictionQuantity ? (
-                  <span className={predictionEstimatedProfit >= 0 ? "isPositive" : "isNegative"}>
-                    {predictionEstimatedProfit >= 0 ? "+" : ""}
-                    {formatCoinValue(predictionEstimatedProfit)} coins
+      <h2
+        id="bet-slip-title"
+        className={group && !sportsbook ? "betSlipVisuallyHiddenTitle" : undefined}
+      >
+        {group && sportsbook ? "Sportsbook bet" : "Bet slip"}
+      </h2>
+      {group ? (
+        definition && selection ? (
+          <form onSubmit={submit}>
+            {sportsbook ? (
+              <div className="betSlipSelection">
+                <small>{group.title}</small>
+                <div className="betSlipContract">
+                  <span>
+                    <img
+                      src={countryCodeToFlagUrl(predictionOutcomeCountryCode(definition, outcome))}
+                      alt=""
+                      crossOrigin="anonymous"
+                      aria-hidden="true"
+                    />
+                    <strong>{predictionSportsbookOutcomeLabel(definition, outcome)}</strong>
+                    {winnerMarket || definition.outcomeLabels ? (
+                      <em>
+                        {definition.outcomeLabels || outcome === "yes" ? "to win" : "not to win"}
+                      </em>
+                    ) : null}
                   </span>
-                ) : undefined
-              }
-              onOutcomeChange={(entry) => {
-                selectPredictionOutcome(entry);
-                setPredictionPriceInput(
-                  String(
-                    predictionSide === "sell"
-                      ? (selectedPredictionState?.book[entry].bids[0]?.priceCents ??
-                          predictionPrice)
-                      : suggestedPredictionPrice(
-                          selectedPredictionDefinition,
-                          selectedPredictionState,
-                          entry,
-                        ),
-                  ),
-                );
-              }}
-              onQuantityChange={setPredictionQuantityInput}
-              onPriceChange={setPredictionPriceInput}
-            />
-          )}
-          {placePredictionMutation.error ? (
-            <InlineState kind="error">
-              {getErrorMessage(placePredictionMutation.error, "Unable to place this order.")}
-              <button
-                type="button"
-                disabled={placePredictionMutation.variables?.username !== username}
-                onClick={() => {
-                  if (placePredictionMutation.variables)
-                    placePredictionMutation.mutate(placePredictionMutation.variables);
-                }}
-              >
-                Retry original order
-              </button>
-            </InlineState>
-          ) : null}
-          {selectedPredictionRestriction ? (
-            <InlineState kind="error">
-              {predictionOrderRestrictionMessage(selectedPredictionRestriction)}
-            </InlineState>
-          ) : null}
-          {successMessage ? <InlineState kind="success">{successMessage}</InlineState> : null}
-          {activePredictionDisplayMode === "book" ? (
-            isAuthenticated ? (
-              <button
-                className="betSubmitButton"
-                type="submit"
-                disabled={
-                  !validPredictionPrice ||
-                  !validPredictionStake ||
-                  !predictionSportsbookFullyMatched ||
-                  predictionSportsbookInsufficientBalance ||
-                  Boolean(selectedPredictionRestriction) ||
-                  !selectedPredictionOpen ||
-                  placePredictionMutation.isPending
+                  <b>{validPrice ? `${price}%` : "—"}</b>
+                </div>
+              </div>
+            ) : null}
+            {sportsbook ? (
+              <>
+                <label htmlFor="prediction-sportsbook-stake">Bet amount</label>
+                <div className="betAmountField">
+                  <input
+                    ref={predictionStakeRef}
+                    id="prediction-sportsbook-stake"
+                    type="number"
+                    inputMode="numeric"
+                    min={MIN_BET_AMOUNT}
+                    max={stakeLimit}
+                    step="1"
+                    placeholder="0"
+                    value={stakeInput}
+                    onChange={(event) => {
+                      setStakeInput(event.target.value);
+                      setStakeTouched(true);
+                    }}
+                    aria-describedby="prediction-sportsbook-help"
+                  />
+                  <span>coins</span>
+                </div>
+                <small id="prediction-sportsbook-help" className="betSlipHelp">
+                  Your bet fills immediately at the displayed price. A 2% taker fee applies.
+                </small>
+                <dl className="betQuote">
+                  <div>
+                    <dt>Average price</dt>
+                    <dd>
+                      {quote.averageFillPriceCents === undefined
+                        ? "—"
+                        : `${quote.averageFillPriceCents.toFixed(1)}¢`}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Payout if correct</dt>
+                    <dd>{payout > 0 ? `${payout.toLocaleString()} coins` : "—"}</dd>
+                  </div>
+                  <div className="betQuoteTotal">
+                    <dt>Total cost</dt>
+                    <dd>{fills ? `${formatCoinValue(cost)} coins` : "—"}</dd>
+                  </div>
+                  <div className="betQuoteFee">
+                    <dt>Includes 2% fee</dt>
+                    <dd>{fills ? `${formatCoinValue(fee)} coins` : "—"}</dd>
+                  </div>
+                </dl>
+                {stakeTouched && !validStake ? (
+                  <InlineState kind="error">
+                    {`Enter a whole coin amount from ${MIN_BET_AMOUNT} to ${stakeLimit}.`}
+                  </InlineState>
+                ) : null}
+                {validStake && payout === 0 ? (
+                  <InlineState kind="error">
+                    Increase the bet amount to buy at least one contract.
+                  </InlineState>
+                ) : null}
+                {validStake && payout > 0 && !fills ? (
+                  <InlineState kind="error">
+                    {`Only ${quote.fillCostCoins.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })} coins are available at this price.`}
+                  </InlineState>
+                ) : null}
+                {insufficientBalance ? (
+                  <InlineState kind="error">
+                    You need {formatCoinValue(cost)} coins including the fee.
+                  </InlineState>
+                ) : null}
+              </>
+            ) : (
+              <PredictionOrderComposer
+                definition={definition}
+                density="compact"
+                idPrefix="prediction-betting-order"
+                outcome={outcome}
+                side={side}
+                showSell={canSell}
+                onSideChange={selectSide}
+                outcomeDisabled={(entry) =>
+                  (side === "sell" && availableByOutcome[entry] < 1) ||
+                  Boolean(restrictionFor(definition, entry, side))
                 }
-              >
-                {placePredictionMutation.isPending
-                  ? "Placing bet…"
-                  : validPredictionStake && predictionSportsbookFullyMatched
-                    ? `Place bet · ${formatCoinValue(predictionSportsbookTotal)} coins`
-                    : "Place bet"}
+                outcomePrices={{
+                  yes: state?.book.yes.asks[0]?.priceCents,
+                  no: state?.book.no.asks[0]?.priceCents,
+                }}
+                quantityInput={quantityInput}
+                priceInput={priceInput}
+                primaryLabel={side === "sell" ? "Proceeds" : "Cost"}
+                primaryValue={
+                  validPrice && validQuantity ? `${formatCoinValue(orderQuote.total)} coins` : "—"
+                }
+                secondaryLabel={side === "sell" ? "Available contracts" : "Max payout"}
+                secondaryValue={
+                  side === "sell"
+                    ? availableContracts.toLocaleString()
+                    : validQuantity
+                      ? `${quantity.toLocaleString()} coins`
+                      : "—"
+                }
+                secondaryNote={
+                  side === "buy" && validPrice && validQuantity ? (
+                    <span className={orderQuote.profit >= 0 ? "isPositive" : "isNegative"}>
+                      {orderQuote.profit >= 0 ? "+" : ""}
+                      {formatCoinValue(orderQuote.profit)} coins
+                    </span>
+                  ) : undefined
+                }
+                onOutcomeChange={(entry) => {
+                  selectOutcome(entry);
+                  setPriceInput(
+                    String(
+                      side === "sell"
+                        ? (state?.book[entry].bids[0]?.priceCents ?? price)
+                        : suggestedPredictionPrice(definition, state, entry),
+                    ),
+                  );
+                }}
+                onQuantityChange={setQuantityInput}
+                onPriceChange={setPriceInput}
+              />
+            )}
+            {mutation.error ? (
+              <InlineState kind="error">
+                {getErrorMessage(mutation.error, "Unable to place this order.")}
+                <button
+                  type="button"
+                  disabled={!canRetry}
+                  onClick={() => {
+                    if (canRetry && originalOrder) mutation.mutate(originalOrder);
+                  }}
+                >
+                  Retry original order
+                </button>
+              </InlineState>
+            ) : null}
+            {restriction ? (
+              <InlineState kind="error">
+                {predictionOrderRestrictionMessage(restriction, group.id)}
+              </InlineState>
+            ) : null}
+            {successMessage ? <InlineState kind="success">{successMessage}</InlineState> : null}
+            {isAuthenticated ? (
+              <button className="betSubmitButton" type="submit" disabled={!canSubmit}>
+                {mutation.isPending
+                  ? sportsbook
+                    ? "Placing bet…"
+                    : "Placing order…"
+                  : submitLabel}
               </button>
             ) : (
               <button
@@ -336,44 +317,18 @@ export const BettingOrderTicket = ({
                 disabled={authLoading}
                 onClick={() => void login("/betting")}
               >
-                Log in to bet
+                {sportsbook ? "Log in to bet" : "Log in to trade"}
               </button>
-            )
-          ) : isAuthenticated ? (
-            <button
-              className="betSubmitButton"
-              type="submit"
-              disabled={
-                !validPredictionPrice ||
-                !validPredictionQuantity ||
-                !hasSellInventory ||
-                Boolean(selectedPredictionRestriction) ||
-                !selectedPredictionOpen ||
-                placePredictionMutation.isPending
-              }
-            >
-              {placePredictionMutation.isPending
-                ? "Placing order…"
-                : `${predictionSide === "sell" ? "Sell" : predictionBuyQuote.filledQuantity > 0 ? "Buy" : "Bid"} ${selectedPredictionOutcome === "yes" ? "Yes" : "No"} · ${validPredictionPrice ? `${predictionPrice}¢` : "—"}`}
-            </button>
-          ) : (
-            <button
-              className="betSubmitButton"
-              type="button"
-              disabled={authLoading}
-              onClick={() => void login("/betting")}
-            >
-              Log in to trade
-            </button>
-          )}
-        </form>
-      ) : (
-        <p className="betSlipEmpty">
-          {activePredictionDisplayMode === "book"
-            ? "Choose an outcome to add it to the bet slip."
-            : "Choose Yes or No beside a player to start an order."}
-        </p>
-      )
-    ) : null}
-  </aside>
-);
+            )}
+          </form>
+        ) : (
+          <p className="betSlipEmpty">
+            {sportsbook
+              ? "Choose an outcome to add it to the bet slip."
+              : "Choose Yes or No beside a player to start an order."}
+          </p>
+        )
+      ) : null}
+    </aside>
+  );
+};

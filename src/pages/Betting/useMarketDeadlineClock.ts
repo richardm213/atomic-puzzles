@@ -9,19 +9,20 @@ export const useMarketDeadlineClock = (markets: MarketDeadline[]): number => {
   const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   useEffect(() => {
-    const nextDeadline = markets
-      .filter((market) => market.status === "open" && market.closesAt)
-      .map((market) => Date.parse(market.closesAt ?? ""))
-      .filter((deadline) => Number.isFinite(deadline) && deadline > Date.now())
-      .sort((left, right) => left - right)[0];
-    if (!nextDeadline) return;
-
+    const now = Date.now();
+    let nextDeadline = Infinity;
+    for (const market of markets) {
+      if (market.status !== "open" || !market.closesAt) continue;
+      const deadline = Date.parse(market.closesAt);
+      if (deadline > now && deadline < nextDeadline) nextDeadline = deadline;
+    }
+    if (!Number.isFinite(nextDeadline)) return;
     const timeout = window.setTimeout(
       () => setCurrentTime(Date.now()),
-      Math.min(nextDeadline - Date.now() + 250, 2_147_483_647),
+      Math.min(nextDeadline - now + 250, 2_147_483_647),
     );
     return () => window.clearTimeout(timeout);
-  }, [markets]);
+  }, [markets, currentTime]);
 
-  return currentTime;
+  return Math.max(currentTime, Date.now());
 };

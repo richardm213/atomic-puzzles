@@ -369,10 +369,8 @@ type BettingHistoryProps = {
   predictionMarketGroups: PredictionMarketGroup[];
   predictionMarketStates: PredictionMarketState[];
   countryByPlayer: Record<string, string>;
-  myBetsLoading: boolean;
-  allBetsLoading: boolean;
-  myBetsError: unknown;
-  allBetsError: unknown;
+  loading: boolean;
+  error: unknown;
 };
 
 const historyStatusFilters = new Set(["all", "open", "resolved"]);
@@ -406,10 +404,8 @@ export const BettingHistory = ({
   predictionMarketGroups,
   predictionMarketStates,
   countryByPlayer,
-  myBetsLoading,
-  allBetsLoading,
-  myBetsError,
-  allBetsError,
+  loading,
+  error,
 }: BettingHistoryProps) => {
   const [returnDisplay, setReturnDisplay] = usePersistedState(
     "betting.history.returnDisplay",
@@ -456,26 +452,20 @@ export const BettingHistory = ({
 
     return [...options].map(([id, label]) => ({ id, label }));
   }, [allBets, filters.status, myBets, predictionMarketGroups, predictionMarketStates]);
-  const visibleMyBets = useMemo(
+  const mine = view === "mine";
+  const bets = mine ? myBets : allBets;
+  const visibleBets = useMemo(
     () =>
       filterHistoryBets({
-        bets: myBets,
+        bets,
         status: filters.status,
         marketId: filters.market,
+        bettor: mine ? "" : filters.bettor,
       }),
-    [filters.market, filters.status, myBets],
+    [bets, filters, mine],
   );
-  const visibleAllBets = useMemo(
-    () =>
-      filterHistoryBets({
-        bets: allBets,
-        status: filters.status,
-        marketId: filters.market,
-        bettor: filters.bettor,
-      }),
-    [allBets, filters.bettor, filters.market, filters.status],
-  );
-  const filtersActive = filters.status !== "all" || filters.market !== "all";
+  const filtersActive =
+    filters.status !== "all" || filters.market !== "all" || (!mine && filters.bettor.trim());
 
   useEffect(() => {
     if (view !== "all") return;
@@ -501,7 +491,7 @@ export const BettingHistory = ({
   };
 
   let content;
-  if (view === "mine" && !isAuthenticated) {
+  if (mine && !isAuthenticated) {
     content = (
       <div className="bettingLoginPrompt">
         <h2>Log in to view your bets</h2>
@@ -510,45 +500,28 @@ export const BettingHistory = ({
         </button>
       </div>
     );
-  } else if (view === "mine" && myBetsError) {
+  } else if (error) {
     content = (
       <InlineState kind="error">
-        {getErrorMessage(myBetsError, "Unable to load your bets.")}
+        {getErrorMessage(error, mine ? "Unable to load your bets." : "Unable to load all bets.")}
       </InlineState>
     );
-  } else if (view === "mine" && myBetsLoading) {
-    content = <RouteLoadingFallback />;
-  } else if (view === "mine") {
-    content = (
-      <BetHistoryTable
-        returnDisplay={returnDisplay}
-        bets={visibleMyBets}
-        countryByPlayer={countryByPlayer}
-        emptyMessage={
-          filtersActive ? "No bets match these filters." : "You have not placed any bets."
-        }
-      />
-    );
-  } else if (allBetsError) {
-    content = (
-      <InlineState kind="error">
-        {getErrorMessage(allBetsError, "Unable to load all bets.")}
-      </InlineState>
-    );
-  } else if (allBetsLoading) {
+  } else if (loading) {
     content = <RouteLoadingFallback />;
   } else {
     content = (
       <BetHistoryTable
         returnDisplay={returnDisplay}
-        bets={visibleAllBets}
+        bets={visibleBets}
         countryByPlayer={countryByPlayer}
         emptyMessage={
-          filters.bettor.trim() || filtersActive
+          filtersActive
             ? "No bets match these filters."
-            : "No bets have been placed yet."
+            : mine
+              ? "You have not placed any bets."
+              : "No bets have been placed yet."
         }
-        showUsername
+        showUsername={!mine}
       />
     );
   }

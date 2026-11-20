@@ -1,16 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import { useAuth } from "../../context/AuthContext";
 import { usePersistedState } from "../../hooks/usePersistedState";
-import { usePredictionOrderSide } from "../../hooks/usePredictionOrderSide";
 import {
   findCurrentTournamentOpponent,
   isRestrictedPredictionOrder,
-  MAX_BET_STAKE,
-  MIN_BET_AMOUNT,
-  predictionOrderRestrictionMessage,
 } from "../../lib/betting/betting";
 import { bettingQueryKeys } from "../../lib/betting/bettingQueries";
 import { coinSummaryQueryOptions, updateCachedCoinBalance } from "../../lib/coins/coinQueries";
@@ -25,45 +21,31 @@ import {
 } from "../../lib/predictionMarkets/predictionMarketQueries";
 import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predictionMarketRealtime";
 import {
+  availablePredictionContracts,
   comparePredictionMarketPriority,
-  MAX_PREDICTION_ORDER_QUANTITY,
   placePredictionOrder,
-  predictionBuyOrderCost,
+  type PredictionMarketDefinition,
+  type PredictionMarketState,
   predictionMarketVolume,
   type PredictionOrder,
   type PredictionOrderSide,
   type PredictionOutcome,
-  predictionTakerFee,
-  quotePredictionBuy,
-  quotePredictionSell,
   sortPredictionMarketsByChance,
   suggestedPredictionPrice,
 } from "../../lib/predictionMarkets/predictionMarkets";
-import { buildBetHistory, predictionPnlByMarketId } from "./bettingHistoryModel";
+import { personalMarketPnl } from "./bettingHistoryModel";
 import { useBettingHistory } from "./useBettingHistory";
 import { useMarketDeadlineClock } from "./useMarketDeadlineClock";
 
 type BettingView = "markets" | "mine" | "all" | "suggestions";
 type WinnerPosition = "yes" | "no";
 type PredictionDisplayMode = "book" | "market";
-type PredictionMarketCategory = (typeof predictionMarketCategories)[number];
+type PredictionMarketCategory = keyof typeof predictionGroupIdByCategory;
 type PredictionSelection = { marketId: string; outcome: PredictionOutcome };
 const bettingViews: readonly BettingView[] = ["markets", "mine", "all", "suggestions"];
 const predictionDisplayModeSchema = z.enum(["book", "market"]);
 const predictionDisplayModeStorageKey = "betting:prediction-display-mode";
 const defaultMarketCategory = "AWC Semifinals";
-const predictionMarketCategories = [
-  "AWC Semifinals",
-  "AWC Losers 2",
-  "AWC Quarterfinals",
-  "Nov Shield",
-  "2026 AWC Champion",
-  "2026 AWC Side Bets",
-  "AWC Round of 16",
-  "Ban",
-  "AWC Losers 1",
-  "AWC 2027",
-] as const;
 export const otherMarketCategories: readonly string[] = [
   "AWC Quarterfinals",
   "AWC Round of 16",
@@ -71,18 +53,21 @@ export const otherMarketCategories: readonly string[] = [
   "AWC 2027",
   "Ban",
 ];
-const predictionGroupIdByCategory: Record<PredictionMarketCategory, string> = {
+const predictionGroupIdByCategory = {
   "AWC Semifinals": "awc-2026-semifinals",
-  "AWC Quarterfinals": "awc-2026-quarterfinals",
-  "AWC Losers 1": "awc-2026-losers-round-1",
   "AWC Losers 2": "awc-2026-losers-round-2",
-  "AWC Round of 16": "awc-2026-round-of-16",
+  "AWC Quarterfinals": "awc-2026-quarterfinals",
+  "Nov Shield": "november-atomic-shield-2026",
   "2026 AWC Champion": "awc-2026-champion",
   "2026 AWC Side Bets": "awc-2026-side-bets",
-  "AWC 2027": "awc-2027-champion",
+  "AWC Round of 16": "awc-2026-round-of-16",
   Ban: "ban-2026",
-  "Nov Shield": "november-atomic-shield-2026",
+  "AWC Losers 1": "awc-2026-losers-round-1",
+  "AWC 2027": "awc-2027-champion",
 };
+export const predictionMarketCategories = Object.keys(
+  predictionGroupIdByCategory,
+) as PredictionMarketCategory[];
 export const isWinnerCategory = (category: string): boolean =>
   category === "2026 AWC Champion" || category === "AWC 2027" || category === "Nov Shield";
 const marketCategorySlug = (category: string): string => {
@@ -108,7 +93,7 @@ const marketCategoryFromSearch = (search: string): PredictionMarketCategory => {
 };
 
 const isPredictionMarketCategory = (category: string): category is PredictionMarketCategory =>
-  predictionMarketCategories.includes(category as (typeof predictionMarketCategories)[number]);
+  Object.hasOwn(predictionGroupIdByCategory, category);
 
 const bettingViewFromSearch = (search: string): BettingView => {
   const requestedView = new URLSearchParams(search).get("view") ?? "";
@@ -117,29 +102,47 @@ const bettingViewFromSearch = (search: string): BettingView => {
     : "markets";
 };
 
-const bettingViewFromLocation = (): BettingView =>
-  typeof window === "undefined" ? "markets" : bettingViewFromSearch(window.location.search);
+const readBettingLocation = () => {
+  const search = typeof window === "undefined" ? "" : window.location.search;
+  return {
+    view: bettingViewFromSearch(search),
+    marketCategory: marketCategoryFromSearch(search),
+    winnerPosition: new URLSearchParams(search).get("side") === "no" ? "no" : "yes",
+  } satisfies {
+    view: BettingView;
+    marketCategory: PredictionMarketCategory;
+    winnerPosition: WinnerPosition;
+  };
+};
 
-const winnerPositionFromSearch = (search: string): WinnerPosition =>
-  new URLSearchParams(search).get("side") === "no" ? "no" : "yes";
+const writeBettingLocation = (
+  view: BettingView,
+  category: PredictionMarketCategory,
+  position: WinnerPosition,
+  push = false,
+) => {
+  const url = new URL(window.location.href);
+  const { searchParams } = url;
+  searchParams.set("view", view);
+  if (view === "markets") searchParams.set("market", marketCategorySlug(category));
+  else searchParams.delete("market");
+  if (view === "markets" && isWinnerCategory(category)) searchParams.set("side", position);
+  else searchParams.delete("side");
+  if (view !== "all") {
+    for (const filter of ["bettor", "strike", "status"]) searchParams.delete(filter);
+  }
+  if (url.href === window.location.href) return;
+  if (push) window.history.pushState({}, "", url);
+  else window.history.replaceState({}, "", url);
+};
 
 export const useBettingWorkspace = () => {
   const { isAuthenticated, isLoading: authLoading, login, user } = useAuth();
   const queryClient = useQueryClient();
   const username = user?.username ?? "anonymous";
-  const [view, setView] = useState<BettingView>(bettingViewFromLocation);
-  const [marketCategory, setMarketCategory] = useState(() =>
-    typeof window === "undefined"
-      ? defaultMarketCategory
-      : marketCategoryFromSearch(window.location.search),
-  );
-  const [winnerPosition, setWinnerPosition] = useState<WinnerPosition>(() =>
-    typeof window === "undefined" ? "yes" : winnerPositionFromSearch(window.location.search),
-  );
+  const [{ view, marketCategory, winnerPosition }, setLocation] = useState(readBettingLocation);
   const [predictionSelection, setPredictionSelection] = useState<PredictionSelection | null>(null);
-  const [expandedPredictionMarketId, setExpandedPredictionMarketId] = useState<string | null>(null);
-  const [expandedPredictionOutcome, setExpandedPredictionOutcome] =
-    useState<PredictionOutcome>("yes");
+  const [expandedStrike, setExpandedStrike] = useState<PredictionSelection | null>(null);
   const [editingOrderContext, setEditingOrderContext] = useState<{
     marketId: string;
     outcome: PredictionOutcome;
@@ -168,10 +171,6 @@ export const useBettingWorkspace = () => {
     () => predictionCatalogQuery.data ?? [],
     [predictionCatalogQuery.data],
   );
-  const predictionMarkets = useMemo(
-    () => predictionMarketGroups.flatMap((group) => group.markets),
-    [predictionMarketGroups],
-  );
   const activePredictionGroup = predictionMarketGroups.find(
     (group) => group.id === predictionGroupIdByCategory[marketCategory],
   );
@@ -188,10 +187,15 @@ export const useBettingWorkspace = () => {
     ...tournamentBracketQueryOptions("awc2026"),
     enabled: view === "markets" && isAuthenticated && marketCategory === "2026 AWC Champion",
   });
-  const predictionMarketIds = useMemo(() => {
-    const markets = view === "markets" ? activePredictionGroup?.markets : undefined;
-    return (showingHistory ? predictionMarkets : (markets ?? [])).map((market) => market.id);
-  }, [activePredictionGroup?.markets, predictionMarkets, showingHistory, view]);
+  const predictionMarketIds = useMemo(
+    () =>
+      showingHistory
+        ? predictionMarketGroups.flatMap((group) => group.markets.map((market) => market.id))
+        : view === "markets"
+          ? (activePredictionGroup?.markets.map((market) => market.id) ?? [])
+          : [],
+    [activePredictionGroup, predictionMarketGroups, showingHistory, view],
+  );
   const predictionMarketQuery = useQuery({
     ...predictionMarketBatchQueryOptions(predictionMarketIds),
     enabled: predictionMarketIds.length > 0,
@@ -210,12 +214,11 @@ export const useBettingWorkspace = () => {
     [predictionMarketStates],
   );
   const countryByPlayer = countriesQuery.data ?? {};
-  const currentTime = useMarketDeadlineClock(
-    predictionMarketStates.map((state) => ({
-      status: state.market.status,
-      closesAt: state.market.closesAt,
-    })),
+  const deadlines = useMemo(
+    () => predictionMarketStates.map(({ market }) => market),
+    [predictionMarketStates],
   );
+  const currentTime = useMarketDeadlineClock(deadlines);
   const history = useBettingHistory({
     showingHistory,
     isAuthenticated,
@@ -229,7 +232,6 @@ export const useBettingWorkspace = () => {
     predictionMarketGroups,
     predictionMarketStates,
   });
-  const marketCategories = predictionMarketCategories;
   const predictionMarketOnlyCategory =
     marketCategory === "Ban" || marketCategory === "2026 AWC Side Bets";
   const activePredictionDisplayMode: PredictionDisplayMode = predictionMarketOnlyCategory
@@ -276,101 +278,10 @@ export const useBettingWorkspace = () => {
         total + predictionMarketVolume(predictionStateByMarketId.get(definition.id)),
       0,
     ) ?? 0;
-  const selectedPredictionDefinition = predictionSelection
-    ? predictionMarkets.find((market) => market.id === predictionSelection.marketId)
+  const selectedMarket = predictionSelection
+    ? activePredictionGroup?.markets.find((market) => market.id === predictionSelection.marketId)
     : undefined;
-  const selectedPredictionGroup = predictionSelection
-    ? predictionMarketGroups.find((group) =>
-        group.markets.some((market) => market.id === predictionSelection.marketId),
-      )
-    : undefined;
-  const selectedPredictionState = predictionSelection
-    ? predictionStateByMarketId.get(predictionSelection.marketId)
-    : undefined;
-  const balance = coinSummaryQuery.data?.balance ?? 0;
-  const predictionPrice = Number(predictionPriceInput);
-  const predictionQuantity = Number(predictionQuantityInput);
-  const validPredictionPrice =
-    Number.isInteger(predictionPrice) && predictionPrice >= 1 && predictionPrice <= 99;
-  const validPredictionQuantity =
-    Number.isInteger(predictionQuantity) &&
-    predictionQuantity >= 1 &&
-    predictionQuantity <= MAX_PREDICTION_ORDER_QUANTITY;
-  const selectedPredictionOutcome = predictionSelection?.outcome ?? "yes";
-  const {
-    availableByOutcome: availableContracts,
-    canSell,
-    hasSellInventory,
-    selectSide: selectPredictionSide,
-    selectOutcome: selectPredictionOutcome,
-  } = usePredictionOrderSide({
-    positions: selectedPredictionState?.positions,
-    isAuthenticated,
-    side: predictionSide,
-    outcome: selectedPredictionOutcome,
-    quantityInput: predictionQuantityInput,
-    onSideChange: setPredictionSide,
-    onSelectionChange: () => setSuccessMessage(""),
-    onOutcomeChange: (outcome) =>
-      setPredictionSelection((current) => (current ? { ...current, outcome } : null)),
-    onQuantityChange: setPredictionQuantityInput,
-  });
-  const selectedPredictionSportsbookPrice =
-    selectedPredictionState?.book[selectedPredictionOutcome].asks[0]?.priceCents;
-  useEffect(() => {
-    if (activePredictionDisplayMode !== "book" || !predictionSelection) return;
-    setPredictionPriceInput(
-      selectedPredictionSportsbookPrice === undefined
-        ? ""
-        : String(selectedPredictionSportsbookPrice),
-    );
-  }, [activePredictionDisplayMode, predictionSelection, selectedPredictionSportsbookPrice]);
-  const predictionBuyQuote = quotePredictionBuy(
-    selectedPredictionState?.book[selectedPredictionOutcome].asks ?? [],
-    validPredictionPrice ? predictionPrice : 0,
-    validPredictionQuantity ? predictionQuantity : 0,
-  );
-  const predictionEstimatedTotal = predictionBuyOrderCost(
-    predictionBuyQuote,
-    validPredictionPrice ? predictionPrice : 0,
-  );
-  const predictionEstimatedProfit = predictionQuantity - predictionEstimatedTotal;
-  const predictionSellQuote = quotePredictionSell(
-    selectedPredictionState?.book[selectedPredictionOutcome].bids ?? [],
-    validPredictionPrice ? predictionPrice : 100,
-    validPredictionQuantity ? predictionQuantity : 0,
-  );
-  const predictionSellProceeds = Math.max(
-    0,
-    predictionSellQuote.proceedsCoins - predictionTakerFee(predictionSellQuote.proceedsCoins),
-  );
-  const predictionStake = Number(predictionStakeInput);
-  const predictionSportsbookStakeLimit = validPredictionPrice
-    ? Math.min(MAX_BET_STAKE, predictionPrice * 100)
-    : MAX_BET_STAKE;
-  const validPredictionStake =
-    Number.isInteger(predictionStake) &&
-    predictionStake >= MIN_BET_AMOUNT &&
-    predictionStake <= predictionSportsbookStakeLimit;
-  const predictionSportsbookQuantity =
-    validPredictionStake && validPredictionPrice
-      ? Math.floor((predictionStake * 100) / predictionPrice)
-      : 0;
-  const predictionSportsbookQuote = quotePredictionBuy(
-    selectedPredictionState?.book[selectedPredictionOutcome].asks ?? [],
-    validPredictionPrice ? predictionPrice : 0,
-    predictionSportsbookQuantity,
-  );
-  const predictionSportsbookFee = predictionTakerFee(predictionSportsbookQuote.fillCostCoins);
-  const predictionSportsbookTotal =
-    predictionSportsbookQuote.fillCostCoins + predictionSportsbookFee;
-  const predictionSportsbookFullyMatched =
-    predictionSportsbookQuantity > 0 && predictionSportsbookQuote.restingQuantity === 0;
-  const predictionSportsbookInsufficientBalance =
-    isAuthenticated && predictionSportsbookTotal > balance;
-  const selectedPredictionOpen =
-    selectedPredictionState?.market.status === "open" &&
-    Date.parse(selectedPredictionState.market.closesAt) > Date.now();
+  const selectedState = selectedMarket && predictionStateByMarketId.get(selectedMarket.id);
   const currentAwcOpponent = findCurrentTournamentOpponent(
     (awcBracketQuery.data?.matches ?? []).map((match) => ({
       p1: match.p1,
@@ -382,163 +293,95 @@ export const useBettingWorkspace = () => {
     username,
   );
   const predictionRestrictionFor = (
-    groupId: string | undefined,
-    marketPlayer: string,
+    definition: PredictionMarketDefinition,
     outcome: PredictionOutcome,
     side: PredictionOrderSide = "buy",
-  ) => {
-    const definition = predictionMarkets.find(
-      (candidate) => candidate.username.toLowerCase() === marketPlayer.toLowerCase(),
-    );
-    return isRestrictedPredictionOrder({
-      groupId,
-      marketPlayer,
-      yesPlayer: definition?.outcomeLabels?.yes,
-      noPlayer: definition?.outcomeLabels?.no,
+  ) =>
+    isRestrictedPredictionOrder({
+      groupId: activePredictionGroup?.id,
+      marketPlayer: definition.username,
+      yesPlayer: definition.outcomeLabels?.yes,
+      noPlayer: definition.outcomeLabels?.no,
       username,
       currentOpponent: currentAwcOpponent,
       outcome,
       side,
     });
-  };
-  const predictionRestrictionTitle = (
-    restriction: ReturnType<typeof isRestrictedPredictionOrder>,
-  ) =>
-    restriction
-      ? predictionOrderRestrictionMessage(
-          restriction,
-          selectedPredictionGroup?.id ?? activePredictionGroup?.id,
-        )
-      : undefined;
-  const selectedPredictionRestriction = selectedPredictionDefinition
-    ? predictionRestrictionFor(
-        selectedPredictionGroup?.id,
-        selectedPredictionDefinition.username,
-        selectedPredictionOutcome,
-        predictionSide,
-      )
-    : null;
-  const personalPredictionPnlByMarketId = useMemo(() => {
-    if (!isAuthenticated || view !== "markets" || !activePredictionGroup) return new Map();
-    const personalBets = buildBetHistory({
-      predictionPositions: predictionMarketStates.flatMap((state) =>
-        (state.historyPositions ?? []).filter(
-          (position) => position.username.toLowerCase() === username.toLowerCase(),
-        ),
+  const pnl = useMemo(
+    () =>
+      personalMarketPnl(
+        isAuthenticated && view === "markets" ? activePredictionGroup : undefined,
+        predictionMarketStates,
+        username,
       ),
-      predictionMarketGroups: [activePredictionGroup],
-      predictionMarketStates,
-    });
-    return predictionPnlByMarketId(personalBets);
-  }, [activePredictionGroup, isAuthenticated, predictionMarketStates, username, view]);
-  const activePredictionGroupPnl = useMemo(() => {
-    if (!isAuthenticated || !activePredictionGroup) return null;
+    [activePredictionGroup, isAuthenticated, predictionMarketStates, username, view],
+  );
 
-    const values = activePredictionGroup.markets
-      .map((market) => personalPredictionPnlByMarketId.get(market.id))
-      .filter((value): value is number => value !== undefined);
-    if (!values.length) return null;
+  const clearSelection = useCallback(() => {
+    setPredictionSelection(null);
+    setExpandedStrike(null);
+  }, []);
 
-    const total = values.reduce((sum, value) => sum + value, 0);
-    return Math.abs(total) >= 0.005 ? total : null;
-  }, [activePredictionGroup, isAuthenticated, personalPredictionPnlByMarketId]);
   useEffect(() => {
     const syncViewFromHistory = () => {
-      setView(bettingViewFromLocation());
-      setMarketCategory(marketCategoryFromSearch(window.location.search));
-      setWinnerPosition(winnerPositionFromSearch(window.location.search));
-      setPredictionSelection(null);
-      setExpandedPredictionMarketId(null);
+      setLocation(readBettingLocation());
+      clearSelection();
     };
     window.addEventListener("popstate", syncViewFromHistory);
     return () => window.removeEventListener("popstate", syncViewFromHistory);
-  }, [marketCategories]);
+  }, [clearSelection]);
 
   useEffect(() => {
-    const currentUrl = new URL(window.location.href);
-    currentUrl.searchParams.set("view", view);
-    if (view === "markets") {
-      currentUrl.searchParams.set("market", marketCategorySlug(marketCategory));
-      if (isWinnerCategory(marketCategory)) {
-        currentUrl.searchParams.set("side", winnerPosition);
-      } else {
-        currentUrl.searchParams.delete("side");
-      }
-    } else {
-      currentUrl.searchParams.delete("market");
-      currentUrl.searchParams.delete("side");
-    }
-    if (view !== "all") {
-      currentUrl.searchParams.delete("bettor");
-      currentUrl.searchParams.delete("strike");
-      currentUrl.searchParams.delete("status");
-    }
-    if (
-      `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}` ===
-      `${window.location.pathname}${window.location.search}${window.location.hash}`
-    )
-      return;
-    window.history.replaceState(
-      {},
-      "",
-      `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
-    );
+    writeBettingLocation(view, marketCategory, winnerPosition);
   }, [marketCategory, view, winnerPosition]);
 
   const selectView = (nextView: BettingView) => {
     if (nextView === view) return;
-    const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.set("view", nextView);
-    if (nextView === "markets") {
-      nextUrl.searchParams.set("market", marketCategorySlug(marketCategory));
-      if (isWinnerCategory(marketCategory)) {
-        nextUrl.searchParams.set("side", winnerPosition);
-      }
-    } else {
-      nextUrl.searchParams.delete("market");
-      nextUrl.searchParams.delete("side");
-    }
-    window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
-    setView(nextView);
+    writeBettingLocation(nextView, marketCategory, winnerPosition, true);
+    setLocation({ view: nextView, marketCategory, winnerPosition });
   };
 
-  const selectMarketCategory = (nextCategory: string) => {
-    if (!isPredictionMarketCategory(nextCategory) || nextCategory === marketCategory) return;
-    const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.set("view", "markets");
-    nextUrl.searchParams.set("market", marketCategorySlug(nextCategory));
-    if (isWinnerCategory(nextCategory)) {
-      nextUrl.searchParams.set("side", winnerPosition);
-    } else {
-      nextUrl.searchParams.delete("side");
-    }
-    window.history.pushState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
-    setMarketCategory(nextCategory);
-    setPredictionSelection(null);
-    setExpandedPredictionMarketId(null);
+  const selectMarketCategory = (category: string) => {
+    if (!isPredictionMarketCategory(category) || category === marketCategory) return;
+    writeBettingLocation("markets", category, winnerPosition, true);
+    setLocation({ view: "markets", marketCategory: category, winnerPosition });
+    clearSelection();
   };
 
-  const selectWinnerPosition = (nextPosition: WinnerPosition) => {
-    if (nextPosition === winnerPosition) return;
-    setWinnerPosition(nextPosition);
+  const selectWinnerPosition = (position: WinnerPosition) => {
+    if (position === winnerPosition) return;
+    setLocation({ view, marketCategory, winnerPosition: position });
     setPredictionSelection(null);
+  };
+
+  const selectDisplayMode = (mode: PredictionDisplayMode) => {
+    setPredictionDisplayMode(mode);
+    clearSelection();
+    setSuccessMessage("");
+  };
+
+  const applyOrderUpdate = (
+    { balance, state }: { balance: number; state: PredictionMarketState },
+    account = username,
+  ) => {
+    updateCachedCoinBalance(queryClient, account, balance);
+    patchPredictionMarketState(queryClient, state);
+    void queryClient.invalidateQueries({ queryKey: bettingQueryKeys.predictionPositions });
   };
 
   const placePredictionMutation = useMutation({
     mutationFn: placePredictionOrder,
-    onSuccess: (result) => {
+    onSuccess: (result, order) => {
       setSuccessMessage(
         result.cancelledForInsufficientBalance
           ? "Order cancelled because your available coin balance was too low when it matched."
-          : activePredictionDisplayMode === "book"
+          : order.budgetCoins !== undefined
             ? "Bet placed."
             : "Prediction order placed.",
       );
       setPredictionStakeInput("");
       setPredictionStakeTouched(false);
-      updateCachedCoinBalance(queryClient, username, result.balance);
-      patchPredictionMarketState(queryClient, result.state);
-      void queryClient.invalidateQueries({ queryKey: bettingQueryKeys.predictionPositions });
+      applyOrderUpdate(result, order.username);
     },
   });
 
@@ -547,11 +390,12 @@ export const useBettingWorkspace = () => {
     outcome: PredictionOutcome,
     suggestedPrice: number,
     side: PredictionOrderSide = "buy",
+    quantity?: number,
   ) => {
     setPredictionSide(side);
+    if (quantity !== undefined) setPredictionQuantityInput(String(quantity));
     setPredictionSelection({ marketId, outcome });
-    setExpandedPredictionMarketId(marketId);
-    setExpandedPredictionOutcome(outcome);
+    setExpandedStrike({ marketId, outcome });
     setPredictionPriceInput(String(suggestedPrice));
     setSuccessMessage("");
     placePredictionMutation.reset();
@@ -566,86 +410,55 @@ export const useBettingWorkspace = () => {
   };
 
   const togglePredictionStrike = (marketId: string) => {
-    setExpandedPredictionMarketId((current) => (current === marketId ? null : marketId));
-    setExpandedPredictionOutcome(
-      predictionSelection?.marketId === marketId ? predictionSelection.outcome : "yes",
+    setExpandedStrike((current) =>
+      current?.marketId === marketId
+        ? null
+        : {
+            marketId,
+            outcome:
+              predictionSelection?.marketId === marketId ? predictionSelection.outcome : "yes",
+          },
     );
   };
 
-  const submitPredictionOrder = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSuccessMessage("");
-    if (
-      !predictionSelection ||
-      !validPredictionPrice ||
-      !validPredictionQuantity ||
-      !hasSellInventory ||
-      selectedPredictionRestriction ||
-      !selectedPredictionOpen
-    )
-      return;
-    placePredictionMutation.mutate({
-      username,
-      marketId: predictionSelection.marketId,
-      outcome: predictionSelection.outcome,
-      side: predictionSide,
-      priceCents: predictionPrice,
-      quantity: predictionQuantity,
-    });
+  const startOrderFromBook = (
+    state: PredictionMarketState,
+    outcome: PredictionOutcome,
+    side: "bid" | "ask",
+    price: number,
+    quantity: number,
+  ) => {
+    const available = availablePredictionContracts(state.positions)[outcome];
+    const sell = side === "bid" && available >= 1;
+    choosePredictionOutcome(
+      state.market.id,
+      outcome,
+      price,
+      sell ? "sell" : "buy",
+      sell ? Math.min(quantity, Math.floor(available)) : quantity,
+    );
   };
 
-  const submitPredictionSportsbookBet = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setPredictionStakeTouched(true);
-    setSuccessMessage("");
-    if (
-      !predictionSelection ||
-      !validPredictionPrice ||
-      !validPredictionStake ||
-      !predictionSportsbookFullyMatched ||
-      predictionSportsbookInsufficientBalance ||
-      selectedPredictionRestriction ||
-      !selectedPredictionOpen
-    )
-      return;
-    placePredictionMutation.mutate({
-      username,
-      marketId: predictionSelection.marketId,
-      outcome: predictionSelection.outcome,
-      side: "buy",
-      priceCents: predictionPrice,
-      quantity: predictionSportsbookQuantity,
-      budgetCoins: predictionStake,
-    });
-  };
-
+  const auth = { isAuthenticated, authLoading, login, username };
   return {
     view,
     selectView,
     showingHistory,
     ...history,
     predictionCatalogQuery,
-    isAuthenticated,
-    authLoading,
-    login,
+    auth,
     predictionMarketGroups,
     predictionMarketStates,
     countryByPlayer,
     editingOrderContext,
     setEditingOrderContext,
-    queryClient,
-    username,
+    applyOrderUpdate,
     browser: {
-      marketCategories,
       marketCategory,
       selectMarketCategory,
       activePredictionGroup,
       predictionMarketOnlyCategory,
-      predictionDisplayMode,
-      setPredictionDisplayMode,
-      setExpandedPredictionMarketId,
-      setPredictionSelection,
-      setSuccessMessage,
+      selectDisplayMode,
       predictionCatalogQuery,
       predictionMarketQuery,
       activePredictionDisplayMode,
@@ -653,74 +466,48 @@ export const useBettingWorkspace = () => {
       activePredictionGroupOpen,
       winnerPosition,
       selectWinnerPosition,
-      activePredictionGroupPnl,
+      activePredictionGroupPnl: pnl.total,
       activePredictionVolume,
       sortedActivePredictionMarkets,
       predictionStateByMarketId,
-      personalPredictionPnlByMarketId,
+      personalPredictionPnlByMarketId: pnl.byMarketId,
       predictionSelection,
       predictionRestrictionFor,
-      predictionRestrictionTitle,
       choosePredictionOutcome,
       isAuthenticated,
-      expandedPredictionMarketId,
-      expandedPredictionOutcome,
+      expandedStrike,
       togglePredictionStrike,
       setEditingOrderContext,
-      setPredictionQuantityInput,
+      startOrderFromBook,
     },
     ticket: {
-      activePredictionGroup,
-      activePredictionDisplayMode,
+      auth,
+      group: activePredictionGroup,
+      mode: activePredictionDisplayMode,
+      winnerMarket: isWinnerCategory(marketCategory),
+      definition: selectedMarket,
+      state: selectedState,
+      selection: predictionSelection,
+      setOutcome: (outcome: PredictionOutcome) =>
+        setPredictionSelection((current) => (current ? { ...current, outcome } : null)),
+      restrictionFor: predictionRestrictionFor,
+      balance: coinSummaryQuery.data?.balance ?? 0,
+      currentTime,
       betSlipRef,
-      selectedPredictionDefinition,
-      predictionSelection,
-      submitPredictionSportsbookBet,
-      submitPredictionOrder,
-      selectedPredictionGroup,
-      marketCategory,
-      validPredictionPrice,
-      predictionPrice,
       predictionStakeRef,
-      predictionSportsbookStakeLimit,
-      predictionStakeInput,
-      setPredictionStakeInput,
-      setPredictionStakeTouched,
-      predictionSportsbookQuote,
-      predictionSportsbookQuantity,
-      validPredictionStake,
-      predictionSportsbookFullyMatched,
-      predictionSportsbookTotal,
-      predictionSportsbookFee,
-      predictionStakeTouched,
-      predictionSportsbookInsufficientBalance,
-      predictionSide,
-      canSell,
-      selectPredictionSide,
-      availableContracts,
-      predictionRestrictionFor,
-      selectedPredictionState,
-      predictionQuantityInput,
-      predictionPriceInput,
-      validPredictionQuantity,
-      predictionSellProceeds,
-      predictionEstimatedTotal,
-      selectedPredictionOutcome,
-      predictionQuantity,
-      predictionEstimatedProfit,
-      selectPredictionOutcome,
-      setPredictionPriceInput,
-      setPredictionQuantityInput,
-      placePredictionMutation,
-      username,
-      selectedPredictionRestriction,
+      side: predictionSide,
+      setSide: setPredictionSide,
+      priceInput: predictionPriceInput,
+      setPriceInput: setPredictionPriceInput,
+      quantityInput: predictionQuantityInput,
+      setQuantityInput: setPredictionQuantityInput,
+      stakeInput: predictionStakeInput,
+      setStakeInput: setPredictionStakeInput,
+      stakeTouched: predictionStakeTouched,
+      setStakeTouched: setPredictionStakeTouched,
+      mutation: placePredictionMutation,
       successMessage,
-      isAuthenticated,
-      selectedPredictionOpen,
-      authLoading,
-      login,
-      hasSellInventory,
-      predictionBuyQuote,
+      clearSuccess: () => setSuccessMessage(""),
     },
   };
 };

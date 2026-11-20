@@ -443,6 +443,34 @@ export type PredictionMarketState = z.infer<typeof marketStateSchema>["result"];
 export type PredictionOrder = PredictionMarketState["orders"][number];
 export type PredictionPosition = PredictionMarketState["positions"][number];
 
+export const isPredictionPrice = (price: number): boolean =>
+  Number.isInteger(price) && price >= 1 && price <= 99;
+
+export const quotePredictionOrder = (
+  book: PredictionMarketState["book"][PredictionOutcome] | undefined,
+  side: PredictionOrderSide,
+  price: number,
+  quantity: number,
+) => {
+  if (side === "sell") {
+    const sellQuote = quotePredictionSell(
+      book?.bids ?? [],
+      isPredictionPrice(price) ? price : 100,
+      quantity,
+    );
+    const total = Math.max(
+      0,
+      sellQuote.proceedsCoins - predictionTakerFee(sellQuote.proceedsCoins),
+    );
+    return { total, profit: 0, action: "Ask", sellQuote };
+  }
+
+  const limit = isPredictionPrice(price) ? price : 0;
+  const buyQuote = quotePredictionBuy(book?.asks ?? [], limit, quantity);
+  const total = predictionBuyOrderCost(buyQuote, limit);
+  return { total, profit: quantity - total, action: buyQuote.filledQuantity > 0 ? "Buy" : "Bid" };
+};
+
 export const availablePredictionContracts = (positions: readonly PredictionPosition[] = []) => {
   const available: Record<PredictionOutcome, number> = { yes: 0, no: 0 };
   for (const position of positions)

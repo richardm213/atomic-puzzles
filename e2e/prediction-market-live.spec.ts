@@ -94,6 +94,8 @@ test("side bets have their own route and secondary markets stay in the dropdown"
     ),
   ).toEqual([]);
   await expect(page.locator(".betSlipContract em")).toHaveCount(0);
+  await page.getByRole("spinbutton", { name: "Bet amount" }).fill("10");
+  await expect(page.getByRole("button", { name: "Place bet · 10.2 coins" })).toBeEnabled();
   await expect(page.getByRole("button", { name: /jude 3\+ pts vs max/ })).toBeVisible();
   await page.getByRole("button", { name: "Order book view", exact: true }).click();
   await expect(page.getByText("jude 3+ pts vs max", { exact: true }).first()).toBeVisible();
@@ -129,6 +131,10 @@ test("side bets have their own route and secondary markets stay in the dropdown"
     await expect(other).toHaveValue(category);
   }
   await page.reload();
+  await expect(other).toHaveValue("AWC 2027");
+  await page.goBack();
+  await expect(other).toHaveValue("AWC Losers 1");
+  await page.goForward();
   await expect(other).toHaveValue("AWC 2027");
   await page.setViewportSize({ width: 390, height: 844 });
   await other.selectOption("AWC Round of 16");
@@ -685,7 +691,7 @@ test("betting order-book ticket sells only unreserved owned shares", async ({ pa
   });
   await page.routeWebSocket(/\/realtime\/v1\/websocket/, (socket) => socket.close());
   await page.route("**/api/coins", (route) =>
-    route.fulfill({ json: { result: { balance: 200, dailyClaimAvailable: false } } }),
+    route.fulfill({ json: { result: { balance: 0, dailyClaimAvailable: false } } }),
   );
   await page.route("**/api/betting", (route) => {
     const body = route.request().postDataJSON();
@@ -722,7 +728,7 @@ test("betting order-book ticket sells only unreserved owned shares", async ({ pa
       if (orders.length === 1)
         return route.fulfill({ status: 500, json: { error: "Order response was lost" } });
       return route.fulfill({
-        json: { result: { orderId: 10, balance: 201.96, marketId, state: state() } },
+        json: { result: { orderId: 10, balance: 1.96, marketId, state: state() } },
       });
     }
     return route.fulfill({ status: 400, json: { error: "Unexpected fixture request" } });

@@ -159,3 +159,25 @@ export const buildBetHistory = ({
     (left, right) => Date.parse(right.placedAt) - Date.parse(left.placedAt),
   );
 };
+
+export const personalMarketPnl = (
+  group: PredictionMarketGroup | undefined,
+  states: PredictionMarketState[],
+  username: string,
+) => {
+  if (!group) return { byMarketId: new Map<string, number>(), total: null };
+  const account = username.toLowerCase();
+  const byMarketId = predictionPnlByMarketId(
+    buildBetHistory({
+      predictionPositions: states.flatMap((state) =>
+        (state.historyPositions ?? []).filter(
+          (position) => position.username.toLowerCase() === account,
+        ),
+      ),
+      predictionMarketGroups: [group],
+      predictionMarketStates: states,
+    }),
+  );
+  const total = [...byMarketId.values()].reduce((sum, pnl) => sum + pnl, 0);
+  return { byMarketId, total: Math.abs(total) >= 0.005 ? total : null };
+};

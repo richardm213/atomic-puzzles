@@ -104,10 +104,8 @@ describe("BettingHistory", () => {
         ]}
         predictionMarketStates={[]}
         countryByPlayer={{}}
-        myBetsLoading={false}
-        allBetsLoading={false}
-        myBetsError={null}
-        allBetsError={null}
+        loading={false}
+        error={null}
       />,
     );
 
@@ -148,10 +146,8 @@ describe("BettingHistory", () => {
         predictionMarketGroups={[]}
         predictionMarketStates={[]}
         countryByPlayer={{}}
-        myBetsLoading={false}
-        allBetsLoading={false}
-        myBetsError={null}
-        allBetsError={null}
+        loading={false}
+        error={null}
       />,
     );
     expect(screen.getByLabelText("Status")).toHaveValue("open");
@@ -227,10 +223,8 @@ describe("BettingHistory", () => {
           predictionState("closed-active", "closed", 10),
         ]}
         countryByPlayer={{}}
-        myBetsLoading={false}
-        allBetsLoading={false}
-        myBetsError={null}
-        allBetsError={null}
+        loading={false}
+        error={null}
       />,
     );
 

@@ -45,6 +45,8 @@ export const usePredictionOrderSide = ({
     if (!validQuantity || quantity > available) onQuantityChange(String(available));
   };
   return {
+    quantity,
+    validQuantity,
     availableByOutcome,
     availableContracts,
     canSell,

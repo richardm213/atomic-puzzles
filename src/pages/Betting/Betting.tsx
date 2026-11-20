@@ -6,9 +6,6 @@ import { InlineState } from "../../components/InlineState/InlineState";
 import { PredictionOrderEditor } from "../../components/PredictionOrderEditor/PredictionOrderEditor";
 import { BettingAccountSummary } from "../../components/PredictionTrading/BettingAccountSummary";
 import { Seo } from "../../components/Seo/Seo";
-import { bettingQueryKeys } from "../../lib/betting/bettingQueries";
-import { updateCachedCoinBalance } from "../../lib/coins/coinQueries";
-import { patchPredictionMarketState } from "../../lib/predictionMarkets/predictionMarketQueries";
 import { getErrorMessage } from "../../utils/errors";
 import { BettingHistory } from "./BettingHistory";
 import { BettingMarketBrowser } from "./BettingMarketBrowser";
@@ -26,9 +23,7 @@ export const BettingPage = () => {
     historyError,
     pendingBetCount,
     predictionCatalogQuery,
-    isAuthenticated,
-    authLoading,
-    login,
+    auth: { isAuthenticated, authLoading, login },
     myBets,
     allHistoryBets,
     predictionMarketGroups,
@@ -36,8 +31,7 @@ export const BettingPage = () => {
     countryByPlayer,
     editingOrderContext,
     setEditingOrderContext,
-    queryClient,
-    username,
+    applyOrderUpdate,
     browser,
     ticket,
   } = useBettingWorkspace();
@@ -129,10 +123,8 @@ export const BettingPage = () => {
             predictionMarketGroups={predictionMarketGroups}
             predictionMarketStates={predictionMarketStates}
             countryByPlayer={countryByPlayer}
-            myBetsLoading={historyLoading}
-            allBetsLoading={historyLoading}
-            myBetsError={historyError}
-            allBetsError={historyError}
+            loading={historyLoading}
+            error={historyError}
           />
         )}
       </div>
@@ -142,11 +134,7 @@ export const BettingPage = () => {
           outcome={editingOrderContext.outcome}
           orders={editingOrderContext.orders}
           onClose={() => setEditingOrderContext(null)}
-          onUpdated={(result) => {
-            updateCachedCoinBalance(queryClient, username, result.balance);
-            patchPredictionMarketState(queryClient, result.state);
-            void queryClient.invalidateQueries({ queryKey: bettingQueryKeys.predictionPositions });
-          }}
+          onUpdated={applyOrderUpdate}
         />
       ) : null}
     </div>

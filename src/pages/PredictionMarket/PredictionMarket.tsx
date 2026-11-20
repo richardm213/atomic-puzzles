@@ -37,9 +37,8 @@ import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predict
 import {
   cancelPredictionOrder,
   formatPredictionShares,
-  MAX_PREDICTION_ORDER_QUANTITY,
+  isPredictionPrice,
   placePredictionOrder,
-  predictionBuyOrderCost,
   type PredictionMarketDefinition,
   type PredictionMarketId,
   predictionMarketVolume,
@@ -47,14 +46,12 @@ import {
   type PredictionOrderSide,
   type PredictionOutcome,
   predictionOutcomeLabel,
-  predictionTakerFee,
-  quotePredictionBuy,
-  quotePredictionSell,
+  quotePredictionOrder,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
-import { buildBetHistory, predictionPnlByMarketId } from "../Betting/bettingHistoryModel";
+import { personalMarketPnl } from "../Betting/bettingHistoryModel";
 
 const outcomeLabel = (outcome: PredictionOutcome, definition?: PredictionMarketDefinition) =>
   predictionOutcomeLabel(definition, outcome);
@@ -87,25 +84,10 @@ export const PredictionMarketPage = () => {
     () => new Map(marketStates.map((state) => [state.market.id, state])),
     [marketStates],
   );
-  const personalMarketPnlById = useMemo(() => {
-    const pnlByMarketId = new Map<PredictionMarketId, number>();
-    if (!isAuthenticated || !marketGroup) return pnlByMarketId;
-
-    const personalBets = buildBetHistory({
-      predictionPositions: marketStates.flatMap((state) => state.historyPositions ?? []),
-      predictionMarketGroups: [marketGroup],
-      predictionMarketStates: marketStates,
-    }).filter((bet) => bet.username.toLowerCase() === username.toLowerCase());
-
-    return predictionPnlByMarketId(personalBets);
-  }, [isAuthenticated, marketGroup, marketStates, username]);
-  const personalMarketPnlTotal = personalMarketPnlById.size
-    ? [...personalMarketPnlById.values()].reduce((total, pnl) => total + pnl, 0)
-    : null;
-  const personalMarketPnl =
-    personalMarketPnlTotal !== null && Math.abs(personalMarketPnlTotal) >= 0.005
-      ? personalMarketPnlTotal
-      : null;
+  const pnl = useMemo(
+    () => personalMarketPnl(isAuthenticated ? marketGroup : undefined, marketStates, username),
+    [isAuthenticated, marketGroup, marketStates, username],
+  );
   const activeMarketIndex = marketDefinitions.findIndex((market) => market.id === activeMarketId);
   const awcBracketQuery = useQuery({
     ...tournamentBracketQueryOptions("awc2026"),
@@ -133,29 +115,10 @@ export const PredictionMarketPage = () => {
   const marketState =
     marketStateById.get(activeMarketId) ?? marketStateById.get(marketDefinitions[0]?.id ?? "");
   const price = Number(priceInput);
-  const quantity = Number(quantityInput);
-  const validPrice = Number.isInteger(price) && price >= 1 && price <= 99;
-  const validQuantity =
-    Number.isInteger(quantity) && quantity >= 1 && quantity <= MAX_PREDICTION_ORDER_QUANTITY;
-  const buyQuote = quotePredictionBuy(
-    marketState?.book[outcome].asks ?? [],
-    validPrice ? price : 0,
-    validQuantity ? quantity : 0,
-  );
-  const sellQuote = quotePredictionSell(
-    marketState?.book[outcome].bids ?? [],
-    validPrice ? price : 100,
-    validQuantity ? quantity : 0,
-  );
-  const estimatedTakerFee = predictionTakerFee(
-    side === "buy" ? buyQuote.fillCostCoins : sellQuote.proceedsCoins,
-  );
-  const estimatedBuyTotal = predictionBuyOrderCost(buyQuote, validPrice ? price : 0);
-  const estimatedBuyProfit = quantity - estimatedBuyTotal;
-  const estimatedSellProceeds = Math.max(0, sellQuote.proceedsCoins - estimatedTakerFee);
-  const immediateBuyQuantity = buyQuote.filledQuantity;
-  const buyAction = immediateBuyQuantity > 0 ? "Buy" : "Bid";
+  const validPrice = isPredictionPrice(price);
   const {
+    quantity,
+    validQuantity,
     availableByOutcome,
     availableContracts,
     canSell,
@@ -173,6 +136,12 @@ export const PredictionMarketPage = () => {
     onOutcomeChange: setOutcome,
     onQuantityChange: setQuantityInput,
   });
+  const {
+    total,
+    profit: estimatedBuyProfit,
+    action,
+    sellQuote,
+  } = quotePredictionOrder(marketState?.book[outcome], side, price, validQuantity ? quantity : 0);
   const marketOpen =
     marketState?.market.status === "open" && Date.parse(marketState.market.closesAt) > Date.now();
   const marketGroupOpen = marketStates.some(
@@ -260,11 +229,19 @@ export const PredictionMarketPage = () => {
     },
   });
 
+  const canSubmit =
+    isAuthenticated &&
+    validPrice &&
+    validQuantity &&
+    hasSellInventory &&
+    marketOpen &&
+    !orderRestriction &&
+    !placeMutation.isPending;
+
   const submitOrder = (event: FormEvent) => {
     event.preventDefault();
     setSuccessMessage("");
-    if (!validPrice || !validQuantity || !hasSellInventory || !marketOpen || orderRestriction)
-      return;
+    if (!canSubmit || !marketState || Date.parse(marketState.market.closesAt) <= Date.now()) return;
     placeMutation.mutate({
       username,
       marketId: activeMarketId,
@@ -341,7 +318,7 @@ export const PredictionMarketPage = () => {
             quantityInput={quantityInput}
             priceInput={priceInput}
             primaryLabel={side === "buy" ? "Cost" : "Proceeds"}
-            primaryValue={`${(side === "buy" ? estimatedBuyTotal : estimatedSellProceeds).toFixed(2)} coins`}
+            primaryValue={`${total.toFixed(2)} coins`}
             secondaryLabel={side === "buy" ? "Max payout" : "Offered"}
             secondaryValue={
               validQuantity
@@ -363,7 +340,7 @@ export const PredictionMarketPage = () => {
             onQuantityChange={setQuantityInput}
             onPriceChange={setPriceInput}
           />
-          {side === "sell" && validQuantity && sellQuote.restingQuantity > 0 ? (
+          {sellQuote && validQuantity && sellQuote.restingQuantity > 0 ? (
             <InlineState kind="info">
               Only {sellQuote.availableQuantity.toLocaleString()} contracts can sell immediately at
               or above your limit. The remaining {sellQuote.restingQuantity.toLocaleString()}
@@ -399,24 +376,12 @@ export const PredictionMarketPage = () => {
           ) : null}
           {successMessage ? <InlineState kind="success">{successMessage}</InlineState> : null}
           {isAuthenticated ? (
-            <button
-              className="predictionSubmit"
-              type="submit"
-              disabled={
-                !validPrice ||
-                !validQuantity ||
-                !hasSellInventory ||
-                Boolean(orderRestriction) ||
-                !marketOpen ||
-                placeMutation.isPending
-              }
-            >
+            <button className="predictionSubmit" type="submit" disabled={!canSubmit}>
               {placeMutation.isPending ? (
                 "Placing order…"
               ) : (
                 <>
-                  {side === "buy" ? buyAction : "Ask"}{" "}
-                  {outcomeLabel(outcome, activeMarketDefinition)} ·{" "}
+                  {action} {outcomeLabel(outcome, activeMarketDefinition)} ·{" "}
                   <PredictionPrice cents={validPrice ? price : 0} />
                 </>
               )}
@@ -471,9 +436,7 @@ export const PredictionMarketPage = () => {
                 <span>Closes {formatLocalDateTime(marketState.market.closesAt)}</span>
               ) : null}
               <span>Volume {formatCoinVolume(marketVolume)} coins</span>
-              {personalMarketPnl !== null ? (
-                <PredictionMarketRoi value={personalMarketPnl} />
-              ) : null}
+              {pnl.total !== null ? <PredictionMarketRoi value={pnl.total} /> : null}
             </div>
           </div>
           <BettingAccountSummary />
@@ -509,7 +472,7 @@ export const PredictionMarketPage = () => {
                       toggleOutcome(definition.id, nextOutcome)
                     }
                     renderExpandedContent={() => activeMarketPanel}
-                    pnlByMarketId={personalMarketPnlById}
+                    pnlByMarketId={pnl.byMarketId}
                   />
                 </section>
 
