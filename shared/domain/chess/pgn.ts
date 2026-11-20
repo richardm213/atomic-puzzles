@@ -1,4 +1,5 @@
 import type { Move, NormalMove, Role } from "chessops";
+import { normalizeMove } from "chessops/chess";
 import { makeFen, parseFen } from "chessops/fen";
 import { makeSan, parseSan } from "chessops/san";
 import { makeUci, parseSquare } from "chessops/util";
@@ -75,6 +76,11 @@ export const moveFromUci = (position: Position, uci: string): Move | null => {
 
   const move: Move = promotion ? { from, to, promotion } : { from, to };
   return position.isLegal(move) ? move : null;
+};
+
+export const canonicalAtomicMoveUci = (position: Position, uci: string): string | null => {
+  const move = moveFromUci(position, uci);
+  return move ? makeUci(normalizeMove(position, move)) : null;
 };
 
 export const parseAtomicMove = (position: Position, notation: string): Move | undefined =>

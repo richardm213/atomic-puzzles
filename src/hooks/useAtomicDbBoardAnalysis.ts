@@ -63,7 +63,6 @@ export const useAtomicDbBoardAnalysis = ({
   });
   const threatAnalysis = useAtomicDbAnalysis(threatFen ?? currentFen, {
     enabled: threatMode && !variationPlaying,
-    debounceMs: 0,
     atomicDbEnabled,
     fallbackToEngine: threatMode,
     lineCount,

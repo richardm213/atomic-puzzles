@@ -4,8 +4,11 @@ import {
   type AtomicDbPosition,
   fetchAtomicDbAnalysisBundle,
 } from "../../utils/atomicDb";
+import { ApiError } from "../api/postApi";
 
 const CACHE_TTL_MS = 5 * 60_000;
+export const MAX_ATOMIC_DB_LINES = 5;
+export const MAX_ATOMIC_DB_PLIES = 5;
 
 type CacheEntry<T> = { value: T; expiresAt: number };
 type SharedRequest<T> = {
@@ -52,7 +55,12 @@ class AtomicDbRequestStore<T> {
     if (oldestKey !== undefined) this.cache.delete(oldestKey);
   }
 
+  hasRequest(key: string): boolean {
+    return this.requests.has(key);
+  }
+
   load(key: string, loader: (signal: AbortSignal) => Promise<T>, signal: AbortSignal): Promise<T> {
+    if (signal.aborted) return Promise.reject(new DOMException("Aborted", "AbortError"));
     const cached = this.peek(key);
     if (cached.found) return Promise.resolve(cached.value);
 
@@ -65,7 +73,7 @@ class AtomicDbRequestStore<T> {
         abortTimer: null,
         promise: loader(controller.signal)
           .then((value) => {
-            this.prime(key, value);
+            if (!controller.signal.aborted) this.prime(key, value);
             return value;
           })
           .finally(() => {
@@ -148,6 +156,32 @@ const analysisBundleKey = (fen: string, lineCount: number, plyCount: number): st
 const variationLineKey = (fen: string, rootMove: string, plyCount: number): string =>
   `${fen}\n${rootMove}\n${plyCount}`;
 
+const coveringBundleKeys = function* (fen: string, lineCount: number, plyCount: number) {
+  for (let lines = lineCount; lines <= MAX_ATOMIC_DB_LINES; lines += 1) {
+    for (let plies = plyCount; plies <= MAX_ATOMIC_DB_PLIES; plies += 1) {
+      yield analysisBundleKey(fen, lines, plies);
+    }
+  }
+};
+
+export const peekAtomicDbAnalysisBundle = (
+  fen: string,
+  lineCount: number,
+  plyCount: number,
+): AtomicDbAnalysisBundle | null => {
+  for (const key of coveringBundleKeys(fen, lineCount, plyCount)) {
+    const cached = analysisBundles.peek(key);
+    if (cached.found) return cached.value;
+  }
+  return null;
+};
+
+let rateLimit: { until: number; error: ApiError } | undefined;
+const rememberRateLimit = (error: ApiError): void => {
+  const until = Date.now() + (error.retryAfterMs || 2_000);
+  if (!rateLimit || rateLimit.until < until) rateLimit = { until, error };
+};
+
 export type PreloadedAtomicDbGamePosition = {
   fen: string;
   position: AtomicDbPosition | null;
@@ -164,7 +198,7 @@ export const replacePreloadedAtomicDbGamePositions = (
     preloadedGamePositions.set(fen, { position, complete });
     for (const move of position?.moves ?? []) {
       const line = principalVariations[move.uci] ?? [move.uci];
-      for (let plyCount = 1; plyCount <= 5; plyCount += 1) {
+      for (let plyCount = 1; plyCount <= MAX_ATOMIC_DB_PLIES; plyCount += 1) {
         preloadedGameVariationLines.set(
           variationLineKey(fen, move.uci, plyCount),
           line.slice(0, plyCount),
@@ -246,20 +280,36 @@ export const loadAtomicDbAnalysisBundle = async (
   plyCount: number,
   signal: AbortSignal,
 ): Promise<AtomicDbAnalysisBundle> => {
-  const batchKey = analysisBundleKey(fen, lineCount, plyCount);
-  const result = await analysisBundles.load(
+  signal.throwIfAborted();
+  const cached = peekAtomicDbAnalysisBundle(fen, lineCount, plyCount);
+  if (cached) return cached;
+  const batchKey =
+    [...coveringBundleKeys(fen, lineCount, plyCount)].find((key) =>
+      analysisBundles.hasRequest(key),
+    ) ?? analysisBundleKey(fen, lineCount, plyCount);
+  return analysisBundles.load(
     batchKey,
-    (sharedSignal) => fetchAtomicDbAnalysisBundle(fen, lineCount, plyCount, sharedSignal),
+    async (sharedSignal) => {
+      if (rateLimit && Date.now() < rateLimit.until) throw rateLimit.error;
+      rateLimit = undefined;
+      let result: AtomicDbAnalysisBundle;
+      try {
+        result = await fetchAtomicDbAnalysisBundle(fen, lineCount, plyCount, sharedSignal);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 429) rememberRateLimit(error);
+        throw error;
+      }
+      sharedSignal.throwIfAborted();
+      positions.prime(fen, result.position);
+      for (const [rootMove, line] of Object.entries(result.lines)) {
+        variationLines.prime(variationLineKey(fen, rootMove, plyCount), line);
+      }
+      primeContinuationVariationLines(fen, result.lines, result.positions, plyCount);
+      for (const [positionFen, position] of Object.entries(result.positions)) {
+        previewPositions.prime(positionFen, position);
+      }
+      return result;
+    },
     signal,
   );
-  positions.prime(fen, result.position);
-  for (const rootMove of Object.keys(result.lines)) {
-    const line = result.lines[rootMove] ?? [rootMove];
-    variationLines.prime(variationLineKey(fen, rootMove, plyCount), line);
-  }
-  primeContinuationVariationLines(fen, result.lines, result.positions, plyCount);
-  for (const [positionFen, position] of Object.entries(result.positions)) {
-    previewPositions.prime(positionFen, position);
-  }
-  return result;
 };

@@ -1,8 +1,7 @@
-import { normalizeMove } from "chessops/chess";
 import { makeFen } from "chessops/fen";
 import { makeUci } from "chessops/util";
 
-import { createAtomicPosition, moveFromUci } from "./chess/pgn";
+import { canonicalAtomicMoveUci, createAtomicPosition, moveFromUci } from "./chess/pgn";
 import {
   GAME_ANALYSIS_VARIATION_SIZE as SIZE,
   type StoredAtomicDbCandidate,
@@ -53,15 +52,11 @@ const needsContinuation = (board: Board, line: StoredAtomicDbCandidate) => {
   const length = trace(end, line.pv).length;
   return length < SIZE && !end.outcome();
 };
-const comparableMove = (board: Board, uci: string) => {
-  const move = moveFromUci(board, uci);
-  return move ? makeUci(normalizeMove(board, move)) : null;
-};
 const usableCandidates = (board: Board, entries: readonly StoredAtomicDbCandidate[]) => {
   const seen = new Set<string>();
   return entries
     .flatMap((candidate) => {
-      const root = comparableMove(board, candidate.move);
+      const root = canonicalAtomicMoveUci(board, candidate.move);
       if (!root || seen.has(root) || candidate.pv[0] !== candidate.move) return [];
       seen.add(root);
       const pv = trace(board.clone(), candidate.pv);
@@ -102,7 +97,7 @@ export const mergeOpeningVariationSupplement = (
     if (!needsContinuation(board, base)) return base;
     const replacement = fills.find(
       (fill) =>
-        comparableMove(board, fill.move) === comparableMove(board, base.move) &&
+        canonicalAtomicMoveUci(board, fill.move) === canonicalAtomicMoveUci(board, base.move) &&
         !needsContinuation(board, fill),
     );
     return replacement
@@ -116,7 +111,10 @@ export const mergeOpeningVariationSupplement = (
   for (const fill of fills) {
     if (filled.length === SIZE) break;
     if (
-      !filled.some((base) => comparableMove(board, base.move) === comparableMove(board, fill.move))
+      !filled.some(
+        (base) =>
+          canonicalAtomicMoveUci(board, base.move) === canonicalAtomicMoveUci(board, fill.move),
+      )
     ) {
       filled.push(fill);
     }
@@ -131,13 +129,13 @@ export const completeGameAnalysisVariations = async (
   const root = getBoard(position);
   if (!root || !gameAnalysisVariationGaps(position)) return position;
   const candidates = usableCandidates(root, position.candidates ?? []);
-  const used = new Set(candidates.map(({ move }) => comparableMove(root, move)));
-  const available = legalUci(root).filter((move) => !used.has(comparableMove(root, move)));
+  const used = new Set(candidates.map(({ move }) => canonicalAtomicMoveUci(root, move)));
+  const available = legalUci(root).filter((move) => !used.has(canonicalAtomicMoveUci(root, move)));
   const missing = Math.min(SIZE - candidates.length, available.length);
   const addEngineLine = ({ pv, cp, mate, depth }: SupplementalEngineLine) => {
     const move = pv[0];
     if (!move) return;
-    const key = comparableMove(root, move);
+    const key = canonicalAtomicMoveUci(root, move);
     if (!key || used.has(key)) return;
     used.add(key);
     candidates.push({
@@ -160,7 +158,7 @@ export const completeGameAnalysisVariations = async (
     // A shallow MultiPV iteration may not return every slot before its node limit.
     for (const move of available) {
       if (candidates.length === SIZE) break;
-      if (used.has(comparableMove(root, move))) continue;
+      if (used.has(canonicalAtomicMoveUci(root, move))) continue;
       const [line] = await search(position.fen, 1, [move]);
       if (line) addEngineLine(line);
     }

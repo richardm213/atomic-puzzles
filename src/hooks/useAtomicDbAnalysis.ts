@@ -1,7 +1,11 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 
+import { canonicalAtomicMoveUci, createAtomicPosition } from "../../shared/domain/chess/pgn";
 import {
   loadAtomicDbAnalysisBundle,
+  MAX_ATOMIC_DB_LINES,
+  MAX_ATOMIC_DB_PLIES,
+  peekAtomicDbAnalysisBundle,
   peekAtomicDbPosition,
   peekAtomicDbVariationLines,
 } from "../lib/atomicDb/analysisRepository";
@@ -48,8 +52,8 @@ type RequestState = AtomicDbAnalysisState & {
   requestedOptions: string | null;
 };
 
-const MAX_LINE_COUNT = 5;
-const MAX_PLY_COUNT = 5;
+const NAVIGATION_SETTLE_MS = 160;
+const ATOMIC_DB_GRACE_MS = 2_000;
 const EMPTY_ANALYSIS: AtomicDbAnalysisState = {
   result: null,
   status: "idle",
@@ -94,19 +98,13 @@ const enginePosition = (candidates: EngineCandidate[]): AtomicDbPosition => {
 const analyzedAtomicDbMoves = (fen: string, position: AtomicDbPosition) =>
   position.moves.filter((move) => getAtomicDbMoveEvaluation(move, fen).type !== "unknown");
 
-const fillAtomicDbPosition = (
-  fen: string,
-  position: AtomicDbPosition,
-  candidates: EngineCandidate[],
-  lineCount: number,
-): AtomicDbPosition => {
-  const atomicDbMoves = analyzedAtomicDbMoves(fen, position).slice(0, lineCount);
-  const usedMoves = new Set(atomicDbMoves.map((move) => move.uci));
-  const engineMoves = candidates
-    .filter((candidate) => !usedMoves.has(candidate.move))
-    .slice(0, Math.max(0, lineCount - atomicDbMoves.length))
-    .map(engineMove);
-  return { ...position, moves: [...atomicDbMoves, ...engineMoves] };
+const rootMoveKeyFor = (fen: string): ((uci: string) => string) => {
+  try {
+    const position = createAtomicPosition(fen);
+    return (uci) => canonicalAtomicMoveUci(position, uci) ?? uci;
+  } catch {
+    return (uci) => uci;
+  }
 };
 
 export const useAtomicDbAnalysis = (
@@ -114,14 +112,14 @@ export const useAtomicDbAnalysis = (
   {
     enabled = true,
     atomicDbEnabled = true,
-    debounceMs = 220,
+    debounceMs = NAVIGATION_SETTLE_MS,
     lineCount: requestedLineCount = 3,
     plyCount: requestedPlyCount = 5,
     suspended = false,
     fallbackToEngine = false,
     engineThinkTimeMs,
     engineMaxDepth,
-    candidateLimit = MAX_LINE_COUNT,
+    candidateLimit = MAX_ATOMIC_DB_LINES,
   }: AtomicDbAnalysisOptions = {},
 ): AtomicDbAnalysisState => {
   const requestOptions = JSON.stringify([
@@ -135,7 +133,7 @@ export const useAtomicDbAnalysis = (
   ]);
   const [state, setState] = useState<RequestState>(INITIAL_STATE);
   const [engineFocusEpoch, setEngineFocusEpoch] = useState(0);
-  const lastRequestAtRef = useRef<number | null>(null);
+  const lastFenRef = useRef<string | null>(null);
   const useAtomicStockfishOnly =
     !atomicDbEnabled || (fallbackToEngine && isAtomicTablebasePosition(fen));
 
@@ -148,7 +146,7 @@ export const useAtomicDbAnalysis = (
 
   useEffect(() => {
     if (!enabled) {
-      lastRequestAtRef.current = null;
+      lastFenRef.current = null;
       setState(INITIAL_STATE);
       return;
     }
@@ -156,18 +154,80 @@ export const useAtomicDbAnalysis = (
     // preserves the source analysis and aborts unfinished work from the source position.
     if (suspended) return;
 
+    const positionChanged = lastFenRef.current !== null && lastFenRef.current !== fen;
+    lastFenRef.current = fen;
     const controller = new AbortController();
     const assistanceEngine: LocalAnalysisEngine = "atomic-stockfish";
     const requestedLines = clampInteger(requestedLineCount, 1, candidateLimit);
     const legalMoveCount = atomicLegalMoveCount(fen);
     const lineCount =
       legalMoveCount > 0 ? Math.min(requestedLines, legalMoveCount) : requestedLines;
-    const plyCount = clampInteger(requestedPlyCount, 1, MAX_PLY_COUNT);
+    const plyCount = clampInteger(requestedPlyCount, 1, MAX_ATOMIC_DB_PLIES);
+    const databaseLineCount = Math.min(lineCount, MAX_ATOMIC_DB_LINES);
+    const rootMoveKey = rootMoveKeyFor(fen);
+    const withMoves = (
+      position: AtomicDbPosition,
+      moves: AtomicDbPosition["moves"],
+    ): AtomicDbPosition => {
+      const bestKey = position.bestMove ? rootMoveKey(position.bestMove) : null;
+      const bestMove = bestKey && moves.find((move) => rootMoveKey(move.uci) === bestKey)?.uci;
+      return { ...position, moves, bestMove: bestMove || position.bestMove };
+    };
+    const distinctPosition = (position: AtomicDbPosition): AtomicDbPosition => {
+      const moves = new Map<string, AtomicDbPosition["moves"][number]>();
+      for (const move of position.moves) {
+        const key = rootMoveKey(move.uci);
+        const previous = moves.get(key);
+        if (
+          !previous ||
+          (getAtomicDbMoveEvaluation(previous, fen).type === "unknown" &&
+            getAtomicDbMoveEvaluation(move, fen).type !== "unknown")
+        ) {
+          moves.set(key, move);
+        }
+      }
+      return withMoves(position, [...moves.values()]);
+    };
+    const linesForMoves = (
+      moves: AtomicDbPosition["moves"],
+      ...sources: Record<string, string[]>[]
+    ): Record<string, string[]> => {
+      const byMove = new Map<string, string[]>();
+      for (const source of sources) {
+        for (const [uci, line] of Object.entries(source)) {
+          const key = rootMoveKey(uci);
+          const previous = byMove.get(key);
+          if (!previous || Math.min(line.length, plyCount) > previous.length) {
+            byMove.set(key, line.slice(0, plyCount));
+          }
+        }
+      }
+      return Object.fromEntries(
+        moves
+          .slice(0, lineCount)
+          .map(({ uci }) => [uci, [uci, ...(byMove.get(rootMoveKey(uci))?.slice(1) ?? [])]]),
+      );
+    };
+    const engineCandidatesByMove = (
+      candidates: EngineCandidate[],
+    ): Map<string, EngineCandidate> => {
+      const moves = new Map<string, EngineCandidate>();
+      for (const candidate of candidates) {
+        const key = rootMoveKey(candidate.move);
+        if (!moves.has(key)) moves.set(key, candidate);
+      }
+      return moves;
+    };
+    const engineLinesFor = (candidates: EngineCandidate[]): Record<string, string[]> =>
+      Object.fromEntries(
+        candidates.map((candidate) => [
+          candidate.move,
+          candidate.principalVariation ?? [candidate.move],
+        ]),
+      );
     const cachedLinesFor = (position: AtomicDbPosition | null): Record<string, string[]> => {
-      const rootMoves = position?.moves.slice(0, lineCount).map((move) => move.uci) ?? [];
-      const lines = peekAtomicDbVariationLines(fen, rootMoves, plyCount);
-      for (const rootMove of rootMoves) lines[rootMove] ??= [rootMove];
-      return lines;
+      const rootMoves = position?.moves.map((move) => move.uci) ?? [];
+      return peekAtomicDbVariationLines(fen, rootMoves, plyCount);
     };
 
     const publishPosition = (
@@ -184,26 +244,32 @@ export const useAtomicDbAnalysis = (
           requestedOptions: requestOptions,
           status: "ready",
           error: "",
-          principalVariations: lines,
+          principalVariations: linesForMoves(position?.moves ?? [], lines),
           source: supplemented ? "mixed" : "atomicdb",
           ...(supplemented ? { engine: assistanceEngine } : {}),
         });
       });
     };
 
-    const publishCachedPosition = (position: AtomicDbPosition): void => {
+    const publishCachedPosition = (rawPosition: AtomicDbPosition): void => {
+      const position = distinctPosition(rawPosition);
       setState({
         result: { fen, position },
         requestedFen: fen,
         requestedOptions: requestOptions,
         status: "loading",
         error: "",
-        principalVariations: cachedLinesFor(position),
+        principalVariations: linesForMoves(position.moves, cachedLinesFor(rawPosition)),
         source: "atomicdb",
       });
     };
 
-    const publishEngineFallback = async (): Promise<void> => {
+    let databasePending = true;
+    let provisionalEngineFailed = false;
+    const publishEngineFallback = async (
+      signal = controller.signal,
+      provisional = false,
+    ): Promise<void> => {
       setState((current) => ({
         ...current,
         requestedFen: fen,
@@ -219,23 +285,27 @@ export const useAtomicDbAnalysis = (
           candidates: EngineCandidate[],
           status: AtomicDbAnalysisStatus,
         ): void => {
-          if (controller.signal.aborted) return;
+          if (signal.aborted) return;
+          const distinctCandidates = [...engineCandidatesByMove(candidates).values()].slice(
+            0,
+            lineCount,
+          );
+          const position = enginePosition(distinctCandidates);
           startTransition(() => {
-            setState({
-              result: { fen, position: enginePosition(candidates) },
-              requestedFen: fen,
-              requestedOptions: requestOptions,
-              status,
-              error: "",
-              principalVariations: Object.fromEntries(
-                candidates.map((candidate) => [
-                  candidate.move,
-                  candidate.principalVariation?.slice(0, plyCount) ?? [candidate.move],
-                ]),
-              ),
-              source: "engine",
-              engine: assistanceEngine,
-            });
+            setState((current) =>
+              signal.aborted
+                ? current
+                : {
+                    result: { fen, position },
+                    requestedFen: fen,
+                    requestedOptions: requestOptions,
+                    status,
+                    error: "",
+                    principalVariations: linesForMoves(position.moves, engineLinesFor(candidates)),
+                    source: "engine",
+                    engine: assistanceEngine,
+                  },
+            );
           });
         };
         const publishProgress = (progressCandidates: EngineCandidate[]): void =>
@@ -243,7 +313,7 @@ export const useAtomicDbAnalysis = (
         const candidates = await analyzeFairyStockfishPosition(
           fen,
           lineCount,
-          controller.signal,
+          signal,
           publishProgress,
           assistanceEngine,
           {
@@ -252,10 +322,14 @@ export const useAtomicDbAnalysis = (
             candidateLimit,
           },
         );
-        if (controller.signal.aborted) return;
+        if (signal.aborted) return;
         publishEngineCandidates(candidates, "ready");
       } catch (error: unknown) {
-        if (controller.signal.aborted) return;
+        if (signal.aborted) return;
+        if (provisional && databasePending) {
+          provisionalEngineFailed = true;
+          return;
+        }
         startTransition(() => {
           setState({
             result: { fen, position: null },
@@ -281,7 +355,7 @@ export const useAtomicDbAnalysis = (
         requestedOptions: requestOptions,
         status: "loading",
         error: "",
-        principalVariations: atomicDbLines,
+        principalVariations: linesForMoves(position.moves, atomicDbLines),
         source: "mixed",
         engine: assistanceEngine,
       });
@@ -291,31 +365,27 @@ export const useAtomicDbAnalysis = (
         status: AtomicDbAnalysisStatus,
       ): void => {
         if (controller.signal.aborted) return;
-        const filledPosition = fillAtomicDbPosition(fen, position, candidates, lineCount);
-        const retainedMoveUcis = new Set(
-          analyzedAtomicDbMoves(fen, position).map((move) => move.uci),
+        const moves = engineCandidatesByMove(candidates);
+        const retained = analyzedAtomicDbMoves(fen, position);
+        for (const move of retained) moves.delete(rootMoveKey(move.uci));
+        const filledMoves = [...retained, ...Array.from(moves.values(), engineMove)].slice(
+          0,
+          lineCount,
         );
-        const engineLines = Object.fromEntries(
-          candidates
-            .filter((candidate) => {
-              if (!retainedMoveUcis.has(candidate.move)) return true;
-              const atomicDbLineLength = atomicDbLines[candidate.move]?.length ?? 1;
-              return (candidate.principalVariation?.length ?? 1) > atomicDbLineLength;
-            })
-            .map((candidate) => [
-              candidate.move,
-              candidate.principalVariation?.slice(0, plyCount) ?? [candidate.move],
-            ]),
-        );
+        const filledPosition = withMoves(position, filledMoves);
         startTransition(() => {
           setState((current) =>
-            current.requestedFen === fen
+            !controller.signal.aborted && current.requestedFen === fen
               ? {
                   ...current,
                   result: { fen, position: filledPosition },
                   status,
                   error: "",
-                  principalVariations: { ...current.principalVariations, ...engineLines },
+                  principalVariations: linesForMoves(
+                    filledMoves,
+                    atomicDbLines,
+                    engineLinesFor(candidates),
+                  ),
                   source: "mixed",
                   engine: assistanceEngine,
                 }
@@ -358,9 +428,10 @@ export const useAtomicDbAnalysis = (
     };
 
     const publishAtomicDbOrFallback = (
-      position: AtomicDbPosition | null,
+      rawPosition: AtomicDbPosition | null,
       lines: Record<string, string[]>,
     ): void => {
+      const position = rawPosition && distinctPosition(rawPosition);
       if (fallbackToEngine && (!position || position.moves.length === 0)) {
         void publishEngineFallback();
         return;
@@ -380,6 +451,12 @@ export const useAtomicDbAnalysis = (
       return () => controller.abort();
     }
 
+    const completeBundle = peekAtomicDbAnalysisBundle(fen, databaseLineCount, plyCount);
+    if (completeBundle) {
+      publishAtomicDbOrFallback(completeBundle.position, completeBundle.lines);
+      return () => controller.abort();
+    }
+
     let showingCachedPosition = false;
     const cached = peekAtomicDbPosition(fen);
     if (cached.found) {
@@ -393,10 +470,6 @@ export const useAtomicDbAnalysis = (
       }
     }
 
-    const requestedAt = Date.now();
-    const shouldDebounce =
-      lastRequestAtRef.current !== null && requestedAt - lastRequestAtRef.current < debounceMs;
-    lastRequestAtRef.current = requestedAt;
     if (!showingCachedPosition) {
       setState((current) => ({
         ...current,
@@ -409,21 +482,32 @@ export const useAtomicDbAnalysis = (
       }));
     }
 
+    let graceTimer: number | undefined;
+    let provisionalEngine: AbortController | undefined;
     const requestPosition = async (): Promise<void> => {
+      if (fallbackToEngine) {
+        graceTimer = window.setTimeout(() => {
+          provisionalEngine = new AbortController();
+          void publishEngineFallback(provisionalEngine.signal, true);
+        }, ATOMIC_DB_GRACE_MS);
+      }
       try {
         const bundle = await loadAtomicDbAnalysisBundle(
           fen,
-          Math.min(lineCount, MAX_LINE_COUNT),
+          databaseLineCount,
           plyCount,
           controller.signal,
         );
-        if (!controller.signal.aborted) {
-          publishAtomicDbOrFallback(bundle.position, bundle.lines);
-        }
+        if (controller.signal.aborted) return;
+        databasePending = false;
+        if (provisionalEngine && !provisionalEngineFailed && !bundle.position?.moves.length) return;
+        provisionalEngine?.abort();
+        publishAtomicDbOrFallback(bundle.position, bundle.lines);
       } catch (error: unknown) {
         if (controller.signal.aborted) return;
+        databasePending = false;
         if (fallbackToEngine) {
-          void publishEngineFallback();
+          if (!provisionalEngine || provisionalEngineFailed) void publishEngineFallback();
           return;
         }
         startTransition(() => {
@@ -435,9 +519,12 @@ export const useAtomicDbAnalysis = (
             error: getErrorMessage(error, "AtomicDB analysis failed."),
           }));
         });
+      } finally {
+        window.clearTimeout(graceTimer);
       }
     };
 
+    const shouldDebounce = positionChanged && debounceMs > 0;
     const timeout = shouldDebounce
       ? window.setTimeout(() => void requestPosition(), debounceMs)
       : null;
@@ -445,6 +532,8 @@ export const useAtomicDbAnalysis = (
 
     return () => {
       if (timeout !== null) window.clearTimeout(timeout);
+      window.clearTimeout(graceTimer);
+      provisionalEngine?.abort();
       controller.abort();
     };
   }, [

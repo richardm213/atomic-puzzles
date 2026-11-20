@@ -34,6 +34,7 @@ describe("useAtomicDbAnalysis", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     analyzeWithEngineMock.mockReset();
+    vi.useRealTimers();
   });
 
   it("uses the fallback engine without requesting AtomicDB when AtomicDB is disabled", async () => {
@@ -303,6 +304,89 @@ describe("useAtomicDbAnalysis", () => {
     ]);
     expect(result.current.principalVariations.g1f3).toEqual(["g1f3", "g8f6"]);
     expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5"]);
+  });
+
+  it("merges both encodings of castling into one row and keeps its engine continuation", async () => {
+    const fen = "r3k2r/pp6/8/8/8/8/PP6/R3K2R w KQkq - 0 1";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        bundleResponse(
+          {
+            best_move: "e1a1",
+            moves: [{ uci: "e1c1", score: 82 }, { uci: "e1a1" }],
+          },
+          { e1c1: ["e1c1"] },
+        ),
+      ),
+    );
+    analyzeWithEngineMock.mockResolvedValue([
+      {
+        move: "e1a1",
+        multipv: 1,
+        scoreType: "cp",
+        score: 72,
+        principalVariation: ["e1a1", "a7a6"],
+      },
+      { move: "a2a3", multipv: 2, scoreType: "cp", score: 52 },
+      { move: "a2a3", multipv: 3, scoreType: "cp", score: 51 },
+      { move: "b2b3", multipv: 4, scoreType: "cp", score: 33 },
+    ]);
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(fen, { debounceMs: 0, fallbackToEngine: true, lineCount: 3 }),
+    );
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.result?.position).toMatchObject({
+      bestMove: "e1c1",
+      moves: [
+        { uci: "e1c1", score: 82 },
+        { uci: "a2a3", score: 52 },
+        { uci: "b2b3", score: 33 },
+      ],
+    });
+    expect(result.current.principalVariations.e1c1).toEqual(["e1c1", "a7a6"]);
+  });
+
+  it("uses Stockfish after two seconds and discards its search when AtomicDB wins or the board changes", async () => {
+    vi.useFakeTimers();
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 625";
+    const nextFen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 625";
+    const fetches: Array<(response: Response) => void> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>((resolve) => fetches.push(resolve))),
+    );
+    const searches: Array<{
+      signal: AbortSignal | undefined;
+      progress: Parameters<typeof analyzeFairyStockfishPosition>[3];
+    }> = [];
+    analyzeWithEngineMock.mockImplementation((_fen, _lineCount, signal, progress) => {
+      searches.push({ signal, progress });
+      return new Promise(() => {});
+    });
+    const { result, rerender, unmount } = renderHook(
+      ({ position }) =>
+        useAtomicDbAnalysis(position, { debounceMs: 0, fallbackToEngine: true, lineCount: 1 }),
+      { initialProps: { position: fen } },
+    );
+    await act(() => vi.advanceTimersByTimeAsync(1_999));
+    expect(searches).toHaveLength(0);
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(searches).toHaveLength(1);
+    act(() => searches[0]?.progress?.([{ move: "e2e4", multipv: 1, scoreType: "cp", score: 72 }]));
+    expect(result.current.source).toBe("engine");
+    await act(async () => fetches[0]?.(bundleResponse({ moves: [{ uci: "d2d4", score: 100 }] })));
+    expect(searches[0]?.signal?.aborted).toBe(true);
+    expect(result.current.source).toBe("atomicdb");
+
+    rerender({ position: nextFen });
+    await act(() => vi.advanceTimersByTimeAsync(2_000));
+    expect(searches).toHaveLength(2);
+    rerender({ position: fen });
+    expect(searches[1]?.signal?.aborted).toBe(true);
+    act(() => searches[1]?.progress?.([{ move: "e7e5", multipv: 1, scoreType: "cp", score: 80 }]));
+    expect(result.current.result?.fen).toBe(fen);
+    unmount();
   });
 
   it("fills and extends an AtomicDB mate row that has missing evaluations", async () => {
@@ -610,7 +694,7 @@ describe("useAtomicDbAnalysis", () => {
   });
 
   it("builds the top line from each child position's current best move", async () => {
-    const startingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    const startingFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 631";
     const fetchMock = vi.fn().mockResolvedValue(
       bundleResponse(
         {
@@ -766,6 +850,72 @@ describe("useAtomicDbAnalysis", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const expandedUrl = new URL(String(fetchMock.mock.calls[1]![0]), "https://example.test");
     expect(expandedUrl.searchParams.get("line_count")).toBe("3");
+
+    rerender({ lineCount: 1 });
+    await waitFor(() => expect(Object.keys(result.current.principalVariations)).toEqual(["g1f3"]));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("cancels obsolete AtomicDB requests and only fetches the settled position during rapid navigation", async () => {
+    vi.useFakeTimers();
+    const initial = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 651";
+    const intermediate = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 651";
+    const settled = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 652";
+    const requests: Array<{ fen: string | null; signal: AbortSignal | null | undefined }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string, options?: RequestInit) => {
+        requests.push({
+          fen: new URL(input, "https://example.test").searchParams.get("fen"),
+          signal: options?.signal,
+        });
+        return new Promise<Response>(() => {});
+      }),
+    );
+    const { rerender } = renderHook(({ fen }) => useAtomicDbAnalysis(fen), {
+      initialProps: { fen: initial },
+    });
+    expect(requests.map((request) => request.fen)).toEqual([initial]);
+    rerender({ fen: intermediate });
+    await act(() => vi.advanceTimersByTimeAsync(80));
+    expect(requests[0]?.signal?.aborted).toBe(true);
+    rerender({ fen: settled });
+    await act(() => vi.advanceTimersByTimeAsync(159));
+    expect(requests.map((request) => request.fen)).toEqual([initial]);
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(requests.map((request) => request.fen)).toEqual([initial, settled]);
+  });
+
+  it("honors AtomicDB's retry delay on subsequent positions", async () => {
+    vi.useFakeTimers();
+    const initial = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 661";
+    const next = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 661";
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response("{}", {
+          status: 429,
+          headers: { "Retry-After": "3" },
+        }),
+      )
+      .mockResolvedValueOnce(responseFor(100));
+    vi.stubGlobal("fetch", fetchMock);
+    const { result, rerender } = renderHook(
+      ({ fen }) => useAtomicDbAnalysis(fen, { debounceMs: 0 }),
+      {
+        initialProps: { fen: initial },
+      },
+    );
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(result.current.status).toBe("error");
+    rerender({ fen: next });
+    await act(() => vi.advanceTimersByTimeAsync(2_999));
+    expect(fetchMock).toHaveBeenCalledOnce();
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    rerender({ fen: initial });
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.current.status).toBe("ready");
   });
 
   it("makes no position or continuation requests while playback is suspended", async () => {
