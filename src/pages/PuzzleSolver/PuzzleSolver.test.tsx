@@ -487,6 +487,35 @@ describe("PuzzleSolverPage solution options", () => {
     },
   );
 
+  it.each([true, false])(
+    "shows only ungraded eligibility before a first attempt (graded: %s)",
+    async (graded) => {
+      mocks.username = "puzzle_author";
+      mocks.puzzleAuthor = "puzzle_author";
+      mocks.attemptedPuzzleIds = new Set();
+      mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValue([]);
+      mocks.fetchPuzzleGradingState.mockResolvedValue({
+        runId: null,
+        graded,
+        availableAt: graded ? null : "2099-01-01T00:00:00Z",
+        permanent: false,
+        hasAttempted: false,
+        hasSolved: false,
+        misses: 0,
+        color: null,
+      });
+      render(<PuzzleSolverPage />);
+      await waitFor(() => expect(mocks.chessboardProps.at(-1)?.disabled).toBe(false));
+      expect(screen.queryByText("Graded", { exact: true })).not.toBeInTheDocument();
+      if (graded) {
+        expect(screen.queryByText(/^Ungraded/)).not.toBeInTheDocument();
+      } else {
+        expect(screen.getByText(/^Ungraded · grading returns in/)).toBeVisible();
+      }
+      expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
+    },
+  );
+
   it("loads the current puzzle and grading before the catalog and progress finish", async () => {
     const puzzles = await mocks.loadPuzzlesById([1369, 1370]);
     let finishCatalog!: (rows: typeof puzzles) => void;
@@ -1511,7 +1540,7 @@ See ${studyUrl}.`;
 
     expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
     await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledOnce());
-    const gradingBadges = await screen.findAllByLabelText(/Grading returns in/);
+    const gradingBadges = await screen.findAllByLabelText(/Ungraded · grading returns in/);
     expect(gradingBadges.length).toBeGreaterThan(0);
     gradingBadges.forEach((badge) => expect(badge).not.toHaveAttribute("title"));
     const explanationTab = await screen.findByRole("tab", { name: "Explain" });
@@ -1989,7 +2018,7 @@ See ${studyUrl}.`;
       const otherAttempts = screen.getByRole("tab", { name: "Other attempts" });
       expect(otherAttempts).toBeDisabled();
       if (old) expect(screen.getByText("Graded", { exact: true })).toBeVisible();
-      else expect(screen.getByText(/^Grading returns in/)).toBeVisible();
+      else expect(screen.getByText(/^Ungraded · grading returns in/)).toBeVisible();
       act(() =>
         mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
           puzzleId: "1369",

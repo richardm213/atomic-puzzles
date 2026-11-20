@@ -915,8 +915,9 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   const showGradingEligibility =
     !testMode &&
     gradingState &&
-    gradingAtEntry?.key === normalizedUsername + ":" + activePuzzleKey &&
-    gradingAtEntry.attempted;
+    (!gradingState.graded ||
+      (gradingAtEntry?.key === normalizedUsername + ":" + activePuzzleKey &&
+        gradingAtEntry.attempted));
   const gradingLabel = gradingState ? puzzleGradingLabel(gradingState) : "";
   const hasSubmittedAttempt = activePuzzleKey ? submittedPuzzleIds.has(activePuzzleKey) : false;
   // Replay history never reveals answers or ends a fresh run.
