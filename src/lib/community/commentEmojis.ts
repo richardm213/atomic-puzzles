@@ -49,6 +49,11 @@ export const commentEmojiByCode = (
 ): CommentEmoji | undefined =>
   customByCode.get(code.toLowerCase()) ?? native?.byCode.get(code.toLowerCase());
 
+export const hasNativeEmojiShortcode = (text: string) =>
+  Array.from(text.matchAll(commentShortcode)).some(
+    ([, code]) => code && !commentEmojiByCode(code, null),
+  );
+
 export type NativeEmojiCatalog = {
   groups: EmojiGroup[];
   emojis: NativeCommentEmoji[];

@@ -7,6 +7,7 @@ declare
 begin
   insert into public.notifications(recipient_username,notification_type,feature_key,feature_message,feature_path)
   values('admin','feature',notification_key,'Correction regression','/rankings/coins?view=transactions&player=admin');
+  update public.notifications set feature_path='/@/admin' where feature_key=notification_key;
   rejected:=false;
   begin
     update public.notifications set feature_path='https://example.com/coins' where feature_key=notification_key;
@@ -20,4 +21,4 @@ begin
 end;
 $$;
 rollback;
-select 'PASS: internal query links accepted; external paths and missing payloads rejected' as result;
+select 'PASS: internal query and profile links accepted; external paths and missing payloads rejected' as result;

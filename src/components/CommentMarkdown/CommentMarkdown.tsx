@@ -8,6 +8,7 @@ import remarkGfm from "remark-gfm";
 import {
   commentEmojiByCode,
   commentShortcode,
+  hasNativeEmojiShortcode,
   type NativeEmojiCatalog,
   useNativeCommentEmojis,
 } from "../../lib/community/commentEmojis";
@@ -79,7 +80,7 @@ const components: Components = {
     const code = node?.properties.dataCommentEmoji;
     const emoji = typeof code === "string" ? commentEmojiByCode(code, null) : undefined;
     return emoji?.kind === "custom" ? (
-      <PlayerFlairIcon className="commentEmoteImage" flair={emoji.code} />
+      <PlayerFlairIcon className="inlineEmoteImage" flair={emoji.code} />
     ) : (
       <span>{children}</span>
     );
@@ -102,12 +103,7 @@ export const CommentMarkdown = ({
   className: string;
   emotes?: boolean;
 }) => {
-  const hasNativeShortcode =
-    emotes &&
-    [...body.matchAll(commentShortcode)].some(
-      ([, code]) => code && !commentEmojiByCode(code, null),
-    );
-  const native = useNativeCommentEmojis(hasNativeShortcode);
+  const native = useNativeCommentEmojis(emotes && hasNativeEmojiShortcode(body));
 
   return (
     <div className={`commentMarkdown ${className}`}>

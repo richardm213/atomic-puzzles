@@ -39,7 +39,7 @@ export const commentEditorSchema = new Schema({
               {
                 src: appAssetPath(path),
                 alt: playerFlairLabel(emoji.code),
-                class: "playerFlairImage commentEmoteImage",
+                class: "playerFlairImage inlineEmoteImage",
                 "data-comment-emote": source,
                 draggable: "false",
               },

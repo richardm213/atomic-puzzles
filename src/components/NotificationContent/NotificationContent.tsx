@@ -25,6 +25,7 @@ import {
 } from "../../lib/community/notifications";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { formatLocalDateTime } from "../../utils/formatters";
+import { InlineEmotes } from "../PlayerFlair/InlineEmotes";
 
 const notificationIcon = (notification: UserNotification) => {
   if (isCommentMentionNotification(notification)) return faAt;
@@ -76,8 +77,14 @@ export const NotificationContent = ({
         )}
       </span>
       <span className={classes.copy}>
-        <strong>{notificationCopy(notification)}</strong>
-        {message ? <span>“{message}”</span> : null}
+        <strong>
+          <InlineEmotes text={notificationCopy(notification)} />
+        </strong>
+        {message ? (
+          <span>
+            “<InlineEmotes text={message} />”
+          </span>
+        ) : null}
         <span>
           {notificationCategory(notification)} ·&nbsp;
           <time dateTime={notification.created_at}>
