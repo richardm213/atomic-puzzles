@@ -1,13 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 
 import {
-  hydrateGameAnalysisPositions,
-  queryGameAnalysisVariations,
-} from "../netlify/features/gameAnalysis/openings";
-import {
-  gameAnalysisPositionStates,
   isCompletedAtomicDbPosition,
-} from "../netlify/features/gameAnalysis/service";
+  queryGameAnalysisVariations,
+} from "../netlify/features/gameAnalysis/atomicDbClient";
+import { hydrateGameAnalysisPositions } from "../netlify/features/gameAnalysis/openings";
+import { gameAnalysisPositionStates } from "../netlify/features/gameAnalysis/service";
 import {
   alignGameAnalysisPositionFens,
   applyGameAnalysisOpeningReview,

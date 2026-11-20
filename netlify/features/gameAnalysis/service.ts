@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import process from "node:process";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { INITIAL_FEN } from "chessops/fen";
@@ -21,14 +20,16 @@ import { createAtomicPosition } from "../../../shared/domain/puzzles/solutionPgn
 import { queryArchiveResource } from "../../archive/queries";
 import { createServerSupabase } from "../../platform/environment";
 import {
-  loadGameAnalysisOpenings,
-  openingEvaluationData,
-  queryGameAnalysisVariations,
-} from "./openings";
+  atomicDbQuery,
+  atomicDbQueueSize,
+  atomicDbRequest,
+  configuredCredentials,
+  isCompletedAtomicDbPosition,
+} from "./atomicDbClient";
+import { loadGameAnalysisOpenings, openingEvaluationData } from "./openings";
 
 export { gameAnalysisPositionKey } from "../../../shared/domain/gameAnalysis";
 
-const ATOMIC_DB_BASE_URL = "https://belzedar.duckdns.org/atomicdb";
 const MAX_RETRIES = 12;
 const INITIAL_POLL_BASE_MS = 2 * 60_000;
 const MAX_INITIAL_POLL_DELAY_MS = 10 * 60_000;
@@ -70,8 +71,6 @@ type GameAnalysisJobRow = {
   charge_attempt: number;
 };
 
-type AtomicDbCredentials = { username: string; password: string };
-
 type SharedPositionRow = {
   fen_key: string;
   request_status: string | null;
@@ -81,37 +80,8 @@ type SharedPositionRow = {
   error: string | null;
 };
 
-const configuredCredentials = (): AtomicDbCredentials | null => {
-  const username = process.env.ATOMICDB_USERNAME?.trim() ?? "";
-  const password = process.env.ATOMICDB_PASSWORD ?? "";
-  return username && password ? { username, password } : null;
-};
-
 const errorMessage = (error: unknown): string =>
   error instanceof Error && error.message ? error.message : "AtomicDB request failed.";
-
-const retryAfterMs = (value: string | null): number => {
-  if (!value) return 1_000;
-  const seconds = Number(value);
-  if (Number.isFinite(seconds)) return Math.max(250, seconds * 1_000);
-  const date = Date.parse(value);
-  return Number.isFinite(date) ? Math.max(250, date - Date.now()) : 1_000;
-};
-
-const atomicDbFetch = async (
-  input: Parameters<typeof fetch>[0],
-  init: Omit<RequestInit, "signal">,
-  timeoutMs: number,
-): Promise<Response> => {
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    const response = await fetch(input, { ...init, signal: AbortSignal.timeout(timeoutMs) });
-    if (response.status !== 429 || attempt === 5) return response;
-    await new Promise((resolve) =>
-      setTimeout(resolve, retryAfterMs(response.headers.get("retry-after"))),
-    );
-  }
-  throw new Error("AtomicDB request failed.");
-};
 
 export const uniqueGameAnalysisPositionIndexes = (
   states: { fen: string }[],
@@ -306,91 +276,6 @@ const randomizedOpeningPlies = async (job: GameAnalysisJobRow): Promise<number> 
   return game && typeof game === "object" && Reflect.get(game, "mode") === "wolfrandom"
     ? WOLFRANDOM_RANDOMIZED_PLIES
     : 0;
-};
-
-export const gameAnalysisRequestParameters = (
-  fen: string,
-  account: AtomicDbCredentials | null,
-): URLSearchParams =>
-  new URLSearchParams({
-    fen,
-    only_if_missing: "1",
-    ...(account ? { username: account.username, password: account.password } : {}),
-  });
-
-const atomicDbRequest = async (
-  fen: string,
-  account: AtomicDbCredentials | null,
-): Promise<Record<string, unknown>> => {
-  const response = await atomicDbFetch(
-    `${ATOMIC_DB_BASE_URL}/api/request`,
-    {
-      method: "POST",
-      headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
-      body: gameAnalysisRequestParameters(fen, account),
-    },
-    20_000,
-  );
-  const body: unknown = await response.json().catch(() => null);
-  if (!response.ok || !body || typeof body !== "object") {
-    const reason =
-      body && typeof body === "object" && typeof Reflect.get(body, "reason") === "string"
-        ? String(Reflect.get(body, "reason"))
-        : "AtomicDB rejected the game position.";
-    throw new Error(reason);
-  }
-  return body as Record<string, unknown>;
-};
-
-const atomicDbQuery = (fen: string) =>
-  queryGameAnalysisVariations(fen, AbortSignal.timeout(15_000), (input, init) =>
-    atomicDbFetch(input, init ?? {}, 15_000),
-  );
-
-export const isCompletedAtomicDbPosition = (position: StoredAtomicDbPosition | null): boolean => {
-  if (!position) return false;
-  if (position.status !== "UNKNOWN" || (position.budgetNodes ?? 0) >= GAME_ANALYSIS_BUDGET_NODES) {
-    return true;
-  }
-  // A solved mate can stop below the node budget while AtomicDB still reports UNKNOWN.
-  // Require the decisive score to agree with a mate line for the best move.
-  const { bestMove, lines, score } = position;
-  if ((score !== 10_000 && score !== -10_000) || !bestMove) return false;
-  return lines.some(
-    ({ move, mate, pv }) =>
-      (move ?? pv[0]) === bestMove &&
-      pv[0] === bestMove &&
-      mate !== null &&
-      Math.sign(mate) === Math.sign(score),
-  );
-};
-
-export const parseAtomicDbQueueSize = (html: string): number | null => {
-  const metric = (label: "waiting" | "running"): number | null => {
-    const current = html.match(
-      new RegExp(`<strong>\\s*([\\d,]+)\\s*</strong>\\s*${label}\\b`, "i"),
-    );
-    const legacy = html.match(
-      new RegExp(`<div class="v">([\\d,]+)</div><div class="l">${label}</div>`, "i"),
-    );
-    const value = Number.parseInt((current?.[1] ?? legacy?.[1] ?? "").replaceAll(",", ""), 10);
-    return Number.isFinite(value) ? value : null;
-  };
-  const waiting = metric("waiting");
-  const running = metric("running");
-  return waiting === null || running === null ? null : waiting + running;
-};
-
-const atomicDbQueueSize = async (account: AtomicDbCredentials | null): Promise<number | null> => {
-  // Anonymous requests are attributed to Gannet, so its public queue page is also the
-  // authoritative throttle when no private account is configured.
-  const queueAccount = account?.username ?? "gannet";
-  const response = await fetch(`${ATOMIC_DB_BASE_URL}/queue/${encodeURIComponent(queueAccount)}/`, {
-    headers: { Accept: "text/html" },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!response.ok) return null;
-  return parseAtomicDbQueueSize(await response.text());
 };
 
 const initialPollDelayMs = (queueSize: number): number => {

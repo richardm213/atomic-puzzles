@@ -1,10 +1,10 @@
 import { appendFile, readFile } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
 
+import { queryGameAnalysisVariations } from "../netlify/features/gameAnalysis/atomicDbClient";
 import {
   loadGameAnalysisOpenings,
   openingEvaluationData,
-  queryGameAnalysisVariations,
   refreshGameAnalysisOpenings,
 } from "../netlify/features/gameAnalysis/openings";
 import { createServerSupabase } from "../netlify/platform/environment";
@@ -18,8 +18,8 @@ import {
   gameAnalysisOpeningKey,
   gameAnalysisPositionKey,
   mergeGameAnalysisOpenings,
-  referenceGameAnalysisOpenings,
   type PersistedGameAnalysisSummary,
+  referenceGameAnalysisOpenings,
   type StoredAtomicDbPosition,
 } from "../shared/domain/gameAnalysis";
 import {

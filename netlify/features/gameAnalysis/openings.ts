@@ -2,19 +2,17 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   fillStoredAtomicDbVariations,
-  GAME_ANALYSIS_VARIATION_SIZE,
   gameAnalysisOpeningFens,
   gameAnalysisOpeningKey,
   isGameAnalysisOpeningReference,
   mergeGameAnalysisOpenings,
-  parseStoredAtomicDbVariationBundle,
-  unavailableGameAnalysisOpening,
   type PersistedGameAnalysisSummary,
   type StoredAtomicDbCandidate,
   type StoredAtomicDbPosition,
+  unavailableGameAnalysisOpening,
 } from "../../../shared/domain/gameAnalysis";
 import { mergeOpeningVariationSupplement } from "../../../shared/domain/gameAnalysisVariations";
-import { queryAtomicDbPrincipalVariations } from "../../lib/atomicDb";
+import { queryGameAnalysisVariations } from "./atomicDbClient";
 
 const OPENING_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
 
@@ -40,16 +38,6 @@ export const loadGameAnalysisOpenings = async (
     for (const row of (data ?? []) as OpeningRow[]) openings.set(row.fen_key, row);
   }
   return openings;
-};
-
-export const queryGameAnalysisVariations = async (
-  fen: string,
-  signal: AbortSignal,
-  fetchResponse?: typeof fetch,
-) => {
-  const size = GAME_ANALYSIS_VARIATION_SIZE;
-  const bundle = await queryAtomicDbPrincipalVariations(fen, size, size, signal, fetchResponse);
-  return bundle ? parseStoredAtomicDbVariationBundle(fen, bundle) : null;
 };
 
 export const openingEvaluationData = (

@@ -7,21 +7,21 @@ import {
   unavailableGameAnalysisOpening,
 } from "../../shared/domain/gameAnalysis";
 import {
+  gameAnalysisRequestParameters,
+  isCompletedAtomicDbPosition,
+  parseAtomicDbQueueSize,
   queryGameAnalysisVariations,
-  refreshGameAnalysisOpenings,
-} from "../features/gameAnalysis/openings";
+} from "../features/gameAnalysis/atomicDbClient";
+import { refreshGameAnalysisOpenings } from "../features/gameAnalysis/openings";
 import {
   gameAnalysisNeedsSubmission,
   gameAnalysisPollIndexes,
   gameAnalysisPollSchedule,
   gameAnalysisPositionKey,
   gameAnalysisPositionStates,
-  gameAnalysisRequestParameters,
   gameAnalysisSubmissionIndexes,
   gameAnalysisSubmissionLimit,
   gameAnalysisSweepPositionLimit,
-  isCompletedAtomicDbPosition,
-  parseAtomicDbQueueSize,
   uniqueGameAnalysisPositionIndexes,
 } from "../features/gameAnalysis/service";
 
