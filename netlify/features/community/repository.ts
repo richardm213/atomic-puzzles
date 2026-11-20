@@ -496,30 +496,28 @@ export class CommunityRepository {
       ? this.supabase.from("community_comments").select("username").eq("id", parentId).maybeSingle()
       : Promise.resolve({ data: null, error: null });
     const cutoff = shiftUtcMonths(new Date(), -1);
-    const practiceCooldownCutoff = shiftUtcMonths(new Date(cutoff), 2);
     const attemptedUsersQuery = this.supabase
       .from("puzzle_progress")
       .select("username")
       .eq("puzzle_id", String(puzzleId))
-      // Practice attempts retain no move logs and expire two months after the attempt.
-      .or(`first_attempt_at.gte.${cutoff},grading_available_at.gte.${practiceCooldownCutoff}`);
-    const recentRetriesQuery = this.supabase
-      .from("puzzle_attempt_move_logs")
+      .gte("first_attempt_at", cutoff);
+    const recentAttemptsQuery = this.supabase
+      .from("puzzle_solver_states")
       .select("username")
       .eq("puzzle_id", puzzleId)
-      .gte("attempted_at", cutoff);
+      .gte("last_attempted_at", cutoff);
     const [
       priorCommentersResult,
       puzzleAuthorResult,
       parentAuthorResult,
       attemptedUsersResult,
-      recentRetriesResult,
+      recentAttemptsResult,
     ] = await Promise.all([
       priorCommentersQuery,
       puzzleAuthorQuery,
       parentAuthorQuery,
       attemptedUsersQuery,
-      recentRetriesQuery,
+      recentAttemptsQuery,
     ]);
     if (priorCommentersResult.error) {
       throw new Error(`Unable to find puzzle participants: ${priorCommentersResult.error.message}`);
@@ -536,14 +534,16 @@ export class CommunityRepository {
       );
     }
 
-    if (recentRetriesResult.error)
-      throw new Error(`Unable to find recent puzzle retries: ${recentRetriesResult.error.message}`);
+    if (recentAttemptsResult.error)
+      throw new Error(
+        `Unable to find recent puzzle attempts: ${recentAttemptsResult.error.message}`,
+      );
     const recipients = buildPuzzleCommentNotificationRecipients({
       actorUsername,
       puzzleAuthor: puzzleAuthorResult.data?.author,
       parentAuthor: parentAuthorResult.data?.username,
       isReply: parentId !== null,
-      attemptedUsers: [...(attemptedUsersResult.data ?? []), ...(recentRetriesResult.data ?? [])],
+      attemptedUsers: [...(attemptedUsersResult.data ?? []), ...(recentAttemptsResult.data ?? [])],
       priorCommenters: priorCommentersResult.data ?? [],
       excludedUsernames,
     });

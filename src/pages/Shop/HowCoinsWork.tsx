@@ -37,7 +37,7 @@ const attemptExamples: {
   { color: "red", result: "Solved after 3+ incorrect moves", correct: false, solved: true },
   { color: "red", result: "Not solved · 1–2 misses", correct: false },
   { color: "purple", result: "Not solved 3+ misses", correct: false },
-  { color: "blue", result: "2 clean graded runs in a row", correct: true },
+  { color: "blue", result: "Both graded solves without a mistake", correct: true },
 ];
 
 const CoinAmount = ({ amount }: { amount: number }) => (
@@ -142,7 +142,7 @@ export const HowCoinsWorkPage = () => (
         <h2 id="grading-cooldown-heading">When does grading return?</h2>
         <figure
           className="coinGradingCycle"
-          aria-label="Grading cycle, clockwise: graded run, solve or resign, 2-month waiting period, grading returns, repeat"
+          aria-label="Grading: first solve, 2-month waiting period, second graded solve, permanently ungraded"
         >
           <svg
             className="coinGradingCycleArrows"
@@ -164,7 +164,7 @@ export const HowCoinsWorkPage = () => (
                 <path d="M0 0 5 2.5 0 5Z" fill="currentColor" />
               </marker>
             </defs>
-            {[0, 90, 180, 270].map((rotation) => (
+            {[0, 90, 180].map((rotation) => (
               <path
                 key={rotation}
                 d="M75 6.7 A50 50 0 0 1 93.3 25"
@@ -178,21 +178,23 @@ export const HowCoinsWorkPage = () => (
           </svg>
           <ol>
             <li>
-              <strong>Graded run</strong>
-            </li>
-            <li>
-              <strong>Solve or resign</strong>
+              <strong>First graded solve</strong>
             </li>
             <li>
               <strong>2-month waiting period</strong>
             </li>
             <li>
-              <strong>Grading returns</strong>
+              <strong>Second graded solve</strong>
+            </li>
+            <li>
+              <strong>Permanently ungraded</strong>
             </li>
           </ol>
         </figure>
         <p>
-          Any practice resets the two-month timer. Previously solved puzzles pay and cost ¼ as much.
+          After your first graded solve, grading returns in two months. Practice does not extend
+          that wait. After your second graded solve, the puzzle stays ungraded. The second run pays
+          and costs ¼ as much.
         </p>
       </section>
 
@@ -237,8 +239,9 @@ export const HowCoinsWorkPage = () => (
             on your own unrated puzzles. A practice run stays practice until it ends.
           </p>
           <p>
-            <strong>Colors:</strong> Only graded solves count toward bright green. A graded mistake
-            resets the streak and restores your original solve color.
+            <strong>Colors:</strong> Mistakes from earlier graded runs still count. Practice never
+            changes your color. Bright green requires both graded solves without any graded
+            mistakes.
           </p>
           <p>
             <strong>Penalties:</strong> Total miss deductions stay below twice the first-miss

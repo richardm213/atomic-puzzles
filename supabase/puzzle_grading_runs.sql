@@ -50,6 +50,23 @@ alter table public.puzzle_runs enable row level security;
 revoke all on public.puzzle_solver_states, public.puzzle_runs from public, anon, authenticated;
 grant all on public.puzzle_solver_states, public.puzzle_runs to service_role;
 
+-- Lifetime graded history determines colors. Practice remains untracked.
+alter table public.puzzle_solver_states
+  add column if not exists graded_miss_count integer not null default 0 check(graded_miss_count>=0),
+  add column if not exists graded_solve_count integer not null default 0 check(graded_solve_count>=0),
+  add column if not exists first_graded_solve_at timestamptz,
+  add column if not exists last_attempted_at timestamptz;
+
+create or replace function public.puzzle_lifetime_attempt_color(misses integer,solved boolean,solves integer)
+returns text language sql immutable set search_path='' as $$
+  select case when solved then case
+    when misses>=3 then 'red' when misses=2 then 'orange' when misses=1 then 'yellow'
+    when solves>=2 then 'blue' else 'green' end
+    when misses>=3 then 'purple' else 'red' end;
+$$;
+revoke all on function public.puzzle_lifetime_attempt_color(integer,boolean,integer)from public,anon,authenticated;
+grant execute on function public.puzzle_lifetime_attempt_color(integer,boolean,integer)to service_role;
+
 -- Preserve existing results and receipts. Historical attempts have already finished their runs.
 insert into public.puzzle_solver_states
   (username, puzzle_id, grading_available_at, original_color, correct_streak)
@@ -121,17 +138,17 @@ returns jsonb language sql stable security definer set search_path = ''
 as $$
   select jsonb_build_object(
     'runId', r.id,
-    'graded', coalesce(r.graded,
-      not coalesce(e.permanent, false)
-      and coalesce(greatest(s.grading_available_at,
+    'graded', coalesce(s.graded_solve_count,0)<2 and not coalesce(e.permanent,false)
+      and coalesce(r.graded,
+      coalesce(greatest(s.grading_available_at,
         case when e.category in ('creator','abuse') then e.expires_at end),
         '-infinity'::timestamptz) <= now()),
-    'availableAt', greatest(s.grading_available_at,
-      case when e.expires_at > now() and e.category in ('creator', 'abuse') then e.expires_at end),
-    'permanent', coalesce(e.permanent, false),
+    'availableAt', case when coalesce(s.graded_solve_count,0)>=2 then null else greatest(s.grading_available_at,
+      case when e.expires_at > now() and e.category in ('creator', 'abuse') then e.expires_at end) end,
+    'permanent', coalesce(e.permanent, false) or coalesce(s.graded_solve_count,0)>=2,
     'hasAttempted', p.username is not null,
     'hasSolved', coalesce(p.has_solved, false),
-    'misses', case when r.graded = false then 0 else coalesce(r.misses, 0) end,
+    'misses', case when r.graded = false or coalesce(s.graded_solve_count,0)>=2 then 0 else coalesce(r.misses, 0) end,
     'color', p.attempt_color
   )
   from (select public.canonical_user_username(p_username) as username, p_puzzle_id::bigint as puzzle_id) q
@@ -230,11 +247,13 @@ begin
 
   -- Practice retains only an active session marker and cooldown retry receipt.
   -- It cannot create history, miss counts, solved status, colors, coins, or ratings.
-  if not run.graded then
-    -- Every new practice submission restarts the cooldown, even an incorrect one.
+  if not run.graded or state.graded_solve_count>=2 then
+    run.graded := false;
+    -- After a first solve, practice cannot extend its fixed cooldown.
     update public.puzzle_solver_states
-    set grading_available_at=at_time + interval '2 months',
-      practice_resolution_id=p_attempt_id
+    set grading_available_at=case when state.graded_solve_count=0
+          then at_time + interval '2 months' else state.grading_available_at end,
+      practice_resolution_id=p_attempt_id,last_attempted_at=at_time
     where username=solver and puzzle_id=puzzle_key
     returning * into state;
     update public.puzzle_progress set grading_available_at=state.grading_available_at
@@ -278,7 +297,10 @@ begin
     -- Truncation keeps rounded microcoin debits below the geometric 2x cap.
     coin_delta := -trunc(run.base_penalty * power(0.5::numeric,least(run.misses,64)),6);
     state.correct_streak := 0;
-    color := coalesce(state.original_color,case when run.misses >= 2 then 'purple' else 'red' end);
+    state.graded_miss_count := state.graded_miss_count+1;
+    color := public.puzzle_lifetime_attempt_color(state.graded_miss_count,
+      coalesce(progress.has_solved,false),state.graded_solve_count);
+    if coalesce(progress.has_solved,false) then state.original_color:=color;end if;
     run.misses := run.misses + 1;
   elsif p_outcome = 'correct' then
     if run.misses < 4 then
@@ -291,9 +313,10 @@ begin
       coin_delta := coin_delta + speed_bonus;
     end if;
     state.correct_streak := case when run.misses=0 then state.correct_streak+1 else 0 end;
-    state.original_color := coalesce(state.original_color,
-      case run.misses when 0 then 'green' when 1 then 'yellow' when 2 then 'orange' else 'red' end);
-    color := case when state.correct_streak >= 2 then 'blue' else state.original_color end;
+    state.graded_solve_count := state.graded_solve_count+1;
+    state.first_graded_solve_at := coalesce(state.first_graded_solve_at,at_time);
+    state.original_color := public.puzzle_lifetime_attempt_color(state.graded_miss_count,true,1);
+    color := public.puzzle_lifetime_attempt_color(state.graded_miss_count,true,state.graded_solve_count);
     update public.puzzle_progress set has_solved=true,solved_move=coalesce(solved_move,p_correct_move)
     where username=solver and puzzle_id=puzzle_key::text;
   else
@@ -305,7 +328,7 @@ begin
   if p_outcome in ('correct','resigned') then
     run.ended_at := at_time;
     run.outcome := p_outcome;
-    state.grading_available_at := at_time + interval '2 months';
+    state.grading_available_at := coalesce(state.first_graded_solve_at,at_time) + interval '2 months';
   end if;
   if color is not null then
     update public.puzzle_progress set attempt_color=color
@@ -325,7 +348,9 @@ begin
   update public.puzzle_runs set misses=run.misses,ended_at=run.ended_at,outcome=run.outcome
   where id=run.id;
   update public.puzzle_solver_states set grading_available_at=state.grading_available_at,
-    original_color=state.original_color,correct_streak=state.correct_streak
+    original_color=state.original_color,correct_streak=state.correct_streak,
+    graded_miss_count=state.graded_miss_count,graded_solve_count=state.graded_solve_count,
+    first_graded_solve_at=state.first_graded_solve_at,last_attempted_at=at_time
   where username=solver and puzzle_id=puzzle_key;
 
   update public.puzzle_progress set grading_available_at=state.grading_available_at

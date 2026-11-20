@@ -38,7 +38,7 @@ export const puzzleAttemptColorExplanation = (
     case "purple":
       return "Unsolved after three or more mistakes";
     case "blue":
-      return "Two consecutive correct graded runs without a mistake";
+      return "Both graded solves without any graded mistakes";
   }
 };
 
