@@ -1,4 +1,10 @@
-import type { PuzzlePositionHistory } from "../../../shared/domain/puzzles/puzzleSubmission";
+import type { BoardAnalysisSnapshot } from "../../types/chessboard";
+import type { PuzzleCreationResult, PuzzlePositionHistory } from "../puzzles/puzzleSubmission";
+
+type PuzzleAnalysisReturn = {
+  snapshot: BoardAnalysisSnapshot;
+  editedSolution?: string;
+};
 
 declare module "@tanstack/history" {
   interface HistoryState {
@@ -6,8 +12,11 @@ declare module "@tanstack/history" {
       positionHistory: PuzzlePositionHistory;
       returnTo: string;
       sourcePuzzleId: string;
+      analysis?: PuzzleAnalysisReturn;
     };
     resumePuzzleAnalysis?: string;
+    puzzleDraftSubmission?: PuzzleCreationResult;
+    puzzleAnalysisReturn?: PuzzleAnalysisReturn;
   }
 }
 

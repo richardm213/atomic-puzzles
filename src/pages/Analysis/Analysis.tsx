@@ -1,6 +1,6 @@
 import { faArrowsRotate, faBookOpen, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
+import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import type {
   CSSProperties,
@@ -14,7 +14,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { z } from "zod";
 
 import { WOLFRANDOM_RANDOMIZED_PLIES } from "../../../shared/domain/gameAnalysis";
-import { isApprovedPuzzleCreator } from "../../../shared/domain/puzzles/approvedPuzzleCreators";
 import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardClock } from "../../components/BoardClock/BoardClock";
@@ -40,10 +39,11 @@ import {
 import {
   PuzzleComposer,
   PuzzleComposerButton,
-  type PuzzleCreationResult,
+  PuzzleCreationConfirmation,
 } from "../../features/analysisWorkspace/PuzzleComposer";
 import {
   useBoardAlignedPanelHeight,
+  useDraftLauncherFocus,
   useOpeningExplorerSplit,
   useWorkspaceViewport,
 } from "../../features/analysisWorkspace/useAnalysisWorkspaceLayout";
@@ -80,7 +80,7 @@ import {
   DEFAULT_PRACTICE_MOVE_SETTINGS,
   fetchRandomPracticePlayer,
 } from "../../lib/practice/moveSource";
-import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
+import type { BoardPuzzleDraft, PuzzleCreationResult } from "../../lib/puzzles/puzzleSubmission";
 import {
   boardPly,
   type ChessboardState,
@@ -340,8 +340,6 @@ export const AnalysisPage = ({
   const solverDraft = useLocation({ select: (location) => location.state.puzzleDraft });
   const training = workspace?.training ?? false;
   const auth = useAuth();
-  const publishesDirectly = isApprovedPuzzleCreator(auth.user?.username ?? "");
-  const puzzleActionLabel = publishesDirectly ? "Create puzzle" : "Submit puzzle";
   const { _splat: fenPath, orientation: routeOrientation } = useParams({ strict: false });
   const handoffId = new URLSearchParams(
     typeof window === "undefined" ? "" : window.location.search,
@@ -393,12 +391,7 @@ export const AnalysisPage = ({
   const [gameBoardState, setGameBoardState] = useState<ChessboardState | null>(null);
   const [puzzleBoardState, setPuzzleBoardState] = useState<ChessboardState | null>(null);
   const [puzzleSaving, setPuzzleSaving] = useState(false);
-  const [puzzleDraft, setPuzzleDraft] = useState<{
-    fen: string;
-    orientation: "white" | "black";
-    sourcePly: number;
-    positionHistory: PuzzlePositionHistory;
-  } | null>(() =>
+  const [puzzleDraft, setPuzzleDraft] = useState<BoardPuzzleDraft | null>(() =>
     solverDraft && !game && !workspace
       ? {
           fen: routeFen,
@@ -414,8 +407,7 @@ export const AnalysisPage = ({
     { enabled: false, moveCount: 10 },
   );
   const [addedPuzzle, setAddedPuzzle] = useState<PuzzleCreationResult | null>(null);
-  const puzzleLauncher = useRef<HTMLButtonElement | null>(null);
-  const scrollBeforeDraft = useRef(0);
+  const draftLauncherFocus = useDraftLauncherFocus();
   const hashBeforeDraft = useRef("");
   const documentBeforeDraft = useRef({ fen: routeFen, pgn: "" });
   const boardState = puzzleDraft ? puzzleBoardState : gameBoardState;
@@ -761,8 +753,7 @@ export const AnalysisPage = ({
   }, [puzzleDraft]);
 
   const startPuzzle = (event: ReactMouseEvent<HTMLButtonElement>): void => {
-    puzzleLauncher.current = event.currentTarget;
-    scrollBeforeDraft.current = window.scrollY;
+    draftLauncherFocus.remember(event.currentTarget);
     hashBeforeDraft.current = window.location.hash;
     documentBeforeDraft.current = { fen: currentFen, pgn: pgnText };
     setThreatMode(false);
@@ -801,10 +792,7 @@ export const AnalysisPage = ({
     const { fen, pgn } = documentBeforeDraft.current;
     boardDocument.resetDrafts(fen, pgn);
     if (result) setAddedPuzzle(result);
-    window.requestAnimationFrame(() => {
-      window.scrollTo({ top: scrollBeforeDraft.current, behavior: "instant" });
-      puzzleLauncher.current?.focus({ preventScroll: true });
-    });
+    draftLauncherFocus.restore();
   };
 
   const requestBoardWheelNavigation = useCallback(
@@ -1374,18 +1362,10 @@ export const AnalysisPage = ({
     Boolean(terminalOutcome) ||
     navigation !== null;
   const puzzleConfirmation = addedPuzzle ? (
-    <p className={game ? "gamePuzzleConfirmation" : "analysisPuzzleConfirmation"} role="status">
-      {addedPuzzle.destination === "published" ? (
-        <>
-          Puzzle added.{" "}
-          <Link to="/solve/$puzzleId" params={{ puzzleId: String(addedPuzzle.puzzleId) }}>
-            View puzzle
-          </Link>
-        </>
-      ) : (
-        "Puzzle submitted for review."
-      )}
-    </p>
+    <PuzzleCreationConfirmation
+      className={game ? "gamePuzzleConfirmation" : "analysisPuzzleConfirmation"}
+      result={addedPuzzle}
+    />
   ) : null;
 
   const gameUnderboard =
@@ -1520,7 +1500,6 @@ export const AnalysisPage = ({
                       ) : null}
                       {auth.isAuthenticated && (!game || game.external_match_id) ? (
                         <PuzzleComposerButton
-                          label={puzzleActionLabel}
                           disabled={createPuzzleDisabled || Boolean(puzzleDraft)}
                           onClick={startPuzzle}
                         />
@@ -1585,7 +1564,6 @@ export const AnalysisPage = ({
                 <PuzzleComposer
                   saving={puzzleSaving}
                   onSavingChange={setPuzzleSaving}
-                  publishesDirectly={publishesDirectly}
                   positionHistory={puzzleDraft.positionHistory}
                   {...(game
                     ? { match: { gameId: game.game_id, matchId: game.external_match_id } }
@@ -1599,7 +1577,13 @@ export const AnalysisPage = ({
                       void navigate({
                         href: solverDraft.returnTo,
                         replace: true,
-                        state: { resumePuzzleAnalysis: solverDraft.sourcePuzzleId },
+                        state: {
+                          resumePuzzleAnalysis: solverDraft.sourcePuzzleId,
+                          puzzleDraftSubmission: result,
+                          ...(solverDraft.analysis
+                            ? { puzzleAnalysisReturn: solverDraft.analysis }
+                            : {}),
+                        },
                       });
                     } else {
                       closePuzzle(result);

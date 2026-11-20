@@ -37,6 +37,7 @@ import {
 import { lichessAnalysisGlyphSvg } from "../../lib/gameAnalysis/lichessAnalysisGlyph";
 import {
   type AttemptResolved,
+  type BoardAnalysisSnapshot,
   type BoardLineRef,
   type ChessboardState,
   initialBoardView,
@@ -1188,6 +1189,34 @@ const ChessboardComponent = ({
     [activateHistory, clearMoveEvaluationTimer, clearPendingPromotion, emitState, resetSession],
   );
 
+  const restoreAnalysis = useCallback(
+    ({ fen, view, customPgn, historyPgn }: BoardAnalysisSnapshot) => {
+      if (!analysisModeRef.current || fen !== fenRef.current) return;
+      const variations = createVariationHistory();
+      if (customPgn) {
+        const result = buildPgnHistory(fen, customPgn);
+        if (result.ok) result.histories.forEach((history) => saveVariation(variations, history));
+      }
+      customVariationsRef.current = variations;
+      const ply = view.position === "beforeIntro" ? 0 : view.position;
+      const line = view.line;
+      if (line.source === "solution" && solutionEntriesRef.current[line.index]) {
+        showSolutionLine(line.index, ply);
+      } else {
+        const custom = line.source === "custom" ? variationHistoryAt(variations, line.index) : null;
+        const history = custom ? null : buildPgnHistory(fen, historyPgn);
+        activateHistory({
+          history: custom ?? (history?.ok ? history.history : createBoardHistory(fen)),
+          ply,
+          activeLine: custom ? line : { source: "history" },
+          locked: false,
+        });
+      }
+      if (view.position === "beforeIntro") navigateTo("beforeIntro");
+    },
+    [activateHistory, analysisModeRef, fenRef, navigateTo, showSolutionLine],
+  );
+
   const handleBoardMove = useCallback(
     (orig: string, dest: string): void => {
       const position = positionRef.current;
@@ -1343,6 +1372,9 @@ const ChessboardComponent = ({
           solutionNavigation.ply,
         );
         break;
+      case "restoreAnalysis":
+        restoreAnalysis(solutionNavigation.snapshot);
+        break;
       case "play":
         playUciMove(solutionNavigation.uci);
         break;
@@ -1456,6 +1488,7 @@ const ChessboardComponent = ({
     navigatePlayback,
     navigateTo,
     loadPgnMainline,
+    restoreAnalysis,
     playUciMove,
     resetToFen,
     showSolutionLine,

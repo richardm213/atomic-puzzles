@@ -19,7 +19,6 @@ import {
   useState,
 } from "react";
 
-import { isApprovedPuzzleCreator } from "../../../shared/domain/puzzles/approvedPuzzleCreators";
 import {
   DAILY_PUZZLE_ATTEMPT_LIMIT,
   DAILY_PUZZLE_ATTEMPT_LIMIT_MESSAGE,
@@ -55,11 +54,18 @@ import {
 } from "../../components/VariationTree/VariationTree";
 import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
-import { PuzzleComposerButton } from "../../features/analysisWorkspace/PuzzleComposer";
+import {
+  PuzzleComposerButton,
+  PuzzleCreationConfirmation,
+} from "../../features/analysisWorkspace/PuzzleComposer";
 import { useBoardItemShortcuts } from "../../hooks/useBoardItemShortcuts";
 import { useBoardMoveEditing } from "../../hooks/useBoardMoveEditing";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
-import { boardLineNavigation, getBoardLineState } from "../../lib/analysis/boardState";
+import {
+  boardLineNavigation,
+  getBoardLineState,
+  snapshotBoardAnalysis,
+} from "../../lib/analysis/boardState";
 import { ApiError } from "../../lib/api/postApi";
 import { movePrefix, startingPlyFromFen } from "../../lib/chess/pgn";
 import { previewCoinChange } from "../../lib/coins/coinEvents";
@@ -856,9 +862,10 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   const hasSolvedPuzzle = Boolean(
     gradingState?.hasSolved || (activePuzzleKey && solvedPuzzleIds.has(activePuzzleKey)),
   );
+  const { resumePuzzleAnalysis, puzzleDraftSubmission, puzzleAnalysisReturn } = location.state;
   const resumeAnalysis =
     Boolean(activePuzzleKey) &&
-    location.state.resumePuzzleAnalysis === activePuzzleKey &&
+    resumePuzzleAnalysis === activePuzzleKey &&
     (testMode ||
       hasSolvedPuzzle ||
       gradingState?.hasAttempted === true ||
@@ -912,7 +919,9 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     [blindPlies, dailyLimitReached, leadIn, blindEntry?.eligible, blindEntryReady],
   );
   const blindMode = Boolean(blindLeadIn);
-  const autoplayIntro = Boolean(activePuzzle?.intro && !blindMode && !dailyLimitReached);
+  const autoplayIntro = Boolean(
+    activePuzzle?.intro && !blindMode && !dailyLimitReached && !resumeAnalysis,
+  );
   const introPending = autoplayIntro && finishedIntroKey !== activePuzzleKey;
   const handleIntroEnd = useCallback(
     (durationMs: number, completed: boolean) => {
@@ -1310,7 +1319,12 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     if (!resumeAnalysis || !fen) return;
     dispatchPuzzleSession({ type: "reveal-solution" });
     setActivePuzzleInfoTab("solution");
-  }, [fen, resumeAnalysis, uiVisitKey]);
+    if (puzzleAnalysisReturn?.snapshot.fen !== fen) return;
+    if (puzzleAnalysisReturn.editedSolution !== undefined) {
+      setAnalysisDocument({ visit: puzzleVisitKey, pgn: puzzleAnalysisReturn.editedSolution });
+    }
+    setSolutionNavigation({ type: "restoreAnalysis", snapshot: puzzleAnalysisReturn.snapshot });
+  }, [fen, puzzleAnalysisReturn, puzzleVisitKey, resumeAnalysis, uiVisitKey]);
 
   useLayoutEffect(() => {
     const shouldStartTimer = Boolean(
@@ -1748,6 +1762,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
 
   useEffect(() => {
     if (!boardShowsSolution || !isOnSolutionPath) return;
+    if (baseLineState.activeLine.source === "custom" || baseLineState.beforeIntro) return;
     if (solutionNavigation) return;
     if (viewedSolutionIndex === activeSolutionLineIndex) return;
 
@@ -1758,6 +1773,8 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     });
   }, [
     activeSolutionLineIndex,
+    baseLineState.activeLine.source,
+    baseLineState.beforeIntro,
     viewedSolutionIndex,
     currentAnalysisMoves.length,
     boardShowsSolution,
@@ -1840,6 +1857,12 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
           },
           returnTo: location.href,
           sourcePuzzleId: activePuzzleKey,
+          analysis: {
+            snapshot: snapshotBoardAnalysis(fen, boardState),
+            ...(analysisDocument?.visit === puzzleVisitKey
+              ? { editedSolution: analysisDocument.pgn }
+              : {}),
+          },
         },
       },
     });
@@ -1854,7 +1877,6 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
       analysisActions={
         user?.username ? (
           <PuzzleComposerButton
-            label={isApprovedPuzzleCreator(user.username) ? "Create puzzle" : "Submit puzzle"}
             disabled={
               !currentFen || introPending || Boolean(terminalOutcome) || Boolean(solutionNavigation)
             }
@@ -2562,6 +2584,9 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
             </div>
           ) : null}
         </div>
+        {resumeAnalysis && puzzleDraftSubmission ? (
+          <PuzzleCreationConfirmation result={puzzleDraftSubmission} />
+        ) : null}
         {!isMobileLayout ? (
           <>
             {issuePrompt}

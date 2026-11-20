@@ -245,19 +245,24 @@ test("solving after a mistake earns coins while the first move and time stay in 
   await expect(page.getByLabel("Attempt time 0:30")).toBeVisible();
   await expect(page.getByLabel("Solved on the second try", { exact: true })).toBeVisible();
 
-  await page
-    .getByRole("region", { name: "Puzzle analysis" })
-    .getByRole("button", { name: /e5/ })
-    .click();
+  const analysis = page.getByRole("region", { name: "Puzzle analysis" });
+  await analysis.getByRole("button", { name: /e5/ }).click();
+  await playBlackMove(page, "c2c3");
+  await analysis.getByRole("button", { name: /e5/ }).click();
+  await playBlackMove(page, "d2d4");
+  await expect(analysis.getByRole("button", { name: /d4/ })).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
   await draftButton.click();
   const draft = page.getByRole("form", { name: "Puzzle draft" });
   await expect(draft).toBeVisible();
   await expect(page.getByRole("textbox", { name: "FEN", exact: true })).toHaveValue(
-    "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+    "rnbqkbnr/pppp1ppp/8/4p3/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2",
   );
   const pgn = page.getByRole("textbox", { name: "PGN", exact: true });
   await expect(pgn).toHaveValue("");
-  await pgn.fill("2. Nf3");
+  await pgn.fill("2... Nc6");
   await pgn.press("Enter");
   await page.route("**/api/puzzles/submit", (route) =>
     route.fulfill({ json: { destination: "review", puzzle: { id: 103 } } }),
@@ -268,12 +273,18 @@ test("solving after a mistake earns coins while the first move and time stay in 
   );
   await draft.getByRole("button", { name: "Submit puzzle", exact: true }).click();
   expect((await request).postDataJSON()).toMatchObject({
-    positionMoves: ["e5"],
-    solution: "2. Nf3 *",
+    positionMoves: ["e5", "d4"],
+    solution: "2... Nc6 *",
   });
   await expect(draft).toBeHidden();
   await expect(page).toHaveURL(/\/solve\/102$/);
+  await expect(page.getByText("Puzzle submitted for review.", { exact: true })).toBeVisible();
   await expect(draftButton).toBeVisible();
+  await expect(analysis.getByRole("button", { name: /d4/ })).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
+  await expect(analysis.getByRole("button", { name: /c3/ })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Other attempts", exact: true })).toBeEnabled();
   expect(requests).toHaveLength(2);
 });

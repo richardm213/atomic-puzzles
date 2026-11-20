@@ -8,13 +8,12 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import type { CSSProperties, MouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
-import { isApprovedPuzzleCreator } from "../../../shared/domain/puzzles/approvedPuzzleCreators";
 import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardClock } from "../../components/BoardClock/BoardClock";
@@ -43,10 +42,11 @@ import {
 import {
   PuzzleComposer,
   PuzzleComposerButton,
-  type PuzzleCreationResult,
+  PuzzleCreationConfirmation,
 } from "../../features/analysisWorkspace/PuzzleComposer";
 import {
   useBoardAlignedPanelHeight,
+  useDraftLauncherFocus,
   useOpeningExplorerSplit,
   useWorkspaceViewport,
 } from "../../features/analysisWorkspace/useAnalysisWorkspaceLayout";
@@ -79,7 +79,7 @@ import {
   PRACTICE_AUTOMOVE_MIN_THINK_MS,
   practiceEngineSearchOptions,
 } from "../../lib/practice/moveSource";
-import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
+import type { BoardPuzzleDraft, PuzzleCreationResult } from "../../lib/puzzles/puzzleSubmission";
 import { serializeSanLinesToPgn, startingPlyFromFen } from "../../lib/puzzles/solutionPgn";
 import {
   boardPly,
@@ -141,8 +141,6 @@ const oppositeSide = (side: PracticeSide): PracticeSide => (side === "white" ? "
 
 export const PracticePage = () => {
   const auth = useAuth();
-  const publishesDirectly = isApprovedPuzzleCreator(auth.user?.username ?? "");
-  const puzzleActionLabel = publishesDirectly ? "Create puzzle" : "Submit puzzle";
   const keyboardShortcuts = useKeyboardShortcutSettings();
   const pauseShortcutHint = keyboardShortcutHint(keyboardShortcuts, "pausePractice");
   const explorerShortcutHint = keyboardShortcutHint(keyboardShortcuts, "toggleExplorer");
@@ -200,18 +198,12 @@ export const PracticePage = () => {
     restoredBoard ? buildBoardLoadNavigation(restoredBoard) : null,
   );
   const navigationRef = useRef(navigation);
-  const [puzzleDraft, setPuzzleDraft] = useState<{
-    fen: string;
-    orientation: "white" | "black";
-    sourcePly: number;
-    positionHistory: PuzzlePositionHistory;
-  } | null>(null);
+  const [puzzleDraft, setPuzzleDraft] = useState<BoardPuzzleDraft | null>(null);
   const [draftBoardState, setDraftBoardState] = useState<ChessboardState | null>(null);
   const [puzzleSaving, setPuzzleSaving] = useState(false);
   const [draftNavigation, setDraftNavigation] = useState<SolutionNavigation | null>(null);
   const [createdPuzzle, setCreatedPuzzle] = useState<PuzzleCreationResult | null>(null);
-  const puzzleLauncher = useRef<HTMLButtonElement | null>(null);
-  const practiceScrollTop = useRef(0);
+  const draftLauncherFocus = useDraftLauncherFocus();
   const [pendingAutoMove, setPendingAutoMove] = useState<PendingAutoMove | null>(null);
   const {
     isOpen: usernamePickerOpen,
@@ -960,8 +952,7 @@ export const PracticePage = () => {
 
   const startPuzzle = (event: MouseEvent<HTMLButtonElement>): void => {
     if (!boardState || gameFinished || navigation || puzzleDraft) return;
-    puzzleLauncher.current = event.currentTarget;
-    practiceScrollTop.current = window.scrollY;
+    draftLauncherFocus.remember(event.currentTarget);
     setGamePaused(true);
     clearAutoMoveState();
     setHoveredMoveUci(null);
@@ -982,10 +973,7 @@ export const PracticePage = () => {
     setDraftBoardState(null);
     setHoveredMoveUci(null);
     if (result) setCreatedPuzzle(result);
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: practiceScrollTop.current, behavior: "instant" });
-      puzzleLauncher.current?.focus({ preventScroll: true });
-    });
+    draftLauncherFocus.restore();
   };
 
   const navigateToDraftMove = (line: number, index: number): void => {
@@ -1456,18 +1444,10 @@ export const PracticePage = () => {
             }
           />
           {createdPuzzle ? (
-            <p className="practicePuzzleConfirmation" role="status">
-              {createdPuzzle.destination === "published" ? (
-                <>
-                  Puzzle created.{" "}
-                  <Link to="/solve/$puzzleId" params={{ puzzleId: String(createdPuzzle.puzzleId) }}>
-                    View puzzle
-                  </Link>
-                </>
-              ) : (
-                "Puzzle submitted for review."
-              )}
-            </p>
+            <PuzzleCreationConfirmation
+              className="practicePuzzleConfirmation"
+              result={createdPuzzle}
+            />
           ) : null}
         </div>
 
@@ -1480,7 +1460,6 @@ export const PracticePage = () => {
               beforeSettings={
                 auth.isAuthenticated ? (
                   <PuzzleComposerButton
-                    label={puzzleActionLabel}
                     disabled={Boolean(puzzleDraft || navigation) || !boardState || gameFinished}
                     onClick={startPuzzle}
                   />
@@ -1518,7 +1497,6 @@ export const PracticePage = () => {
               <PuzzleComposer
                 saving={puzzleSaving}
                 onSavingChange={setPuzzleSaving}
-                publishesDirectly={publishesDirectly}
                 positionHistory={puzzleDraft.positionHistory}
                 fen={puzzleDraft.fen}
                 solution={draftNavigation || draftDocument.pgn.error ? "" : draftMoveText}

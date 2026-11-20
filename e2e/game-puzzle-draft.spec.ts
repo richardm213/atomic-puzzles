@@ -92,6 +92,7 @@ test("game puzzle drafts optionally copy editable continuations from the origina
   await expect(pgn).toHaveValue("1... e5 2. Nf3 Nc6 3. Bc4 *");
   await composer.getByRole("button", { name: "Submit puzzle", exact: true }).click();
   await expect(composer).not.toBeVisible();
+  await expect(page.getByText("Puzzle submitted for review.", { exact: true })).toBeVisible();
   expect(submissions).toEqual([
     expect.objectContaining({
       action: "add-match-puzzle",
@@ -111,6 +112,31 @@ test("game puzzle drafts optionally copy editable continuations from the origina
   await expect(composer.getByRole("link", { name: "puzzle 42" })).toHaveAttribute(
     "href",
     "/solve/42",
+  );
+});
+
+test("an approved creator can publish from the practice board", async ({ page }) => {
+  await page.route("**/api/auth/session", (route) =>
+    route.fulfill({ json: { user: { username: "wolfram_ep" } } }),
+  );
+  await page.route("**/api/puzzles/submit", (route) =>
+    route.fulfill({
+      json:
+        route.request().postDataJSON().action === "starting-fen-match"
+          ? { puzzleId: null }
+          : { destination: "published", puzzleId: 103 },
+    }),
+  );
+  await page.goto("/practice");
+  await page.getByRole("button", { name: "Create puzzle", exact: true }).click();
+  const composer = page.getByRole("form", { name: "Puzzle draft" });
+  const pgn = page.getByRole("textbox", { name: "PGN", exact: true });
+  await pgn.fill("1. e4");
+  await pgn.press("Enter");
+  await composer.getByRole("button", { name: "Create puzzle", exact: true }).click();
+  await expect(page.getByRole("link", { name: "View puzzle", exact: true })).toHaveAttribute(
+    "href",
+    "/solve/103",
   );
 });
 

@@ -47,12 +47,20 @@ export type ChessboardState = PositionState &
 export type PlaybackCommand =
   "start" | "previous" | "next" | "end" | "previousOption" | "nextOption";
 
+export type BoardAnalysisSnapshot = {
+  fen: string;
+  view: BoardView;
+  customPgn: string;
+  historyPgn: string;
+};
+
 export type SolutionNavigation =
   | { type: "command"; command: PlaybackCommand }
   | { type: "play"; uci: string }
   | { type: "line"; ucis: string[] }
   | { type: "reset"; fen: string }
   | { type: "loadPgn"; pgn: string; fen?: string; line?: number; ply?: number }
+  | { type: "restoreAnalysis"; snapshot: BoardAnalysisSnapshot }
   | { type: "history"; ply: number }
   | {
       type: "annotate";

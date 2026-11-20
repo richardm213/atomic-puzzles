@@ -1,4 +1,5 @@
 import {
+  type BoardAnalysisSnapshot,
   type BoardLineRef,
   boardPly,
   type ChessboardState,
@@ -10,6 +11,32 @@ import { buildBoardLoadNavigation, pgnLineIndexForPrefix } from "./boardLoading"
 export type DisplayedBoardLine = {
   moves: string[];
   target: BoardLineRef;
+};
+
+export const snapshotBoardAnalysis = (
+  fen: string,
+  board: ChessboardState,
+): BoardAnalysisSnapshot => {
+  const { line, position } = board.view;
+  const customPgn = serializeSanLinesToPgn(fen, board.customLines);
+  return {
+    fen,
+    view: {
+      line:
+        line.source === "custom"
+          ? {
+              ...line,
+              index: pgnLineIndexForPrefix(fen, customPgn, board.customLines?.[line.index] ?? []),
+            }
+          : line,
+      position,
+    },
+    customPgn,
+    historyPgn:
+      line.source === "history" && board.lineMoves?.length
+        ? serializeSanLinesToPgn(fen, [board.lineMoves])
+        : "",
+  };
 };
 
 type BoardLineStateOptions = {

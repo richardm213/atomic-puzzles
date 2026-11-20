@@ -3,54 +3,82 @@ import "./PuzzleComposer.css";
 import { faPuzzlePiece } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import type { FormEvent, MouseEventHandler, ReactNode, Ref } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { isApprovedPuzzleCreator } from "../../../shared/domain/puzzles/approvedPuzzleCreators";
 import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
 import { PuzzleStartingFenWarning } from "../../components/PuzzleStartingFenWarning/PuzzleStartingFenWarning";
+import { useAuth } from "../../context/AuthContext";
 import {
   addMatchPuzzle,
   fetchMatchPuzzleContext,
   matchPuzzleContextKey,
 } from "../../lib/puzzles/matchPuzzles";
 import { puzzleQueryKeys } from "../../lib/puzzles/puzzleQueries";
-import type { PuzzlePositionHistory } from "../../lib/puzzles/puzzleSubmission";
+import type {
+  PuzzleCreationResult,
+  PuzzlePositionHistory,
+} from "../../lib/puzzles/puzzleSubmission";
 import { submitPuzzle } from "../../lib/supabase/puzzleQueue";
 import { getErrorMessage } from "../../utils/errors";
 
-export type PuzzleCreationResult =
-  | { destination: "published"; puzzleId: number }
-  | {
-      destination: "review";
-    };
+const usePuzzleSubmissionLabels = () => {
+  const { user } = useAuth();
+  return isApprovedPuzzleCreator(user?.username ?? "")
+    ? { idle: "Create puzzle", pending: "Creating…" }
+    : { idle: "Submit puzzle", pending: "Submitting…" };
+};
+
+export const PuzzleCreationConfirmation = ({
+  result,
+  className = "analysisPuzzleConfirmation",
+}: {
+  result: PuzzleCreationResult;
+  className?: string;
+}) => (
+  <p className={className} role="status">
+    {result.destination === "published" ? (
+      <>
+        Puzzle created.{" "}
+        <Link to="/solve/$puzzleId" params={{ puzzleId: String(result.puzzleId) }}>
+          View puzzle
+        </Link>
+      </>
+    ) : (
+      "Puzzle submitted for review."
+    )}
+  </p>
+);
 
 export const PuzzleComposerButton = ({
-  label,
   disabled,
   onClick,
 }: {
-  label: string;
   disabled: boolean;
   onClick: MouseEventHandler<HTMLButtonElement>;
-}) => (
-  <button
-    type="button"
-    className="atomicDbSettingsButton"
-    aria-label={label}
-    title={disabled ? "Choose a playable position" : label}
-    disabled={disabled}
-    onClick={onClick}
-  >
-    <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
-  </button>
-);
+}) => {
+  const { idle: label } = usePuzzleSubmissionLabels();
+  return (
+    <button
+      type="button"
+      className="atomicDbSettingsButton"
+      aria-label={label}
+      title={disabled ? "Choose a playable position" : label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <FontAwesomeIcon icon={faPuzzlePiece} aria-hidden="true" />
+    </button>
+  );
+};
 
 export const PuzzleComposer = ({
   match,
   positionHistory,
   fen,
   solution,
-  publishesDirectly,
   children,
   moveContentRef,
   onCancel,
@@ -62,7 +90,6 @@ export const PuzzleComposer = ({
   positionHistory: PuzzlePositionHistory;
   fen: string;
   solution: string;
-  publishesDirectly: boolean;
   children: ReactNode;
   moveContentRef?: Ref<HTMLDivElement>;
   onCancel: () => void;
@@ -86,9 +113,7 @@ export const PuzzleComposer = ({
   const checkingName = Boolean(match) && context.isPending;
   const setName = context.data?.setName;
   const canSave = Boolean(solution && (!match || context.data));
-  const submitLabel = publishesDirectly
-    ? { idle: "Create puzzle", pending: "Creating…" }
-    : { idle: "Submit puzzle", pending: "Submitting…" };
+  const submitLabel = usePuzzleSubmissionLabels();
 
   useEffect(() => {
     cancelRef.current?.focus();
@@ -100,27 +125,21 @@ export const PuzzleComposer = ({
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!canSave || (match && !context.data) || savingRef.current) return;
+    if (!canSave || savingRef.current) return;
     savingRef.current = true;
     onSavingChange(true);
     setError("");
     const puzzle = { fen, solution, opaStyle, explanation, tags };
     try {
-      let result: PuzzleCreationResult;
-      if (match && context.data) {
-        const matchResult = await addMatchPuzzle({
-          gameId: match.gameId,
-          ...positionHistory,
-          ...puzzle,
-        });
-        result = matchResult;
-      } else {
-        result = await submitPuzzle({ ...puzzle, event: "" }, { positionHistory });
-      }
+      const result = match
+        ? await addMatchPuzzle({ gameId: match.gameId, ...positionHistory, ...puzzle })
+        : await submitPuzzle({ ...puzzle, event: "" }, { positionHistory });
       if (result.destination === "published") {
         void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.catalog });
+        onAdded({ destination: "published", puzzleId: result.puzzleId });
+      } else {
+        onAdded({ destination: "review" });
       }
-      onAdded(result);
     } catch (submitError) {
       setError(getErrorMessage(submitError, "Unable to add puzzle. Try again."));
     } finally {

@@ -4,6 +4,23 @@ import { z } from "zod";
 
 import { usePersistedState } from "../../hooks/usePersistedState";
 
+export const useDraftLauncherFocus = () => {
+  const launch = useRef<{ button: HTMLButtonElement; scrollTop: number } | null>(null);
+  return {
+    remember: (button: HTMLButtonElement) => {
+      launch.current = { button, scrollTop: window.scrollY };
+    },
+    restore: () => {
+      const original = launch.current;
+      if (!original) return;
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: original.scrollTop, behavior: "instant" });
+        original.button.focus({ preventScroll: true });
+      });
+    },
+  };
+};
+
 export const useWorkspaceViewport = () => {
   const [width, setWidth] = useState(() =>
     typeof window === "undefined" ? 1440 : window.innerWidth,

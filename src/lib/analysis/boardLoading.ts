@@ -43,12 +43,16 @@ export const buildBoardLoadNavigation = ({
 // the line's index before serialization, to return to the same board position.
 export const pgnLineIndexForPrefix = (fen: string, pgn: string, prefix: string[]): number => {
   if (prefix.length === 0) return 0;
-  const index = parseSolutionUciLines(fen, pgn).findIndex((line) => {
-    if (line.length < prefix.length) return false;
+  let fallback: number | undefined;
+  for (const [index, line] of parseSolutionUciLines(fen, pgn).entries()) {
+    if (line.length < prefix.length) continue;
     const moves = convertUciLineToSan(fen, line.slice(0, prefix.length));
-    return prefix.every((move, ply) => sameSolutionMove(move, moves[ply]));
-  });
-  return Math.max(0, index);
+    if (prefix.every((move, ply) => move === moves[ply])) return index;
+    if (fallback === undefined && prefix.every((move, ply) => sameSolutionMove(move, moves[ply]))) {
+      fallback = index;
+    }
+  }
+  return fallback ?? 0;
 };
 
 export const gamePlyFromHash = (hash: string, moveCount: number, defaultPly = 0): number | null => {
