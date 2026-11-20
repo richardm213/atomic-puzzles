@@ -134,9 +134,14 @@
 .puzzleInfoTabs .puzzleInfoTab.isArmed,
 .puzzleInfoTabs .puzzleInfoTab.isArmed:hover:not(:disabled) {
   color: var(--color-on-primary);
-  border-color: var(--color-primary);
+  border-color: transparent;
   background: var(--color-primary);
-  box-shadow: inset 0 0 0 1px var(--color-primary-soft);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+.puzzleGiveUpButton.isArmed:hover:not(:disabled),
+.puzzleInfoTabs .puzzleInfoTab.isArmed:hover:not(:disabled) {
+  background: var(--color-primary-hover);
 }
 
 :root[data-theme="light"] .puzzlePage {
