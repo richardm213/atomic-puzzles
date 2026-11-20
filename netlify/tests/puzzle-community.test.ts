@@ -71,7 +71,7 @@ describe("profile comment history", () => {
     ]);
   });
 
-  it("notifies only the parent commenter when a comment is a reply", () => {
+  it("notifies the parent and prior puzzle commenters when a comment is a reply", () => {
     expect(
       buildPuzzleCommentNotificationRecipients({
         actorUsername: "New_Commenter",
@@ -81,7 +81,10 @@ describe("profile comment history", () => {
         attemptedUsers: [{ username: "Attempted_User" }],
         priorCommenters: [{ username: "Follower" }],
       }),
-    ).toEqual([{ recipientUsername: "reply_target", notificationType: "comment_reply" }]);
+    ).toEqual([
+      { recipientUsername: "reply_target", notificationType: "comment_reply" },
+      { recipientUsername: "follower", notificationType: "puzzle_comment" },
+    ]);
   });
 
   it("does not queue another notification while one for that puzzle is unread", () => {
@@ -94,10 +97,7 @@ describe("profile comment history", () => {
         ],
         [{ recipient_username: "ALICE" }],
       ),
-    ).toEqual([
-      { recipientUsername: "bob", notificationType: "puzzle_author_comment" },
-      { recipientUsername: "alice", notificationType: "comment_reply" },
-    ]);
+    ).toEqual([{ recipientUsername: "bob", notificationType: "puzzle_author_comment" }]);
   });
 
   it("notifies prior commenters after a puzzle comment without failing the saved comment", async () => {

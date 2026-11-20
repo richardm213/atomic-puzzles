@@ -50,14 +50,6 @@ type PuzzleCommentNotificationRecipient = {
     | "puzzle_comment";
 };
 
-const PUZZLE_COMMENT_NOTIFICATION_TYPES = [
-  "puzzle_comment",
-  "puzzle_attempt_comment",
-  "puzzle_author_comment",
-  "comment_reply",
-  "comment_mention",
-] as const;
-
 const shiftUtcMonths = (date: Date, months: number): string => {
   const cutoff = new Date(date);
   const day = cutoff.getUTCDate();
@@ -105,14 +97,10 @@ export const buildPuzzleCommentNotificationRecipients = ({
 
   // A user receives only the most specific notification for a comment.
   addRecipient(parentAuthor, "comment_reply");
-  if (isReply) {
-    return [...recipients].map(([recipientUsername, notificationType]) => ({
-      recipientUsername,
-      notificationType,
-    }));
+  if (!isReply) {
+    addRecipient(puzzleAuthor, "puzzle_author_comment");
+    attemptedUsers.forEach(({ username }) => addRecipient(username, "puzzle_attempt_comment"));
   }
-  addRecipient(puzzleAuthor, "puzzle_author_comment");
-  attemptedUsers.forEach(({ username }) => addRecipient(username, "puzzle_attempt_comment"));
   priorCommenters.forEach(({ username }) => addRecipient(username, "puzzle_comment"));
 
   return [...recipients].map(([recipientUsername, notificationType]) => ({
@@ -129,9 +117,7 @@ export const excludeRecipientsWithUnreadPuzzleNotifications = (
     unreadNotifications.map(({ recipient_username }) => normalizedUsername(recipient_username)),
   );
   return recipients.filter(
-    ({ recipientUsername, notificationType }) =>
-      notificationType === "comment_reply" ||
-      notificationType === "comment_mention" ||
+    ({ recipientUsername }) =>
       !recipientsWithUnreadNotifications.has(normalizedUsername(recipientUsername)),
   );
 };
@@ -571,7 +557,6 @@ export class CommunityRepository {
       .select("recipient_username,comment_id")
       .eq("puzzle_id", puzzleId)
       .or(`comment_id.eq.${commentId},read_at.is.null`)
-      .in("notification_type", [...PUZZLE_COMMENT_NOTIFICATION_TYPES])
       .in(
         "recipient_username",
         registeredRecipients.map(({ recipientUsername }) => recipientUsername),
@@ -687,11 +672,17 @@ export class CommunityRepository {
     ];
     if (!recipients.length) return [];
 
-    const alreadySent = await this.supabase
+    let existingQuery = this.supabase
       .from("notifications")
       .select("recipient_username")
-      .eq("comment_id", commentId)
       .in("recipient_username", recipients);
+    existingQuery =
+      target.type === "puzzle"
+        ? existingQuery.or(
+            `comment_id.eq.${commentId},and(puzzle_id.eq.${Number(target.id)},read_at.is.null)`,
+          )
+        : existingQuery.eq("comment_id", commentId);
+    const alreadySent = await existingQuery;
     if (alreadySent.error)
       throw new Error(
         `Unable to check comment notification recipients: ${alreadySent.error.message}`,

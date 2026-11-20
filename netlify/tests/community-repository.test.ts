@@ -183,32 +183,41 @@ it.each([
   },
 );
 
-it("deduplicates mentions by comment and links endgame mentions to endgame practice", async () => {
-  const inserted: Array<{ recipient_username: string; feature_path: string }> = [];
-  const fetch = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
-    const url = new URL(String(input));
-    if (init?.method === "POST") {
-      inserted.push(...JSON.parse(String(init.body)));
-      return Response.json([], { status: 201 });
-    }
-    if (url.pathname.endsWith("/users"))
-      return Response.json([{ username: "alice" }, { username: "bob" }]);
-    expect(url.searchParams.get("comment_id")).toBe("eq.77");
-    return Response.json([{ recipient_username: "alice" }]);
-  });
-  const repository = new CommunityRepository(
-    createClient("https://db.example", "test-key", { global: { fetch } }),
-  );
-  await repository.notifyMentionedUsers(
-    { type: "endgame", id: "queen-pawn-race", context: "" },
-    77,
-    "actor",
-    "@alice @bob",
-  );
-  expect(inserted).toEqual([
-    expect.objectContaining({
-      recipient_username: "bob",
-      feature_path: "/puzzles/endgames#comment-77",
-    }),
-  ]);
-});
+it.each(["puzzle", "endgame"] as const)(
+  "deduplicates %s mentions by comment and any unread puzzle notice",
+  async (type) => {
+    const inserted: Array<{ recipient_username: string; feature_path: string }> = [];
+    const fetch = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
+      const url = new URL(String(input));
+      if (init?.method === "POST") {
+        inserted.push(...JSON.parse(String(init.body)));
+        return Response.json([], { status: 201 });
+      }
+      if (url.pathname.endsWith("/users"))
+        return Response.json([{ username: "alice" }, { username: "bob" }]);
+      if (type === "puzzle") {
+        expect(url.searchParams.get("or")).toBe(
+          "(comment_id.eq.77,and(puzzle_id.eq.42,read_at.is.null))",
+        );
+      } else {
+        expect(url.searchParams.get("comment_id")).toBe("eq.77");
+      }
+      return Response.json([{ recipient_username: "alice" }]);
+    });
+    const repository = new CommunityRepository(
+      createClient("https://db.example", "test-key", { global: { fetch } }),
+    );
+    await repository.notifyMentionedUsers(
+      { type, id: type === "puzzle" ? "42" : "queen-pawn-race", context: "" },
+      77,
+      "actor",
+      "@alice @bob",
+    );
+    expect(inserted).toEqual([
+      expect.objectContaining({
+        recipient_username: "bob",
+        feature_path: type === "puzzle" ? "/solve/42#comment-77" : "/puzzles/endgames#comment-77",
+      }),
+    ]);
+  },
+);
