@@ -23,15 +23,11 @@ import {
   DAILY_PUZZLE_ATTEMPT_LIMIT,
   DAILY_PUZZLE_ATTEMPT_LIMIT_MESSAGE,
   DAILY_PUZZLE_LOAD_BLOCKED_MESSAGE,
-  isTimestampInUtcDay,
   utcDayBounds,
 } from "../../../shared/domain/puzzles/dailyAttemptLimit";
 import { rewindPuzzleLeadIn } from "../../../shared/domain/puzzles/gameHistory";
 import { PUZZLE_ADMIN_USERNAME } from "../../../shared/domain/puzzles/puzzleAdmin";
-import {
-  puzzleGradingLabel,
-  type PuzzleGradingState,
-} from "../../../shared/domain/puzzles/puzzleGrading";
+import { puzzleGradingLabel } from "../../../shared/domain/puzzles/puzzleGrading";
 import {
   normalizePuzzleLevel,
   type PuzzleLevel,
@@ -66,13 +62,11 @@ import {
   getBoardLineState,
   snapshotBoardAnalysis,
 } from "../../lib/analysis/boardState";
-import { ApiError } from "../../lib/api/postApi";
 import { movePrefix, startingPlyFromFen } from "../../lib/chess/pgn";
 import { previewCoinChange } from "../../lib/coins/coinEvents";
 import {
   fetchCustomPuzzleSet,
   getOrderedPuzzleIndexesForCustomSet,
-  recordCustomPuzzleSetProgress,
   refreshCustomPuzzleSet,
 } from "../../lib/puzzles/customPuzzleSets";
 import {
@@ -86,7 +80,6 @@ import { loadPuzzlesById } from "../../lib/puzzles/puzzleLibrary";
 import { normalizePuzzleMotifTags } from "../../lib/puzzles/puzzleMotifs";
 import {
   puzzlePlayerNicknamesQueryOptions,
-  puzzleQueryKeys,
   puzzleUserRatingQueryOptions,
 } from "../../lib/puzzles/puzzleQueries";
 import { puzzleRatingFromRow, updatePuzzleRating } from "../../lib/puzzles/puzzleRating";
@@ -98,9 +91,6 @@ import {
 import {
   fetchPuzzleAttemptsForPuzzle,
   fetchPuzzleGradingState,
-  fetchPuzzleProgressRowsForUsername,
-  fetchPuzzleRatingExclusions,
-  recordPuzzleProgress,
   setOwnPuzzlePermanentlyUnrated,
 } from "../../lib/supabase/puzzleProgress";
 import type { PuzzleRatingEvent } from "../../lib/supabase/puzzleUserRatings";
@@ -138,11 +128,12 @@ import {
   getPuzzleAttemptStartedAt,
   puzzleIndexFromParam,
   removeValueFromSet,
-  shuffleIndexes,
   toPuzzleKey,
 } from "./puzzleSolverState";
 import { previewPuzzleRatingChanges, testPuzzleCoinDelta } from "./puzzleTestFeedback";
 import { usePuzzleCatalog } from "./usePuzzleCatalog";
+import { SERVER_CUSTOM_SET_ID_PATTERN, usePuzzleProgress } from "./usePuzzleProgress";
+import { PUZZLE_PREFETCH_COUNT, usePuzzleSelection } from "./usePuzzleSelection";
 
 const ATTEMPTED_PUZZLE_BADGE_LABEL = "You've already attempted this puzzle before";
 const SOLVED_BEFORE_BADGE_LABEL = "You've solved this puzzle before";
@@ -151,7 +142,6 @@ const PUZZLE_GRADING_EXPLANATION =
 const OPA_STYLE_BADGE_LABEL =
   "Only the best moves are accepted. Weaker alternatives are rejected even if they also lead to mate.";
 const OTHER_PUZZLE_ATTEMPTS_LIMIT = 30;
-const PUZZLE_PREFETCH_COUNT = 3;
 const MAX_PUZZLE_ATTEMPT_DURATION_MS = 60 * 60 * 1000;
 const PUZZLE_EXPLANATION_LEGACY_AUTHOR = "admin";
 const PUZZLE_EXPLANATION_LEGACY_EDITOR = "seaside_tiramisu";
@@ -161,8 +151,6 @@ const PUZZLE_STACKED_LAYOUT_QUERY =
   "(max-width: 460px), (max-width: 600px) and (min-height: calc(min(100vw - 16px, 548px) + 184px))";
 
 const SOLUTION_UNLOCK_HINT = "Make at least one attempt before viewing the solution.";
-const SERVER_CUSTOM_SET_ID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const PuzzleElapsedTimer = ({
   elapsedTimeMs,
@@ -277,25 +265,11 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   const [detailError, setDetailError] = useState<{ puzzleId: number; message: string } | null>(
     null,
   );
-  const gradingStatesRef = useRef(new Map<string, PuzzleGradingState>());
   const [gradingAtEntry, setGradingAtEntry] = useState<{ key: string; attempted: boolean } | null>(
     null,
   );
   const [resignArmed, setResignArmed] = useState(false);
-  const retryProgressWriteRef = useRef<(() => Promise<void>) | null>(null);
-  const [progressSaveError, setProgressSaveError] = useState("");
-  const [progressSaving, setProgressSaving] = useState(false);
-  const [attemptedPuzzleIds, setAttemptedPuzzleIds] = useState<Set<string>>(() => new Set());
-  const [solvedPuzzleIds, setSolvedPuzzleIds] = useState<Set<string>>(() => new Set());
-  const [unratedPuzzleIds, setUnratedPuzzleIds] = useState<Set<string>>(() => new Set());
-  const [permanentUnratedIds, setPermanentUnratedIds] = useState<Set<string>>(() => new Set());
   const [unratedMarkStatus, setUnratedMarkStatus] = useState<AsyncActionStatus>({ state: "idle" });
-  const [gradingAvailability, setGradingAvailability] = useState(new Map<string, string | null>());
-  const [ratingExclusions, setRatingExclusions] = useState<Map<string, string>>(() => new Map());
-  const [dailyAttemptCount, setDailyAttemptCount] = useState(0);
-  const [attemptedPuzzleIdsOwner, setAttemptedPuzzleIdsOwner] = useState<string | null>(null);
-  // Keep the unrated setting locked while an attempt is being saved.
-  const [submittedPuzzleIds, setSubmittedPuzzleIds] = useState<Set<string>>(() => new Set());
   const [blindEntry, setBlindEntry] = useState<{
     key: string;
     eligible: boolean;
@@ -356,8 +330,6 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   const reportIssueDialogRef = useRef<HTMLDialogElement | null>(null);
   const [visitedPuzzleIds, setVisitedPuzzleIds] = useState<Set<string>>(() => new Set());
   const isMountedRef = useRef(true);
-  const progressWriteQueueRef = useRef(Promise.resolve());
-  const countedTodayPuzzleIdsRef = useRef<Set<string>>(new Set());
   const activePuzzleKeyRef = useRef("");
   const elapsedTimeMsRef = useRef(0);
   const elapsedTimerStartedAtRef = useRef<number | null>(null);
@@ -407,10 +379,46 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     () => readDashboardPuzzleSet(routeDashboardSetId),
     [routeDashboardSetId],
   );
-  const attemptedPuzzleIdsUsername = testMode ? "" : normalizedUsername;
-  const attemptedPuzzleIdsReady =
-    !isAuthLoading &&
-    (!attemptedPuzzleIdsUsername || attemptedPuzzleIdsOwner === attemptedPuzzleIdsUsername);
+  const handleRatingEvent = useCallback((puzzleId: string, ratingEvent: PuzzleRatingEvent) => {
+    if (activePuzzleKeyRef.current !== puzzleId) return;
+    setAttemptRatingFeedback(ratingEvent);
+    setFeedbackBadgeId((current) => current + 1);
+    setMobileFeedback((current) => {
+      if (!current) return current;
+      mobileFeedbackIdRef.current += 1;
+      return { ...current, id: mobileFeedbackIdRef.current, fading: false };
+    });
+  }, []);
+  const {
+    gradingStatesRef,
+    retryProgressWriteRef,
+    progressSaveError,
+    progressSaving,
+    attemptedPuzzleIds,
+    solvedPuzzleIds,
+    unratedPuzzleIds,
+    permanentUnratedIds,
+    gradingAvailability,
+    ratingExclusions,
+    dailyAttemptCount,
+    submittedPuzzleIds,
+    progressWriteQueueRef,
+    countedTodayPuzzleIdsRef,
+    attemptedPuzzleIdsUsername,
+    attemptedPuzzleIdsReady,
+    setDailyAttemptCount,
+    setProgressSaveError,
+    setPermanentUnratedIds,
+    enqueuePuzzleProgressWrite,
+  } = usePuzzleProgress({
+    username: user?.username,
+    normalizedUsername,
+    routeCustomSetId,
+    testMode,
+    isAuthLoading,
+    setLoadingError,
+    onRatingEvent: handleRatingEvent,
+  });
   const orderedSetPuzzleIndexes = useMemo(
     () =>
       dashboardPuzzleSet
@@ -491,94 +499,6 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     return () => mediaQuery.removeEventListener("change", updateLayout);
   }, []);
 
-  useEffect(() => {
-    if (isAuthLoading || testMode) return undefined;
-
-    let isCurrent = true;
-    const username = attemptedPuzzleIdsUsername;
-
-    if (!username) {
-      setRatingExclusions(new Map());
-      setPermanentUnratedIds(new Set());
-      setAttemptedPuzzleIds(new Set());
-      setSolvedPuzzleIds(new Set());
-      setUnratedPuzzleIds(new Set());
-      setDailyAttemptCount(0);
-      countedTodayPuzzleIdsRef.current = new Set();
-      setAttemptedPuzzleIdsOwner("");
-      return undefined;
-    }
-
-    gradingStatesRef.current.clear();
-    setGradingAvailability(new Map());
-    setAttemptedPuzzleIds(new Set());
-    setRatingExclusions(new Map());
-    setPermanentUnratedIds(new Set());
-    setSolvedPuzzleIds(new Set());
-    setUnratedPuzzleIds(new Set());
-    setDailyAttemptCount(0);
-    countedTodayPuzzleIdsRef.current = new Set();
-    setAttemptedPuzzleIdsOwner(null);
-
-    const loadAttemptedPuzzleIds = async () => {
-      try {
-        const [progressRows, exclusions] = await Promise.all([
-          fetchPuzzleProgressRowsForUsername(username, { throwOnError: true }),
-          fetchPuzzleRatingExclusions(username),
-        ]);
-        if (isCurrent) {
-          setPermanentUnratedIds(
-            new Set(exclusions.filter((row) => row.permanent).map((row) => String(row.puzzle_id))),
-          );
-          setRatingExclusions(
-            new Map(exclusions.map((row) => [String(row.puzzle_id), row.expires_at])),
-          );
-          setGradingAvailability(
-            new Map(
-              progressRows.map((row) => [String(row.puzzle_id), row.grading_available_at ?? null]),
-            ),
-          );
-          const todayRows = progressRows.filter((row) => isTimestampInUtcDay(row.first_attempt_at));
-          setAttemptedPuzzleIds(
-            new Set(
-              progressRows.filter((row) => row.rated !== false).map((row) => String(row.puzzle_id)),
-            ),
-          );
-          setSolvedPuzzleIds(
-            new Set(
-              progressRows
-                .filter((row) => row.has_solved ?? row.puzzle_correct)
-                .map((row) => String(row.puzzle_id)),
-            ),
-          );
-          setUnratedPuzzleIds(
-            new Set(
-              progressRows.filter((row) => row.rated === false).map((row) => String(row.puzzle_id)),
-            ),
-          );
-          countedTodayPuzzleIdsRef.current = new Set(todayRows.map((row) => String(row.puzzle_id)));
-          setDailyAttemptCount(todayRows.length);
-          setAttemptedPuzzleIdsOwner(username);
-        }
-      } catch (error) {
-        if (!isCurrent) return;
-        setAttemptedPuzzleIds(new Set());
-        setSolvedPuzzleIds(new Set());
-        setUnratedPuzzleIds(new Set());
-        countedTodayPuzzleIdsRef.current = new Set();
-        setDailyAttemptCount(0);
-        setLoadingError("Unable to check puzzle rating eligibility. Please reload to try again.");
-        globalThis.console?.error(error);
-      }
-    };
-
-    void loadAttemptedPuzzleIds();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [attemptedPuzzleIdsUsername, isAuthLoading, setLoadingError, testMode]);
-
   const routePuzzleIndex = useMemo(
     () => puzzleIndexFromParam(puzzles, routePuzzleId),
     [puzzles, routePuzzleId],
@@ -602,98 +522,24 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     testMode && Boolean(routePuzzleId) && puzzles.length > 0 && routePuzzleIndex < 0;
 
   const activePuzzleIndex = routePuzzleId ? routePuzzleIndex : historyPuzzleIndex;
-  const puzzleCountInCatalog = puzzles.length;
-  // Shuffling the order separately keeps prefetched candidates stable as details load.
-  const shuffledPuzzleIndexes = useMemo(
-    () => shuffleIndexes(Array.from({ length: puzzleCountInCatalog }, (_, index) => index)),
-    [puzzleCountInCatalog],
-  );
-  const isSelectablePuzzle = useCallback(
-    (index: number) => {
-      const puzzle = puzzles[index];
-      return Boolean(
-        puzzle &&
-        !shouldSkipAuthor(puzzle.author) &&
-        !unavailablePuzzleIds.has(String(puzzle.puzzleId)),
-      );
-    },
-    [puzzles, shouldSkipAuthor, unavailablePuzzleIds],
-  );
-  const hasRecordedAttempt = useCallback(
-    (key: string) =>
-      attemptedPuzzleIds.has(key) ||
-      unratedPuzzleIds.has(key) ||
-      countedTodayPuzzleIdsRef.current.has(key),
-    [attemptedPuzzleIds, unratedPuzzleIds],
-  );
-  const canReceivePuzzle = useCallback(
-    (index: number) => {
-      if (!isSelectablePuzzle(index)) return false;
-      if (!skipAttemptedPuzzles) return true;
-      const key = String(puzzles[index]!.puzzleId);
-      return attemptedPuzzleIdsReady && !hasRecordedAttempt(key) && !gradingAvailability.has(key);
-    },
-    [
+  const { isSelectablePuzzle, hasRecordedAttempt, canReceivePuzzle, upcomingPuzzleIndexes } =
+    usePuzzleSelection({
+      puzzles,
+      activePuzzleIndex,
+      shouldSkipAuthor,
+      unavailablePuzzleIds,
+      attemptedPuzzleIds,
+      unratedPuzzleIds,
+      countedTodayPuzzleIdsRef,
+      skipAttemptedPuzzles,
       attemptedPuzzleIdsReady,
       gradingAvailability,
-      hasRecordedAttempt,
-      isSelectablePuzzle,
-      puzzles,
-      skipAttemptedPuzzles,
-    ],
-  );
-  const upcomingPuzzleIndexes = useMemo(() => {
-    if (!attemptedPuzzleIdsReady || waitingForAuthorAliases) return [];
-
-    const now = new Date();
-    const isEligible = (index: number): boolean => {
-      const puzzle = puzzles[index];
-      if (!puzzle || index === activePuzzleIndex || !canReceivePuzzle(index)) return false;
-      const key = String(puzzle.puzzleId);
-      if (visitedPuzzleIds.has(key)) return false;
-      if (gradingAvailability.has(key)) {
-        const availableAt = gradingAvailability.get(key);
-        const excludedUntil = ratingExclusions.get(key);
-        return (
-          !permanentUnratedIds.has(key) &&
-          !(excludedUntil && Date.parse(excludedUntil) > now.getTime()) &&
-          Boolean(availableAt && Date.parse(availableAt) <= now.getTime())
-        );
-      }
-      return (
-        getPuzzleUnratedReason({
-          username: normalizedUsername,
-          author: puzzle.author,
-          createdAt: puzzle.created_at,
-          hasUnratedAttempt: unratedPuzzleIds.has(key),
-          excludedUntil: ratingExclusions.get(key),
-          permanentlyUnrated: permanentUnratedIds.has(key),
-          now,
-        }) === null
-      );
-    };
-
-    const upcoming: number[] = [];
-    for (let position = shuffledPuzzleIndexes.length - 1; position >= 0; position -= 1) {
-      const index = shuffledPuzzleIndexes[position]!;
-      if (isEligible(index)) upcoming.push(index);
-      if (upcoming.length === PUZZLE_PREFETCH_COUNT) break;
-    }
-    return upcoming;
-  }, [
-    activePuzzleIndex,
-    attemptedPuzzleIdsReady,
-    canReceivePuzzle,
-    normalizedUsername,
-    permanentUnratedIds,
-    puzzles,
-    ratingExclusions,
-    shuffledPuzzleIndexes,
-    gradingAvailability,
-    unratedPuzzleIds,
-    visitedPuzzleIds,
-    waitingForAuthorAliases,
-  ]);
+      waitingForAuthorAliases,
+      visitedPuzzleIds,
+      ratingExclusions,
+      permanentUnratedIds,
+      normalizedUsername,
+    });
   const nextRandomPuzzleIndex = upcomingPuzzleIndexes[0];
 
   useEffect(() => {
@@ -797,7 +643,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
       Math.max(0, resetAt - Date.now()) + 50,
     );
     return () => window.clearTimeout(timeout);
-  }, [dailyLimitReached]);
+  }, [countedTodayPuzzleIdsRef, dailyLimitReached, setDailyAttemptCount]);
   const showPuzzleSetMetadata = Boolean(
     !isCustomSetSolveMode && !isDashboardSetSolveMode && activePuzzleSetMetadata?.eventName,
   );
@@ -858,7 +704,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     setGradingAtEntry((current) =>
       current?.key === key ? current : { key, attempted: gradingState.hasAttempted },
     );
-  }, [activePuzzleKey, normalizedUsername, gradingState]);
+  }, [activePuzzleKey, normalizedUsername, gradingState, gradingStatesRef]);
   const hasSolvedPuzzle = Boolean(
     gradingState?.hasSolved || (activePuzzleKey && solvedPuzzleIds.has(activePuzzleKey)),
   );
@@ -903,6 +749,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     activePuzzleKey,
     attemptedPuzzleIdsReady,
     puzzleVisitKey,
+    countedTodayPuzzleIdsRef,
     blindPlies,
     fen,
     hasPersistedAttempt,
@@ -1067,137 +914,6 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     hasRecordedAttempt,
     loadPuzzleDetails,
   ]);
-
-  const enqueuePuzzleProgressWrite = useCallback(
-    ({
-      puzzleId,
-      puzzleCorrect,
-      incorrectMove,
-      correctMove,
-      attemptDurationMs,
-      attemptPgn,
-      resigned = false,
-    }: {
-      puzzleId: string | number | null | undefined;
-      puzzleCorrect: boolean;
-      incorrectMove: string | null;
-      correctMove: string | null;
-      attemptDurationMs: number | null;
-      attemptPgn?: string;
-      resigned?: boolean;
-    }): void => {
-      const normalizedPuzzleId = toPuzzleKey(puzzleId);
-      if (!normalizedPuzzleId || !user?.username) return;
-      const grading = gradingStatesRef.current.get(normalizedPuzzleId);
-      const isInitialResult = !resigned && !grading?.hasAttempted;
-      setProgressSaveError("");
-      setProgressSaving(true);
-      const attempt = { id: crypto.randomUUID(), pgn: attemptPgn || '[Result "*"]\n\n*', resigned };
-      const isFirstRecordedAttempt =
-        isInitialResult && !countedTodayPuzzleIdsRef.current.has(normalizedPuzzleId);
-
-      const input = {
-        username: user.username,
-        puzzleId: normalizedPuzzleId,
-        puzzleCorrect,
-        attemptDurationMs,
-        incorrectMove,
-        correctMove,
-        attempt,
-      };
-      const write = async (): Promise<void> => {
-        setProgressSaveError("");
-        setProgressSaving(true);
-        try {
-          const result = await recordPuzzleProgress({
-            ...input,
-            attempt: {
-              ...attempt,
-              runId: gradingStatesRef.current.get(normalizedPuzzleId)?.runId ?? null,
-            },
-          });
-          retryProgressWriteRef.current = null;
-          const recorded = result?.graded ?? grading?.graded;
-          if (recorded) {
-            if (
-              isFirstRecordedAttempt &&
-              !countedTodayPuzzleIdsRef.current.has(normalizedPuzzleId)
-            ) {
-              countedTodayPuzzleIdsRef.current.add(normalizedPuzzleId);
-              setDailyAttemptCount((current) => Math.min(DAILY_PUZZLE_ATTEMPT_LIMIT, current + 1));
-            }
-            if (!resigned) {
-              setSubmittedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
-              if (puzzleCorrect)
-                setSolvedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
-              if (SERVER_CUSTOM_SET_ID_PATTERN.test(routeCustomSetId)) {
-                void recordCustomPuzzleSetProgress(
-                  routeCustomSetId,
-                  normalizedPuzzleId,
-                  puzzleCorrect,
-                )
-                  .then(() => queryClient.invalidateQueries({ queryKey: ["custom-puzzle-sets"] }))
-                  .catch((error) => globalThis.console?.error(error));
-              }
-            }
-          }
-          if (result?.grading) {
-            await queryClient.cancelQueries({
-              queryKey: ["puzzle-grading", normalizedUsername, normalizedPuzzleId],
-            });
-            setGradingAvailability((current) =>
-              new Map(current).set(normalizedPuzzleId, result.grading!.availableAt),
-            );
-            gradingStatesRef.current.set(normalizedPuzzleId, result.grading);
-            queryClient.setQueryData(
-              ["puzzle-grading", normalizedUsername, normalizedPuzzleId],
-              result.grading,
-            );
-            if (recorded)
-              void queryClient.invalidateQueries({
-                queryKey: ["puzzle-attempts", normalizedPuzzleId],
-              });
-          }
-          if (result?.unratedUntil) {
-            setRatingExclusions((current) =>
-              new Map(current).set(normalizedPuzzleId, result.unratedUntil!),
-            );
-          }
-          if (result?.rated) {
-            setAttemptedPuzzleIds((current) => addValueToSet(current, normalizedPuzzleId));
-            setUnratedPuzzleIds((current) => removeValueFromSet(current, normalizedPuzzleId));
-          }
-          if (recorded) void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.progress });
-          if (result?.rated) {
-            void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.userRating });
-            void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.ratingEvents });
-          }
-          const ratingEvent = result?.ratingEvent ?? null;
-          if (!ratingEvent || activePuzzleKeyRef.current !== normalizedPuzzleId) return;
-          setAttemptRatingFeedback(ratingEvent);
-          setFeedbackBadgeId((current) => current + 1);
-          setMobileFeedback((current) => {
-            if (!current) return current;
-            mobileFeedbackIdRef.current += 1;
-            return { ...current, id: mobileFeedbackIdRef.current, fading: false };
-          });
-        } catch (error) {
-          if (error instanceof ApiError && error.code === "daily_puzzle_attempt_limit") {
-            setDailyAttemptCount(DAILY_PUZZLE_ATTEMPT_LIMIT);
-          }
-          retryProgressWriteRef.current = write;
-          setProgressSaveError(
-            getErrorMessage(error, "Unable to save this attempt. Please retry."),
-          );
-          globalThis.console?.error(error);
-        } finally {
-          setProgressSaving(false);
-        }
-      };
-      progressWriteQueueRef.current = progressWriteQueueRef.current.catch(() => {}).then(write);
-    },
-    [queryClient, user?.username, normalizedUsername, routeCustomSetId],
-  );
 
   const handleAttemptResolved = useCallback(
     ({
