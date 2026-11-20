@@ -29,11 +29,12 @@ const attemptExamples: {
   color: PuzzleAttemptColor;
   result: string;
   correct: boolean;
+  solved?: boolean;
 }[] = [
   { color: "green", result: "Solved on try 1", correct: true },
   { color: "yellow", result: "Solved on try 2", correct: false },
   { color: "orange", result: "Solved on try 3", correct: false },
-  { color: "red", result: "Solved on try 4+", correct: false },
+  { color: "red", result: "Solved after 3+ incorrect moves", correct: false, solved: true },
   { color: "red", result: "Not solved · 1–2 misses", correct: false },
   { color: "purple", result: "Not solved 3+ misses", correct: false },
   { color: "blue", result: "2 clean graded runs in a row", correct: true },
@@ -198,13 +199,14 @@ export const HowCoinsWorkPage = () => (
       <section className="coinGuideSection" aria-labelledby="attempt-colors-heading">
         <h2 id="attempt-colors-heading">Other Attempts colors</h2>
         <div className="coinAttemptExamples">
-          {attemptExamples.map(({ color, result, correct }) => (
+          {attemptExamples.map(({ color, result, correct, solved }) => (
             <figure key={result}>
               <figcaption>{result}</figcaption>
               <div className="coinAttemptSample" aria-label={`${result}: example attempt`}>
                 <PuzzleAttemptResult
                   color={color}
                   correct={correct}
+                  solved={solved ?? correct}
                   move={correct ? "18. d5" : "18. e4"}
                 />
                 <span>

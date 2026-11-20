@@ -3,7 +3,7 @@ import "./CommunityCommentsLink.css";
 import { faComment } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import type { AnchorHTMLAttributes } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from "react";
 
 import { useAuth } from "../../context/AuthContext";
 import { communityDiscussionQueryOptions } from "../../lib/community/communityQueries";
@@ -47,24 +47,24 @@ export const CommunityCommentCount = ({ target, className = "" }: CommunityComme
   );
 };
 
-type CommunityCommentsLinkProps = Omit<
-  AnchorHTMLAttributes<HTMLAnchorElement>,
-  "children" | "href" | "target"
-> & {
+type CommunityCommentsProps = {
   target: CommunityTarget;
-  href: string;
   label?: string;
   hideWhenEmpty?: boolean;
 };
 
-export const CommunityCommentsLink = ({
+type CommunityCommentsLinkProps = CommunityCommentsProps &
+  Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "children" | "href" | "target"> & { href: string };
+type CommunityCommentsButtonProps = CommunityCommentsProps &
+  Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">;
+
+const CommunityCommentsControl = ({
   target,
-  href,
   label = "Comments",
   hideWhenEmpty = false,
   className = "",
-  ...anchorProps
-}: CommunityCommentsLinkProps) => {
+  ...elementProps
+}: CommunityCommentsLinkProps | CommunityCommentsButtonProps) => {
   const { count, discussionQuery } = useCommunityCommentCount(target);
 
   if (hideWhenEmpty && (discussionQuery.isPending || discussionQuery.isError || count === 0)) {
@@ -78,17 +78,30 @@ export const CommunityCommentsLink = ({
       ? "Comment count unavailable"
       : `${count} ${count === 1 ? "comment" : "comments"}`;
 
-  return (
-    <a
-      {...anchorProps}
-      className={`communityCommentsLink${className ? ` ${className}` : ""}`}
-      href={href}
-    >
+  const content = (
+    <>
       <FontAwesomeIcon icon={faComment} aria-hidden="true" />
       <span>{label}</span>
       <span className="communityCommentCount" aria-label={accessibleLabel}>
         {displayValue}
       </span>
+    </>
+  );
+  const classes = `communityCommentsLink${className ? ` ${className}` : ""}`;
+  return "href" in elementProps ? (
+    <a {...elementProps} className={classes}>
+      {content}
     </a>
+  ) : (
+    <button {...elementProps} type="button" className={classes}>
+      {content}
+    </button>
   );
 };
+
+export const CommunityCommentsLink = (props: CommunityCommentsLinkProps) => (
+  <CommunityCommentsControl {...props} />
+);
+export const CommunityCommentsButton = (props: CommunityCommentsButtonProps) => (
+  <CommunityCommentsControl {...props} />
+);

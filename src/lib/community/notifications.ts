@@ -7,6 +7,7 @@ export type NotificationType =
   | "puzzle_attempt_comment"
   | "puzzle_author_comment"
   | "comment_reply"
+  | "profile_comment"
   | "comment_mention"
   | "puzzle_approved"
   | "puzzle_rating_added"
@@ -101,6 +102,8 @@ export const notificationCategory = (notification: UserNotification): string => 
   )
     return "Fine";
   if (isCommentMentionNotification(notification)) return "Mention";
+  if (notification.notification_type === "profile_comment") return "Profile comment";
+  if (notification.notification_type === "comment_reply" && !notification.puzzle_id) return "Reply";
   if (
     isPredictionOrderFillNotification(notification) ||
     isPredictionOrderCancellationNotification(notification)
@@ -180,6 +183,9 @@ export const notificationCopy = (notification: UserNotification): string => {
   }
   if (notification.notification_type === "puzzle_approved") {
     return `Your puzzle #${notification.puzzle_id} was approved.`;
+  }
+  if (notification.notification_type === "profile_comment") {
+    return `${notification.actor_username ?? "Someone"} commented on your profile${notification.comment_body?.trim() ? ":" : "."}`;
   }
   if (notification.notification_type === "comment_reply") {
     return notification.comment_body?.trim()

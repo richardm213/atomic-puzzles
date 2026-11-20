@@ -142,6 +142,7 @@ export type NotificationRow = {
     | "puzzle_attempt_comment"
     | "puzzle_author_comment"
     | "comment_reply"
+    | "profile_comment"
     | "comment_mention"
     | "puzzle_approved"
     | "puzzle_rating_added"

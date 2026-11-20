@@ -83,3 +83,134 @@ describe("CommunityRepository archive identity resolution", () => {
     await expect(repository.resolveProfileTargetIds("Wolfram_EP")).resolves.toEqual(["wolfram_ep"]);
   });
 });
+
+it("limits puzzle notifications to recent initial attempts and retries, while deduplicating recipients", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-08-31T12:00:00Z"));
+  const inserted: unknown[] = [];
+  const fetch = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
+    const url = new URL(String(input));
+    const params = url.searchParams;
+    if (init?.method === "POST") {
+      inserted.push(...JSON.parse(String(init.body)));
+      return Response.json([], { status: 201 });
+    }
+    if (url.pathname.endsWith("/puzzles")) return Response.json([{ author: "owner" }]);
+    if (url.pathname.endsWith("/puzzle_progress")) {
+      expect(params.get("or")).toBe(
+        "(first_attempt_at.gte.2026-06-30T12:00:00.000Z,grading_available_at.gte.2026-08-31T12:00:00.000Z)",
+      );
+      return Response.json([{ username: "recent" }, { username: "owner" }]);
+    }
+    if (url.pathname.endsWith("/puzzle_attempt_move_logs")) {
+      expect(params.get("attempted_at")).toBe("gte.2026-06-30T12:00:00.000Z");
+      return Response.json([{ username: "retry" }, { username: "actor" }]);
+    }
+    if (url.pathname.endsWith("/community_comments"))
+      return Response.json([{ username: "follower" }, { username: "unregistered" }]);
+    if (url.pathname.endsWith("/users"))
+      return Response.json(
+        ["owner", "recent", "retry", "follower"].map((username) => ({ username })),
+      );
+    if (url.pathname.endsWith("/notifications"))
+      return Response.json([{ recipient_username: "recent", comment_id: 76 }]);
+    throw new Error(`Unexpected request: ${url.pathname}`);
+  });
+  try {
+    const repository = new CommunityRepository(
+      createClient("https://db.example", "test-key", { global: { fetch } }),
+    );
+    await repository.notifyPuzzleCommentRecipients(42, 77, "actor", null);
+    expect(inserted).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          recipient_username: "owner",
+          notification_type: "puzzle_author_comment",
+        }),
+        expect.objectContaining({
+          recipient_username: "retry",
+          notification_type: "puzzle_attempt_comment",
+        }),
+        expect.objectContaining({
+          recipient_username: "follower",
+          notification_type: "puzzle_comment",
+        }),
+      ]),
+    );
+    expect(inserted).toHaveLength(3);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it.each([
+  {
+    target: { type: "match" as const, id: "match-1", context: "blitz" },
+    parentId: 9,
+    type: "comment_reply",
+    path: "/match/match-1#comment-77",
+  },
+  {
+    target: { type: "profile" as const, id: "alice", context: "" },
+    parentId: null,
+    type: "profile_comment",
+    path: "/@/alice#comment-77",
+  },
+])(
+  "delivers $type to the discussion recipient with its actual destination",
+  async ({ target, parentId, type, path }) => {
+    const inserted: unknown[] = [];
+    const fetch = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
+      const url = new URL(String(input));
+      if (init?.method === "POST") {
+        inserted.push(JSON.parse(String(init.body)));
+        return Response.json([], { status: 201 });
+      }
+      if (url.pathname.endsWith("/notifications")) return Response.json([]);
+      return Response.json([{ username: "alice" }]);
+    });
+    const repository = new CommunityRepository(
+      createClient("https://db.example", "test-key", { global: { fetch } }),
+    );
+    await repository.notifyDiscussionCommentRecipients(target, 77, "actor", parentId);
+    expect(inserted).toEqual([
+      expect.objectContaining({
+        recipient_username: "alice",
+        notification_type: type,
+        puzzle_id: null,
+        comment_id: 77,
+        feature_path: path,
+      }),
+    ]);
+  },
+);
+
+it("deduplicates mentions by comment and links endgame mentions to endgame practice", async () => {
+  const inserted: Array<{ recipient_username: string; feature_path: string }> = [];
+  const fetch = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
+    const url = new URL(String(input));
+    if (init?.method === "POST") {
+      inserted.push(...JSON.parse(String(init.body)));
+      return Response.json([], { status: 201 });
+    }
+    if (url.pathname.endsWith("/users"))
+      return Response.json([{ username: "alice" }, { username: "bob" }]);
+    expect(url.searchParams.get("comment_id")).toBe("eq.77");
+    return Response.json([{ recipient_username: "alice" }]);
+  });
+  const repository = new CommunityRepository(
+    createClient("https://db.example", "test-key", { global: { fetch } }),
+  );
+  await repository.notifyMentionedUsers(
+    { type: "endgame", id: "queen-pawn-race", context: "" },
+    77,
+    "actor",
+    "@alice @bob",
+  );
+  expect(inserted).toEqual([
+    expect.objectContaining({
+      recipient_username: "bob",
+      feature_path: "/puzzles/endgames#comment-77",
+    }),
+  ]);
+});

@@ -90,10 +90,14 @@ describe("profile comment history", () => {
         [
           { recipientUsername: "alice", notificationType: "puzzle_attempt_comment" },
           { recipientUsername: "bob", notificationType: "puzzle_author_comment" },
+          { recipientUsername: "alice", notificationType: "comment_reply" },
         ],
         [{ recipient_username: "ALICE" }],
       ),
-    ).toEqual([{ recipientUsername: "bob", notificationType: "puzzle_author_comment" }]);
+    ).toEqual([
+      { recipientUsername: "bob", notificationType: "puzzle_author_comment" },
+      { recipientUsername: "alice", notificationType: "comment_reply" },
+    ]);
   });
 
   it("notifies prior commenters after a puzzle comment without failing the saved comment", async () => {

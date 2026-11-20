@@ -22,8 +22,16 @@ describe("notifications function", () => {
           { id: 3, comment_id: 30, notification_type: "puzzle_author_comment" },
           { id: 4, comment_id: 40, notification_type: "comment_mention" },
           { id: 5, comment_id: 50, notification_type: "puzzle_attempt_comment" },
+          { id: 6, comment_id: 60, notification_type: "profile_comment" },
         ],
         [
+          {
+            id: 60,
+            target_type: "profile",
+            target_id: "alice",
+            body: "Public profile comment",
+            created_at: "2026-10-27T12:00:00.000Z",
+          },
           {
             id: 10,
             target_type: "puzzle",
@@ -90,6 +98,7 @@ describe("notifications function", () => {
       expect.objectContaining({ id: 3, comment_body: null }),
       expect.objectContaining({ id: 4, comment_body: null }),
       expect.objectContaining({ id: 5, comment_body: null }),
+      expect.objectContaining({ id: 6, comment_body: "Public profile comment" }),
     ]);
   });
 

@@ -10,7 +10,9 @@ export const useNotificationNavigation = () => {
     (notification: UserNotification): void => {
       if (
         (notification.notification_type === "feature" ||
-          notification.notification_type === "comment_mention") &&
+          notification.notification_type === "comment_mention" ||
+          notification.notification_type === "comment_reply" ||
+          notification.notification_type === "profile_comment") &&
         notification.feature_path
       ) {
         const path = safeNotificationPath(notification.feature_path);

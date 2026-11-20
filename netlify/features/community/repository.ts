@@ -58,6 +58,18 @@ const PUZZLE_COMMENT_NOTIFICATION_TYPES = [
   "comment_mention",
 ] as const;
 
+const recentAttemptCutoff = (now = new Date()): string => {
+  const cutoff = new Date(now);
+  const day = cutoff.getUTCDate();
+  cutoff.setUTCDate(1);
+  cutoff.setUTCMonth(cutoff.getUTCMonth() - 2);
+  const lastDay = new Date(
+    Date.UTC(cutoff.getUTCFullYear(), cutoff.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  cutoff.setUTCDate(Math.min(day, lastDay));
+  return cutoff.toISOString();
+};
+
 const normalizedUsername = (username: unknown): string =>
   String(username ?? "")
     .trim()
@@ -117,7 +129,9 @@ export const excludeRecipientsWithUnreadPuzzleNotifications = (
     unreadNotifications.map(({ recipient_username }) => normalizedUsername(recipient_username)),
   );
   return recipients.filter(
-    ({ recipientUsername }) =>
+    ({ recipientUsername, notificationType }) =>
+      notificationType === "comment_reply" ||
+      notificationType === "comment_mention" ||
       !recipientsWithUnreadNotifications.has(normalizedUsername(recipientUsername)),
   );
 };
@@ -135,6 +149,7 @@ const mentionDestinationPath = (target: CommunityTarget, commentId: number): str
   if (target.type === "puzzle") return `/solve/${encodeURIComponent(target.id)}${hash}`;
   if (target.type === "profile") return `/@/${encodeURIComponent(target.id)}${hash}`;
   if (target.type === "match") return `/match/${encodeURIComponent(target.id)}${hash}`;
+  if (target.type === "endgame") return `/puzzles/endgames${hash}`;
   return `/tournaments/${encodeURIComponent(target.id)}${hash}`;
 };
 
@@ -480,17 +495,31 @@ export class CommunityRepository {
     const parentAuthorQuery = parentId
       ? this.supabase.from("community_comments").select("username").eq("id", parentId).maybeSingle()
       : Promise.resolve({ data: null, error: null });
+    const cutoff = recentAttemptCutoff();
     const attemptedUsersQuery = this.supabase
       .from("puzzle_progress")
       .select("username")
-      .eq("puzzle_id", String(puzzleId));
-    const [priorCommentersResult, puzzleAuthorResult, parentAuthorResult, attemptedUsersResult] =
-      await Promise.all([
-        priorCommentersQuery,
-        puzzleAuthorQuery,
-        parentAuthorQuery,
-        attemptedUsersQuery,
-      ]);
+      .eq("puzzle_id", String(puzzleId))
+      // Practice attempts refresh this cooldown but deliberately retain no move logs.
+      .or(`first_attempt_at.gte.${cutoff},grading_available_at.gte.${new Date().toISOString()}`);
+    const recentRetriesQuery = this.supabase
+      .from("puzzle_attempt_move_logs")
+      .select("username")
+      .eq("puzzle_id", puzzleId)
+      .gte("attempted_at", cutoff);
+    const [
+      priorCommentersResult,
+      puzzleAuthorResult,
+      parentAuthorResult,
+      attemptedUsersResult,
+      recentRetriesResult,
+    ] = await Promise.all([
+      priorCommentersQuery,
+      puzzleAuthorQuery,
+      parentAuthorQuery,
+      attemptedUsersQuery,
+      recentRetriesQuery,
+    ]);
     if (priorCommentersResult.error) {
       throw new Error(`Unable to find puzzle participants: ${priorCommentersResult.error.message}`);
     }
@@ -506,34 +535,60 @@ export class CommunityRepository {
       );
     }
 
+    if (recentRetriesResult.error)
+      throw new Error(`Unable to find recent puzzle retries: ${recentRetriesResult.error.message}`);
     const recipients = buildPuzzleCommentNotificationRecipients({
       actorUsername,
       puzzleAuthor: puzzleAuthorResult.data?.author,
       parentAuthor: parentAuthorResult.data?.username,
       isReply: parentId !== null,
-      attemptedUsers: attemptedUsersResult.data ?? [],
+      attemptedUsers: [...(attemptedUsersResult.data ?? []), ...(recentRetriesResult.data ?? [])],
       priorCommenters: priorCommentersResult.data ?? [],
       excludedUsernames,
     });
     if (!recipients.length) return;
 
+    // Imported puzzle authors may not have a site account. One missing account must not
+    // reject the entire notification batch through the recipient foreign key.
+    const registeredUsers = await this.supabase
+      .from("users")
+      .select("username")
+      .in(
+        "username",
+        recipients.map(({ recipientUsername }) => recipientUsername),
+      );
+    if (registeredUsers.error)
+      throw new Error(`Unable to check notification accounts: ${registeredUsers.error.message}`);
+    const registered = new Set((registeredUsers.data ?? []).map((row) => row.username));
+    const registeredRecipients = recipients.filter(({ recipientUsername }) =>
+      registered.has(recipientUsername),
+    );
+    if (!registeredRecipients.length) return;
+
     const unreadNotificationsResult = await this.supabase
       .from("notifications")
-      .select("recipient_username")
+      .select("recipient_username,comment_id")
       .eq("puzzle_id", puzzleId)
-      .is("read_at", null)
+      .or(`comment_id.eq.${commentId},read_at.is.null`)
       .in("notification_type", [...PUZZLE_COMMENT_NOTIFICATION_TYPES])
       .in(
         "recipient_username",
-        recipients.map(({ recipientUsername }) => recipientUsername),
+        registeredRecipients.map(({ recipientUsername }) => recipientUsername),
       );
     if (unreadNotificationsResult.error) {
       throw new Error(
         `Unable to check unread puzzle notifications: ${unreadNotificationsResult.error.message}`,
       );
     }
+    const alreadyNotified = new Set(
+      (unreadNotificationsResult.data ?? [])
+        .filter((row) => Number(row.comment_id) === commentId)
+        .map((row) => row.recipient_username),
+    );
     const recipientsWithoutUnreadNotifications = excludeRecipientsWithUnreadPuzzleNotifications(
-      recipients,
+      registeredRecipients.filter(
+        ({ recipientUsername }) => !alreadyNotified.has(recipientUsername),
+      ),
       unreadNotificationsResult.data ?? [],
     );
     if (!recipientsWithoutUnreadNotifications.length) return;
@@ -550,6 +605,54 @@ export class CommunityRepository {
     if (result.error) {
       throw new Error(`Unable to notify puzzle participants: ${result.error.message}`);
     }
+  }
+
+  async notifyDiscussionCommentRecipients(
+    target: CommunityTarget,
+    commentId: number,
+    actorUsername: string,
+    parentId: number | null,
+    excludedUsernames: string[] = [],
+  ): Promise<void> {
+    if (target.type === "puzzle" || (!parentId && target.type !== "profile")) return;
+    const recipientResult = parentId
+      ? await this.supabase
+          .from("community_comments")
+          .select("username")
+          .eq("id", parentId)
+          .maybeSingle()
+      : await this.supabase
+          .from("users")
+          .select("username")
+          .eq("username", target.id)
+          .maybeSingle();
+    if (recipientResult.error)
+      throw new Error(`Unable to find discussion recipient: ${recipientResult.error.message}`);
+    const recipient = normalizedUsername(recipientResult.data?.username);
+    if (
+      !recipient ||
+      [actorUsername, ...excludedUsernames].map(normalizedUsername).includes(recipient)
+    )
+      return;
+    const existing = await this.supabase
+      .from("notifications")
+      .select("id")
+      .eq("comment_id", commentId)
+      .eq("recipient_username", recipient)
+      .limit(1);
+    if (existing.error)
+      throw new Error(`Unable to check discussion notifications: ${existing.error.message}`);
+    if (existing.data?.length) return;
+    const result = await this.supabase.from("notifications").insert({
+      recipient_username: recipient,
+      actor_username: actorUsername,
+      notification_type: parentId ? "comment_reply" : "profile_comment",
+      comment_id: commentId,
+      puzzle_id: null,
+      feature_path: mentionDestinationPath(target, commentId),
+    });
+    if (result.error)
+      throw new Error(`Unable to notify discussion recipient: ${result.error.message}`);
   }
 
   async notifyMentionedUsers(
@@ -570,7 +673,7 @@ export class CommunityRepository {
     if (usersResult.error) {
       throw new Error(`Unable to find mentioned users: ${usersResult.error.message}`);
     }
-    let recipients = [
+    const recipients = [
       ...new Set(
         (usersResult.data ?? [])
           .map((row) =>
@@ -583,32 +686,21 @@ export class CommunityRepository {
     ];
     if (!recipients.length) return [];
 
-    if (target.type === "puzzle") {
-      const puzzleId = Number(target.id);
-      const unreadNotificationsResult = await this.supabase
-        .from("notifications")
-        .select("recipient_username")
-        .eq("puzzle_id", puzzleId)
-        .is("read_at", null)
-        .in("notification_type", [...PUZZLE_COMMENT_NOTIFICATION_TYPES])
-        .in("recipient_username", recipients);
-      if (unreadNotificationsResult.error) {
-        throw new Error(
-          `Unable to check unread puzzle notifications: ${unreadNotificationsResult.error.message}`,
-        );
-      }
-      recipients = excludeRecipientsWithUnreadPuzzleNotifications(
-        recipients.map((recipientUsername) => ({
-          recipientUsername,
-          notificationType: "comment_mention" as const,
-        })),
-        unreadNotificationsResult.data ?? [],
-      ).map(({ recipientUsername }) => recipientUsername);
-      if (!recipients.length) return [];
-    }
+    const alreadySent = await this.supabase
+      .from("notifications")
+      .select("recipient_username")
+      .eq("comment_id", commentId)
+      .in("recipient_username", recipients);
+    if (alreadySent.error)
+      throw new Error(
+        `Unable to check comment notification recipients: ${alreadySent.error.message}`,
+      );
+    const existing = new Set((alreadySent.data ?? []).map((row) => row.recipient_username));
+    const missing = recipients.filter((username) => !existing.has(username));
+    if (!missing.length) return recipients;
 
     const result = await this.supabase.from("notifications").insert(
-      recipients.map((recipientUsername) => ({
+      missing.map((recipientUsername) => ({
         recipient_username: recipientUsername,
         actor_username: actorUsername,
         notification_type: "comment_mention",

@@ -10,7 +10,7 @@ import { Link } from "@tanstack/react-router";
 import { type FormEvent, type ReactNode, useState } from "react";
 
 import { CommentMarkdown } from "../../components/CommentMarkdown/CommentMarkdown";
-import { CommunityCommentsLink } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
+import { CommunityCommentsButton } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
 import { PuzzleAttemptResult } from "../../components/PuzzleAttemptResult/PuzzleAttemptResult";
 import type { PuzzleProgressWithUsernameRow } from "../../lib/supabase/puzzleProgress";
 import type { AsyncActionStatus } from "../../types/async";
@@ -122,6 +122,7 @@ const AttemptsPanel = ({
               </Link>
               <PuzzleAttemptResult
                 color={attempt.attempt_color ?? (attempt.puzzle_correct ? "green" : "red")}
+                solved={attempt.has_solved ?? attempt.puzzle_correct}
                 correct={correctOnly || attempt.puzzle_correct}
                 move={
                   correctOnly
@@ -331,20 +332,13 @@ export const PuzzleInfoSection = ({
           <span className="puzzleInfoTabLabel">{mobile ? "Attempts" : "Other attempts"}</span>
         </button>
         {comments ? (
-          <CommunityCommentsLink
+          <CommunityCommentsButton
             target={{ type: "puzzle", id: String(comments.puzzleId ?? "") }}
-            href="#puzzle-community"
             hideWhenEmpty
             role="tab"
             className={`puzzleInfoTab ${showComments ? "active" : ""}`}
-            onClick={(event) => {
-              if (!comments.canView) {
-                event.preventDefault();
-                return;
-              }
-              comments.onSelect();
-            }}
-            aria-disabled={!comments.canView}
+            onClick={comments.onSelect}
+            disabled={!comments.canView}
             aria-selected={showComments}
             title={
               comments.canView

@@ -88,6 +88,7 @@ const Attempts = ({ rows }: { rows: PuzzleProgressWithUsernameRow[] }) => {
               <span className="puzzleRecentAttemptOutcome">
                 <PuzzleAttemptResult
                   color={attempt.attempt_color ?? (attempt.puzzle_correct ? "green" : "red")}
+                  solved={attempt.has_solved ?? attempt.puzzle_correct}
                   correct={attempt.puzzle_correct}
                   move={
                     (attempt.puzzle_correct ? attempt.correct_move : attempt.incorrect_move) ?? null

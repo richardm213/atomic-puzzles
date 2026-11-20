@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CommunityCommentsButton } from "../CommunityCommentsLink/CommunityCommentsLink";
 import { CommunityDiscussion, PuzzleCommunity } from "./PuzzleCommunity";
 
 const render = (element: ReactElement) => {
@@ -94,6 +95,23 @@ describe("PuzzleCommunity", () => {
         accountUsername: "seaside_tiramisu",
       },
     ]);
+  });
+
+  it("opens puzzle comments as an action without adding a URL fragment", async () => {
+    const onSelect = vi.fn();
+    render(
+      <CommunityCommentsButton
+        target={{ type: "puzzle", id: "42" }}
+        role="tab"
+        hideWhenEmpty
+        onClick={onSelect}
+      />,
+    );
+    const tab = await screen.findByRole("tab", { name: /Comments/ });
+    expect(tab.tagName).toBe("BUTTON");
+    await userEvent.setup().click(tab);
+    expect(onSelect).toHaveBeenCalledOnce();
+    expect(window.location.hash).toBe("");
   });
 
   it("renders Markdown and legacy links without interpreting unsafe links or HTML", async () => {

@@ -11,19 +11,21 @@ import {
 export const PuzzleAttemptResult = ({
   color,
   correct,
+  solved = correct,
   move,
   hideAnswers = false,
 }: {
   color: PuzzleAttemptColor;
   correct: boolean;
+  solved?: boolean;
   move?: string | null;
   hideAnswers?: boolean;
 }) => (
   <span
-    className={`puzzleOtherAttemptResult ${color}`}
+    className={`puzzleOtherAttemptResult ${color === "red" && solved ? "lateSolve" : color}`}
     tabIndex={0}
-    title={puzzleAttemptColorExplanation(color)}
-    aria-label={puzzleAttemptColorExplanation(color)}
+    title={puzzleAttemptColorExplanation(color, solved)}
+    aria-label={puzzleAttemptColorExplanation(color, solved)}
   >
     <FontAwesomeIcon
       icon={correct ? faCheck : faXmark}

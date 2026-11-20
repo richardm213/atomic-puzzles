@@ -41,10 +41,11 @@ export const attachAttemptedPuzzleCommentBodies = <T extends NotificationWithCom
     const attemptedAt = Date.parse(firstAttempt?.first_attempt_at ?? "");
     const gradingAvailableAt = Date.parse(firstAttempt?.grading_available_at ?? "");
     const canShowBody =
-      comment?.target_type === "puzzle" &&
-      !activePuzzleIds.has(String(comment.target_id)) &&
-      gradingAvailableAt > now &&
-      attemptedAt <= Date.parse(comment.created_at);
+      comment &&
+      (comment.target_type !== "puzzle" ||
+        (!activePuzzleIds.has(String(comment.target_id)) &&
+          gradingAvailableAt > now &&
+          attemptedAt <= Date.parse(comment.created_at)));
     return {
       ...notification,
       comment_body: canShowBody ? String(comment.body ?? "") : null,

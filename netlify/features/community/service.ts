@@ -401,8 +401,24 @@ export class CommunityService {
     const notificationDelivery = async (): Promise<void> => {
       const mentionedRecipients = await this.repository
         .notifyMentionedUsers(target, commentId, username, commentBody)
-        .catch(() => []);
-      if (target.type !== "puzzle") return;
+        .catch((error: unknown) => {
+          console.error("Comment mention delivery failed", { commentId, error });
+          return [];
+        });
+      if (target.type !== "puzzle") {
+        await this.repository
+          .notifyDiscussionCommentRecipients(
+            target,
+            commentId,
+            username,
+            parentId,
+            mentionedRecipients,
+          )
+          .catch((error: unknown) =>
+            console.error("Discussion notification delivery failed", { commentId, error }),
+          );
+        return;
+      }
       await this.repository
         .notifyPuzzleCommentRecipients(
           Number(target.id),
@@ -411,7 +427,9 @@ export class CommunityService {
           parentId,
           mentionedRecipients,
         )
-        .catch(() => undefined);
+        .catch((error: unknown) =>
+          console.error("Puzzle comment delivery failed", { commentId, error }),
+        );
     };
     const [community] = await Promise.all([
       this.loadTargetCommunity(target, username),
@@ -425,6 +443,11 @@ export class CommunityService {
     if (!(await this.repository.updateOwnedComment(target, commentId, username, commentBody))) {
       throw new HttpError(404, "No comment of yours was found in this discussion.");
     }
+    await this.repository
+      .notifyMentionedUsers(target, commentId, username, commentBody)
+      .catch((error: unknown) =>
+        console.error("Edited comment mention delivery failed", { commentId, error }),
+      );
     return { id: commentId, body: commentBody };
   }
 }

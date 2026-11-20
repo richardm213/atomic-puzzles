@@ -31,6 +31,10 @@
   --attempt-color: var(--color-grading-red);
 }
 
+.puzzleOtherAttemptResult.lateSolve {
+  --attempt-color: var(--color-grading-blue);
+}
+
 .puzzleOtherAttemptResult.purple {
   --attempt-color: var(--color-grading-purple);
 }

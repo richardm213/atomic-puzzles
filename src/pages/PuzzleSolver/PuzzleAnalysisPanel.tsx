@@ -2,25 +2,17 @@ import "../../features/analysisWorkspace/AnalysisWorkspace.css";
 
 import { faFlag } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { type CSSProperties, useEffect, useLayoutEffect, useState } from "react";
+import { type CSSProperties, useEffect, useLayoutEffect } from "react";
 
 import type { PuzzleIntro } from "../../../shared/domain/puzzles/gameHistory";
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
 import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
-import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
+import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import type { useBoardMoveEditing } from "../../hooks/useBoardMoveEditing";
 import { startingPlyFromFen } from "../../lib/chess/pgn";
 import type { PlaybackAvailability, PlaybackCommand } from "../../types/chessboard";
-
-const initialEngineSettings = (): AtomicDbEngineSettings => ({
-  enabled: false,
-  atomicDbEnabled: true,
-  lineCount: 3,
-  showFollowUpMoves: true,
-  settingsVersion: 2,
-});
 
 export const PuzzleAnalysisPanel = ({
   initialFen,
@@ -71,14 +63,17 @@ export const PuzzleAnalysisPanel = ({
     command: Extract<PlaybackCommand, "start" | "previous" | "next" | "end">,
   ) => void;
 }) => {
-  const [engineSettings, setEngineSettings] = useState(initialEngineSettings);
+  const [engineSettings, setEngineSettings] = useAtomicDbEngineSettings({
+    storageKey: "atomic-puzzles.puzzle-engine",
+    defaultEnabled: false,
+  });
 
   useEffect(() => {
-    setEngineSettings(initialEngineSettings());
+    setEngineSettings((current) => ({ ...current, enabled: false }));
     onHoverMove(null);
-  }, [onHoverMove]);
+  }, [onHoverMove, setEngineSettings]);
 
-  const { analysis, engineMoves } = useAtomicDbBoardAnalysis({
+  const { panelProps, engineMoves } = useAtomicDbBoardAnalysis({
     currentFen,
     enabled: analysisActive && engineSettings.enabled,
     atomicDbEnabled: engineSettings.atomicDbEnabled !== false,
@@ -102,8 +97,7 @@ export const PuzzleAnalysisPanel = ({
       {analysisActive ? (
         <div className="puzzleAnalysisEngine">
           <AtomicDbAnalysisBlock
-            fen={currentFen}
-            analysis={analysis}
+            {...panelProps}
             settings={engineSettings}
             setSettings={setEngineSettings}
             notationInline

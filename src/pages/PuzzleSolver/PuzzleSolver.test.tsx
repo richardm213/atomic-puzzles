@@ -538,6 +538,54 @@ describe("PuzzleSolverPage solution options", () => {
     ).toBe(true);
   });
 
+  it("enables engine and threat keys only in analysis and remembers the puzzle line count", async () => {
+    const view = render(<PuzzleSolverPage />);
+    await screen.findByTestId("mock-board");
+    for (const key of ["l", "x", "k", " "]) fireEvent.keyDown(window, { key });
+    expect(
+      screen.queryByRole("button", { name: "Toggle position analysis" }),
+    ).not.toBeInTheDocument();
+    act(() =>
+      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+        puzzleId: 1369,
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: "12... O-O",
+      }),
+    );
+    const engine = await screen.findByRole("button", { name: "Toggle position analysis" });
+    fireEvent.keyDown(window, { key: "l" });
+    expect(engine).toHaveAttribute("aria-pressed", "true");
+    fireEvent.keyDown(window, { key: "x" });
+    // Settings expose the state even while analysis itself is loading.
+    fireEvent.click(screen.getByRole("button", { name: "Engine settings" }));
+    expect(screen.getByRole("checkbox", { name: "Threat mode" })).toBeChecked();
+    fireEvent.change(screen.getByRole("slider", { name: "Multiple lines" }), {
+      target: { value: "5" },
+    });
+    mocks.routeParams = { puzzleId: "1370" };
+    view.rerender(<PuzzleSolverPage />);
+    await waitFor(() => expect(mocks.chessboardProps.at(-1)?.puzzleId).toBe(1370));
+    for (const key of ["l", "x", "k", " "]) fireEvent.keyDown(window, { key });
+    expect(
+      screen.queryByRole("button", { name: "Toggle position analysis" }),
+    ).not.toBeInTheDocument();
+    act(() =>
+      mocks.chessboardProps.at(-1)?.onAttemptResolved?.({
+        puzzleId: 1370,
+        puzzleCorrect: true,
+        incorrectMove: null,
+        correctMove: "12... O-O",
+      }),
+    );
+    expect(await screen.findByRole("button", { name: "Toggle position analysis" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Engine settings" }));
+    expect(screen.getByRole("slider", { name: "Multiple lines" })).toHaveValue("5");
+  });
+
   it("loads only the active puzzle and a three-puzzle lookahead from the catalog", async () => {
     mocks.routeParams = { puzzleId: "", setKey: "" };
     mocks.attemptedPuzzleIds = new Set();
@@ -1371,7 +1419,10 @@ describe("PuzzleSolverPage solution options", () => {
       mocks.attemptedPuzzleIds = new Set();
       mocks.puzzleExplanation = "";
       const studyUrl = "https://lichess.org/study/Iv9L9LTR/emsqp5QX";
-      const content = `The king move escapes the atomic threat. See ${studyUrl}.`;
+      const content = `The king move escapes the atomic threat.
+Keep the rook ready.
+
+See ${studyUrl}.`;
       const user = userEvent.setup();
       render(<PuzzleSolverPage />);
 
@@ -1406,6 +1457,10 @@ describe("PuzzleSolverPage solution options", () => {
       );
       expect(await screen.findByText("Explanation saved.")).toBeInTheDocument();
       expect(screen.getByRole("link", { name: studyUrl })).toHaveAttribute("href", studyUrl);
+      const firstParagraph = screen.getByText(/The king move escapes the atomic threat/);
+      expect(firstParagraph.tagName).toBe("P");
+      expect(firstParagraph.querySelector("br")).not.toBeNull();
+      expect(screen.getByRole("link", { name: studyUrl }).closest("p")).not.toBe(firstParagraph);
     },
   );
 
@@ -1612,7 +1667,7 @@ describe("PuzzleSolverPage solution options", () => {
         incorrect_move: "12... Kd7",
         correct_move: null,
         solved_move: "12... Rf8",
-        attempt_color: "yellow",
+        attempt_color: "red",
       },
       {
         username: "unsolved",
@@ -1640,7 +1695,7 @@ describe("PuzzleSolverPage solution options", () => {
     expect(await screen.findByLabelText("Played 12... Rf8")).toBeVisible();
     expect(screen.queryByText("unsolved")).not.toBeInTheDocument();
     expect(recovered().getByRole("img", { name: "Correct" })).toBeVisible();
-    expect(recovered().getByLabelText("Solved on the second try")).toBeVisible();
+    expect(recovered().getByLabelText("Solved after three or more mistakes")).toBeVisible();
     expect(recovered().getByLabelText("Attempt time 1:05")).toBeVisible();
 
     await user.click(screen.getByRole("checkbox", { name: "Hide answers" }));

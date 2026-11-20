@@ -22,7 +22,10 @@ export const puzzleGradingStateSchema = z.object({
 });
 export type PuzzleGradingState = z.infer<typeof puzzleGradingStateSchema>;
 
-export const puzzleAttemptColorExplanation = (color: PuzzleAttemptColor): string => {
+export const puzzleAttemptColorExplanation = (
+  color: PuzzleAttemptColor,
+  solved = false,
+): string => {
   switch (color) {
     case "green":
       return "Solved on the first try";
@@ -31,7 +34,7 @@ export const puzzleAttemptColorExplanation = (color: PuzzleAttemptColor): string
     case "orange":
       return "Solved on the third try";
     case "red":
-      return "Solved after three or more mistakes, or unsolved after one or two mistakes";
+      return solved ? "Solved after three or more mistakes" : "Unsolved after one or two mistakes";
     case "purple":
       return "Unsolved after three or more mistakes";
     case "blue":
