@@ -4,7 +4,6 @@ import {
   approveQueuedPuzzle,
   rejectQueuedPuzzle,
   submitPuzzle,
-  submitPuzzleBatch,
   updateQueuedPuzzle,
 } from "./puzzleQueue";
 
@@ -82,74 +81,17 @@ describe("puzzle queue review client", () => {
     ).rejects.toThrow(/HTTP 404/);
   });
 
-  it("returns a directly published puzzle id", async () => {
+  it("returns the directly published puzzle id and confirmed reward", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => jsonResponse({ destination: "published", puzzleId: 1801 }, 201)),
+      vi.fn(async () =>
+        jsonResponse({ destination: "published", puzzleId: 1801, coinAward: 8.2 }, 201),
+      ),
     );
 
     await expect(
       submitPuzzle({ fen: "fen", solution: "1. e4", event: "", explanation: "" }),
-    ).resolves.toEqual({ destination: "published", puzzleId: 1801 });
-  });
-
-  it("returns the published batch ids and the confirmed award", async () => {
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
-      jsonResponse({ destination: "published", puzzleIds: [1801, 1802], coinAward: 16.2 }, 201),
-    );
-    vi.stubGlobal("fetch", fetchMock);
-
-    await expect(
-      submitPuzzleBatch([
-        {
-          fen: "fen 1",
-          solution: "1. e4",
-          event: "event",
-          whitePlayer: " white ",
-          blackPlayer: " black ",
-          explanation: "",
-        },
-        {
-          fen: "fen 2",
-          solution: "1. d4",
-          event: "event",
-          explanation: "",
-        },
-      ]),
-    ).resolves.toEqual({ destination: "published", puzzleIds: [1801, 1802], coinAward: 16.2 });
-    const [, request] = fetchMock.mock.calls[0] ?? [];
-    expect(JSON.parse(String(request?.body))).toEqual({
-      submissions: [
-        {
-          fen: "fen 1",
-          solution: "1. e4",
-          event: "event",
-          eventName: "",
-          eventDate: "",
-          players: ["black", "white"],
-          whitePlayer: "white",
-          blackPlayer: "black",
-          explanation: "",
-          opaStyle: false,
-          author: "",
-          tags: [],
-        },
-        {
-          fen: "fen 2",
-          solution: "1. d4",
-          event: "event",
-          eventName: "",
-          eventDate: "",
-          players: [],
-          whitePlayer: "",
-          blackPlayer: "",
-          explanation: "",
-          opaStyle: false,
-          author: "",
-          tags: [],
-        },
-      ],
-    });
+    ).resolves.toEqual({ destination: "published", puzzleId: 1801, coinAward: 8.2 });
   });
 
   it("returns the approved puzzle id from the review endpoint", async () => {

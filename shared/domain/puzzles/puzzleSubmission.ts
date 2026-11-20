@@ -44,29 +44,6 @@ export const compactPuzzleSolution = (solution: string): string =>
     .replace(/\s+/g, " ")
     .trim();
 
-export const splitPuzzlePgnBatch = (input: string): string[] => {
-  const games: string[] = [];
-  let currentLines: string[] = [];
-  let hasMovetext = false;
-
-  const flush = (): void => {
-    const game = currentLines.join("\n").trim();
-    if (game) games.push(game);
-    currentLines = [];
-    hasMovetext = false;
-  };
-
-  for (const line of input.replace(/\r\n?/g, "\n").split("\n")) {
-    const isHeader = PGN_TAG_PATTERN.test(line);
-    if (isHeader && hasMovetext) flush();
-    currentLines.push(line);
-    if (!isHeader && line.trim()) hasMovetext = true;
-  }
-  flush();
-
-  return games;
-};
-
 export const ensurePuzzlePgnHeaders = (headerText: string, fen: string): string => {
   const headerLines = headerText.replace(/\r\n?/g, "\n").split("\n").filter(Boolean);
   const headerNames = new Set(
@@ -91,6 +68,9 @@ export const parseAtomicPgnInput = (input: string, fallbackFen: string): ParsedP
   for (const line of input.replace(/\r\n?/g, "\n").split("\n")) {
     const tag = line.match(PGN_TAG_PATTERN);
     if (tag?.[1] !== undefined && tag[2] !== undefined) {
+      if (movetextLines.some((moveLine) => moveLine.trim())) {
+        throw new Error("The PGN must contain one puzzle.");
+      }
       hadHeaders = true;
       headerLines.push(line);
       headers.set(tag[1].toLowerCase(), unescapePgnTagValue(tag[2]).trim());

@@ -221,16 +221,17 @@ describe("PuzzleSubmissionPage fields", () => {
     vi.unstubAllGlobals();
   });
 
-  it("uses direct-creation actions only for approved puzzle creators", async () => {
+  it("shows the single submission form for approved creators without an author field", () => {
     authMocks.username = "wolfram_ep";
-    const user = userEvent.setup();
     render(<PuzzleSubmissionPage />);
 
     expect(screen.getByRole("button", { name: "Create puzzle" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Submit for review" })).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: "Puzzle batch" }));
-    expect(screen.getByRole("button", { name: "Create puzzle" })).toBeVisible();
+    expect(screen.queryByRole("group", { name: "Submission type" })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Puzzle author" })).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Explanation" })).toBeVisible();
+    expect(screen.queryByRole("textbox", { name: "Event" })).toBeNull();
   });
 
   it("shows seaside_tiramisu's selected puzzle author as the creation target", async () => {
@@ -249,17 +250,66 @@ describe("PuzzleSubmissionPage fields", () => {
     expect(screen.getByText("Creating for maracker")).toBeVisible();
   });
 
-  it("remembers the selected PGN or FEN input mode", async () => {
+  it("shows both analysis document fields and keeps FEN and PGN validation independent", async () => {
     const user = userEvent.setup();
-    const { unmount } = render(<PuzzleSubmissionPage />);
-
-    await user.click(screen.getByRole("button", { name: "FEN" }));
-    expect(window.localStorage.getItem("puzzleEditor.solutionInputMode")).toBe("fen");
-    expect(screen.getByRole("button", { name: "FEN" })).toHaveAttribute("aria-pressed", "true");
-
-    unmount();
     render(<PuzzleSubmissionPage />);
-    expect(screen.getByRole("button", { name: "FEN" })).toHaveAttribute("aria-pressed", "true");
+
+    const fen = screen.getByRole("textbox", { name: "FEN" });
+    expect(fen).toHaveValue(STARTING_FEN);
+    const pgn = screen.getByRole("textbox", { name: "PGN" });
+    const submit = screen.getByRole("button", { name: "Submit for review" });
+    fireEvent.change(pgn, { target: { value: "1. e4 e5" } });
+    await user.type(pgn, "{Enter}");
+    expect(submit).toBeEnabled();
+
+    fireEvent.change(fen, { target: { value: STARTING_FEN.replaceAll(" ", "  ") } });
+    await user.type(fen, "{Enter}");
+    expect(fen).toHaveValue(STARTING_FEN);
+    expect((pgn as HTMLTextAreaElement).value).toContain("1. e4 e5");
+
+    fireEvent.change(pgn, {
+      target: { value: `[FEN "${STARTING_FEN.replaceAll(" ", "  ")}"]\n\n1. e4 e5` },
+    });
+    await user.type(pgn, "{Enter}");
+    expect(pgn).toHaveAttribute("aria-invalid", "false");
+    expect(fen).toHaveValue(STARTING_FEN);
+
+    fireEvent.change(fen, { target: { value: "invalid FEN" } });
+    await user.type(fen, "{Enter}");
+    expect(fen).toHaveAttribute("aria-invalid", "true");
+    expect(submit).toBeDisabled();
+
+    fireEvent.change(pgn, { target: { value: "invalid moves" } });
+    await user.type(pgn, "{Enter}");
+    expect(await screen.findByText(/beginning with a move number/)).toBeVisible();
+    expect(submit).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Add move to line" }));
+    expect(pgn).toHaveValue("invalid moves");
+    expect(submit).toBeDisabled();
+
+    fireEvent.change(pgn, { target: { value: "1. d4 d5" } });
+    await user.type(pgn, "{Enter}");
+    expect(pgn).toHaveAttribute("aria-invalid", "false");
+    expect(fen).toHaveValue("invalid FEN");
+    expect(fen).toHaveAttribute("aria-invalid", "true");
+    expect(submit).toBeDisabled();
+
+    fireEvent.change(fen, { target: { value: STARTING_FEN } });
+    await user.type(fen, "{Enter}");
+    expect((pgn as HTMLTextAreaElement).value).toContain("1. d4 d5");
+    expect(submit).toBeEnabled();
+  });
+
+  it("rejects a header-only PGN that contains an invalid starting FEN", async () => {
+    const user = userEvent.setup();
+    render(<PuzzleSubmissionPage />);
+
+    const pgn = screen.getByRole("textbox", { name: "PGN" });
+    fireEvent.change(pgn, { target: { value: '[FEN "invalid"]' } });
+    await user.type(pgn, "{Enter}");
+
+    expect(pgn).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("textbox", { name: "FEN" })).toHaveValue(STARTING_FEN);
   });
 
   it("warns about an existing FEN without blocking submission", async () => {
@@ -281,7 +331,7 @@ describe("PuzzleSubmissionPage fields", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<PuzzleSubmissionPage />);
 
-    const solution = screen.getByRole("textbox", { name: "Solution PGN" });
+    const solution = screen.getByRole("textbox", { name: "PGN" });
     await user.click(solution);
     fireEvent.change(solution, {
       target: { value: `1. e4` },
@@ -303,33 +353,6 @@ describe("PuzzleEditor move tree", () => {
     window.localStorage.clear();
     chessboardMocks.navigations.length = 0;
     chessboardMocks.stateOnCommand = null;
-  });
-
-  it("supports a submission-only batch navigator without an explanation field", () => {
-    const previous = vi.fn();
-    const next = vi.fn();
-    render(
-      <PuzzleEditor
-        value={{
-          fen: STARTING_FEN,
-          solution: serializeSanLinesToPgn(STARTING_FEN, startingLines),
-          event: "",
-          explanation: "",
-        }}
-        onChange={vi.fn()}
-        resetKey="batch-test"
-        batchMode
-        showExplanation={false}
-        batchPosition={{ current: 1, total: 3 }}
-        onPreviousPuzzle={previous}
-        onNextPuzzle={next}
-      />,
-    );
-
-    expect(screen.queryByRole("textbox", { name: "Explanation" })).toBeNull();
-    expect(screen.getByRole("textbox", { name: "Solutions PGNs" })).toBeRequired();
-    expect(screen.getByText("Puzzle 2 of 3")).toBeVisible();
-    expect(screen.getByText("Same event creates a puzzle set")).toBeVisible();
   });
 
   it("copies the complete displayed PGN when enabled for review", async () => {

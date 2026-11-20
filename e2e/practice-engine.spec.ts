@@ -186,12 +186,10 @@ test("practice keeps its PGN and position when creating puzzles or changing oppo
   await expect(pgn).not.toHaveValue(/\be4\b|\bd4\b/);
 });
 
-test("analysis and practice share default sizing and material rows, with both practice clocks", async ({
-  page,
-}) => {
+test("analysis, practice and puzzle submission share material rows", async ({ page }) => {
   let analysisSize: { board: number; controls: number } | undefined;
   const fen = "4k2r/8/8/8/8/8/PP6/1Q2K3 w - - 0 1";
-  for (const route of ["/analysis", "/practice"]) {
+  for (const route of ["/analysis", "/practice", "/puzzles/submit"]) {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto(route);
     const input = page.getByRole("textbox", { name: "FEN", exact: true });
@@ -210,7 +208,7 @@ test("analysis and practice share default sizing and material rows, with both pr
         .getBoundingClientRect().width,
     }));
     if (route === "/analysis") analysisSize = dimensions;
-    else {
+    else if (route === "/practice") {
       expect(dimensions.board).toBeCloseTo(analysisSize!.board, 0);
       expect(dimensions.controls).toBeCloseTo(analysisSize!.controls, 0);
     }
@@ -231,6 +229,13 @@ test("analysis and practice share default sizing and material rows, with both pr
       const material = await rows.first().getByRole("img").boundingBox();
       expect(material!.height).toBeGreaterThan(0);
     }).toPass();
+    if (route === "/puzzles/submit") {
+      await expect(rows.first().getByRole("img", { name: /Black material/ })).toBeVisible();
+      await page.getByRole("button", { name: "Engine settings" }).click();
+      await page.getByRole("button", { name: "Flip board" }).click();
+      await expect(rows.first().getByRole("img", { name: /White material/ })).toBeVisible();
+      await expect(rows.last().getByRole("img", { name: /Black material/ })).toBeVisible();
+    }
     await page.setViewportSize({ width: 1280, height: 900 });
   }
 });

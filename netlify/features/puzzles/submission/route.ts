@@ -49,10 +49,6 @@ const submissionBodySchema = z.union([
   singleSubmissionSchema.extend({
     action: z.never().optional(),
   }),
-  z.object({
-    action: z.never().optional(),
-    submissions: z.array(singleSubmissionSchema).min(1).max(100),
-  }),
 ]);
 
 export const puzzleSubmissionRoute = async (
@@ -90,12 +86,10 @@ export const puzzleSubmissionRoute = async (
     const context = await loadMatchPuzzleContext(db, input.gameId, fetchGame);
     return jsonResponse(201, await service.submitMatchPuzzle(username, input, context));
   }
-  if (!("submissions" in input)) return jsonResponse(201, await service.submit(username, input));
-
-  const result = await service.submitBatch(username, input.submissions);
+  const result = await service.submit(username, input);
   if (result.destination !== "published") return jsonResponse(201, result);
 
-  const awards = await loadPuzzlePublicationAwards(db, username, result.puzzleIds);
-  const coinAward = [...awards.values()].reduce((total, amount) => total + amount, 0);
+  const awards = await loadPuzzlePublicationAwards(db, username, [result.puzzleId]);
+  const coinAward = awards.get(result.puzzleId);
   return jsonResponse(201, { ...result, coinAward });
 };

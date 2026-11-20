@@ -1,24 +1,29 @@
 import "./PuzzleSubmission.css";
 
-import {
-  faCheck,
-  faChevronLeft,
-  faChevronRight,
-  faCircleInfo,
-  faCopy,
-  faTrashCan,
-} from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCircleInfo, faCopy, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
-import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
+import { type ReactNode, useId, useMemo, useRef, useState } from "react";
 
-import { Chessboard } from "../../components/Chessboard/Chessboard";
+import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
+import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
+import { Chessboard, type ChessboardProps } from "../../components/Chessboard/Chessboard";
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
+import { AnalysisEngineExplorerPanels } from "../../features/analysisWorkspace/AnalysisEngineExplorerPanels";
+import { AnalysisPlaybackBar } from "../../features/analysisWorkspace/AnalysisToolbar";
+import { AnalysisWorkspacePanel } from "../../features/analysisWorkspace/AnalysisWorkspaceLayout";
 import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDbAnalysisBlock";
+import {
+  OPA_STYLE_DESCRIPTION,
+  PuzzleDraftField,
+  PuzzleDraftFields,
+} from "../../features/analysisWorkspace/PuzzleDraftFields";
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
+import { normalizeBoardFen, useBoardDocumentField } from "../../hooks/useBoardDocumentField";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
+import { useMoveNotationLayout } from "../../hooks/useMoveNotationLayout";
 import {
   assertPuzzleDraftFen,
   buildBoardLoadNavigation,
@@ -40,9 +45,7 @@ import {
   ensurePuzzlePgnHeaders,
   parsePuzzlePgnInput,
   type PuzzleSubmissionValue,
-  splitPuzzlePgnBatch,
   validateParsedPuzzleSubmission,
-  validatePuzzleSubmission,
 } from "../../lib/puzzles/puzzleSubmission";
 import { createAtomicPosition } from "../../lib/puzzles/solutionPgn";
 import {
@@ -51,9 +54,10 @@ import {
   type PlaybackCommand,
   type SolutionNavigation,
 } from "../../types/chessboard";
+import { atomicDbPositionUrl } from "../../utils/atomicDb";
 import { orientationFromFen } from "../../utils/chessNotation";
 import { getErrorMessage } from "../../utils/errors";
-import { inputCommitHandlers } from "../../utils/inputCommit";
+import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 
 const combinePgnHeadersAndMoves = (headers: string, moves: string): string =>
   headers && moves ? `${headers}\n\n${moves}` : headers || moves;
@@ -67,9 +71,6 @@ const multilineSolutionPgn = (pgn: string): string =>
     .filter(Boolean)
     .join("\n");
 
-const OPA_STYLE_DESCRIPTION =
-  "Only the best moves are accepted. Weaker alternatives are rejected even if they also lead to mate.";
-
 const editorPgnState = (solution: string, fallbackFen: string) => {
   try {
     const parsed = parsePuzzlePgnInput(solution, fallbackFen);
@@ -77,10 +78,12 @@ const editorPgnState = (solution: string, fallbackFen: string) => {
     const headers = ensurePuzzlePgnHeaders(parsed.headerText, fen);
     return {
       fen,
+      headers,
+      event: parsed.event,
       draft: combinePgnHeadersAndMoves(headers, parsed.solution),
     };
   } catch {
-    return { fen: fallbackFen, draft: solution };
+    return { fen: fallbackFen, headers: "", event: "", draft: solution };
   }
 };
 
@@ -94,26 +97,20 @@ type PuzzleEditorProps = {
   onChange: (value: PuzzleSubmissionValue) => void;
   resetKey: string | number;
   beforeActions?: ReactNode;
-  actions?: ReactNode;
+  actions?: (disabled: boolean) => ReactNode;
   boardFooter?: ReactNode;
-  fieldsBeforeEvent?: ReactNode;
-  eventAside?: ReactNode;
+  additionalMetadata?: ReactNode;
   analysisFooter?: ReactNode;
   feedback?: PuzzleEditorFeedback | undefined;
   showCopyPgn?: boolean;
   showSolutionPgnField?: boolean;
-  solutionPgnUnderBoard?: boolean;
   allowSolutionEditing?: boolean;
   readOnly?: boolean;
   busy?: boolean;
   showExplanation?: boolean;
   showMetadataFields?: boolean;
-  batchMode?: boolean;
-  batchPosition?: { current: number; total: number };
-  onBatchLoad?: (values: PuzzleSubmissionValue[]) => void;
-  onPreviousPuzzle?: () => void;
-  onNextPuzzle?: () => void;
   showAnalysisEngine?: boolean;
+  submissionWorkspace?: boolean;
 };
 
 const SOLUTION_INPUT_MODE_STORAGE_KEY = "puzzleEditor.solutionInputMode";
@@ -126,55 +123,50 @@ const savedSolutionInputMode = (): "pgn" | "fen" => {
   }
 };
 
-export const PuzzleEditor = ({
+const PuzzleEditorDraft = ({
   value,
   onChange,
   resetKey,
   beforeActions,
   actions,
   boardFooter,
-  fieldsBeforeEvent,
-  eventAside,
+  additionalMetadata,
   analysisFooter,
   feedback,
   showCopyPgn = false,
   showSolutionPgnField = true,
-  solutionPgnUnderBoard = false,
   allowSolutionEditing = false,
   readOnly = false,
   busy = false,
   showExplanation = true,
   showMetadataFields = true,
-  batchMode = false,
-  batchPosition,
-  onBatchLoad,
-  onPreviousPuzzle,
-  onNextPuzzle,
   showAnalysisEngine = false,
+  submissionWorkspace = false,
 }: PuzzleEditorProps) => {
   const [initialPgnState] = useState(() =>
     editorPgnState(value.solution, value.fen || STARTING_FEN),
   );
   const [appliedFen, setAppliedFen] = useState(initialPgnState.fen);
-  const [fenDraft, setFenDraft] = useState(initialPgnState.fen);
-  const [solutionDraft, setSolutionDraft] = useState(initialPgnState.draft);
   const [solutionInputMode, setSolutionInputMode] = useState<"pgn" | "fen">(savedSolutionInputMode);
   const [orientation, setOrientation] = useState<"white" | "black">(() =>
     orientationFromFen(initialPgnState.fen),
   );
-  const [navigation, setNavigation] = useState<SolutionNavigation | null>(null);
+  const [navigation, setNavigation] = useState<SolutionNavigation | null>(() =>
+    value.solution.trim()
+      ? { type: "solution", line: 0, ply: 0 }
+      : { type: "reset", fen: initialPgnState.fen },
+  );
   const [boardState, setBoardState] = useState<ChessboardState | null>(null);
   const [editorError, setEditorError] = useState("");
+  const boardPanelRef = useRef<HTMLDivElement>(null);
   const [activeLineIndex, setActiveLineIndex] = useState(0);
   const [hoveredEngineMove, setHoveredEngineMove] = useState<string | null>(null);
   const [engineSettings, setEngineSettings] = useAtomicDbEngineSettings();
+  const [notationLayout, setNotationLayout] = useMoveNotationLayout();
   const engineLinePlayingRef = useRef(false);
-  const {
-    copy: copyToClipboard,
-    copyLabel: copyPgnLabel,
-    resetCopyFeedback,
-  } = useCopyFeedback(1_500);
+  const { copy: copyToClipboard, copyLabel: copyPgnLabel } = useCopyFeedback(1_500);
   const savedBoardLineRef = useRef("");
+  const acceptedPgnRef = useRef<Omit<typeof initialPgnState, "fen">>(initialPgnState);
   const fixedFenRef = useRef<string | null>(value.solution.trim() ? initialPgnState.fen : null);
   const solutionInputId = useId();
   const canEditSolution = allowSolutionEditing && !readOnly && !busy;
@@ -203,109 +195,68 @@ export const PuzzleEditor = ({
 
   const applyStartingPosition = (fen: string): void => {
     setAppliedFen(fen);
-    setFenDraft(fen);
     setOrientation(orientationFromFen(fen));
   };
 
-  useEffect(() => {
-    resetCopyFeedback();
-    const nextPgnState = editorPgnState(value.solution, value.fen || STARTING_FEN);
-    const nextFen = nextPgnState.fen;
-    applyStartingPosition(nextFen);
-    setSolutionDraft(nextPgnState.draft);
-    setBoardState(null);
-    setHoveredEngineMove(null);
-    setEditorError("");
-    savedBoardLineRef.current = "";
-    fixedFenRef.current = value.solution.trim() ? nextFen : null;
-    setActiveLineIndex(0);
-    setNavigation(
-      value.solution.trim()
-        ? {
-            type: "solution",
-            line: 0,
-            ply: 0,
-          }
-        : { type: "reset", fen: nextFen },
-    );
-    // resetKey intentionally identifies a newly selected puzzle.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resetKey]);
-
-  const applySolutionDraft = (draft: string): void => {
-    try {
-      if (batchMode && onBatchLoad) {
-        const pgns = splitPuzzlePgnBatch(draft);
-        if (pgns.length > 1) {
-          const normalizedBatch = pgns.map((pgn, index) => {
-            try {
-              return validatePuzzleSubmission({ ...value, solution: pgn, explanation: "" });
-            } catch (error) {
-              const detail = getErrorMessage(error, "Invalid PGN.");
-              throw new Error(`Puzzle ${index + 1}: ${detail}`);
-            }
-          });
-          setEditorError("");
-          onBatchLoad(normalizedBatch);
-          return;
-        }
-      }
-
-      const parsed = parsePuzzlePgnInput(draft, appliedFen);
-      const nextFen = parsed.fen || appliedFen;
-      const nextHeaders = ensurePuzzlePgnHeaders(parsed.headerText, nextFen);
-
-      if (canEditSolution) {
-        assertPuzzleDraftFen(
-          fixedFenRef.current,
-          nextFen,
-          "The puzzle FEN and initial position cannot be changed after the solution is loaded.",
-        );
-      }
-
-      if (!parsed.solution) {
-        if (canEditSolution) {
-          throw new Error("Enter at least one move.");
-        }
-        onChange({ ...value, fen: nextFen, solution: "" });
-        applyStartingPosition(nextFen);
-        setNavigation({ type: "reset", fen: nextFen });
-        setEditorError("Enter at least one move.");
-        return;
-      }
-
-      const draftLines = parseSolutionUciLines(nextFen, parsed.solution).map((line) =>
-        convertUciLineToSan(nextFen, line),
-      );
-      const synced = synchronizeTranspositions(
+  const applySolutionDraft = (draft: string): string => {
+    const parsed = parsePuzzlePgnInput(draft, appliedFen);
+    const nextFen = normalizeBoardFen(parsed.fen || appliedFen);
+    const headers = ensurePuzzlePgnHeaders(parsed.headerText, nextFen);
+    const replacesRoot = nextFen !== appliedFen;
+    if (canEditSolution) {
+      assertPuzzleDraftFen(
+        fixedFenRef.current,
         nextFen,
-        draftLines,
-        canEditSolution && nextFen === appliedFen ? solutionLines : [],
+        "The puzzle FEN and initial position cannot be changed after the solution is loaded.",
       );
-      const normalized = validateParsedPuzzleSubmission(value, {
-        ...parsed,
-        solution: serializeSanLinesToPgn(nextFen, synced),
-      });
-      if (canEditSolution && fixedFenRef.current === null) {
-        fixedFenRef.current = normalized.fen;
-      }
-      onChange(normalized);
-      setSolutionDraft(combinePgnHeadersAndMoves(nextHeaders, normalized.solution));
-      applyStartingPosition(normalized.fen);
-      setActiveLineIndex(0);
-      setEditorError("");
-      setNavigation({
-        type: "solution",
-        line: 0,
-        ply: 0,
-      });
-    } catch (error) {
-      setEditorError(getErrorMessage(error, "Invalid move line."));
     }
-  };
 
-  const copyPgn = async (): Promise<void> => {
-    await copyToClipboard(solutionDraft);
+    if (!parsed.solution) {
+      if (canEditSolution && (!submissionWorkspace || value.solution.trim())) {
+        throw new Error("Enter at least one move.");
+      }
+      createAtomicPosition(nextFen);
+      onChange({ ...value, fen: nextFen, solution: "" });
+      if (replacesRoot || !submissionWorkspace) {
+        applyStartingPosition(nextFen);
+        fenInput.replace(nextFen);
+        setNavigation({ type: "reset", fen: nextFen });
+      }
+      if (!submissionWorkspace) {
+        setEditorError("Enter at least one move.");
+        return draft;
+      }
+      acceptedPgnRef.current = { headers, draft: headers, event: parsed.event };
+      setEditorError("");
+      return headers;
+    }
+
+    const draftLines = parseSolutionUciLines(nextFen, parsed.solution).map((line) =>
+      convertUciLineToSan(nextFen, line),
+    );
+    const synced = synchronizeTranspositions(
+      nextFen,
+      draftLines,
+      canEditSolution && !replacesRoot ? solutionLines : [],
+    );
+    const normalized = validateParsedPuzzleSubmission(value, {
+      ...parsed,
+      fen: nextFen,
+      solution: serializeSanLinesToPgn(nextFen, synced),
+    });
+    if (canEditSolution && fixedFenRef.current === null) fixedFenRef.current = normalized.fen;
+    const normalizedDraft = combinePgnHeadersAndMoves(headers, normalized.solution);
+    acceptedPgnRef.current = { headers, draft: normalizedDraft, event: parsed.event };
+    savedBoardLineRef.current = "";
+    if (replacesRoot || !submissionWorkspace) {
+      applyStartingPosition(normalized.fen);
+      fenInput.replace(normalized.fen);
+    }
+    onChange(normalized);
+    setActiveLineIndex(0);
+    setEditorError("");
+    setNavigation({ type: "solution", line: 0, ply: 0 });
+    return normalizedDraft;
   };
 
   const changeSolutionInputMode = (mode: "pgn" | "fen"): void => {
@@ -317,30 +268,31 @@ export const PuzzleEditor = ({
     }
   };
 
-  const applyFenDraft = (draft: string): void => {
-    const nextFen = draft.trim();
-    try {
-      if (!nextFen) throw new Error("Enter a FEN.");
-      createAtomicPosition(nextFen);
-      if (nextFen === appliedFen) {
-        setFenDraft(nextFen);
-        setEditorError("");
-        return;
-      }
+  const applyFenDraft = (draft: string): string => {
+    const nextFen = normalizeBoardFen(draft);
+    if (nextFen === appliedFen) return appliedFen;
+    if (!nextFen) throw new Error("Enter a FEN.");
+    createAtomicPosition(nextFen);
 
-      const nextHeaders = ensurePuzzlePgnHeaders("", nextFen);
-      fixedFenRef.current = null;
-      savedBoardLineRef.current = "";
-      applyStartingPosition(nextFen);
-      setSolutionDraft(nextHeaders);
-      setActiveLineIndex(0);
-      setEditorError("");
-      onChange({ ...value, fen: nextFen, solution: "" });
-      setNavigation({ type: "reset", fen: nextFen });
-    } catch (error) {
-      setEditorError(getErrorMessage(error, "Invalid FEN."));
-    }
+    const headers = ensurePuzzlePgnHeaders("", nextFen);
+    fixedFenRef.current = null;
+    savedBoardLineRef.current = "";
+    applyStartingPosition(nextFen);
+    acceptedPgnRef.current = { headers, draft: headers, event: "" };
+    pgnInput.replace(headers);
+    setActiveLineIndex(0);
+    setEditorError("");
+    onChange({ ...value, fen: nextFen, solution: "" });
+    setNavigation({ type: "reset", fen: nextFen });
+    return nextFen;
   };
+
+  const fenInput = useBoardDocumentField(appliedFen, applyFenDraft, "Invalid FEN.");
+  const pgnInput = useBoardDocumentField(
+    acceptedPgnRef.current.draft,
+    applySolutionDraft,
+    "Invalid move line.",
+  );
 
   const navigate = (command: PlaybackCommand): void => {
     setNavigation({ type: "command", command });
@@ -365,13 +317,13 @@ export const PuzzleEditor = ({
     const nextPly = targetPly ?? nextLines[targetLineIndex]?.length ?? 0;
     const retainedMoves = nextLines[targetLineIndex]?.slice(0, nextPly) ?? [];
     nextLines = synchronizeTranspositions(appliedFen, nextLines, solutionLines);
-    const parsedDraft = parsePuzzlePgnInput(solutionDraft, appliedFen);
-    const headers = ensurePuzzlePgnHeaders(parsedDraft.headerText, appliedFen);
+    const accepted = acceptedPgnRef.current;
+    const headers = accepted.headers || ensurePuzzlePgnHeaders("", appliedFen);
 
     if (nextLines.length === 0) {
       const nextDraft = combinePgnHeadersAndMoves(headers, "");
       savedBoardLineRef.current = "";
-      setSolutionDraft(nextDraft);
+      acceptedPgnRef.current = { ...accepted, headers, draft: nextDraft };
       setEditorError("");
       setActiveLineIndex(0);
       onChange({ ...value, solution: "" });
@@ -382,14 +334,16 @@ export const PuzzleEditor = ({
     const nextMovetext = multilineSolutionPgn(serializeSanLinesToPgn(appliedFen, nextLines));
     const nextDraft = combinePgnHeadersAndMoves(headers, nextMovetext);
     const normalized = validateParsedPuzzleSubmission(value, {
-      ...parsedDraft,
       fen: appliedFen,
       solution: nextMovetext,
+      event: accepted.event,
+      headerText: headers,
+      hadHeaders: true,
     });
     const nextActiveLineIndex = pgnLineIndexForPrefix(appliedFen, nextDraft, retainedMoves);
 
     if (fixedFenRef.current === null) fixedFenRef.current = appliedFen;
-    setSolutionDraft(nextDraft);
+    acceptedPgnRef.current = { ...accepted, headers, draft: nextDraft };
     setEditorError("");
     setActiveLineIndex(nextActiveLineIndex);
     onChange(normalized);
@@ -520,6 +474,7 @@ export const PuzzleEditor = ({
   const engine = useAtomicDbBoardAnalysis({
     currentFen,
     enabled: showAnalysisEngine && engineSettings.enabled,
+    suspended: busy,
     atomicDbEnabled: engineSettings.atomicDbEnabled !== false,
     navigation,
     lineCount: engineSettings.lineCount,
@@ -540,14 +495,14 @@ export const PuzzleEditor = ({
     }
   };
 
-  const moveNotation = (
+  const moveNotation = solutionLines.length ? (
     <MoveNotation
       lines={solutionLines}
       initialFen={appliedFen}
       moves={boardState?.lineMoves ?? solutionLines[activeLineIndex] ?? []}
       currentPly={currentPly}
       pinnedLineIndex={activeLineIndex}
-      inline
+      inline={!submissionWorkspace || notationLayout === "inline"}
       onNavigate={(ply) => navigateToMove(activeLineIndex, Math.max(0, ply - 1))}
       onSelectVariation={navigateToMove}
       onCycleOptions={navigate}
@@ -562,7 +517,7 @@ export const PuzzleEditor = ({
       }
       onDelete={canEditSolution ? deleteSolutionFromMove : undefined}
     />
-  );
+  ) : null;
 
   const editorMovePanel = solutionLines.length ? (
     <section className="puzzleEditorMoves" aria-label="Solution moves">
@@ -613,18 +568,10 @@ export const PuzzleEditor = ({
     </section>
   ) : null;
 
-  const reviewMovePanel = (
-    <section className="puzzleReviewMovePanel" aria-label="Solution moves">
-      {solutionLines.length ? moveNotation : <p>No solution moves.</p>}
-    </section>
-  );
-
-  const solutionPgnField = showSolutionPgnField ? (
-    <div className="puzzleEditorSolutionField">
-      <div className="puzzleEditorFieldHeader">
-        {batchMode ? (
-          <label htmlFor={solutionInputId}>Solutions PGNs</label>
-        ) : (
+  const solutionPgnField =
+    showSolutionPgnField && !submissionWorkspace ? (
+      <div className="puzzleEditorSolutionField">
+        <div className="puzzleEditorFieldHeader">
           <div className="puzzleSolutionInputMode" role="group" aria-label="Position input">
             <button
               type="button"
@@ -643,126 +590,226 @@ export const PuzzleEditor = ({
               FEN
             </button>
           </div>
-        )}
-        {showCopyPgn && solutionInputMode === "pgn" ? (
-          <button type="button" className="puzzleCopyPgnButton" onClick={() => void copyPgn()}>
-            <FontAwesomeIcon
-              icon={copyPgnLabel === "Copied" ? faCheck : faCopy}
-              aria-hidden="true"
-            />
-            {copyPgnLabel}
-          </button>
-        ) : null}
-      </div>
-      {batchMode || solutionInputMode === "pgn" ? (
-        <textarea
-          id={solutionInputId}
-          aria-label={batchMode ? undefined : "Solution PGN"}
-          value={solutionDraft}
-          rows={solutionPgnUnderBoard ? 4 : 6}
-          required
-          readOnly={solutionLocked}
-          spellCheck={false}
-          onChange={(event) => {
-            setSolutionDraft(event.target.value);
-            setEditorError("");
-          }}
-          {...(!solutionLocked ? inputCommitHandlers(applySolutionDraft) : {})}
-        />
-      ) : (
-        <div className="puzzleEditorFenField">
-          <label htmlFor={`${solutionInputId}-fen`}>FEN</label>
-          <input
-            id={`${solutionInputId}-fen`}
-            type="text"
-            value={fenDraft}
-            readOnly={readOnly}
-            spellCheck={false}
-            onChange={(event) => {
-              setFenDraft(event.target.value);
-              setEditorError("");
-            }}
-            {...(!readOnly ? inputCommitHandlers(applyFenDraft) : {})}
-          />
+          {showCopyPgn && solutionInputMode === "pgn" ? (
+            <button
+              type="button"
+              className="puzzleCopyPgnButton"
+              onClick={() => void copyToClipboard(pgnInput.field.value)}
+            >
+              <FontAwesomeIcon
+                icon={copyPgnLabel === "Copied" ? faCheck : faCopy}
+                aria-hidden="true"
+              />
+              {copyPgnLabel}
+            </button>
+          ) : null}
         </div>
-      )}
+        {solutionInputMode === "pgn" ? (
+          <textarea
+            id={solutionInputId}
+            aria-label="Solution PGN"
+            rows={6}
+            required
+            readOnly={solutionLocked}
+            spellCheck={false}
+            value={pgnInput.field.value}
+            onChange={pgnInput.field.onChange}
+            {...(!solutionLocked
+              ? { onBlur: pgnInput.field.onBlur, onKeyDown: pgnInput.field.onKeyDown }
+              : {})}
+          />
+        ) : (
+          <div className="puzzleEditorFenField">
+            <label htmlFor={`${solutionInputId}-fen`}>FEN</label>
+            <input
+              id={`${solutionInputId}-fen`}
+              type="text"
+              value={fenInput.field.value}
+              readOnly={readOnly}
+              spellCheck={false}
+              onChange={fenInput.field.onChange}
+              {...(!readOnly
+                ? { onBlur: fenInput.field.onBlur, onKeyDown: fenInput.field.onKeyDown }
+                : {})}
+            />
+          </div>
+        )}
+      </div>
+    ) : null;
+
+  const analysisEngine = showAnalysisEngine ? (
+    <AtomicDbAnalysisBlock
+      {...engine.panelProps}
+      settings={engineSettings}
+      setSettings={setEngineSettings}
+      onDisable={() => setHoveredEngineMove(null)}
+      onFlipBoard={() => setOrientation((current) => (current === "white" ? "black" : "white"))}
+      {...(submissionWorkspace
+        ? {
+            notationInline: notationLayout === "inline",
+            onToggleNotation: () =>
+              setNotationLayout((current) => (current === "inline" ? "non-inline" : "inline")),
+          }
+        : {})}
+      onPlayLine={playEngineLine}
+      onHoverMove={setHoveredEngineMove}
+      disabled={engine.variationPlaying || engine.threatMode}
+    />
+  ) : null;
+
+  const boardProps: ChessboardProps = {
+    disabled: busy,
+    puzzleId: `puzzle-editor-${resetKey}`,
+    fen: appliedFen,
+    orientation,
+    coordinates: true,
+    solution: value.solution,
+    solutionUciLines,
+    showSolution: readOnly,
+    analysisMode: !readOnly,
+    captureNavigationShortcuts: true,
+    solutionEditor: true,
+    restrictMovesToSolution: !canEditSolution,
+    solutionNavigation: navigation,
+    previewMove: hoveredEngineMove,
+    engineMoves: showAnalysisEngine ? engine.engineMoves : undefined,
+    threatMove: showAnalysisEngine ? engine.threatMove : null,
+    onNavigateHandled: finishNavigation,
+    onStateChange: handleBoardState,
+  };
+  const atomicDbKey =
+    engine.analysis.result?.fen === currentFen ? engine.analysis.result.position?.key : null;
+
+  const playerFields = showMetadataFields ? (
+    <div className="boardPuzzleComposerPlayers">
+      {(["White", "Black"] as const).map((color) => {
+        const field = color === "White" ? "whitePlayer" : "blackPlayer";
+        return (
+          <PuzzleDraftField key={field} label={`${color} player`}>
+            <input
+              type="text"
+              aria-label={`${color} player (optional)`}
+              value={value[field] ?? ""}
+              placeholder="Lichess username"
+              readOnly={readOnly}
+              spellCheck={false}
+              onChange={(event) => onChange({ ...value, [field]: event.target.value })}
+            />
+          </PuzzleDraftField>
+        );
+      })}
     </div>
   ) : null;
 
+  const fieldError = fenInput.field.error || pgnInput.field.error;
+  const displayedError = editorError || (!submissionWorkspace && fieldError);
+  const feedbackMessage = displayedError ? (
+    <p className="queueMessage error" role="alert">
+      {displayedError}
+    </p>
+  ) : feedback ? (
+    <div
+      className={`queueMessage ${feedback.tone}`}
+      role={feedback.tone === "error" ? "alert" : "status"}
+    >
+      {feedback.text}
+    </div>
+  ) : null;
+  const actionButtons = actions?.(busy || Boolean(fieldError || editorError));
+
   return (
-    <fieldset data-board-resize="editor" className="puzzleEditor" disabled={busy} aria-busy={busy}>
+    <fieldset
+      data-board-resize="editor"
+      className={submissionWorkspace ? "analysisPage puzzleSubmissionWorkspace" : "puzzleEditor"}
+      disabled={busy}
+      aria-busy={busy}
+      aria-label={submissionWorkspace ? "Puzzle editor" : undefined}
+    >
       <div className="puzzleEditorBoard">
-        <Chessboard
-          disabled={busy}
-          puzzleId={`puzzle-editor-${resetKey}`}
-          fen={appliedFen}
-          orientation={orientation}
-          coordinates
-          solution={value.solution}
-          solutionUciLines={solutionUciLines}
-          showSolution={readOnly}
-          analysisMode={!readOnly}
-          captureNavigationShortcuts
-          solutionEditor
-          restrictMovesToSolution={!canEditSolution}
-          solutionNavigation={navigation}
-          previewMove={hoveredEngineMove}
-          engineMoves={showAnalysisEngine ? engine.engineMoves : undefined}
-          threatMove={showAnalysisEngine ? engine.threatMove : null}
-          onNavigateHandled={finishNavigation}
-          onStateChange={handleBoardState}
-        />
+        {submissionWorkspace ? (
+          <BoardWorkspace
+            boardPanelRef={boardPanelRef}
+            boardAriaLabel="Atomic chess board"
+            boardTabIndex={0}
+            chessboardProps={boardProps}
+            positionStatus={{ fen: currentFen }}
+            boardOverlay={
+              <AtomicDbEvalBar
+                fen={engine.displayedFen}
+                analysis={engine.displayedAnalysis}
+                enabled={engineSettings.enabled}
+                orientation={orientation}
+                threatMode={engine.threatMode}
+              />
+            }
+            lichessHref={lichessAtomicAnalysisUrl(currentFen)}
+            atomicDbHref={atomicDbKey ? atomicDbPositionUrl(atomicDbKey) : null}
+            document={{
+              fen: { ...fenInput.field, readOnly },
+              pgn: { ...pgnInput.field, readOnly: solutionLocked },
+            }}
+          />
+        ) : (
+          <Chessboard {...boardProps} />
+        )}
         {boardFooter ? <div className="puzzleEditorBoardFooter">{boardFooter}</div> : null}
-        {batchPosition && batchPosition.total > 1 ? (
-          <nav className="puzzleBatchNavigation" aria-label="Batch puzzles">
-            <button type="button" disabled={batchPosition.current === 0} onClick={onPreviousPuzzle}>
-              <FontAwesomeIcon icon={faChevronLeft} aria-hidden="true" />
-              Previous
-            </button>
-            <span>
-              Puzzle {batchPosition.current + 1} of {batchPosition.total}
-            </span>
-            <button
-              type="button"
-              disabled={batchPosition.current === batchPosition.total - 1}
-              onClick={onNextPuzzle}
-            >
-              Next
-              <FontAwesomeIcon icon={faChevronRight} aria-hidden="true" />
-            </button>
-          </nav>
-        ) : null}
-        {solutionPgnUnderBoard ? solutionPgnField : null}
         {showAnalysisEngine ? null : editorMovePanel}
       </div>
 
-      <div className="puzzleEditorFields">
-        {showAnalysisEngine ? (
-          <section className="puzzleReviewAnalysisPanel" aria-label="Position analysis and moves">
-            <AtomicDbAnalysisBlock
-              {...engine.panelProps}
-              settings={engineSettings}
-              setSettings={setEngineSettings}
-              onDisable={() => setHoveredEngineMove(null)}
-              onFlipBoard={() =>
-                setOrientation((current) => (current === "white" ? "black" : "white"))
-              }
-              onPlayLine={playEngineLine}
-              onHoverMove={setHoveredEngineMove}
-              disabled={engine.variationPlaying || engine.threatMode}
-            />
-            {reviewMovePanel}
-          </section>
-        ) : null}
-        {analysisFooter}
-        {!solutionPgnUnderBoard ? solutionPgnField : null}
-
-        {showMetadataFields ? (
-          <>
-            {fieldsBeforeEvent}
-
-            <div className={`puzzleEditorEventFields${eventAside ? " withAside" : ""}`}>
-              <label>
+      {submissionWorkspace ? (
+        <AnalysisWorkspacePanel
+          className="analysisRightPanel"
+          aria-label="Position analysis and moves"
+        >
+          <AnalysisEngineExplorerPanels
+            engine={analysisEngine}
+            moveContent={
+              <>
+                {moveNotation}
+                {analysisFooter}
+                <PuzzleDraftFields
+                  value={value}
+                  disabled={busy}
+                  onChange={(changes) => onChange({ ...value, ...changes })}
+                >
+                  {additionalMetadata}
+                  {playerFields}
+                </PuzzleDraftFields>
+              </>
+            }
+          />
+          <AnalysisPlaybackBar
+            ariaLabel="Solution playback"
+            canStepBack={boardState?.playback?.previous ?? currentPly > 0}
+            canStepForward={boardState?.playback?.next ?? currentPly < moveCount}
+            onNavigate={navigate}
+          />
+          <div className="boardPuzzleComposerFooter">
+            {feedbackMessage}
+            {beforeActions}
+            {actionButtons}
+          </div>
+        </AnalysisWorkspacePanel>
+      ) : (
+        <div className="puzzleEditorFields">
+          {analysisEngine ? (
+            <AnalysisWorkspacePanel
+              className="puzzleEditorAnalysisPanel"
+              aria-label="Position analysis and moves"
+            >
+              <AnalysisEngineExplorerPanels
+                engine={analysisEngine}
+                moveContent={moveNotation}
+                movePanelAriaLabel="Solution moves"
+              />
+            </AnalysisWorkspacePanel>
+          ) : null}
+          {analysisFooter}
+          {solutionPgnField}
+          {showMetadataFields ? (
+            <>
+              {additionalMetadata}
+              <label className="puzzleEditorEventField">
                 <span className="puzzleEditorLabelHeader">
                   <span>Event</span>
                   <small>Same event creates a puzzle set</small>
@@ -776,90 +823,52 @@ export const PuzzleEditor = ({
                   onChange={(event) => onChange({ ...value, event: event.target.value })}
                 />
               </label>
-              {eventAside}
-            </div>
-
-            <div className="puzzleEditorPlayerFields">
-              <label>
-                <span className="puzzleEditorLabelHeader">
-                  <span>White player</span>
-                  <small>Optional</small>
+              {playerFields}
+              <div className="puzzleOpaField">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={value.opaStyle === true}
+                    disabled={readOnly}
+                    onChange={(event) => onChange({ ...value, opaStyle: event.target.checked })}
+                  />
+                  <span>OPA style</span>
+                </label>
+                <span
+                  className="puzzleOpaHelp"
+                  role="img"
+                  tabIndex={0}
+                  title={OPA_STYLE_DESCRIPTION}
+                  aria-label={`OPA style: ${OPA_STYLE_DESCRIPTION}`}
+                  data-tooltip={OPA_STYLE_DESCRIPTION}
+                >
+                  <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
                 </span>
-                <input
-                  type="text"
-                  aria-label="White player (optional)"
-                  value={value.whitePlayer ?? ""}
-                  placeholder="Lichess username"
-                  readOnly={readOnly}
-                  spellCheck={false}
-                  onChange={(event) => onChange({ ...value, whitePlayer: event.target.value })}
-                />
-              </label>
-              <label>
-                <span className="puzzleEditorLabelHeader">
-                  <span>Black player</span>
-                  <small>Optional</small>
-                </span>
-                <input
-                  type="text"
-                  aria-label="Black player (optional)"
-                  value={value.blackPlayer ?? ""}
-                  placeholder="Lichess username"
-                  readOnly={readOnly}
-                  spellCheck={false}
-                  onChange={(event) => onChange({ ...value, blackPlayer: event.target.value })}
-                />
-              </label>
-            </div>
-
-            <div className="puzzleOpaField">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={value.opaStyle === true}
-                  disabled={readOnly}
-                  onChange={(event) => onChange({ ...value, opaStyle: event.target.checked })}
-                />
-                <span>OPA style</span>
-              </label>
-              <span
-                className="puzzleOpaHelp"
-                role="img"
-                tabIndex={0}
-                title={OPA_STYLE_DESCRIPTION}
-                aria-label={`OPA style: ${OPA_STYLE_DESCRIPTION}`}
-                data-tooltip={OPA_STYLE_DESCRIPTION}
-              >
-                <FontAwesomeIcon icon={faCircleInfo} aria-hidden="true" />
-              </span>
-            </div>
-          </>
-        ) : null}
-
-        {showExplanation ? (
-          <label className="puzzleEditorExplanationField">
-            <span>Explanation</span>
-            <textarea
-              value={value.explanation}
-              rows={5}
-              spellCheck
-              readOnly={readOnly}
-              onChange={(event) => onChange({ ...value, explanation: event.target.value })}
-            />
-          </label>
-        ) : null}
-        {editorError ? <p className="queueMessage error">{editorError}</p> : null}
-        {!editorError && feedback ? (
-          <div
-            className={`queueMessage ${feedback.tone}`}
-            role={feedback.tone === "error" ? "alert" : "status"}
-          >
-            {feedback.text}
-          </div>
-        ) : null}
-        {beforeActions}
-        {actions}
-      </div>
+              </div>
+            </>
+          ) : null}
+          {showExplanation ? (
+            <label className="puzzleEditorExplanationField">
+              <span>Explanation</span>
+              <textarea
+                value={value.explanation}
+                rows={5}
+                spellCheck
+                readOnly={readOnly}
+                onChange={(event) => onChange({ ...value, explanation: event.target.value })}
+              />
+            </label>
+          ) : null}
+          {feedbackMessage}
+          {beforeActions}
+          {actionButtons}
+        </div>
+      )}
     </fieldset>
   );
 };
+
+// Changing the draft key resets the board, text fields, and pending analysis together.
+export const PuzzleEditor = (props: PuzzleEditorProps) => (
+  <PuzzleEditorDraft key={props.resetKey} {...props} />
+);

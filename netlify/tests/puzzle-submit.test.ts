@@ -88,20 +88,27 @@ describe("puzzle-submit function", () => {
     expect(matches.test(position.replace(" w ", " b "))).toBe(false);
   });
 
-  it("does not accept an invalid match request as a standalone puzzle", async () => {
-    const response = await handler({
-      httpMethod: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
-        action: "add-match-puzzle",
+  it.each(["match without a game id", "batch"])(
+    "rejects a %s submission before any puzzle write",
+    async (kind) => {
+      const puzzle = {
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         solution: "1. e4",
         explanation: "",
-      }),
-    });
-    expect(response.statusCode).toBe(400);
-    expect(mocks.createClient).not.toHaveBeenCalled();
-  });
+      };
+      const body =
+        kind === "batch"
+          ? { submissions: [puzzle, puzzle] }
+          : { ...puzzle, action: "add-match-puzzle" };
+      const response = await handler({
+        httpMethod: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(body),
+      });
+      expect(response.statusCode).toBe(400);
+      expect(mocks.createClient).not.toHaveBeenCalled();
+    },
+  );
 
   it("reports an unavailable archive as a lookup failure before any puzzle write", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -506,13 +513,12 @@ describe("puzzle-submit function", () => {
     },
   );
 
-  it("publishes an approved creator batch in one database transaction", async () => {
+  it("returns the coin reward for an approved creator’s puzzle", async () => {
     const upsert = vi.fn(async () => ({ error: null }));
-    const rpc = vi.fn(async () => ({ data: [1801, 1802], error: null }));
+    const rpc = vi.fn(async () => ({ data: [1801], error: null }));
     const or = vi.fn(async () => ({
       data: [
         { reason: "puzzle_created", source_key: "puzzle:1801", amount: 8 },
-        { reason: "puzzle_created", source_key: "puzzle:1802", amount: 8 },
         { reason: "puzzle_tagging", metadata: { puzzleId: 1801 }, amount: 0.2 },
       ],
       error: null,
@@ -527,26 +533,17 @@ describe("puzzle-submit function", () => {
       httpMethod: "POST",
       headers: authHeaders("wolfram_ep"),
       body: JSON.stringify({
-        submissions: [
-          {
-            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 2",
-            solution: "1. e4",
-            explanation: "",
-          },
-          {
-            fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            solution: "1. d4",
-            explanation: "",
-          },
-        ],
+        fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 2",
+        solution: "1. e4",
+        explanation: "",
       }),
     });
 
     expect(response.statusCode).toBe(201);
     expect(JSON.parse(response.body)).toEqual({
       destination: "published",
-      puzzleIds: [1801, 1802],
-      coinAward: 16.2,
+      puzzleId: 1801,
+      coinAward: 8.2,
     });
     expect(eq).toHaveBeenCalledWith("username", "wolfram_ep");
     expect(rpc).toHaveBeenCalledOnce();
@@ -554,10 +551,7 @@ describe("puzzle-submit function", () => {
       "publish_approved_puzzle_batch",
       expect.objectContaining({
         p_submitted_by: "wolfram_ep",
-        p_puzzles: [
-          expect.objectContaining({ solution: "2. e4" }),
-          expect.objectContaining({ solution: "1. d4" }),
-        ],
+        p_puzzles: [expect.objectContaining({ solution: "2. e4" })],
       }),
     );
   });

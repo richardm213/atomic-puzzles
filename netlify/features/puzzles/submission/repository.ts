@@ -73,11 +73,11 @@ export class PuzzleSubmissionRepository {
     return data;
   }
 
-  async publishBatch(username: string, puzzles: QueuedPuzzleSubmission[]): Promise<number[]> {
+  async publish(username: string, puzzle: QueuedPuzzleSubmission): Promise<number> {
     await this.ensureUser(username);
 
     const { data, error } = await this.supabase.rpc("publish_approved_puzzle_batch", {
-      p_puzzles: puzzles,
+      p_puzzles: [puzzle],
       p_submitted_by: username,
     });
     if (/only approved puzzle creators/i.test(error?.message ?? "")) {
@@ -85,17 +85,11 @@ export class PuzzleSubmissionRepository {
     }
     if (error) throw new Error(`Unable to create puzzle: ${error.message}`);
 
-    if (!Array.isArray(data)) {
-      throw new Error("Unable to create puzzles: no puzzle ids were returned.");
+    const puzzleId = Array.isArray(data) && data.length === 1 ? Number(data[0]) : NaN;
+    if (!Number.isSafeInteger(puzzleId) || puzzleId < 1) {
+      throw new Error("Unable to create puzzle: no valid puzzle id was returned.");
     }
-    const puzzleIds = data.map(Number);
-    if (
-      puzzleIds.length !== puzzles.length ||
-      puzzleIds.some((puzzleId) => !Number.isSafeInteger(puzzleId) || puzzleId < 1)
-    ) {
-      throw new Error("Unable to create puzzles: invalid puzzle ids were returned.");
-    }
-    return puzzleIds;
+    return puzzleId;
   }
 
   async saveMatchPuzzle(input: {

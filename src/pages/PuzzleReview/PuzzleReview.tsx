@@ -402,7 +402,7 @@ export const PuzzleReviewPage = () => {
                     ) : null}
                   </>
                 }
-                fieldsBeforeEvent={
+                additionalMetadata={
                   isReviewer ? (
                     <>
                       <div className="puzzleReviewFields">

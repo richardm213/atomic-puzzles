@@ -445,7 +445,7 @@ export const PuzzleRecentPage = () => {
                 </section>
               ) : null
             }
-            fieldsBeforeEvent={
+            additionalMetadata={
               editing ? (
                 <>
                   <label className="puzzleReviewField">

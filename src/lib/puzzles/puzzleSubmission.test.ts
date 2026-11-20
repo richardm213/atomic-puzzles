@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import {
   compactPuzzleSolution,
   parsePuzzlePgnInput,
-  splitPuzzlePgnBatch,
   validatePuzzleSubmission,
 } from "./puzzleSubmission";
 import { parseSolutionUciLines } from "./solutionPgn";
@@ -113,8 +112,8 @@ describe("validatePuzzleSubmission", () => {
     );
   });
 
-  it("splits consecutive PGNs into a submission batch", () => {
-    const batch = `[Variant "Atomic"]
+  it("rejects consecutive PGNs pasted into a puzzle", () => {
+    const input = `[Variant "Atomic"]
 [FEN "${STARTING_FEN}"]
 
 1. e4 e5
@@ -125,13 +124,6 @@ describe("validatePuzzleSubmission", () => {
 
 1. d4 d5`;
 
-    expect(splitPuzzlePgnBatch(batch)).toEqual([
-      `[Variant "Atomic"]\n[FEN "${STARTING_FEN}"]\n\n1. e4 e5`,
-      `[Event "Second puzzle"]\n[Variant "Atomic"]\n[FEN "${STARTING_FEN}"]\n\n1. d4 d5`,
-    ]);
-  });
-
-  it("keeps a single headerless movetext submission intact", () => {
-    expect(splitPuzzlePgnBatch("\n1. e4 e5\n")).toEqual(["1. e4 e5"]);
+    expect(() => parsePuzzlePgnInput(input, STARTING_FEN)).toThrow(/must contain one puzzle/);
   });
 });

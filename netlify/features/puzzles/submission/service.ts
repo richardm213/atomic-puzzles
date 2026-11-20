@@ -3,6 +3,7 @@ import { INITIAL_FEN } from "chessops/fen";
 import { archivedGameInitialFen } from "../../../../shared/domain/chess/initialFen";
 import { isApprovedPuzzleCreator } from "../../../../shared/domain/puzzles/approvedPuzzleCreators";
 import { matchPuzzleGameHistory } from "../../../../shared/domain/puzzles/gameHistory";
+import { PUZZLE_ADMIN_USERNAME } from "../../../../shared/domain/puzzles/puzzleAdmin";
 import { normalizePuzzleMotifTags } from "../../../../shared/domain/puzzles/puzzleMotifs";
 import { normalizePuzzlePlayers } from "../../../../shared/domain/puzzles/puzzleSetMetadata";
 import {
@@ -59,7 +60,7 @@ export class PuzzleSubmissionService {
     const blackPlayer = input.blackPlayer?.trim() ?? "";
     const normalizedUsername = username.trim().toLowerCase();
     const author =
-      normalizedUsername === "seaside_tiramisu"
+      normalizedUsername === PUZZLE_ADMIN_USERNAME
         ? input.author.trim() || normalizedUsername
         : normalizedUsername;
     return {
@@ -83,23 +84,18 @@ export class PuzzleSubmissionService {
     };
   }
 
-  async submitBatch(username: string, inputs: PuzzleSubmissionInput[]) {
+  async submit(username: string, input: PuzzleSubmissionInput) {
     try {
-      // Validate every puzzle before performing the first write.
-      const normalizedPuzzles = inputs.map((input) => this.normalize(username, input));
+      const puzzle = this.normalize(username, input);
       if (isApprovedPuzzleCreator(username)) {
         return {
           destination: "published" as const,
-          puzzleIds: await this.repository.publishBatch(username, normalizedPuzzles),
+          puzzleId: await this.repository.publish(username, puzzle),
         };
-      }
-      const puzzles = [];
-      for (const normalizedPuzzle of normalizedPuzzles) {
-        puzzles.push(await this.repository.enqueue(username, normalizedPuzzle));
       }
       return {
         destination: "review" as const,
-        puzzles,
+        puzzle: await this.repository.enqueue(username, puzzle),
       };
     } catch (error) {
       if (error instanceof HttpError) throw error;
@@ -108,13 +104,6 @@ export class PuzzleSubmissionService {
       }
       throw error;
     }
-  }
-
-  async submit(username: string, input: PuzzleSubmissionInput) {
-    const result = await this.submitBatch(username, [input]);
-    return result.destination === "published"
-      ? { destination: result.destination, puzzleId: result.puzzleIds[0] }
-      : { destination: result.destination, puzzle: result.puzzles[0] };
   }
 
   async submitMatchPuzzle(
