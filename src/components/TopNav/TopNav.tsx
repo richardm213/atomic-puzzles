@@ -19,7 +19,7 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
@@ -37,18 +37,12 @@ import {
   automaticProfileRatingSlot,
   type ProfileRatingSlotPreference,
 } from "../../features/profile/profileRatingModes";
-import { useNotificationNavigation } from "../../hooks/useNotificationNavigation";
+import { useNotificationInbox } from "../../hooks/useNotificationInbox";
 import { isBoardSoundSet, playBoardSound } from "../../lib/boardSounds/boardSounds";
 import { resetVisibleBoardSizes } from "../../lib/chess/boardSize";
 import { formatCoinBalance } from "../../lib/coins/coinDisplay";
 import { coinSummaryQueryOptions } from "../../lib/coins/coinQueries";
 import { checkRedCharcoalAccess } from "../../lib/coins/coins";
-import {
-  notificationQueryKeys,
-  notificationsQueryOptions,
-  unreadNotificationCountQueryOptions,
-} from "../../lib/community/notificationQueries";
-import { markNotificationsRead, type UserNotification } from "../../lib/community/notifications";
 import { appAssetPath } from "../../utils/appAssetPath";
 import { getBrowserStorageItem, setBrowserStorageItem } from "../../utils/browserStorage";
 import { getErrorMessage } from "../../utils/errors";
@@ -109,42 +103,26 @@ export const TopNav = () => {
   const notificationsOpen = openPanel?.type === "notifications";
   const profileMenuOpen = openPanel?.type === "profile";
   const settingsOpen = openPanel?.type === "settings";
-  const navigateToNotification = useNotificationNavigation();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { isAuthenticated, isLoading, user, login, logout } = useAuth();
-  const queryClient = useQueryClient();
-  const notificationViewerKey = isAuthenticated ? (user?.username ?? "authenticated") : "anonymous";
-  const notificationListQuery = useQuery({
-    ...notificationsQueryOptions(notificationViewerKey),
-    enabled: isAuthenticated && notificationsOpen,
-  });
-  const unreadCountQuery = useQuery({
-    ...unreadNotificationCountQueryOptions(notificationViewerKey),
-    enabled: isAuthenticated,
+  const {
+    notifications,
+    unreadCount: unreadNotificationCount,
+    loading: notificationsLoading,
+    marking: notificationsUpdating,
+    error: notificationsError,
+    markRead,
+    openNotification,
+  } = useNotificationInbox({
+    isAuthenticated,
+    username: user?.username,
+    listOpen: notificationsOpen,
+    pollUnread: true,
   });
   const coinSummaryQuery = useQuery({
     ...coinSummaryQueryOptions(user?.username ?? "anonymous"),
     enabled: isAuthenticated,
   });
-  const markNotificationsMutation = useMutation({
-    mutationFn: markNotificationsRead,
-    onSuccess: (result) => {
-      queryClient.setQueryData(notificationQueryKeys.list(notificationViewerKey), result);
-      queryClient.setQueryData(
-        notificationQueryKeys.unreadCount(notificationViewerKey),
-        result.unreadCount,
-      );
-    },
-  });
-  const notifications = notificationListQuery.data?.notifications ?? [];
-  const unreadNotificationCount =
-    unreadCountQuery.data ?? notificationListQuery.data?.unreadCount ?? 0;
-  const notificationsLoading = notificationListQuery.isFetching;
-  const notificationsUpdating = markNotificationsMutation.isPending;
-  const notificationErrorValue = notificationListQuery.error ?? markNotificationsMutation.error;
-  const notificationsError = notificationErrorValue
-    ? getErrorMessage(notificationErrorValue, "Unable to update notifications.")
-    : "";
   const {
     theme,
     setTheme,
@@ -436,21 +414,6 @@ export const TopNav = () => {
     };
   }, [clearNavDropdownCloseTimeout, mobileMenuOpen]);
 
-  const markPopupNotificationsRead = async (ids: number[] = []): Promise<void> => {
-    if (!isAuthenticated || notificationsUpdating) return;
-    try {
-      await markNotificationsMutation.mutateAsync(ids);
-    } catch {
-      // The mutation error is rendered in the notification panel.
-    }
-  };
-
-  const openPopupNotification = async (notification: UserNotification): Promise<void> => {
-    if (!notification.read_at) await markPopupNotificationsRead([notification.id]);
-    setOpenPanel(null);
-    navigateToNotification(notification);
-  };
-
   return (
     <header className={`topNav ${mobileMenuOpen ? "mobileMenuOpen" : ""}`} ref={topNavRef}>
       <Link
@@ -611,8 +574,10 @@ export const TopNav = () => {
                 loading={notificationsLoading}
                 updating={notificationsUpdating}
                 error={notificationsError}
-                onMarkAllRead={() => void markPopupNotificationsRead()}
-                onOpenNotification={(notification) => void openPopupNotification(notification)}
+                onMarkAllRead={() => void markRead()}
+                onOpenNotification={(notification) =>
+                  void openNotification(notification, () => setOpenPanel(null))
+                }
                 onClose={() => setOpenPanel(null)}
               />
             ) : null}

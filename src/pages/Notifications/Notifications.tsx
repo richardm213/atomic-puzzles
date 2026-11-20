@@ -2,57 +2,18 @@ import "./Notifications.css";
 
 import { faBell, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { NotificationContent } from "../../components/NotificationContent/NotificationContent";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
 import { useAuth } from "../../context/AuthContext";
-import { useNotificationNavigation } from "../../hooks/useNotificationNavigation";
-import {
-  notificationQueryKeys,
-  notificationsQueryOptions,
-} from "../../lib/community/notificationQueries";
-import { markNotificationsRead, type UserNotification } from "../../lib/community/notifications";
-import { getErrorMessage } from "../../utils/errors";
+import { useNotificationInbox } from "../../hooks/useNotificationInbox";
 
 export const NotificationsPage = () => {
-  const navigateToNotification = useNotificationNavigation();
   const { isAuthenticated, isLoading, login, user } = useAuth();
-  const queryClient = useQueryClient();
-  const viewerKey = isAuthenticated ? (user?.username ?? "authenticated") : "anonymous";
-  const notificationsQuery = useQuery({
-    ...notificationsQueryOptions(viewerKey),
-    enabled: isAuthenticated,
-  });
-  const markReadMutation = useMutation({
-    mutationFn: markNotificationsRead,
-    onSuccess: (result) => {
-      queryClient.setQueryData(notificationQueryKeys.list(viewerKey), result);
-      queryClient.setQueryData(notificationQueryKeys.unreadCount(viewerKey), result.unreadCount);
-    },
-  });
-  const notifications = notificationsQuery.data?.notifications ?? [];
-  const loading = notificationsQuery.isFetching;
-  const marking = markReadMutation.isPending;
-  const errorValue = notificationsQuery.error ?? markReadMutation.error;
-  const error = errorValue ? getErrorMessage(errorValue, "Unable to update notifications.") : "";
-
-  const unreadNotifications = notifications.filter((notification) => !notification.read_at);
-
-  const markRead = async (ids: number[]) => {
-    if (!isAuthenticated || marking) return;
-    try {
-      await markReadMutation.mutateAsync(ids);
-    } catch {
-      // The mutation error is rendered inline.
-    }
-  };
-
-  const openNotification = async (notification: UserNotification) => {
-    if (!notification.read_at) await markRead([notification.id]);
-    navigateToNotification(notification);
-  };
+  const { notifications, loading, marking, error, markRead, openNotification } =
+    useNotificationInbox({ isAuthenticated, username: user?.username });
+  const hasUnreadNotifications = notifications.some((notification) => !notification.read_at);
 
   if (isLoading || (isAuthenticated && loading && notifications.length === 0)) {
     return <RouteLoadingFallback />;
@@ -71,8 +32,8 @@ export const NotificationsPage = () => {
             <span>Inbox</span>
             <h1>Community Notifications</h1>
           </div>
-          {unreadNotifications.length > 0 ? (
-            <button type="button" disabled={marking} onClick={() => void markRead([])}>
+          {hasUnreadNotifications ? (
+            <button type="button" disabled={marking} onClick={() => void markRead()}>
               <FontAwesomeIcon icon={faCheck} />
               Mark all read
             </button>
