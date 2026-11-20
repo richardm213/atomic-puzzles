@@ -31,20 +31,18 @@ test("a solved puzzle keeps its number and navigation in view on a narrow phone"
   page,
 }) => {
   await page.setViewportSize({ width: 375, height: 667 });
-  await page.route("**/__e2e_supabase/rest/v1/rpc/get_puzzle_progress_page_v3", (route) =>
+  await page.route("**/api/puzzles/progress", (route) =>
     route.fulfill({
-      json: [
-        {
-          puzzle_id: "101",
-          first_attempt_at: "2026-11-04T08:00:00.000Z",
-          first_attempt_duration_ms: 14_000,
-          puzzle_correct: true,
-          rated: true,
-          incorrect_move: null,
-          correct_move: "e4",
-          total_count: 1,
-        },
-      ],
+      json: {
+        runId: null,
+        graded: false,
+        availableAt: "2099-01-01T00:00:00Z",
+        permanent: false,
+        hasAttempted: true,
+        hasSolved: true,
+        misses: 0,
+        color: "green",
+      },
     }),
   );
 

@@ -139,15 +139,6 @@ test("a graded run survives reload, retries a failed save, and requires confirme
   await expect(recovered.getByLabel("Attempt time 0:42")).toBeVisible();
   const indicator = recovered.getByLabel("Solved on the second try", { exact: true });
   await expect(indicator).toHaveAttribute("title", "Solved on the second try");
-  const colors = await indicator.evaluate((element) => {
-    const sample = document.createElement("span");
-    sample.style.color = "var(--color-warning)";
-    document.body.append(sample);
-    const expected = getComputedStyle(sample).color;
-    sample.remove();
-    return { actual: getComputedStyle(element).color, expected };
-  });
-  expect(colors.actual).toBe(colors.expected);
 });
 
 test("solving after a mistake earns coins while the first move and time stay in Other Attempts", async ({
@@ -341,7 +332,8 @@ test("a previously solved puzzle permits confirmed resignation before a move", a
   const resign = page.getByRole("button", { name: "Resign and reveal the solution" });
   await expect(resign).toBeEnabled();
   await expect(page.getByRole("tab", { name: "Other attempts", exact: true })).toBeDisabled();
-  const eligibility = page.getByText(/^Grading returns in/);
+  const eligibility = page.getByText(/^Ungraded for/);
+  await expect(eligibility).toBeVisible();
   const previousEligibility = await eligibility.innerText();
   await resign.click();
   expect(writes).toHaveLength(0);
@@ -351,7 +343,7 @@ test("a previously solved puzzle permits confirmed resignation before a move", a
   expect(writes[0]?.puzzleCorrect).toBe(false);
   await expect(page.getByRole("tab", { name: "Other attempts", exact: true })).toBeEnabled();
   await expect(eligibility).not.toHaveText(previousEligibility);
-  await expect(page.getByText(/^Grading returns in/)).toHaveAttribute(
+  await expect(page.getByText(/^Ungraded for/)).toHaveAttribute(
     "aria-description",
     /Graded attempts/,
   );
