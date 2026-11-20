@@ -78,6 +78,7 @@ vi.mock("@tanstack/react-router", async () => {
       to?: string;
     }) => React.createElement("a", { className, href: to ?? "#", title }, children),
     useNavigate: () => mocks.navigate,
+    useLocation: () => ({ href: "/solve/1369", state: {} }),
     useParams: () => mocks.routeParams,
   };
 });

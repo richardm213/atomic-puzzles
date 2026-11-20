@@ -7,7 +7,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import {
   type FormEvent,
   useCallback,
@@ -19,6 +19,7 @@ import {
   useState,
 } from "react";
 
+import { isApprovedPuzzleCreator } from "../../../shared/domain/puzzles/approvedPuzzleCreators";
 import {
   DAILY_PUZZLE_ATTEMPT_LIMIT,
   DAILY_PUZZLE_ATTEMPT_LIMIT_MESSAGE,
@@ -54,6 +55,7 @@ import {
 } from "../../components/VariationTree/VariationTree";
 import { useAppSettings } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
+import { PuzzleComposerButton } from "../../features/analysisWorkspace/PuzzleComposer";
 import { useBoardItemShortcuts } from "../../hooks/useBoardItemShortcuts";
 import { useBoardMoveEditing } from "../../hooks/useBoardMoveEditing";
 import { useBoardWheelNavigation } from "../../hooks/useBoardWheelNavigation";
@@ -213,6 +215,7 @@ export const PuzzleSolverPage = () => <PuzzleSolver testMode={false} />;
 
 const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const {
     puzzleId: routePuzzleId = "",
@@ -853,6 +856,13 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   const hasSolvedPuzzle = Boolean(
     gradingState?.hasSolved || (activePuzzleKey && solvedPuzzleIds.has(activePuzzleKey)),
   );
+  const resumeAnalysis =
+    Boolean(activePuzzleKey) &&
+    location.state.resumePuzzleAnalysis === activePuzzleKey &&
+    (testMode ||
+      hasSolvedPuzzle ||
+      gradingState?.hasAttempted === true ||
+      gradingState?.graded === false);
   const puzzleVisitKey = JSON.stringify([
     attemptedPuzzleIdsUsername,
     routeSetKey,
@@ -1297,12 +1307,19 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
   }
 
   useLayoutEffect(() => {
+    if (!resumeAnalysis || !fen) return;
+    dispatchPuzzleSession({ type: "reveal-solution" });
+    setActivePuzzleInfoTab("solution");
+  }, [fen, resumeAnalysis, uiVisitKey]);
+
+  useLayoutEffect(() => {
     const shouldStartTimer = Boolean(
       activePuzzleKey &&
       fen &&
       attemptedPuzzleIdsReady &&
       gradingReady &&
       !hasSolvedPuzzle &&
+      !resumeAnalysis &&
       !introPending,
     );
     const elapsedBeforePageLoad =
@@ -1326,6 +1343,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     hasSolvedPuzzle,
     introPending,
     puzzleVisitKey,
+    resumeAnalysis,
     testMode,
   ]);
 
@@ -1803,18 +1821,51 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     onNavigate: handlePlaybackCommand,
   });
 
+  const terminalOutcome =
+    boardState.winner ?? (boardState.status.toLowerCase() === "draw" ? "draw" : null);
+  const startPuzzleDraft = () => {
+    const leadIn = activePuzzle?.leadIn;
+    const beforeIntro = baseLineState.beforeIntro;
+    const positionMoves = beforeIntro
+      ? (leadIn?.moves.slice(0, -1) ?? [])
+      : [...(leadIn?.moves ?? []), ...currentAnalysisMoves];
+    void navigate({
+      to: "/analysis/$",
+      params: { _splat: currentFen.replaceAll(" ", "_") },
+      state: {
+        puzzleDraft: {
+          positionHistory: {
+            positionInitialFen: leadIn?.beforeFen ?? (beforeIntro ? currentFen : fen),
+            positionMoves,
+          },
+          returnTo: location.href,
+          sourcePuzzleId: activePuzzleKey,
+        },
+      },
+    });
+  };
+
   const puzzleAnalysisPanel = (
     <PuzzleAnalysisPanel
       key={activePuzzleId ?? "empty"}
       initialFen={fen}
       currentFen={currentFen}
       analysisActive={isAnalysisMode}
+      analysisActions={
+        user?.username ? (
+          <PuzzleComposerButton
+            label={isApprovedPuzzleCreator(user.username) ? "Create puzzle" : "Submit puzzle"}
+            disabled={
+              !currentFen || introPending || Boolean(terminalOutcome) || Boolean(solutionNavigation)
+            }
+            onClick={startPuzzleDraft}
+          />
+        ) : null
+      }
       moveEditing={analysisMoveEditing}
       previousMove={introPending ? undefined : activePuzzle?.intro}
       beforePreviousMove={baseLineState.beforeIntro}
-      terminalOutcome={
-        boardState.winner ?? (boardState.status.toLowerCase() === "draw" ? "draw" : null)
-      }
+      terminalOutcome={terminalOutcome}
       lines={isAnalysisMode ? allVariationLines : []}
       moves={boardState.lineMoves ?? []}
       currentPly={baseLineState.currentPly}

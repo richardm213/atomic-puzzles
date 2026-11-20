@@ -220,6 +220,9 @@ test("solving after a mistake earns coins while the first move and time stay in 
     }),
   );
   await page.goto("/solve/102");
+  await expect(page.locator("cg-board")).toBeVisible();
+  const draftButton = page.getByRole("button", { name: "Submit puzzle", exact: true });
+  await expect(draftButton).toHaveCount(0);
   await playBlackMove(page, "a7a6");
   await expect(page.getByText("-1.5 coins", { exact: true })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Explanation", exact: true })).toBeDisabled();
@@ -241,6 +244,38 @@ test("solving after a mistake earns coins while the first move and time stay in 
   await expect(page.getByLabel("Played 1... a6")).toBeVisible();
   await expect(page.getByLabel("Attempt time 0:30")).toBeVisible();
   await expect(page.getByLabel("Solved on the second try", { exact: true })).toBeVisible();
+
+  await page
+    .getByRole("region", { name: "Puzzle analysis" })
+    .getByRole("button", { name: /e5/ })
+    .click();
+  await draftButton.click();
+  const draft = page.getByRole("form", { name: "Puzzle draft" });
+  await expect(draft).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "FEN", exact: true })).toHaveValue(
+    "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+  );
+  const pgn = page.getByRole("textbox", { name: "PGN", exact: true });
+  await expect(pgn).toHaveValue("");
+  await pgn.fill("2. Nf3");
+  await pgn.press("Enter");
+  await page.route("**/api/puzzles/submit", (route) =>
+    route.fulfill({ json: { destination: "review", puzzle: { id: 103 } } }),
+  );
+  const request = page.waitForRequest(
+    (request) =>
+      request.url().endsWith("/api/puzzles/submit") && Boolean(request.postDataJSON()?.solution),
+  );
+  await draft.getByRole("button", { name: "Submit puzzle", exact: true }).click();
+  expect((await request).postDataJSON()).toMatchObject({
+    positionMoves: ["e5"],
+    solution: "2. Nf3 *",
+  });
+  await expect(draft).toBeHidden();
+  await expect(page).toHaveURL(/\/solve\/102$/);
+  await expect(draftButton).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Other attempts", exact: true })).toBeEnabled();
+  expect(requests).toHaveLength(2);
 });
 
 test("a previously solved puzzle permits confirmed resignation before a move", async ({ page }) => {

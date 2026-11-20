@@ -1,6 +1,6 @@
 import { faArrowsRotate, faBookOpen, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import type {
   CSSProperties,
@@ -88,6 +88,7 @@ import {
   type SolutionNavigation,
 } from "../../types/chessboard";
 import { atomicDbPositionUrl, requestAtomicDbAnalysis } from "../../utils/atomicDb";
+import { orientationFromFen } from "../../utils/chessNotation";
 import { getErrorMessage } from "../../utils/errors";
 import { lichessAtomicAnalysisUrl } from "../../utils/lichess";
 import {
@@ -336,6 +337,7 @@ export const AnalysisPage = ({
   workspace,
 }: AnalysisPageProps = {}) => {
   const navigate = useNavigate();
+  const solverDraft = useLocation({ select: (location) => location.state.puzzleDraft });
   const training = workspace?.training ?? false;
   const auth = useAuth();
   const publishesDirectly = isApprovedPuzzleCreator(auth.user?.username ?? "");
@@ -396,7 +398,16 @@ export const AnalysisPage = ({
     orientation: "white" | "black";
     sourcePly: number;
     positionHistory: PuzzlePositionHistory;
-  } | null>(null);
+  } | null>(() =>
+    solverDraft && !game && !workspace
+      ? {
+          fen: routeFen,
+          orientation: orientationFromFen(routeFen),
+          sourcePly: solverDraft.positionHistory.positionMoves.length,
+          positionHistory: solverDraft.positionHistory,
+        }
+      : null,
+  );
   const [puzzlePrefill, setPuzzlePrefill] = usePersistedState(
     "atomic-puzzles.analysis.puzzle-prefill",
     z.object({ enabled: z.boolean(), moveCount: z.number().int().positive() }),
@@ -406,7 +417,7 @@ export const AnalysisPage = ({
   const puzzleLauncher = useRef<HTMLButtonElement | null>(null);
   const scrollBeforeDraft = useRef(0);
   const hashBeforeDraft = useRef("");
-  const documentBeforeDraft = useRef({ fen: "", pgn: "" });
+  const documentBeforeDraft = useRef({ fen: routeFen, pgn: "" });
   const boardState = puzzleDraft ? puzzleBoardState : gameBoardState;
   const [atomicDbEngineSettings, setAtomicDbEngineSettings] = useAtomicDbEngineSettings();
   const { width: viewportWidth, stacked: singleColumnLayout } = useWorkspaceViewport();
@@ -1583,7 +1594,17 @@ export const AnalysisPage = ({
                   solution={navigation || boardDocument.pgn.error ? "" : pgnText}
                   moveContentRef={moveContentRef}
                   onCancel={() => closePuzzle()}
-                  onAdded={closePuzzle}
+                  onAdded={(result) => {
+                    if (solverDraft) {
+                      void navigate({
+                        href: solverDraft.returnTo,
+                        replace: true,
+                        state: { resumePuzzleAnalysis: solverDraft.sourcePuzzleId },
+                      });
+                    } else {
+                      closePuzzle(result);
+                    }
+                  }}
                 >
                   {moveNotation}
                   {continuationChoices}

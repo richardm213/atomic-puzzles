@@ -1,3 +1,16 @@
+import type { PuzzlePositionHistory } from "../../../shared/domain/puzzles/puzzleSubmission";
+
+declare module "@tanstack/history" {
+  interface HistoryState {
+    puzzleDraft?: {
+      positionHistory: PuzzlePositionHistory;
+      returnTo: string;
+      sourcePuzzleId: string;
+    };
+    resumePuzzleAnalysis?: string;
+  }
+}
+
 const STORAGE_PREFIX = "atomic-puzzles:analysis-handoff:";
 const HANDOFF_MAX_AGE_MS = 10 * 60 * 1000;
 

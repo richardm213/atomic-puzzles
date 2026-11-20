@@ -2,7 +2,7 @@ import "../../features/analysisWorkspace/AnalysisWorkspace.css";
 
 import { faFlag } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { type CSSProperties, useEffect, useLayoutEffect } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect } from "react";
 
 import type { PuzzleIntro } from "../../../shared/domain/puzzles/gameHistory";
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
@@ -18,6 +18,7 @@ export const PuzzleAnalysisPanel = ({
   initialFen,
   currentFen,
   analysisActive,
+  analysisActions,
   moveEditing,
   previousMove,
   beforePreviousMove,
@@ -41,6 +42,7 @@ export const PuzzleAnalysisPanel = ({
   initialFen: string;
   currentFen: string;
   analysisActive: boolean;
+  analysisActions?: ReactNode;
   moveEditing: ReturnType<typeof useBoardMoveEditing>;
   previousMove?: PuzzleIntro | null | undefined;
   beforePreviousMove?: boolean | undefined;
@@ -98,6 +100,7 @@ export const PuzzleAnalysisPanel = ({
         <div className="puzzleAnalysisEngine">
           <AtomicDbAnalysisBlock
             {...panelProps}
+            beforeSettings={analysisActions}
             settings={engineSettings}
             setSettings={setEngineSettings}
             notationInline
