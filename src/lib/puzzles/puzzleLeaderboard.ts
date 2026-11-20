@@ -3,6 +3,8 @@ import {
   isPuzzleLeaderboardEligible,
   MONTHLY_PUZZLE_MAX_RD,
   MONTHLY_PUZZLE_MIN_ATTEMPTS,
+  PUZZLE_ACTIVITY_BONUS_CAP_ATTEMPTS,
+  PUZZLE_ACTIVITY_BONUS_MAX,
   puzzleActivityBonus,
   type PuzzleLeaderboardPeriod,
   rankPuzzleLeaderboardMetrics,
@@ -14,6 +16,8 @@ export {
   isPuzzleLeaderboardEligible,
   MONTHLY_PUZZLE_MAX_RD,
   MONTHLY_PUZZLE_MIN_ATTEMPTS,
+  PUZZLE_ACTIVITY_BONUS_CAP_ATTEMPTS,
+  PUZZLE_ACTIVITY_BONUS_MAX,
   puzzleActivityBonus,
 };
 export type { PuzzleLeaderboardPeriod };

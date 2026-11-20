@@ -18,6 +18,9 @@ import {
   buildPuzzleLeaderboardRows,
   MONTHLY_PUZZLE_MAX_RD,
   MONTHLY_PUZZLE_MIN_ATTEMPTS,
+  PUZZLE_ACTIVITY_BONUS_CAP_ATTEMPTS,
+  PUZZLE_ACTIVITY_BONUS_MAX,
+  puzzleActivityBonus,
   type PuzzleLeaderboardPeriod,
   type PuzzleLeaderboardRow,
   puzzleTrophyLevel,
@@ -237,12 +240,13 @@ const PuzzleLeaderboard = () => {
   }, [creatorLeaderboardQuery.data?.rows, creatorSortDirection, creatorSortKey]);
   const showCurrentTrophies = period === "monthly" && effectiveMonth === currentUtcMonth();
   const showAverageTime = period === "all" || effectiveMonth >= puzzleAverageTimeStartMonth;
+  const bonusExamples = `about +${puzzleActivityBonus(500)} at 500 attempts, +${puzzleActivityBonus(1_000)} at 1,000, and +${puzzleActivityBonus(3_000)} at 3,000, reaching +${PUZZLE_ACTIVITY_BONUS_MAX} at ${PUZZLE_ACTIVITY_BONUS_CAP_ATTEMPTS.toLocaleString("en-US")} attempts`;
   const infoText =
     leaderboardType === "creators"
       ? `Creators are ranked only by puzzle karma: upvotes minus downvotes received on ${period === "monthly" ? "puzzles created in the selected month" : "all of their puzzles"}. A creator's own votes do not count. Votes given are shown for context and do not affect rank.`
       : period === "monthly"
-        ? `Score = Rating + Activity bonus. The bonus rises smoothly with rated attempts in the selected month: about +9 at 100 attempts, +32 at 500, and +43 at 1,000, with a maximum of +50. Official ranks require at least ${MONTHLY_PUZZLE_MIN_ATTEMPTS} attempts and RD below ${MONTHLY_PUZZLE_MAX_RD}.`
-        : "Score = Rating + Activity bonus. The bonus uses rated attempts from the last 120 days: about +9 at 100 attempts, +32 at 500, and +43 at 1,000, with a maximum of +50. ATT remains the player's all-time total.";
+        ? `Score = Rating + Activity bonus. The bonus rises smoothly with rated attempts in the selected month: ${bonusExamples}. Official ranks require at least ${MONTHLY_PUZZLE_MIN_ATTEMPTS} attempts and RD below ${MONTHLY_PUZZLE_MAX_RD}.`
+        : `Score = Rating + Activity bonus. The bonus uses rated attempts from the last 120 days: ${bonusExamples}. ATT remains the player's all-time total.`;
 
   if (loading && !leaderboardData) return <RouteLoadingFallback />;
 

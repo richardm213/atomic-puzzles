@@ -1,8 +1,11 @@
 export const MONTHLY_PUZZLE_MIN_ATTEMPTS = 20;
 export const MONTHLY_PUZZLE_MAX_RD = 60;
 export const ALL_TIME_PUZZLE_MIN_ATTEMPTS = 20;
-export const PUZZLE_ACTIVITY_BONUS_MAX = 50;
-export const PUZZLE_ACTIVITY_BONUS_SCALE_ATTEMPTS = 500;
+export const PUZZLE_ACTIVITY_BONUS_MAX = 100;
+export const PUZZLE_ACTIVITY_BONUS_CAP_ATTEMPTS = 4_000;
+// Calibrate rounding so the bonus first reaches its cap at 4,000 attempts.
+export const PUZZLE_ACTIVITY_BONUS_SCALE_ATTEMPTS =
+  PUZZLE_ACTIVITY_BONUS_CAP_ATTEMPTS / Math.log(2 * PUZZLE_ACTIVITY_BONUS_MAX);
 
 export type PuzzleLeaderboardPeriod = "monthly" | "all";
 

@@ -23,12 +23,14 @@ describe("puzzleLeaderboard", () => {
     expect(calculatePuzzleCorrectPercent(0, 0)).toBe(0);
   });
 
-  it("scales the activity bonus gradually toward 50 points", () => {
+  it("requires sustained activity to reach the 100-point bonus cap", () => {
     expect(puzzleActivityBonus(0)).toBe(0);
-    expect(puzzleActivityBonus(100)).toBe(9);
-    expect(puzzleActivityBonus(500)).toBe(32);
-    expect(puzzleActivityBonus(1_000)).toBe(43);
-    expect(puzzleActivityBonus(100_000)).toBe(50);
+    expect(puzzleActivityBonus(100)).toBe(12);
+    expect(puzzleActivityBonus(500)).toBe(48);
+    expect(puzzleActivityBonus(1_000)).toBe(73);
+    expect(puzzleActivityBonus(3_999)).toBe(99);
+    expect(puzzleActivityBonus(4_000)).toBe(100);
+    expect(puzzleActivityBonus(100_000)).toBe(100);
   });
 
   it("requires 20 monthly attempts and RD below 60", () => {
@@ -67,8 +69,8 @@ describe("puzzleLeaderboard", () => {
 
     expect(rows.find(({ username }) => username === "active")).toMatchObject({
       rating: 2230,
-      activityBonus: 32,
-      leaderboardScore: 2262,
+      activityBonus: 48,
+      leaderboardScore: 2278,
       rank: 1,
     });
     expect(rows.find(({ username }) => username === "inactive")?.rank).toBe(2);
