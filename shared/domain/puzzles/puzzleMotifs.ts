@@ -180,6 +180,13 @@ export const puzzleMotifs: PuzzleMotif[] = [
       "The king escapes danger through a precise series of moves, avoiding controlled or explosion-threatened squares.",
   },
   {
+    tag: "king_sidestep",
+    name: "King sidestep",
+    parentTag: "king_walk",
+    description:
+      "The king steps out of danger, often clearing a square for a rook or preventing follow-up attacks.",
+  },
+  {
     tag: "avoiding_perpetual",
     name: "Avoiding perpetual",
     parentTag: "defensive",

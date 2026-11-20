@@ -79,6 +79,11 @@ export const motifExamples: Readonly<Record<string, MotifExample | undefined>> =
     fen: "3rk2b/p7/4P1p1/2B2pPp/8/8/P6P/1K3R2 w - - 1 23",
     pgn: "23. Bd6",
   },
+  king_sidestep: {
+    fen: "rnb1kbnr/p1p3p1/3p1q1p/8/3P4/2P2Q1N/PP3PPP/R3K2R w KQkq - 0 11",
+    pgn: "11. Kd1",
+    note: "Moving the king off e1 clears the square for Re1+.",
+  },
   king_walk: {
     fen: "8/4b3/4Pk2/5P2/p7/P7/7p/7K b - - 1 47",
     pgn: "47... Kg7 48. f6+ Kg8 49. fxe7 Kf8 50. e7+ Ke8",
