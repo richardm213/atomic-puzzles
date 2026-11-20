@@ -948,8 +948,10 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     hasSolvedPuzzle || isCustomSetRoute || isDashboardSetSolveMode
       ? SOLVED_BEFORE_BADGE_LABEL
       : ATTEMPTED_PUZZLE_BADGE_LABEL;
-  const canManagePuzzleExplanation = isPuzzleExplanationEditor && isAnalysisMode;
-  const canViewExplanation = (hasExplanation || isPuzzleExplanationEditor) && isAnalysisMode;
+  const canManagePuzzleExplanation =
+    isPuzzleExplanationEditor && (isAnalysisMode || gradingState?.graded === false);
+  const canViewExplanation =
+    (hasExplanation || isPuzzleExplanationEditor) && (isAnalysisMode || canManagePuzzleExplanation);
   const showSolution = activePuzzleInfoTab === "solution";
   const showExplanation = activePuzzleInfoTab === "explanation";
   const otherPuzzleAttemptsOpen = activePuzzleInfoTab === "attempts";
@@ -2624,7 +2626,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
         </>
       ) : null}
 
-      {isMobileLayout && (hasAttemptedActivePuzzle || canGiveUp) ? (
+      {isMobileLayout && (hasAttemptedActivePuzzle || canGiveUp || canManagePuzzleExplanation) ? (
         <div className="mobileWorkflowPanel">
           <div className="mobileActionCard">{renderPuzzleInfoSection(true)}</div>
         </div>

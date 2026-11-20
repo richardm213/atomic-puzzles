@@ -56,7 +56,14 @@ export const puzzleExplanationRoute = async (event: FunctionEvent) => {
     throw new Error(`Unable to verify puzzle progress: ${attemptError.message}`);
   }
   if (!attempt) {
-    throw new HttpError(403, "Attempt this puzzle before editing its explanation.");
+    const { data: grading, error: gradingError } = await supabase.rpc("get_puzzle_grading_state", {
+      p_username: normalizedUsername,
+      p_puzzle_id: String(input.puzzleId),
+    });
+    if (gradingError) throw new Error(`Unable to verify puzzle grading: ${gradingError.message}`);
+    if (grading?.graded !== false) {
+      throw new HttpError(403, "Attempt this puzzle before editing its explanation.");
+    }
   }
 
   const { data, error } = await supabase

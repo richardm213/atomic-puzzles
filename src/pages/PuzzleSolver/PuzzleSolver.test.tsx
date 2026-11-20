@@ -1493,27 +1493,21 @@ See ${studyUrl}.`;
     },
   );
 
-  it("lets an author edit an explanation after resigning a replay on mobile", async () => {
+  it("lets an ungraded author edit an explanation on mobile without an attempt", async () => {
     mocks.username = "puzzle_author";
     mocks.puzzleAuthor = "puzzle_author";
-    mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValue([
-      {
-        puzzle_id: "1369",
-        first_attempt_at: "2026-01-01T00:00:00.000Z",
-        puzzle_correct: true,
-        rated: false,
-      },
-    ]);
+    mocks.attemptedPuzzleIds = new Set();
+    mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValue([]);
     const refreshedUntil = "2099-01-01T00:00:00Z";
     mocks.fetchPuzzleGradingState.mockResolvedValue({
       runId: null,
       graded: false,
       availableAt: refreshedUntil,
       permanent: false,
-      hasAttempted: true,
-      hasSolved: true,
+      hasAttempted: false,
+      hasSolved: false,
       misses: 0,
-      color: "green",
+      color: null,
     });
     vi.mocked(window.matchMedia).mockImplementation(
       (media) =>
@@ -1528,33 +1522,33 @@ See ${studyUrl}.`;
     render(<PuzzleSolverPage />);
 
     await screen.findByTestId("mock-board");
-    expect(await screen.findByRole("tab", { name: "Explain" })).toBeDisabled();
-    expect(await screen.findByRole("tab", { name: "Resign" })).toBeEnabled();
     expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(false);
     expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
-
-    await user.click(await screen.findByRole("tab", { name: "Resign" }));
-    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
-    expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
-    await user.click(await screen.findByRole("tab", { name: "Confirm resignation" }));
-
-    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
-    await waitFor(() => expect(mocks.recordPuzzleProgress).toHaveBeenCalledOnce());
     const gradingBadges = await screen.findAllByLabelText(/Ungraded for/);
     expect(gradingBadges.length).toBeGreaterThan(0);
     gradingBadges.forEach((badge) => expect(badge).not.toHaveAttribute("title"));
     const explanationTab = await screen.findByRole("tab", { name: "Explain" });
     expect(explanationTab).toBeEnabled();
-    expect(screen.getByRole("checkbox", { name: "Permanently unrated" })).toBeDisabled();
+    expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
     await user.click(explanationTab);
     await user.click(screen.getByRole("button", { name: "Edit" }));
     expect(screen.getByRole("textbox", { name: "Puzzle explanation" })).toHaveValue(
       mocks.puzzleExplanation,
     );
+    await user.type(screen.getByRole("textbox", { name: "Puzzle explanation" }), " Updated.");
+    await user.click(screen.getByRole("button", { name: "Save explanation" }));
+    await waitFor(() =>
+      expect(mocks.updatePuzzleExplanation).toHaveBeenCalledWith(
+        1369,
+        mocks.puzzleExplanation + " Updated.",
+      ),
+    );
+    expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
+    expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(false);
   });
 
   it.each([true, false])(
-    "locks puzzle details again when revisiting your own puzzle (correct: %s)",
+    "keeps attempts locked but allows explanation editing on an ungraded author revisit (correct: %s)",
     async (puzzleCorrect) => {
       mocks.puzzleAuthor = mocks.username;
       mocks.fetchPuzzleProgressRowsForUsername.mockResolvedValue([]);
@@ -1616,7 +1610,7 @@ See ${studyUrl}.`;
       const restored = await screen.findByRole("tab", { name: "Other attempts" });
       await screen.findByTestId("mock-board");
       expect(restored).toBeDisabled();
-      expect(screen.getByRole("tab", { name: "Explanation" })).toBeDisabled();
+      expect(screen.getByRole("tab", { name: "Explanation" })).toBeEnabled();
       expect(screen.queryByRole("region", { name: "Puzzle tags" })).not.toBeInTheDocument();
 
       act(() =>

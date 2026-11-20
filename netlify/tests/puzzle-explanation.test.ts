@@ -19,6 +19,7 @@ const mockPuzzleUpdate = (
   author: string,
   savedExplanation = "Saved explanation",
   hasAttempt = true,
+  graded = true,
 ) => {
   const lookupSingle = vi.fn(async () => ({ data: { id: 42, author }, error: null }));
   const lookupIs = vi.fn(() => ({ single: lookupSingle }));
@@ -44,7 +45,8 @@ const mockPuzzleUpdate = (
     .mockReturnValueOnce({ select: lookupSelect })
     .mockReturnValueOnce({ select: attemptSelect })
     .mockReturnValueOnce({ update });
-  mocks.createClient.mockReturnValue({ from });
+  const rpc = vi.fn(async () => ({ data: { graded }, error: null }));
+  mocks.createClient.mockReturnValue({ from, rpc });
   return { from, update };
 };
 
@@ -112,16 +114,24 @@ describe("puzzle-explanation function", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("requires an allowed editor to attempt the puzzle first", async () => {
-    const { from, update } = mockPuzzleUpdate("puzzle_author", "Saved explanation", false);
-    const response = await handler({
-      httpMethod: "POST",
-      headers: authHeaders("puzzle_author"),
-      body: JSON.stringify({ puzzleId: 42, explanation: "Too early" }),
-    });
+  it.each([true, false])(
+    "requires an attempt only while grading is available (graded: %s)",
+    async (graded) => {
+      const { from, update } = mockPuzzleUpdate(
+        "puzzle_author",
+        "Saved explanation",
+        false,
+        graded,
+      );
+      const response = await handler({
+        httpMethod: "POST",
+        headers: authHeaders("puzzle_author"),
+        body: JSON.stringify({ puzzleId: 42, explanation: "Too early" }),
+      });
 
-    expect(response.statusCode).toBe(403);
-    expect(from).toHaveBeenCalledTimes(2);
-    expect(update).not.toHaveBeenCalled();
-  });
+      expect(response.statusCode).toBe(graded ? 403 : 200);
+      expect(from).toHaveBeenCalledTimes(graded ? 2 : 3);
+      expect(update).toHaveBeenCalledTimes(graded ? 0 : 1);
+    },
+  );
 });
