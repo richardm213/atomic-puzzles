@@ -98,3 +98,27 @@ export const resolvePlayback = (
     ? { position }
     : null;
 };
+
+export const playBoardLine = (
+  moves: readonly string[],
+  playMove: (uci: string) => boolean,
+  onComplete: () => void,
+  stepDelay: number,
+): (() => void) => {
+  let timer: number | undefined;
+  let cancelled = false;
+
+  const playNext = (index: number): void => {
+    const uci = moves[index];
+    const hasNextMove = Boolean(uci && playMove(uci) && index < moves.length - 1);
+    if (cancelled) return;
+    if (hasNextMove) timer = window.setTimeout(() => playNext(index + 1), stepDelay);
+    else onComplete();
+  };
+
+  playNext(0);
+  return () => {
+    cancelled = true;
+    window.clearTimeout(timer);
+  };
+};

@@ -55,7 +55,7 @@ import {
   historyMoveKeys,
   historyMoveSans,
 } from "./boardHistory";
-import { resolvePlayback } from "./boardPlayback";
+import { playBoardLine, resolvePlayback } from "./boardPlayback";
 import { BoardPromotionPicker } from "./BoardPromotionPicker";
 import { BoardResizeHandle } from "./BoardResizeHandle";
 import { useBoardShortcuts } from "./boardShortcuts";
@@ -73,6 +73,7 @@ import {
   isSolutionCompleteAt,
   tryCreateAtomicPosition,
 } from "./puzzlePlayback";
+import { useBoardPremoves } from "./useBoardPremoves";
 import { useChessground } from "./useChessground";
 import { usePuzzleTraining } from "./usePuzzleTraining";
 import {
@@ -233,6 +234,12 @@ const ChessboardComponent = ({
   const elementRef = useRef<HTMLDivElement | null>(null);
   const lastAutomaticResetFenRef = useRef<string | null>(null);
   const cgRef = useRef<Api | null>(null);
+  const { cancelPremove, playPremove, premoveMovableConfig } = useBoardPremoves(
+    cgRef,
+    premoveColor,
+    effectivePremovesEnabled,
+    disabled,
+  );
   const positionRef = useRef<Atomic | null>(null);
   const pendingPromotionRef = useRef<PendingPromotion | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<PendingPromotion | null>(null);
@@ -258,8 +265,6 @@ const ChessboardComponent = ({
   const analysisPlaybackRunningRef = useRef(false);
   const introPlayedRef = useRef(false);
   const onIntroEndRef = useLatestRef(onIntroEnd);
-  const premoveColorRef = useLatestRef(premoveColor);
-  const premovesEnabledRef = useLatestRef(effectivePremovesEnabled);
   const fenRef = useLatestRef(fen);
   const solutionNavigationRef = useLatestRef(solutionNavigation);
   const puzzleIdRef = useLatestRef(puzzleId);
@@ -520,12 +525,6 @@ const ChessboardComponent = ({
     [resetTraining],
   );
 
-  type MovableConfig = {
-    color?: Color;
-    dests: Map<Key, Key[]>;
-    free: boolean;
-  };
-
   const allowedSolutionContinuations = useCallback((): UciSolutionEntry[] => {
     const history = historyRef.current;
     const playedMoveKeys = historyMoveKeys(history);
@@ -541,7 +540,7 @@ const ChessboardComponent = ({
   }, []);
 
   const getMovableConfig = useCallback(
-    (position: Atomic): MovableConfig => {
+    (position: Atomic) => {
       if (blindFenRef.current || isMoveInputBlocked()) {
         return {
           dests: new Map(),
@@ -549,7 +548,6 @@ const ChessboardComponent = ({
         };
       }
 
-      const outcome = position.outcome();
       const legalDests = chessgroundDests(position);
       const dests = restrictMovesToSolutionRef.current
         ? allowedSolutionContinuations().reduce((allowed, entry) => {
@@ -562,23 +560,13 @@ const ChessboardComponent = ({
             return allowed;
           }, new Map<Key, Key[]>())
         : legalDests;
-      return {
-        ...(outcome
-          ? {}
-          : { color: premovesEnabledRef.current ? premoveColorRef.current : position.turn }),
-        dests:
-          premovesEnabledRef.current && position.turn !== premoveColorRef.current
-            ? new Map()
-            : dests,
-        free: false,
-      };
+      return premoveMovableConfig(position.turn, Boolean(position.outcome()), dests);
     },
     [
       allowedSolutionContinuations,
       isMoveInputBlocked,
       blindFenRef,
-      premoveColorRef,
-      premovesEnabledRef,
+      premoveMovableConfig,
       restrictMovesToSolutionRef,
     ],
   );
@@ -681,14 +669,7 @@ const ChessboardComponent = ({
 
       emitState(position, nextState);
 
-      if (
-        premovesEnabledRef.current &&
-        premoveColorRef.current === position.turn &&
-        !blindFenRef.current &&
-        !isMoveInputBlocked()
-      ) {
-        cgRef.current?.playPremove?.();
-      }
+      playPremove(position.turn, () => !blindFenRef.current && !isMoveInputBlocked());
     },
     [
       blindFenRef,
@@ -698,8 +679,7 @@ const ChessboardComponent = ({
       getMovableConfig,
       isMoveInputBlocked,
       orientationRef,
-      premoveColorRef,
-      premovesEnabledRef,
+      playPremove,
     ],
   );
 
@@ -720,7 +700,7 @@ const ChessboardComponent = ({
       const { position } = tryCreateAtomicPosition(targetFen);
       if (!position) return false;
 
-      cgRef.current?.cancelPremove?.();
+      cancelPremove();
       alternativeContinuationSelectedRef.current = keepContinuation;
       history.index = targetIndex;
       // The opponent's move precedes puzzle ply zero; inspecting its starting
@@ -731,7 +711,7 @@ const ChessboardComponent = ({
       syncBoard(position, history.plies[targetIndex]?.lastMove);
       return true;
     },
-    [canNavigateBoard, interactionLockedRef, isSolutionPlaybackLocked, syncBoard],
+    [cancelPremove, canNavigateBoard, interactionLockedRef, isSolutionPlaybackLocked, syncBoard],
   );
 
   const activateHistory = useCallback(
@@ -806,7 +786,7 @@ const ChessboardComponent = ({
       if (!target) return false;
 
       if (target.line && typeof target.position === "number") {
-        cgRef.current?.cancelPremove?.();
+        cancelPremove();
         activateHistory({
           history: cloneBoardHistory(target.line.history),
           ply: target.position,
@@ -822,7 +802,14 @@ const ChessboardComponent = ({
         command === "next" && alternativeContinuationSelectedRef.current,
       );
     },
-    [activateHistory, canNavigateBoard, getPlaybackContext, isSolutionPlaybackLocked, navigateTo],
+    [
+      activateHistory,
+      cancelPremove,
+      canNavigateBoard,
+      getPlaybackContext,
+      isSolutionPlaybackLocked,
+      navigateTo,
+    ],
   );
 
   const autoplayOpponentMove = useCallback(
@@ -1279,11 +1266,6 @@ const ChessboardComponent = ({
     onCleanup: cleanupBoard,
   });
 
-  useEffect(() => {
-    if (!effectivePremovesEnabled || disabled) cgRef.current?.cancelPremove?.();
-    cgRef.current?.set({ premovable: { enabled: effectivePremovesEnabled } });
-  }, [disabled, effectivePremovesEnabled]);
-
   const analysisHintsAllowed = analysisMode || !solution.trim();
   useBoardActionShortcuts(
     {
@@ -1357,7 +1339,7 @@ const ChessboardComponent = ({
       solutionNavigation.type !== "command" &&
       solutionNavigation.type !== "history"
     ) {
-      cgRef.current?.cancelPremove?.();
+      cancelPremove();
     }
 
     switch (solutionNavigation.type) {
@@ -1380,43 +1362,24 @@ const ChessboardComponent = ({
         break;
       case "line": {
         analysisPlaybackRunningRef.current = true;
-        let cancelled = false;
-        let timeoutId: number | null = null;
-        const stepDelay = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-          ? 0
-          : ANALYSIS_LINE_PLAYBACK_DELAY_MS;
-
-        const finish = (): void => {
-          if (cancelled) return;
-          analysisPlaybackRunningRef.current = false;
-          onNavigateHandledRef.current?.();
-        };
-        const playNext = (index: number): void => {
-          if (cancelled) return;
-          const uci = solutionNavigation.ucis[index];
-          if (!uci) {
-            finish();
-            return;
-          }
-          const position = positionRef.current;
-          const move = position ? moveFromUci(position, uci.trim().toLowerCase()) : undefined;
-          if (!position || !move || !position.isLegal(move)) {
-            finish();
-            return;
-          }
-          playUciMove(uci);
-          if (index === solutionNavigation.ucis.length - 1) {
-            finish();
-            return;
-          }
-          timeoutId = window.setTimeout(() => playNext(index + 1), stepDelay);
-        };
-
-        playNext(0);
+        const stop = playBoardLine(
+          solutionNavigation.ucis,
+          (uci) => {
+            const position = positionRef.current;
+            const move = position ? moveFromUci(position, uci.trim().toLowerCase()) : undefined;
+            if (!position || !move || !position.isLegal(move)) return false;
+            playUciMove(uci);
+            return true;
+          },
+          () => {
+            analysisPlaybackRunningRef.current = false;
+            onNavigateHandledRef.current?.();
+          },
+          prefersReducedMotion() ? 0 : ANALYSIS_LINE_PLAYBACK_DELAY_MS,
+        );
         return () => {
-          cancelled = true;
+          stop();
           analysisPlaybackRunningRef.current = false;
-          if (timeoutId !== null) window.clearTimeout(timeoutId);
         };
       }
       case "command":
@@ -1484,6 +1447,7 @@ const ChessboardComponent = ({
     solutionNavigation,
     fenRef,
     onNavigateHandledRef,
+    cancelPremove,
     canNavigateBoard,
     navigatePlayback,
     navigateTo,
