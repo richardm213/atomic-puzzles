@@ -98,12 +98,12 @@ it("limits puzzle notifications to recent initial attempts and retries, while de
     if (url.pathname.endsWith("/puzzles")) return Response.json([{ author: "owner" }]);
     if (url.pathname.endsWith("/puzzle_progress")) {
       expect(params.get("or")).toBe(
-        "(first_attempt_at.gte.2026-06-30T12:00:00.000Z,grading_available_at.gte.2026-08-31T12:00:00.000Z)",
+        "(first_attempt_at.gte.2026-07-31T12:00:00.000Z,grading_available_at.gte.2026-09-30T12:00:00.000Z)",
       );
       return Response.json([{ username: "recent" }, { username: "owner" }]);
     }
     if (url.pathname.endsWith("/puzzle_attempt_move_logs")) {
-      expect(params.get("attempted_at")).toBe("gte.2026-06-30T12:00:00.000Z");
+      expect(params.get("attempted_at")).toBe("gte.2026-07-31T12:00:00.000Z");
       return Response.json([{ username: "retry" }, { username: "actor" }]);
     }
     if (url.pathname.endsWith("/community_comments"))

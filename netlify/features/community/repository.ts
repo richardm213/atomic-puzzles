@@ -58,11 +58,11 @@ const PUZZLE_COMMENT_NOTIFICATION_TYPES = [
   "comment_mention",
 ] as const;
 
-const recentAttemptCutoff = (now = new Date()): string => {
-  const cutoff = new Date(now);
+const shiftUtcMonths = (date: Date, months: number): string => {
+  const cutoff = new Date(date);
   const day = cutoff.getUTCDate();
   cutoff.setUTCDate(1);
-  cutoff.setUTCMonth(cutoff.getUTCMonth() - 2);
+  cutoff.setUTCMonth(cutoff.getUTCMonth() + months);
   const lastDay = new Date(
     Date.UTC(cutoff.getUTCFullYear(), cutoff.getUTCMonth() + 1, 0),
   ).getUTCDate();
@@ -495,13 +495,14 @@ export class CommunityRepository {
     const parentAuthorQuery = parentId
       ? this.supabase.from("community_comments").select("username").eq("id", parentId).maybeSingle()
       : Promise.resolve({ data: null, error: null });
-    const cutoff = recentAttemptCutoff();
+    const cutoff = shiftUtcMonths(new Date(), -1);
+    const practiceCooldownCutoff = shiftUtcMonths(new Date(cutoff), 2);
     const attemptedUsersQuery = this.supabase
       .from("puzzle_progress")
       .select("username")
       .eq("puzzle_id", String(puzzleId))
-      // Practice attempts refresh this cooldown but deliberately retain no move logs.
-      .or(`first_attempt_at.gte.${cutoff},grading_available_at.gte.${new Date().toISOString()}`);
+      // Practice attempts retain no move logs and expire two months after the attempt.
+      .or(`first_attempt_at.gte.${cutoff},grading_available_at.gte.${practiceCooldownCutoff}`);
     const recentRetriesQuery = this.supabase
       .from("puzzle_attempt_move_logs")
       .select("username")
