@@ -1,9 +1,20 @@
 import { faBolt, faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import type { ComponentProps, MutableRefObject, ReactNode } from "react";
+import {
+  type ComponentProps,
+  type MutableRefObject,
+  type ReactNode,
+  type Ref,
+  useMemo,
+} from "react";
 
 import type { BoardDocument } from "../../hooks/useBoardDocument";
+import { materialCountFromFen } from "../../lib/chess/materialCount";
+import { BoardClock } from "../BoardClock/BoardClock";
 import { Chessboard } from "../Chessboard/Chessboard";
+
+type BoardClockProps = ComponentProps<typeof BoardClock>;
+type BoardColor = BoardClockProps["color"];
 
 type BoardWorkspaceProps = {
   className?: string;
@@ -12,7 +23,11 @@ type BoardWorkspaceProps = {
   boardTabIndex?: number;
   chessboardProps: ComponentProps<typeof Chessboard>;
   draftChessboardProps?: ComponentProps<typeof Chessboard> | undefined;
-  boardBefore?: ReactNode;
+  positionStatus: {
+    fen: string;
+    lowerRowRef?: Ref<HTMLDivElement>;
+    clockFor?: (color: BoardColor) => Omit<BoardClockProps, "color" | "material" | "rowRef">;
+  };
   boardAfter?: ReactNode;
   boardOverlay?: ReactNode;
   lichessHref: string;
@@ -25,7 +40,7 @@ type BoardWorkspaceProps = {
   };
   actionClassName?: string;
   secondaryAction?: ReactNode;
-  document: BoardDocument;
+  document: Pick<BoardDocument, "fen" | "pgn">;
   showDocument?: boolean;
   showActions?: boolean;
 };
@@ -65,7 +80,7 @@ export const BoardWorkspace = ({
   boardTabIndex,
   chessboardProps,
   draftChessboardProps,
-  boardBefore,
+  positionStatus: { fen: statusFen, lowerRowRef, clockFor },
   boardAfter,
   boardOverlay,
   lichessHref,
@@ -78,6 +93,18 @@ export const BoardWorkspace = ({
   showDocument = true,
   showActions = true,
 }: BoardWorkspaceProps) => {
+  const material = useMemo(() => materialCountFromFen(statusFen), [statusFen]);
+  const lowerColor = draftChessboardProps?.orientation ?? chessboardProps.orientation ?? "white";
+  const upperColor = lowerColor === "white" ? "black" : "white";
+  const statusRow = (color: BoardColor) => (
+    <BoardClock
+      color={color}
+      material={material}
+      rowRef={color === lowerColor ? lowerRowRef : undefined}
+      {...clockFor?.(color)}
+    />
+  );
+
   const primarySourceLink = sourceLink ?? { href: lichessHref, label: "View on Lichess" };
   const lichessLink = (
     <a
@@ -130,7 +157,7 @@ export const BoardWorkspace = ({
 
   return (
     <div className={`analysisBoardColumn ${className}`.trim()}>
-      {boardBefore}
+      {statusRow(upperColor)}
       <div
         ref={boardPanelRef}
         className="analysisBoardPanel"
@@ -150,6 +177,7 @@ export const BoardWorkspace = ({
         ) : null}
         {boardOverlay}
       </div>
+      {statusRow(lowerColor)}
       {boardAfter}
       {showActions || showDocument ? (
         <div className="analysisBoardTextPanel">

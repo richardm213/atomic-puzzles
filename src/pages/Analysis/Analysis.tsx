@@ -16,7 +16,6 @@ import { z } from "zod";
 import { WOLFRANDOM_RANDOMIZED_PLIES } from "../../../shared/domain/gameAnalysis";
 import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
-import { BoardClock } from "../../components/BoardClock/BoardClock";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
 import type { MoveMenuAction } from "../../components/MoveAnnotationMenu/MoveAnnotationMenu";
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
@@ -71,7 +70,6 @@ import { readAnalysisHandoff } from "../../lib/analysis/handoff";
 import { gameClockAtPly } from "../../lib/archive/gameClock";
 import { type ArchiveGame, decodeGameResult } from "../../lib/archive/games";
 import { isAtomicTablebasePosition } from "../../lib/atomicTablebase/material";
-import { materialCountFromFen } from "../../lib/chess/materialCount";
 import {
   createAtomicPosition,
   serializeSanLinesToPgn,
@@ -563,7 +561,6 @@ export const AnalysisPage = ({
       setRandomOpponentLoading(false);
     }
   };
-  const material = useMemo(() => materialCountFromFen(currentFen), [currentFen]);
   const gameAnalysis = useGameAnalysis(game, gameRootFen, auth.user?.username ?? "");
   const positionAnalysisEnabled =
     !training && atomicDbEngineSettings.enabled && (!game || gameComputerAnalysisEnabled);
@@ -1116,16 +1113,6 @@ export const AnalysisPage = ({
     },
   });
 
-  const boardStatus = (color: "white" | "black") => (
-    <BoardClock
-      color={color}
-      material={material}
-      rowRef={color === orientation ? lowerClockRef : undefined}
-      {...(game
-        ? gameClockAtPly(game, puzzleDraft ? boardPly(gameBoardState) : currentPly, color)
-        : {})}
-    />
-  );
   const continuationChoices = (
     <AnalysisContinuationChoices
       lines={analysisLines}
@@ -1724,10 +1711,18 @@ export const AnalysisPage = ({
               }
             : undefined
         }
-        boardBefore={boardStatus(orientation === "white" ? "black" : "white")}
+        positionStatus={{
+          fen: currentFen,
+          lowerRowRef: lowerClockRef,
+          ...(game
+            ? {
+                clockFor: (color) =>
+                  gameClockAtPly(game, puzzleDraft ? boardPly(gameBoardState) : currentPly, color),
+              }
+            : {}),
+        }}
         boardAfter={
           <>
-            {boardStatus(orientation)}
             {workspace?.boardAfter}
             {gameUnderboard}
           </>

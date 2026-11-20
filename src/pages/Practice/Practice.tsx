@@ -16,7 +16,6 @@ import { z } from "zod";
 
 import { AnalysisContinuationChoices } from "../../components/AnalysisMoveTree/AnalysisMoveTree";
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
-import { BoardClock } from "../../components/BoardClock/BoardClock";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
 import { buildPgnHistory } from "../../components/Chessboard/pgnHistory";
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
@@ -65,7 +64,6 @@ import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { useWorkspaceShortcuts } from "../../hooks/useWorkspaceShortcuts";
 import { buildBoardLoadNavigation, loadPuzzleDraftPgn } from "../../lib/analysis/boardLoading";
 import { boardVariationNavigation, getBoardMoveState } from "../../lib/analysis/boardState";
-import { materialCountFromFen } from "../../lib/chess/materialCount";
 import { keyboardShortcutHint } from "../../lib/keyboardShortcuts";
 import { choosePracticeEngineMove } from "../../lib/practice/engineSelection";
 import {
@@ -425,7 +423,6 @@ export const PracticePage = () => {
       setPendingAutoMove({ fen: currentFen, uci });
     },
   });
-  const material = useMemo(() => materialCountFromFen(analysisFen), [analysisFen]);
   useEffect(() => {
     if (expiredSide) setGamePaused(true);
   }, [expiredSide]);
@@ -1349,18 +1346,6 @@ export const PracticePage = () => {
   const { width: viewportWidth } = useWorkspaceViewport();
   const pageStyle = analysisBoardStyle(viewportWidth);
 
-  const boardStatus = (color: PracticeSide) => (
-    <BoardClock
-      color={color}
-      material={material}
-      rowRef={color === (puzzleDraft?.orientation ?? side) ? lowerClockRef : undefined}
-      value={clockEnabled ? formatClockTime(remainingClockMs[color]) : undefined}
-      ariaLabel={`${color === side ? "Your" : "Opponent"} clock: ${formatClockTime(remainingClockMs[color])}`}
-      active={runningSide === color && !clockExpired}
-      expired={expiredSide === color}
-    />
-  );
-
   return (
     <AnalysisWorkspaceLayout
       data-board-resize="practice"
@@ -1639,10 +1624,18 @@ export const PracticePage = () => {
             orientation={puzzleDraft?.orientation ?? side}
           />
         }
-        boardBefore={boardStatus(oppositeSide(puzzleDraft?.orientation ?? side))}
+        positionStatus={{
+          fen: analysisFen,
+          lowerRowRef: lowerClockRef,
+          clockFor: (color) => ({
+            value: clockEnabled ? formatClockTime(remainingClockMs[color]) : undefined,
+            ariaLabel: `${color === side ? "Your" : "Opponent"} clock: ${formatClockTime(remainingClockMs[color])}`,
+            active: runningSide === color && !clockExpired,
+            expired: expiredSide === color,
+          }),
+        }}
         boardAfter={
           <>
-            {boardStatus(puzzleDraft?.orientation ?? side)}
             <ShareExportPanel
               className="practiceShareExport"
               title="Share & export"
