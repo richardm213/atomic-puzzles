@@ -452,10 +452,12 @@ const awc2027ChampionPredictionMarketRoute = createRoute({
   component: PredictionMarketPage,
 });
 
-const awcSideBetsPredictionMarketRoute = createRoute({
+const retiredAwcSideBetsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/betting/awc-2026-side-bets",
-  component: PredictionMarketPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/betting", replace: true });
+  },
 });
 
 const awcLosersRound1PredictionMarketRoute = createRoute({
@@ -988,7 +990,7 @@ const routeTree = rootRoute.addChildren([
   atomicShieldPredictionMarketRoute,
   awcChampionPredictionMarketRoute,
   awc2027ChampionPredictionMarketRoute,
-  awcSideBetsPredictionMarketRoute,
+  retiredAwcSideBetsRoute,
   awcSemifinalsPredictionMarketRoute,
   awcQuarterfinalsPredictionMarketRoute,
   awcLosersRound1PredictionMarketRoute,

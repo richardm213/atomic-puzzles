@@ -2,14 +2,14 @@ import type { WebSocketRoute } from "@playwright/test";
 
 import { expect, test } from "./fixtures";
 
-test("side bets have their own route and secondary markets stay in the dropdown", async ({
+test("Ban is on the main row and the retired side bets route returns to betting", async ({
   page,
 }) => {
   const initialMarketId = "awc-2026-semifinal-jude-3-plus-points";
   const bettingRequests: { action: string; marketIds?: string[] }[] = [];
   const groups = [
     ["awc-2026-semifinals", "AWC 2026 Semifinals"],
-    ["awc-2026-side-bets", "2026 AWC Side Bets"],
+    ["ban-2026", "Ban markets"],
     ["awc-2026-losers-round-2", "AWC 2026 Losers Round 2"],
     ["awc-2026-round-of-16", "AWC 2026 Round of 16"],
     ["november-atomic-shield-2026", "November Atomic Shield"],
@@ -107,8 +107,14 @@ test("side bets have their own route and secondary markets stay in the dropdown"
   ).toEqual([]);
   await page.getByRole("tab", { name: "Markets", exact: true }).click();
 
-  await page.getByRole("button", { name: "AWC Side Bets", exact: true }).click();
-  await expect(page.getByText("2026 AWC Side Bets", { exact: true })).toHaveCount(1);
+  const ban = categories.getByRole("button", { name: "Ban", exact: true });
+  await expect(categories.getByRole("option", { name: "Ban", exact: true })).toHaveCount(0);
+  await expect(categories.getByRole("button", { name: "AWC Side Bets", exact: true })).toHaveCount(
+    0,
+  );
+  await ban.click();
+  await expect(ban).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("Ban markets", { exact: true })).toBeVisible();
   const losers2 = page.getByRole("button", { name: "AWC Losers 2", exact: true });
   await losers2.click();
   await expect(losers2).toHaveAttribute("aria-pressed", "true");
@@ -146,9 +152,8 @@ test("side bets have their own route and secondary markets stay in the dropdown"
   await other.selectOption("AWC Round of 16");
   await expect(other).toHaveValue("AWC Round of 16");
   await page.goto("/betting/awc-2026-side-bets");
-  await expect(
-    page.getByRole("heading", { name: "2026 AWC Side Bets", exact: true }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/betting\?/);
+  await expect(page.getByRole("heading", { name: "Betting", exact: true })).toBeVisible();
 });
 
 test("completed strike opens on P&L and loads chart history only when selected", async ({
@@ -362,7 +367,7 @@ test("live book updates render promptly and missed events recover without idle b
   page,
 }) => {
   const marketId = "awc-2026-champion-natso";
-  const inactiveId = "awc-2026-side-bets-strike";
+  const inactiveId = "ban-2026-strike";
   let balance = 200;
   let inBets = 25;
   let positionQuantity = 0;
@@ -441,9 +446,9 @@ test("live book updates render promptly and missed events recover without idle b
   const inactiveMarket = {
     ...catalog[0]!,
     id: inactiveId,
-    group_id: "awc-2026-side-bets",
-    group_path: "/betting/awc-2026-side-bets",
-    group_title: "Side Bets",
+    group_id: "ban-2026",
+    group_path: "/betting/ban-2026",
+    group_title: "Ban markets",
     display_name: "inactive strike",
   };
   const position = (id: string) => ({

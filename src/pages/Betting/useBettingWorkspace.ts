@@ -50,7 +50,6 @@ export const otherMarketCategories: readonly string[] = [
   "AWC Round of 16",
   "AWC Losers 1",
   "AWC 2027",
-  "Ban",
 ];
 const predictionGroupIdByCategory = {
   "AWC Semifinals": "awc-2026-semifinals",
@@ -58,9 +57,8 @@ const predictionGroupIdByCategory = {
   "AWC Quarterfinals": "awc-2026-quarterfinals",
   "Nov Shield": "november-atomic-shield-2026",
   "2026 AWC Champion": "awc-2026-champion",
-  "2026 AWC Side Bets": "awc-2026-side-bets",
-  "AWC Round of 16": "awc-2026-round-of-16",
   Ban: "ban-2026",
+  "AWC Round of 16": "awc-2026-round-of-16",
   "AWC Losers 1": "awc-2026-losers-round-1",
   "AWC 2027": "awc-2027-champion",
 };
@@ -210,8 +208,7 @@ export const useBettingWorkspace = () => {
   );
   const currentTime = useMarketDeadlineClock(deadlines);
   const history = useBettingHistory(predictionMarketGroups, predictionCatalogQuery, user?.username);
-  const predictionMarketOnlyCategory =
-    marketCategory === "Ban" || marketCategory === "2026 AWC Side Bets";
+  const predictionMarketOnlyCategory = marketCategory === "Ban";
   const activePredictionDisplayMode: PredictionDisplayMode = predictionMarketOnlyCategory
     ? "market"
     : predictionDisplayMode;
