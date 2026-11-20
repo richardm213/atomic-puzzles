@@ -56,6 +56,15 @@ export const boardLineNavigation = (target: BoardLineRef, ply: number): Solution
   return { type: "history", ply };
 };
 
+export const boardVariationNavigation = (
+  targets: BoardLineRef[],
+  lineIndex: number,
+  moveIndex: number,
+): SolutionNavigation | null => {
+  const target = targets[lineIndex];
+  return target ? boardLineNavigation(target, moveIndex + 1) : null;
+};
+
 export const boardLineAnnotationNavigation = (
   target: BoardLineRef,
   ply: number,

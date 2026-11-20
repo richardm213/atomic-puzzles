@@ -63,8 +63,8 @@ import { readPersistedState, usePersistedState } from "../../hooks/usePersistedS
 import { usePracticeReplica } from "../../hooks/usePracticeReplica";
 import { useUsernamePicker } from "../../hooks/useUsernamePicker";
 import { useWorkspaceShortcuts } from "../../hooks/useWorkspaceShortcuts";
-import { buildBoardLoadNavigation } from "../../lib/analysis/boardLoading";
-import { boardLineNavigation, getBoardMoveState } from "../../lib/analysis/boardState";
+import { buildBoardLoadNavigation, loadPuzzleDraftPgn } from "../../lib/analysis/boardLoading";
+import { boardVariationNavigation, getBoardMoveState } from "../../lib/analysis/boardState";
 import { materialCountFromFen } from "../../lib/chess/materialCount";
 import { keyboardShortcutHint } from "../../lib/keyboardShortcuts";
 import { choosePracticeEngineMove } from "../../lib/practice/engineSelection";
@@ -778,8 +778,8 @@ export const PracticePage = () => {
     (lineIndex: number, moveIndex: number): void => {
       clearAutoMoveState();
       if (moveIndex + 1 < currentPly) setGamePaused(true);
-      const target = lineTargets[lineIndex];
-      if (target) queueNavigation(boardLineNavigation(target, moveIndex + 1));
+      const target = boardVariationNavigation(lineTargets, lineIndex, moveIndex);
+      if (target) queueNavigation(target);
     },
     [clearAutoMoveState, currentPly, lineTargets, queueNavigation],
   );
@@ -942,11 +942,7 @@ export const PracticePage = () => {
     boardState: draftBoardState,
     onCommitFen: () => {},
     onCommitPgn: (pgn, initialFen) => {
-      if (!puzzleDraft) return;
-      if (initialFen && initialFen !== puzzleDraft.fen) {
-        throw new Error("Keep the puzzle’s selected starting position.");
-      }
-      setDraftNavigation(buildBoardLoadNavigation({ fen: puzzleDraft.fen, pgn }));
+      if (puzzleDraft) setDraftNavigation(loadPuzzleDraftPgn(puzzleDraft.fen, pgn, initialFen));
     },
   });
 
@@ -977,8 +973,8 @@ export const PracticePage = () => {
   };
 
   const navigateToDraftMove = (line: number, index: number): void => {
-    const target = draftBoard.lineTargets[line];
-    if (target) setDraftNavigation(boardLineNavigation(target, index + 1));
+    const target = boardVariationNavigation(draftBoard.lineTargets, line, index);
+    if (target) setDraftNavigation(target);
   };
 
   const commitUsername = useCallback(

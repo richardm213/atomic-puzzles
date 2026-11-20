@@ -19,7 +19,12 @@ import { AtomicDbAnalysisBlock } from "../../features/analysisWorkspace/AtomicDb
 import { useAtomicDbBoardAnalysis } from "../../hooks/useAtomicDbBoardAnalysis";
 import { useAtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useCopyFeedback } from "../../hooks/useCopyFeedback";
-import { buildBoardLoadNavigation, pgnLineIndexForPrefix } from "../../lib/analysis/boardLoading";
+import {
+  assertPuzzleDraftFen,
+  buildBoardLoadNavigation,
+  pgnLineIndexForPrefix,
+} from "../../lib/analysis/boardLoading";
+import { boardLineNavigation } from "../../lib/analysis/boardState";
 import {
   convertUciLineToSan,
   formatSolutionMove,
@@ -196,14 +201,18 @@ export const PuzzleEditor = ({
     [appliedFen, solutionUciLines],
   );
 
+  const applyStartingPosition = (fen: string): void => {
+    setAppliedFen(fen);
+    setFenDraft(fen);
+    setOrientation(orientationFromFen(fen));
+  };
+
   useEffect(() => {
     resetCopyFeedback();
     const nextPgnState = editorPgnState(value.solution, value.fen || STARTING_FEN);
     const nextFen = nextPgnState.fen;
-    setAppliedFen(nextFen);
-    setFenDraft(nextFen);
+    applyStartingPosition(nextFen);
     setSolutionDraft(nextPgnState.draft);
-    setOrientation(orientationFromFen(nextFen));
     setBoardState(null);
     setHoveredEngineMove(null);
     setEditorError("");
@@ -246,8 +255,10 @@ export const PuzzleEditor = ({
       const nextFen = parsed.fen || appliedFen;
       const nextHeaders = ensurePuzzlePgnHeaders(parsed.headerText, nextFen);
 
-      if (canEditSolution && fixedFenRef.current !== null && nextFen !== fixedFenRef.current) {
-        throw new Error(
+      if (canEditSolution) {
+        assertPuzzleDraftFen(
+          fixedFenRef.current,
+          nextFen,
           "The puzzle FEN and initial position cannot be changed after the solution is loaded.",
         );
       }
@@ -257,9 +268,7 @@ export const PuzzleEditor = ({
           throw new Error("Enter at least one move.");
         }
         onChange({ ...value, fen: nextFen, solution: "" });
-        setAppliedFen(nextFen);
-        setFenDraft(nextFen);
-        setOrientation(orientationFromFen(nextFen));
+        applyStartingPosition(nextFen);
         setNavigation({ type: "reset", fen: nextFen });
         setEditorError("Enter at least one move.");
         return;
@@ -282,9 +291,7 @@ export const PuzzleEditor = ({
       }
       onChange(normalized);
       setSolutionDraft(combinePgnHeadersAndMoves(nextHeaders, normalized.solution));
-      setAppliedFen(normalized.fen);
-      setFenDraft(normalized.fen);
-      setOrientation(orientationFromFen(normalized.fen));
+      applyStartingPosition(normalized.fen);
       setActiveLineIndex(0);
       setEditorError("");
       setNavigation({
@@ -324,10 +331,8 @@ export const PuzzleEditor = ({
       const nextHeaders = ensurePuzzlePgnHeaders("", nextFen);
       fixedFenRef.current = null;
       savedBoardLineRef.current = "";
-      setAppliedFen(nextFen);
-      setFenDraft(nextFen);
+      applyStartingPosition(nextFen);
       setSolutionDraft(nextHeaders);
-      setOrientation(orientationFromFen(nextFen));
       setActiveLineIndex(0);
       setEditorError("");
       onChange({ ...value, fen: nextFen, solution: "" });
@@ -346,7 +351,7 @@ export const PuzzleEditor = ({
     if (!line) return;
 
     setActiveLineIndex(lineIndex);
-    setNavigation({ type: "solution", line: lineIndex, ply: moveIndex + 1 });
+    setNavigation(boardLineNavigation({ source: "solution", index: lineIndex }, moveIndex + 1));
   };
 
   const commitSolutionLines = (
@@ -396,11 +401,7 @@ export const PuzzleEditor = ({
             line: nextActiveLineIndex,
             ply: nextPly,
           })
-        : {
-            type: "solution",
-            line: nextActiveLineIndex,
-            ply: nextPly,
-          },
+        : boardLineNavigation({ source: "solution", index: nextActiveLineIndex }, nextPly),
     );
   };
 

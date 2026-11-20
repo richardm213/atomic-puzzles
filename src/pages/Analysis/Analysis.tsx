@@ -63,9 +63,10 @@ import { useWorkspaceShortcuts } from "../../hooks/useWorkspaceShortcuts";
 import {
   buildBoardLoadNavigation,
   gamePlyFromHash,
+  loadPuzzleDraftPgn,
   puzzlePrefillPgn,
 } from "../../lib/analysis/boardLoading";
-import { boardLineNavigation, getBoardMoveState } from "../../lib/analysis/boardState";
+import { boardVariationNavigation, getBoardMoveState } from "../../lib/analysis/boardState";
 import { readAnalysisHandoff } from "../../lib/analysis/handoff";
 import { gameClockAtPly } from "../../lib/archive/gameClock";
 import { type ArchiveGame, decodeGameResult } from "../../lib/archive/games";
@@ -711,11 +712,12 @@ export const AnalysisPage = ({
       void navigate({ to: analysisPathFromFen(nextFen) });
     },
     onCommitPgn: (nextPgn, initialFen) => {
-      if (puzzleDraft && initialFen && initialFen !== puzzleDraft.fen) {
-        throw new Error("Keep the puzzle’s selected starting position.");
+      if (puzzleDraft) {
+        setNavigation(loadPuzzleDraftPgn(puzzleDraft.fen, nextPgn, initialFen));
+        return;
       }
       const nextRootFen = initialFen ?? rootFen;
-      if (initialFen && !puzzleDraft) setRootFen(initialFen);
+      if (initialFen) setRootFen(initialFen);
       setNavigation(buildBoardLoadNavigation({ fen: nextRootFen, pgn: nextPgn }));
     },
   });
@@ -827,8 +829,8 @@ export const AnalysisPage = ({
 
   const navigateToAnalysisMove = useCallback(
     (lineIndex: number, moveIndex: number): void => {
-      const target = lineTargets[lineIndex];
-      if (target) setNavigation(boardLineNavigation(target, moveIndex + 1));
+      const target = boardVariationNavigation(lineTargets, lineIndex, moveIndex);
+      if (target) setNavigation(target);
     },
     [lineTargets],
   );

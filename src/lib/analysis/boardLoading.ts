@@ -39,6 +39,19 @@ export const buildBoardLoadNavigation = ({
   };
 };
 
+export const assertPuzzleDraftFen = (
+  fixedFen: string | null,
+  nextFen: string | undefined,
+  message = "Keep the puzzle’s selected starting position.",
+): void => {
+  if (fixedFen !== null && nextFen && fixedFen !== nextFen) throw new Error(message);
+};
+
+export const loadPuzzleDraftPgn = (fen: string, pgn: string, initialFen?: string) => {
+  assertPuzzleDraftFen(fen, initialFen);
+  return buildBoardLoadNavigation({ fen, pgn });
+};
+
 // Rewriting the PGN can reorder its variations. Match the retained moves, not
 // the line's index before serialization, to return to the same board position.
 export const pgnLineIndexForPrefix = (fen: string, pgn: string, prefix: string[]): number => {
