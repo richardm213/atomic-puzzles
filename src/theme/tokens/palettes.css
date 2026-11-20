@@ -1,6 +1,9 @@
 /* Default accents and canvas wash. Gemstone palettes override these without
    changing the mode's typography, borders, or surface opacity. */
 :root {
+  --color-primary-text: var(--color-primary-soft);
+  --color-action-fill: var(--color-primary);
+  --color-action-fill-hover: var(--color-primary-hover);
   --puzzle-level-hue-1: 180;
   --puzzle-level-hue-2: 250;
   --puzzle-level-hue-3: 85;
@@ -198,11 +201,8 @@
   --color-primary-soft: oklch(
     var(--gem-accent-lightness) var(--gem-accent-chroma, 0.105) var(--gem-hue)
   );
-  --color-primary-text: var(--color-primary-soft);
   --color-primary-pale: oklch(var(--gem-accent-pale-lightness) 0.06 var(--gem-hue));
   --color-on-primary: oklch(98% 0.01 var(--gem-hue));
-  --color-action-fill: var(--color-primary);
-  --color-action-fill-hover: var(--color-primary-hover);
   --color-cyan: var(--color-primary);
   --color-cyan-bright: var(--color-primary-soft);
   --color-accent-soft-bg: color-mix(
@@ -393,13 +393,10 @@
   --color-primary-hover: #636363;
   --color-primary-soft: #cccccc;
   --color-primary-pale: #eeeeee;
-  --color-primary-text: var(--color-primary-soft);
   --color-on-primary: var(--color-heading);
   --board-threat-ink: oklch(44% 0.21 23);
   --color-cyan: #858585;
   --color-cyan-bright: #c4c4c4;
-  --color-action-fill: var(--color-primary);
-  --color-action-fill-hover: var(--color-primary-hover);
   --color-accent-soft-bg: rgba(230, 230, 230, 0.09);
   --color-accent-soft-bg-strong: rgba(230, 230, 230, 0.14);
   --color-accent-soft-border: var(--color-border-strong);

@@ -879,15 +879,9 @@ a.profileOpeningTag:focus-visible {
 }
 
 .profileAliasTooltipLink {
-  color: color-mix(in srgb, var(--color-primary) 78%, white 22%);
   font-weight: 650;
   text-decoration: underline;
   text-underline-offset: 2px;
-}
-
-.profileAliasTooltipLink:hover,
-.profileAliasTooltipLink:focus-visible {
-  color: color-mix(in srgb, var(--color-primary) 60%, white 40%);
 }
 
 .profileAliasAccountLink {
@@ -1029,15 +1023,6 @@ a.profileOpeningTag:focus-visible {
 :root:not([data-theme="light"]) .profileAliasPyChessLink:hover,
 :root:not([data-theme="light"]) .profileAliasPyChessLink:focus-visible {
   box-shadow: none;
-}
-
-:root[data-theme="light"] .profileAliasTooltipLink {
-  color: #3f73ee;
-}
-
-:root[data-theme="light"] .profileAliasTooltipLink:hover,
-:root[data-theme="light"] .profileAliasTooltipLink:focus-visible {
-  color: #2f62dd;
 }
 
 :root[data-theme="light"] .profileOpeningTag {

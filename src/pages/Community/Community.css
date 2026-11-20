@@ -76,7 +76,6 @@
 }
 
 .communityTable a {
-  color: var(--color-cyan-bright);
   font-weight: 650;
   text-decoration: none;
 }
@@ -369,7 +368,6 @@
 .communityActivityUser {
   min-width: 0;
   overflow: hidden;
-  color: var(--color-cyan-bright);
   font-size: 14px;
   font-weight: 650;
   text-overflow: ellipsis;

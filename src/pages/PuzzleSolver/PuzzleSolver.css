@@ -122,7 +122,7 @@
 }
 
 .puzzleGiveUpButton {
-  color: var(--color-danger);
+  color: var(--color-primary-soft);
 }
 
 .puzzleGiveUpButton:hover:not(:disabled) {
@@ -133,10 +133,10 @@
 .puzzleGiveUpButton.isArmed:hover:not(:disabled),
 .puzzleInfoTabs .puzzleInfoTab.isArmed,
 .puzzleInfoTabs .puzzleInfoTab.isArmed:hover:not(:disabled) {
-  color: var(--color-danger);
-  border-color: var(--color-danger);
-  background: color-mix(in srgb, var(--color-danger) 28%, var(--color-panel-deep));
-  box-shadow: inset 0 0 0 1px var(--color-danger);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary-soft);
 }
 
 :root[data-theme="light"] .puzzlePage {

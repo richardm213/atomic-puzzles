@@ -17,6 +17,16 @@ recolor an individual panel or table. Change the role or its shared recipe inste
 `data-theme` for Light/Dark and `data-palette` for the selected palette.
 `data-gemstone-theme` marks palettes that share the gemstone recipes.
 
+## Shared interaction colors
+
+- Content links share the normal, hover, and focus colors in `site-typography.css`.
+  Keep link layout and underline choices in the component; do not add palette-specific link colors.
+- Primary controls share the fill, hover fill, and foreground recipe in `site-primitives.css`,
+  using `--color-action-fill`, `--color-action-fill-hover`, and `--color-on-primary`.
+  Local styles own sizing and layout. Selected, neutral, destructive, and semantic controls can
+  retain their distinct roles.
+- Dialogs and inputs use the shared panel and inset surface roles rather than fixed browns or blues.
+
 ## Keep surfaces consistent
 
 - **Dark:** the mode defines the material recipe for panels, navigation, insets,

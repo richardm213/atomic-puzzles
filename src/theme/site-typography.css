@@ -18,12 +18,37 @@
   -webkit-text-size-adjust: 100%;
 }
 
-a {
+/* Content links share one palette color; layout and underlines stay with each component. */
+a,
+.commentMarkdown a,
+.siteCommentMeta .siteCommentAuthor,
+.siteCommentTarget a,
+.communityTable a,
+.communityActivityUser,
+.profileAliasTooltipLink,
+.playerHoverCardTourRank,
+.rankingsMetaLink {
   color: var(--link-color);
 }
 
 a:hover,
-a:focus-visible {
+a:focus-visible,
+.commentMarkdown a:hover,
+.commentMarkdown a:focus-visible,
+.siteCommentMeta .siteCommentAuthor:hover,
+.siteCommentMeta .siteCommentAuthor:focus-visible,
+.siteCommentTarget a:hover,
+.siteCommentTarget a:focus-visible,
+.communityTable a:hover,
+.communityTable a:focus-visible,
+.communityActivityUser:hover,
+.communityActivityUser:focus-visible,
+.profileAliasTooltipLink:hover,
+.profileAliasTooltipLink:focus-visible,
+.playerHoverCardTourRank:hover,
+.playerHoverCardTourRank:focus-visible,
+.rankingsMetaLink:hover,
+.rankingsMetaLink:focus-visible {
   color: var(--link-hover-color);
 }
 

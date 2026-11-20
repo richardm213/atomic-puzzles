@@ -163,7 +163,6 @@
 }
 
 .siteCommentMeta .siteCommentAuthor {
-  color: var(--color-cyan-bright);
   font-size: 13px;
   font-weight: 650;
   text-decoration: none;
@@ -192,7 +191,6 @@
 }
 
 .siteCommentTarget a {
-  color: var(--color-primary-soft);
   font-size: 11px;
   font-weight: 650;
   text-decoration: none;
@@ -200,7 +198,6 @@
 
 .siteCommentTarget a:hover,
 .siteCommentTarget a:focus-visible {
-  color: var(--color-heading);
   text-decoration: none;
 }
 

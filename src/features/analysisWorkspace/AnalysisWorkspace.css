@@ -729,23 +729,11 @@ button.analysisLichessLink {
 .analysisPlayerNameButton {
   min-height: 36px;
   padding: 0 14px;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 68%, var(--color-border) 32%);
   border-radius: 8px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-primary) 78%, var(--color-cyan) 22%),
-    color-mix(in srgb, var(--color-primary) 82%, var(--color-panel-deep) 18%)
-  );
-  color: #ffffff;
   font-size: 15px;
   font-weight: 650;
   text-align: left;
-  text-shadow: 0 1px 1px color-mix(in srgb, black 48%, transparent);
   box-shadow: 0 1px 0 color-mix(in srgb, white 16%, transparent) inset;
-}
-
-.analysisPlayerNameButton:hover {
-  filter: brightness(1.06);
 }
 
 .analysisPlayerSideButton {
@@ -970,7 +958,6 @@ button.analysisLichessLink {
   width: 100%;
   min-height: 30px;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--color-primary) 72%, var(--color-cyan) 28%);
   box-shadow: none;
 }
 

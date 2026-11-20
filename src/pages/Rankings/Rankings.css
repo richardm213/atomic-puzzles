@@ -164,14 +164,12 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--color-primary-soft);
   font-weight: 600;
   text-decoration: none;
 }
 
 .rankingsMetaLink:hover,
 .rankingsMetaLink:focus-visible {
-  color: var(--color-primary-pale);
   text-decoration: underline;
 }
 

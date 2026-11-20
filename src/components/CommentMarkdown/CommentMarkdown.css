@@ -38,13 +38,8 @@
 }
 
 .commentMarkdown a {
-  color: var(--color-primary-soft);
   text-decoration: underline;
   text-underline-offset: 2px;
-}
-
-.commentMarkdown a:hover {
-  color: var(--color-heading);
 }
 
 .commentMarkdown a:focus-visible {

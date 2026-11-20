@@ -163,8 +163,6 @@ img[src*="/a960e-trophies/"] {
 .buttonRow button,
 .analyzeButton {
   border: 1px solid var(--color-input-border);
-  background: var(--color-panel-strong);
-  color: var(--color-text);
   border-radius: var(--radius-ui);
   font-size: var(--text-control);
   padding: 10px 12px;
@@ -178,17 +176,13 @@ img[src*="/a960e-trophies/"] {
     transform 120ms ease;
 }
 
-.buttonRow button:hover:not(:disabled),
-.analyzeButton:hover:not(.disabled) {
+.buttonRow button:hover:not(:disabled) {
   border-color: var(--color-accent-soft-border);
   background: var(--color-surface-elevated-strong);
   color: var(--color-heading);
 }
 
 .analyzeButton {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: var(--color-on-primary);
   font-weight: 650;
 }
 
