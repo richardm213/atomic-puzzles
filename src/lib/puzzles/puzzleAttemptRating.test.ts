@@ -28,19 +28,26 @@ describe("getPuzzleUnratedReason", () => {
     );
     expect(getPuzzleUnratedReason({ ...input, now: new Date(input.excludedUntil) })).toBeNull();
   });
-  it("uses a 45-day creator cooldown, including across month boundaries", () => {
+  it("uses two calendar months and clamps the day to the end of the target month", () => {
     const input = {
       username: "Creator",
       author: "creator",
-      createdAt: "2028-01-31T12:00:00.000Z",
+      createdAt: "2027-12-31T12:00:00.000Z",
       hasUnratedAttempt: false,
     };
 
-    expect(getPuzzleUnratedReason({ ...input, now: new Date("2028-03-16T11:59:59.999Z") })).toBe(
+    expect(getPuzzleUnratedReason({ ...input, now: new Date("2028-02-29T11:59:59.999Z") })).toBe(
       "creator-window",
     );
     expect(
-      getPuzzleUnratedReason({ ...input, now: new Date("2028-03-16T12:00:00.000Z") }),
+      getPuzzleUnratedReason({ ...input, now: new Date("2028-02-29T12:00:00.000Z") }),
+    ).toBeNull();
+    expect(
+      getPuzzleUnratedReason({
+        ...input,
+        excludedUntil: "2028-02-14T12:00:00.000Z",
+        now: new Date("2028-02-14T12:00:00.000Z"),
+      }),
     ).toBeNull();
   });
 

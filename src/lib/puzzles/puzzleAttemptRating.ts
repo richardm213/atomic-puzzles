@@ -26,13 +26,18 @@ export const getPuzzleUnratedReason = ({
   const solver = normalizedUsername(username);
   if (!solver) return null;
   if (permanentlyUnrated) return "permanent";
-  if (excludedUntil && now < new Date(excludedUntil)) return "rating-exclusion";
-  if (hasUnratedAttempt && !excludedUntil) return "existing-unrated";
+  // Stored exclusions govern existing puzzles, including windows set before the policy changed.
+  if (excludedUntil) return now < new Date(excludedUntil) ? "rating-exclusion" : null;
+  if (hasUnratedAttempt) return "existing-unrated";
   if (solver !== normalizedUsername(author)) return null;
 
   const created = new Date(String(createdAt ?? ""));
   if (Number.isNaN(created.getTime())) return null;
 
-  const cooldownEnds = new Date(created.getTime() + 45 * 24 * 60 * 60 * 1000);
+  const cooldownEnds = new Date(created);
+  cooldownEnds.setUTCMonth(created.getUTCMonth() + 2, 1);
+  const lastDay = new Date(cooldownEnds);
+  lastDay.setUTCMonth(cooldownEnds.getUTCMonth() + 1, 0);
+  cooldownEnds.setUTCDate(Math.min(created.getUTCDate(), lastDay.getUTCDate()));
   return now >= created && now < cooldownEnds ? "creator-window" : null;
 };
