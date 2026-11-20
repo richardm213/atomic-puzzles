@@ -33,7 +33,7 @@
   gap: var(--space-1);
 }
 
-.boardPuzzleComposerField label {
+.boardPuzzleComposerField {
   color: var(--color-heading);
   font-weight: 600;
 }
@@ -41,18 +41,35 @@
 .boardPuzzleComposerField :is(input, textarea) {
   width: 100%;
   min-width: 0;
-  min-height: var(--control-height-touch);
+  min-height: var(--puzzle-draft-input-height, 34px);
   padding-inline: var(--space-2);
   border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-panel-deep);
+  color: var(--color-text);
+  font-family: inherit;
   font-size: var(--text-control);
+  font-weight: 400;
 }
 
 .boardPuzzleComposerMetadata {
+  --puzzle-draft-input-height: 34px;
+
   display: grid;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-1);
+}
+
+.boardPuzzleComposerMetadata > .puzzleMotifsPanel {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.boardPuzzleComposerPlayers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
 }
 
 .boardPuzzleComposerCheckbox {
@@ -70,11 +87,10 @@
 }
 
 .boardPuzzleComposerField textarea {
-  min-height: calc(3lh + 2 * var(--space-2) + 2px);
-  padding-block: var(--space-2);
+  min-height: max(var(--puzzle-draft-input-height, 34px), calc(2lh + 2 * var(--space-1) + 2px));
+  padding-block: var(--space-1);
   field-sizing: content;
-  font-size: var(--text-body);
-  line-height: 1.5;
+  line-height: 1.4;
   resize: none;
 }
 
@@ -108,13 +124,13 @@
   background: var(--color-surface-inset-strong);
 }
 
-.boardPuzzleComposerActions button[type="submit"] {
+.boardPuzzleComposerActions button.boardPuzzleComposerSubmit {
   border-color: var(--color-primary);
   background: var(--color-primary);
   color: var(--color-on-primary);
 }
 
-.boardPuzzleComposerActions button[type="submit"]:is(:hover, :active):not(:disabled) {
+.boardPuzzleComposerActions button.boardPuzzleComposerSubmit:is(:hover, :active):not(:disabled) {
   background: var(--color-primary-hover);
 }
 
@@ -134,16 +150,24 @@
 }
 
 @media (pointer: coarse), (max-width: 560px) {
+  .boardPuzzleComposerMetadata {
+    --puzzle-draft-input-height: var(--control-height-touch);
+  }
+
   .boardPuzzleComposerCheckbox {
     min-height: var(--control-height-touch);
   }
 
-  .boardPuzzleComposerField textarea {
+  .boardPuzzleComposerField :is(input, textarea) {
     font-size: max(1rem, var(--text-control));
   }
 }
 
 @media (max-width: 560px) {
+  .boardPuzzleComposerPlayers {
+    grid-template-columns: 1fr;
+  }
+
   .boardPuzzleComposerBody {
     max-height: 240px;
   }

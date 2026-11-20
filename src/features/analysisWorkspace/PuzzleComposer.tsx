@@ -1,14 +1,11 @@
-import "./PuzzleComposer.css";
-
 import { faPuzzlePiece } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { FormEvent, MouseEventHandler, ReactNode, Ref } from "react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { isApprovedPuzzleCreator } from "../../../shared/domain/puzzles/approvedPuzzleCreators";
-import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
 import { PuzzleStartingFenWarning } from "../../components/PuzzleStartingFenWarning/PuzzleStartingFenWarning";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -23,6 +20,7 @@ import type {
 } from "../../lib/puzzles/puzzleSubmission";
 import { submitPuzzle } from "../../lib/supabase/puzzleQueue";
 import { getErrorMessage } from "../../utils/errors";
+import { PuzzleDraftFields } from "./PuzzleDraftFields";
 
 const usePuzzleSubmissionLabels = () => {
   const { user } = useAuth();
@@ -103,13 +101,14 @@ export const PuzzleComposer = ({
     queryFn: match ? () => fetchMatchPuzzleContext(match.gameId) : skipToken,
     refetchOnWindowFocus: false,
   });
-  const [opaStyle, setOpaStyle] = useState(false);
-  const [explanation, setExplanation] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
+  const [metadata, setMetadata] = useState({
+    opaStyle: false,
+    explanation: "",
+    tags: [] as string[],
+  });
   const [error, setError] = useState("");
   const savingRef = useRef(false);
   const cancelRef = useRef<HTMLButtonElement | null>(null);
-  const explanationId = useId();
   const checkingName = Boolean(match) && context.isPending;
   const setName = context.data?.setName;
   const canSave = Boolean(solution && (!match || context.data));
@@ -129,7 +128,7 @@ export const PuzzleComposer = ({
     savingRef.current = true;
     onSavingChange(true);
     setError("");
-    const puzzle = { fen, solution, opaStyle, explanation, tags };
+    const puzzle = { fen, solution, ...metadata };
     try {
       const result = match
         ? await addMatchPuzzle({ gameId: match.gameId, ...positionHistory, ...puzzle })
@@ -169,29 +168,11 @@ export const PuzzleComposer = ({
           </div>
         ) : null}
         {children}
-        <div className="boardPuzzleComposerMetadata">
-          <label className="boardPuzzleComposerCheckbox">
-            <input
-              type="checkbox"
-              checked={opaStyle}
-              onChange={(event) => setOpaStyle(event.target.checked)}
-              disabled={saving}
-            />
-            OPA style
-          </label>
-          <div className="boardPuzzleComposerField">
-            <label htmlFor={explanationId}>Explanation</label>
-            <textarea
-              id={explanationId}
-              rows={3}
-              maxLength={5000}
-              value={explanation}
-              onChange={(event) => setExplanation(event.target.value)}
-              disabled={saving}
-            />
-          </div>
-          <PuzzleMotifsPanel visible tags={tags} canManage={!saving} onUpdate={setTags} />
-        </div>
+        <PuzzleDraftFields
+          value={metadata}
+          disabled={saving}
+          onChange={(changes) => setMetadata((current) => ({ ...current, ...changes }))}
+        />
       </div>
       <div className="boardPuzzleComposerFooter">
         {setName ? <p>Set: {setName}</p> : null}
@@ -205,7 +186,7 @@ export const PuzzleComposer = ({
           <button type="button" ref={cancelRef} disabled={saving} onClick={onCancel}>
             Cancel
           </button>
-          <button type="submit" disabled={!canSave || saving}>
+          <button type="submit" className="boardPuzzleComposerSubmit" disabled={!canSave || saving}>
             {saving ? submitLabel.pending : submitLabel.idle}
           </button>
         </div>

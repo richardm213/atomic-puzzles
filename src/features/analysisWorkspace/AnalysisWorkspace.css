@@ -1139,6 +1139,10 @@ button.analysisLichessLink {
   gap: 4px;
 }
 
+.analysisBottomToolbar.playbackOnly {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .analysisToolbarButton {
   width: 100%;
   min-width: 0;
