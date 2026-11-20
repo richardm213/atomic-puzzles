@@ -389,6 +389,54 @@ describe("useAtomicDbAnalysis", () => {
     unmount();
   });
 
+  it("merges a late partial AtomicDB result into the running Stockfish search", async () => {
+    vi.useFakeTimers();
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 627";
+    let resolveDatabase!: (response: Response) => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveDatabase = resolve;
+          }),
+      ),
+    );
+    let finishEngine!: (
+      candidates: Awaited<ReturnType<typeof analyzeFairyStockfishPosition>>,
+    ) => void;
+    let signal: AbortSignal | undefined;
+    const candidates = [
+      { move: "e2e4", multipv: 1, scoreType: "cp", score: 75 },
+      { move: "g1f3", multipv: 2, scoreType: "cp", score: 60 },
+    ] as const;
+    analyzeWithEngineMock.mockImplementation((_fen, _count, searchSignal, progress) => {
+      signal = searchSignal;
+      progress?.([...candidates]);
+      return new Promise((resolve) => {
+        finishEngine = resolve;
+      });
+    });
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(fen, { debounceMs: 0, fallbackToEngine: true, lineCount: 2 }),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(2_000));
+    expect(result.current.source).toBe("engine");
+    await act(async () =>
+      resolveDatabase(bundleResponse({ moves: [{ uci: "d2d4", score: 100 }] })),
+    );
+    expect(result.current.source).toBe("mixed");
+    expect(result.current.result?.position?.moves.map((move) => move.uci)).toEqual([
+      "d2d4",
+      "e2e4",
+    ]);
+    expect(analyzeWithEngineMock).toHaveBeenCalledOnce();
+    expect(signal?.aborted).toBe(false);
+    await act(async () => finishEngine([{ ...candidates[0], score: 82 }, candidates[1]]));
+    expect(result.current.status).toBe("ready");
+    expect(result.current.result?.position?.moves[1]?.score).toBe(82);
+  });
+
   it("fills and extends an AtomicDB mate row that has missing evaluations", async () => {
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     vi.stubGlobal(
