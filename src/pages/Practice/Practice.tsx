@@ -357,7 +357,7 @@ export const PracticePage = () => {
     status,
     error,
   } = useOpeningExplorer({
-    enabled: !puzzleDraft || explorerOpen,
+    enabled: explorerOpen || (!puzzleDraft && !handoffActive),
     fen: analysisFen,
     playerColor: opponentSide,
     showPerformance: opponentSource === "player" && showPerformance,
@@ -548,7 +548,11 @@ export const PracticePage = () => {
     clearTriedMoves();
   }, [clearAutoMoveState, clearTriedMoves]);
 
+  const previousOpponent = useRef({ engine: practiceEngine, model: settings.opponentModel });
   useEffect(() => {
+    const { engine, model } = previousOpponent.current;
+    if (engine === practiceEngine && model === settings.opponentModel) return;
+    previousOpponent.current = { engine: practiceEngine, model: settings.opponentModel };
     resetOpponentMoveChoices();
     setGamePaused(true);
   }, [practiceEngine, settings.opponentModel, resetOpponentMoveChoices]);

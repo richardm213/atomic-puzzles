@@ -283,7 +283,7 @@ test("engine handoff stays on the branch, rewinding restores the database, and s
         JSON.stringify({ fen, pgn: '[Variant "Atomic"]\n\n1. e4', line: 0, ply: 1 }),
       );
     }
-    localStorage.setItem("atomic-puzzles.practice.moves-open", "false");
+    localStorage.setItem("atomic-puzzles.practice.moves-open", "true");
   });
   await page.goto("/practice");
   const fen = page.getByRole("textbox", { name: "FEN", exact: true });
@@ -304,10 +304,16 @@ test("engine handoff stays on the branch, rewinding restores the database, and s
   await page.reload();
   await expect(fen).toHaveValue(/2n5.*5N2.* w /);
   expect(requestedFens.some((f) => f.includes("5N2"))).toBe(false);
+  await page.getByRole("button", { name: "Show database moves", exact: true }).click();
+  await expect.poll(() => requestedFens.some((f) => f.includes("5N2"))).toBe(true);
+  await page.getByRole("button", { name: "Hide database moves", exact: true }).click();
+  requestedFens.length = 0;
   await page.getByRole("button", { name: "Go to start", exact: true }).click();
   await expect(fen).toHaveValue(/PPPPPPPP\/RNBQKBNR w /);
   await expect.poll(() => requestedFens.some((f) => f.includes("PPPPPPPP/RNBQKBNR w "))).toBe(true);
-  await page.getByRole("button", { name: "Practice settings", exact: true }).click();
+  const navigation = page.getByRole("banner");
+  await navigation.getByRole("button", { name: "Open settings", exact: true }).click();
+  await navigation.getByRole("button", { name: "Engine settings", exact: true }).click();
   await expect(page.getByRole("slider", { name: /^Strength/ })).toBeVisible();
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 900 });
