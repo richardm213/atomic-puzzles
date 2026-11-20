@@ -18,6 +18,7 @@ it("keeps illegal king explosions separate from wins and stalemate", () => {
   const stalemate = lessonPosition(chapter("stalemate").start.fen);
   expect(stalemate.isStalemate()).toBe(true);
   expect(lessonPosition(chapter("en-passant").final.fen).outcome()?.winner).toBe("white");
+  expect(lessonPosition(chapter("sacrifice").final.fen).outcome()?.winner).toBe("white");
 });
 
 it("accepts all three connections on the rook’s rank", () => {

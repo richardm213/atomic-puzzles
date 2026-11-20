@@ -266,8 +266,8 @@ export const atomicLessons: readonly LessonDefinition[] = [
   {
     id: "sacrifice",
     group: "Tactics",
-    title: "Sacrifice to clear a route",
-    fen: "4k2r/4p1pp/5n2/8/8/3Q4/8/2B1K3 w - - 0 1",
+    title: "Sacrifice to clear a square",
+    fen: "4k3/4p1pp/4pn2/8/8/3Q4/8/2B1K3 w - - 0 1",
     turns: [
       {
         san: "Qg6+",
@@ -276,14 +276,24 @@ export const atomicLessons: readonly LessonDefinition[] = [
         note: "Qg6+ makes Black deal with a check. The h-pawn can take, but look at what else is near g6.",
         reply: {
           san: "hxg6",
-          note: "The queen, h-pawn, and knight on f6 disappear. The bishop now has a route to e7.",
+          note: "The queen, h-pawn, and knight disappear. The explosion clears f6 for the bishop.",
         },
       },
       {
         san: "Bg5",
         prompt: "Create a winning threat with the bishop.",
         hint: "From c1, go through d2, e3, and f4.",
-        note: "The bishop threatens Bxe7#. The sacrifice was about removing the f6-knight and creating a new threat, not winning material back.",
+        note: "The bishop can now reach e7 through the cleared f6-square. Black’s e6-pawn blocks the e7-pawn from moving out of the way.",
+        reply: {
+          san: "g6",
+          note: "The pawn push doesn’t close the bishop’s diagonal. Finish the attack.",
+        },
+      },
+      {
+        san: "Bxe7#",
+        prompt: "Use the cleared square to win.",
+        hint: "Pass through f6 and capture the pawn beside the king.",
+        note: "The explosion on e7 reaches the king on e8. The queen sacrifice cleared f6 so the bishop could deliver the winning capture.",
       },
     ],
   },
