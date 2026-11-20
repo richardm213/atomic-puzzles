@@ -41,9 +41,11 @@ const exchangeMarketIdSchema = z
   .regex(/^[a-z0-9-]+$/);
 
 const bodySchema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("bootstrap") }),
   z.object({ action: z.literal("exchangeMarkets") }),
-  z.object({ action: z.literal("predictionPositions") }),
+  z.object({
+    action: z.literal("predictionPositions"),
+    marketIds: z.array(exchangeMarketIdSchema).min(1).max(100).optional(),
+  }),
   z.object({
     action: z.literal("exchangeTraderHistory"),
     marketId: exchangeMarketIdSchema,
@@ -261,12 +263,21 @@ const loadPredictionMarketStates = async (
   const recentFillsByMarket = groupByMarketId(recentFills);
   const positionsByMarket = groupByMarketId(historyPositions);
   const userOrdersByMarket = groupByMarketId(userOrders);
+  const now = new Date();
   return markets.map((market) => {
+    const marketOrders = bookOrdersByMarket.get(market.id) ?? [];
+    const nextExpiry = marketOrders.reduce((deadline, order) => {
+      const expires = order.expires_at ? Date.parse(order.expires_at) : NaN;
+      return order.remaining_quantity > 0 && expires > now.getTime()
+        ? Math.min(deadline, expires)
+        : deadline;
+    }, Infinity);
     const marketRecentFills = (recentFillsByMarket.get(market.id) ?? []).slice(0, 100);
     const history = positionsByMarket.get(market.id) ?? [];
     return {
       market,
-      book: buildPredictionBook(bookOrdersByMarket.get(market.id) ?? []),
+      book: buildPredictionBook(marketOrders, now),
+      nextOrderExpiry: Number.isFinite(nextExpiry) ? nextExpiry : null,
       fills: marketRecentFills,
       positions: history.filter((position) => position.quantity > 0),
       historyPositions: history,
@@ -315,8 +326,7 @@ export const bettingRoute = async (event: FunctionEvent) => {
   }
   const identity = await authenticateRequest(
     event.headers,
-    input.action === "bootstrap" ||
-      input.action === "exchangeMarkets" ||
+    input.action === "exchangeMarkets" ||
       input.action === "predictionPositions" ||
       input.action === "suggestions" ||
       input.action === "exchangeMarketBatch" ||
@@ -432,31 +442,24 @@ export const bettingRoute = async (event: FunctionEvent) => {
     });
   }
 
-  if (input.action === "bootstrap") {
-    const [exchangeMarkets, allPredictionPositions] = await Promise.all([
-      loadExchangeMarketCatalog(supabase),
-      loadPredictionPositions(supabase),
-    ]);
-    const exchangeMarketStates = await loadPredictionMarketStates(
-      supabase,
-      exchangeMarkets.map((market) => market.id),
-      identity?.username ?? null,
-    );
-    return identityResponse(identity, 200, {
-      result: {
-        exchangeMarkets,
-        allPredictionPositions,
-        exchangeMarketStates,
-      },
-    });
-  }
-
   if (input.action === "exchangeMarkets") {
     return identityResponse(identity, 200, { result: await loadExchangeMarketCatalog(supabase) });
   }
 
   if (input.action === "predictionPositions") {
-    return identityResponse(identity, 200, { result: await loadPredictionPositions(supabase) });
+    const markets = supabase
+      .from("prediction_markets")
+      .select(
+        "id,status,outcome,settlement_price_cents,sportsbook_volume_coins,exchange_volume_coins",
+      )
+      .not("group_id", "is", null);
+    const [result, summaries] = await Promise.all([
+      loadPredictionPositions(supabase, input.marketIds),
+      input.marketIds ? markets.in("id", input.marketIds) : markets,
+    ]);
+    if (summaries.error)
+      throw new Error(`Unable to load market settlements: ${summaries.error.message}`);
+    return identityResponse(identity, 200, { result, markets: summaries.data ?? [] });
   }
 
   if (input.action === "exchangeMarketBatch") {

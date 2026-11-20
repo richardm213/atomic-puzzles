@@ -315,7 +315,7 @@ export const BettingMarketBrowser = ({
                       setEditingOrderContext({
                         marketId: definition.id,
                         outcome,
-                        orders,
+                        orderIds: orders.map((order) => order.id),
                       })
                     }
                     onSelect={(side, price, quantity) =>

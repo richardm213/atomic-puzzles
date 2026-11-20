@@ -68,10 +68,16 @@ export const predictionMarketBatchQueryOptions = (marketIds: readonly Prediction
   const uniqueMarketIds = [...new Set(marketIds)].sort();
   return queryOptions({
     queryKey: predictionMarketBatchQueryKey(uniqueMarketIds),
-    queryFn: () => fetchPredictionMarkets(uniqueMarketIds),
+    queryFn: ({ signal }) => fetchPredictionMarkets(uniqueMarketIds, signal),
     staleTime: 1_000,
-    // Realtime and version checks refresh changed markets; occasionally reconcile expirations.
-    refetchInterval: 60_000,
+    refetchInterval: ({ state }) => {
+      const nextExpiry = Math.min(
+        ...(state.data ?? []).map((market) => market.nextOrderExpiry ?? Infinity),
+      );
+      if (!Number.isFinite(nextExpiry)) return false;
+      // The database cleanup can run after the book has already stopped accepting the order.
+      return Math.max(250, Math.min(nextExpiry - Date.now() + 100, 2_147_483_647));
+    },
     refetchIntervalInBackground: false,
   });
 };
@@ -80,9 +86,6 @@ export const patchPredictionMarketState = (
   queryClient: QueryClient,
   state: PredictionMarketState,
 ) => {
-  const previous = queryClient.getQueryData<PredictionMarketState>(
-    predictionMarketQueryKey(state.market.id),
-  );
   queryClient.setQueryData(predictionMarketQueryKey(state.market.id), state);
   queryClient.setQueriesData<PredictionMarketState[]>(
     { queryKey: [...predictionMarketQueryRoot, "batch"] },
@@ -91,10 +94,4 @@ export const patchPredictionMarketState = (
         marketState.market.id === state.market.id ? state : marketState,
       ),
   );
-  if (JSON.stringify(previous?.positions) !== JSON.stringify(state.positions)) {
-    void queryClient.invalidateQueries(
-      { queryKey: ["coins", "summary"] },
-      { cancelRefetch: false },
-    );
-  }
 };

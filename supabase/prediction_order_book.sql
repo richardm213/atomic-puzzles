@@ -42,6 +42,8 @@ create table if not exists public.prediction_orders (
   check (filled_quantity + remaining_quantity <= quantity)
 );
 
+alter table public.prediction_orders add column if not exists expires_at timestamptz;
+
 create index if not exists prediction_orders_book_idx
   on public.prediction_orders (market_id, outcome, side, status, price_cents, created_at, id);
 create index if not exists prediction_orders_user_idx
@@ -271,6 +273,47 @@ on conflict (id) do update set
   resolved_at = coalesce(public.prediction_markets.resolved_at, now()),
   updated_at = now();
 
+-- The scheduled job cleans up idle markets. Matching also calls this under the
+-- market lock so expired sell reservations cannot block a new sell.
+create or replace function public.expire_prediction_orders(p_market_id text default null)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  expired_market_id text;
+  expired_order record;
+  expired_count integer := 0;
+begin
+  for expired_market_id in
+    select distinct market_id
+    from public.prediction_orders
+    where (p_market_id is null or market_id = p_market_id)
+      and status in ('open', 'partial') and remaining_quantity > 0
+      and expires_at <= clock_timestamp()
+    order by market_id
+  loop
+    perform pg_advisory_xact_lock(hashtext('prediction-market:' || expired_market_id));
+    for expired_order in
+      select id, username
+      from public.prediction_orders
+      where market_id = expired_market_id
+        and status in ('open', 'partial') and remaining_quantity > 0
+        and expires_at <= clock_timestamp()
+      order by id
+    loop
+      perform public.cancel_prediction_order(expired_order.username, expired_order.id);
+      expired_count := expired_count + 1;
+    end loop;
+  end loop;
+  return expired_count;
+end;
+$$;
+
+revoke all on function public.expire_prediction_orders(text) from public, anon, authenticated;
+grant execute on function public.expire_prediction_orders(text) to service_role;
+
 create or replace function public.place_prediction_order(
   p_username text,
   p_market_id text,
@@ -316,9 +359,11 @@ begin
   for update;
 
   if market_row.id is null then raise exception 'Prediction market not found'; end if;
-  if market_row.status <> 'open' or market_row.closes_at <= now() then
+  if market_row.status <> 'open' or market_row.closes_at <= clock_timestamp() then
     raise exception 'Prediction market is closed';
   end if;
+
+  perform public.expire_prediction_orders(p_market_id);
 
   if exists (
     select 1
@@ -327,6 +372,7 @@ begin
       and username = normalized_username
       and status in ('open', 'partial')
       and remaining_quantity > 0
+      and (expires_at is null or expires_at > clock_timestamp())
       and (
         (
           normalized_side = 'buy'
@@ -403,6 +449,7 @@ begin
       where market_id = p_market_id
         and status in ('open', 'partial')
         and remaining_quantity > 0
+        and (expires_at is null or expires_at > clock_timestamp())
         and username <> incoming.username
         and (
           (outcome = incoming.outcome and side = 'sell' and price_cents <= incoming.price_cents)
@@ -499,6 +546,7 @@ begin
       where market_id = p_market_id
         and status in ('open', 'partial')
         and remaining_quantity > 0
+        and (expires_at is null or expires_at > clock_timestamp())
         and username <> incoming.username
         and (
           (outcome = incoming.outcome and side = 'buy' and price_cents >= incoming.price_cents)
@@ -710,6 +758,7 @@ as $$
 declare
   normalized_username text := lower(btrim(coalesce(p_username, '')));
   order_row public.prediction_orders%rowtype;
+  replacement jsonb;
 begin
   if p_price_cents < 1 or p_price_cents > 99 then
     raise exception 'Prediction order price must be between 1 and 99 cents';
@@ -730,12 +779,14 @@ begin
   from public.prediction_orders
   where id = p_order_id
   for update;
-  if order_row.status not in ('open', 'partial') or order_row.remaining_quantity <= 0 then
+  if order_row.status not in ('open', 'partial')
+    or order_row.remaining_quantity <= 0
+    or order_row.expires_at <= clock_timestamp() then
     raise exception 'Prediction order is not open';
   end if;
 
   perform public.cancel_prediction_order(normalized_username, p_order_id);
-  return public.place_prediction_order(
+  replacement := public.place_prediction_order(
     normalized_username,
     order_row.market_id,
     order_row.outcome,
@@ -743,6 +794,15 @@ begin
     p_price_cents,
     p_quantity
   );
+  if order_row.expires_at is not null then
+    if order_row.expires_at <= clock_timestamp() then
+      raise exception 'Prediction order is not open';
+    end if;
+    update public.prediction_orders
+    set expires_at = least(expires_at, order_row.expires_at)
+    where id = (replacement->>'orderId')::bigint;
+  end if;
+  return replacement;
 end;
 $$;
 

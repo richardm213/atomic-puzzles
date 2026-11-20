@@ -8,7 +8,6 @@ import {
   findCurrentTournamentOpponent,
   isRestrictedPredictionOrder,
 } from "../../lib/betting/betting";
-import { bettingQueryKeys } from "../../lib/betting/bettingQueries";
 import { coinSummaryQueryOptions, updateCachedCoinBalance } from "../../lib/coins/coinQueries";
 import {
   tournamentBracketQueryOptions,
@@ -23,11 +22,11 @@ import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predict
 import {
   availablePredictionContracts,
   comparePredictionMarketPriority,
+  isPendingPredictionOrder,
   placePredictionOrder,
   type PredictionMarketDefinition,
   type PredictionMarketState,
   predictionMarketVolume,
-  type PredictionOrder,
   type PredictionOrderSide,
   type PredictionOutcome,
   sortPredictionMarketsByChance,
@@ -143,10 +142,10 @@ export const useBettingWorkspace = () => {
   const [{ view, marketCategory, winnerPosition }, setLocation] = useState(readBettingLocation);
   const [predictionSelection, setPredictionSelection] = useState<PredictionSelection | null>(null);
   const [expandedStrike, setExpandedStrike] = useState<PredictionSelection | null>(null);
-  const [editingOrderContext, setEditingOrderContext] = useState<{
+  const [editingOrderSelection, setEditingOrderContext] = useState<{
     marketId: string;
     outcome: PredictionOutcome;
-    orders: PredictionOrder[];
+    orderIds: number[];
   } | null>(null);
   const [predictionPriceInput, setPredictionPriceInput] = useState("50");
   const [predictionSide, setPredictionSide] = useState<PredictionOrderSide>("buy");
@@ -163,10 +162,7 @@ export const useBettingWorkspace = () => {
   const betSlipRef = useRef<HTMLElement>(null);
   const predictionStakeRef = useRef<HTMLInputElement>(null);
 
-  const predictionCatalogQuery = useQuery({
-    ...predictionMarketCatalogQueryOptions(),
-    enabled: view !== "suggestions",
-  });
+  const predictionCatalogQuery = useQuery(predictionMarketCatalogQueryOptions());
   const predictionMarketGroups = useMemo(
     () => predictionCatalogQuery.data ?? [],
     [predictionCatalogQuery.data],
@@ -174,7 +170,6 @@ export const useBettingWorkspace = () => {
   const activePredictionGroup = predictionMarketGroups.find(
     (group) => group.id === predictionGroupIdByCategory[marketCategory],
   );
-  const showingHistory = view === "all" || (view === "mine" && isAuthenticated);
   const coinSummaryQuery = useQuery({
     ...coinSummaryQueryOptions(username),
     enabled: isAuthenticated,
@@ -189,22 +184,17 @@ export const useBettingWorkspace = () => {
   });
   const predictionMarketIds = useMemo(
     () =>
-      showingHistory
-        ? predictionMarketGroups.flatMap((group) => group.markets.map((market) => market.id))
-        : view === "markets"
-          ? (activePredictionGroup?.markets.map((market) => market.id) ?? [])
-          : [],
-    [activePredictionGroup, predictionMarketGroups, showingHistory, view],
+      view === "markets" ? (activePredictionGroup?.markets.map((market) => market.id) ?? []) : [],
+    [activePredictionGroup, view],
   );
   const predictionMarketQuery = useQuery({
     ...predictionMarketBatchQueryOptions(predictionMarketIds),
     enabled: predictionMarketIds.length > 0,
   });
-  usePredictionMarketRealtime(
-    queryClient,
-    predictionMarketQuery.data ? predictionMarketIds : [],
-    false,
-  );
+  const refreshMarket = usePredictionMarketRealtime(queryClient, predictionMarketIds, {
+    trackHistory: true,
+    username: user?.username,
+  });
   const predictionMarketStates = useMemo(
     () => predictionMarketQuery.data ?? [],
     [predictionMarketQuery.data],
@@ -219,19 +209,7 @@ export const useBettingWorkspace = () => {
     [predictionMarketStates],
   );
   const currentTime = useMarketDeadlineClock(deadlines);
-  const history = useBettingHistory({
-    showingHistory,
-    isAuthenticated,
-    username,
-    catalog: predictionCatalogQuery,
-    markets: {
-      isPending: predictionMarketIds.length > 0 && predictionMarketQuery.isPending,
-      isError: predictionMarketQuery.isError,
-      error: predictionMarketQuery.error,
-    },
-    predictionMarketGroups,
-    predictionMarketStates,
-  });
+  const history = useBettingHistory(predictionMarketGroups, predictionCatalogQuery, user?.username);
   const predictionMarketOnlyCategory =
     marketCategory === "Ban" || marketCategory === "2026 AWC Side Bets";
   const activePredictionDisplayMode: PredictionDisplayMode = predictionMarketOnlyCategory
@@ -320,6 +298,7 @@ export const useBettingWorkspace = () => {
   const clearSelection = useCallback(() => {
     setPredictionSelection(null);
     setExpandedStrike(null);
+    setEditingOrderContext(null);
   }, []);
 
   useEffect(() => {
@@ -366,7 +345,7 @@ export const useBettingWorkspace = () => {
   ) => {
     updateCachedCoinBalance(queryClient, account, balance);
     patchPredictionMarketState(queryClient, state);
-    void queryClient.invalidateQueries({ queryKey: bettingQueryKeys.predictionPositions });
+    refreshMarket(state.market.id);
   };
 
   const placePredictionMutation = useMutation({
@@ -439,16 +418,26 @@ export const useBettingWorkspace = () => {
     );
   };
 
+  const editingOrders = editingOrderSelection
+    ? predictionStateByMarketId
+        .get(editingOrderSelection.marketId)
+        ?.orders.filter(
+          (order) =>
+            editingOrderSelection.orderIds.includes(order.id) && isPendingPredictionOrder(order),
+        )
+    : undefined;
+  const editingOrderContext =
+    editingOrderSelection && editingOrders?.length
+      ? { ...editingOrderSelection, orders: editingOrders }
+      : null;
   const auth = { isAuthenticated, authLoading, login, username };
   return {
     view,
     selectView,
-    showingHistory,
     ...history,
     predictionCatalogQuery,
     auth,
     predictionMarketGroups,
-    predictionMarketStates,
     countryByPlayer,
     editingOrderContext,
     setEditingOrderContext,

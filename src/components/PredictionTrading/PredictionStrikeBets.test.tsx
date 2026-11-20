@@ -44,38 +44,41 @@ it.each(["resolved", "closed", "open"] as const)(
         settlement: { time: end, price: 100 },
       });
     }
-    client.setQueryData(allPredictionPositionsQueryOptions().queryKey, [
-      {
-        marketId: "strike",
-        username: "buyer",
-        outcome: "yes",
-        quantity: 1,
-        reservedQuantity: 0,
-        averagePriceCents: 35.25,
-        updatedAt: "2026-11-08T00:00:00Z",
-      },
-      {
-        marketId: "strike",
-        username: "big_buyer",
-        outcome: "yes",
-        quantity: 100,
-        closedCost: 20,
-        closedProceeds: 25,
-        fees: 0.5,
-        reservedQuantity: 0,
-        averagePriceCents: 40,
-        updatedAt: "2026-11-07T00:00:00Z",
-      },
-      {
-        marketId: "other",
-        username: "unrelated",
-        outcome: "yes",
-        quantity: 100,
-        reservedQuantity: 0,
-        averagePriceCents: 50,
-        updatedAt: "2026-11-08T00:00:00Z",
-      },
-    ]);
+    client.setQueryData(allPredictionPositionsQueryOptions().queryKey, {
+      markets: [],
+      positions: [
+        {
+          marketId: "strike",
+          username: "buyer",
+          outcome: "yes",
+          quantity: 1,
+          reservedQuantity: 0,
+          averagePriceCents: 35.25,
+          updatedAt: "2026-11-08T00:00:00Z",
+        },
+        {
+          marketId: "strike",
+          username: "big_buyer",
+          outcome: "yes",
+          quantity: 100,
+          closedCost: 20,
+          closedProceeds: 25,
+          fees: 0.5,
+          reservedQuantity: 0,
+          averagePriceCents: 40,
+          updatedAt: "2026-11-07T00:00:00Z",
+        },
+        {
+          marketId: "other",
+          username: "unrelated",
+          outcome: "yes",
+          quantity: 100,
+          reservedQuantity: 0,
+          averagePriceCents: 50,
+          updatedAt: "2026-11-08T00:00:00Z",
+        },
+      ],
+    });
     client.setQueryData(predictionMarketCatalogQueryOptions().queryKey, [
       {
         id: "group",

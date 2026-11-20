@@ -1,3 +1,4 @@
+import type { BettingMarketSummary } from "../../lib/betting/betting";
 import {
   type PredictionHistoryPosition,
   type PredictionMarketDefinition,
@@ -48,12 +49,11 @@ export const predictionPnlByMarketId = (
 const roundCoins = (value: number) => Math.round(value * 1_000_000) / 1_000_000;
 
 const predictionSettlement = (
-  state: PredictionMarketState | undefined,
+  market: BettingMarketSummary | undefined,
   outcome: PredictionOutcome,
   quantity: number,
   totalCost: number,
 ): Pick<BetHistoryEntry, "status" | "payout"> => {
-  const market = state?.market;
   if (market?.status === "refunded") return { status: "refunded", payout: totalCost };
   if (market?.status !== "resolved") return { status: "open", payout: 0 };
   const price = market.settlementPriceCents;
@@ -75,15 +75,18 @@ const predictionSettlement = (
 export const buildBetHistory = ({
   predictionPositions,
   predictionMarketGroups,
-  predictionMarketStates,
+  predictionMarketStates = [],
+  marketSummaries = [],
   realizedOnly = false,
 }: {
   predictionPositions: PredictionHistoryPosition[];
   predictionMarketGroups: PredictionMarketGroup[];
-  predictionMarketStates: PredictionMarketState[];
+  predictionMarketStates?: PredictionMarketState[];
+  marketSummaries?: BettingMarketSummary[];
   realizedOnly?: boolean;
 }): BetHistoryEntry[] => {
-  const stateByMarketId = new Map(predictionMarketStates.map((state) => [state.market.id, state]));
+  const marketById = new Map(marketSummaries.map((market) => [market.id, market]));
+  for (const { market } of predictionMarketStates) marketById.set(market.id, market);
   const predictionMarketById = new Map<
     string,
     { definition: PredictionMarketDefinition; title: string }
@@ -99,7 +102,6 @@ export const buildBetHistory = ({
     const predictionMarket = predictionMarketById.get(position.marketId);
     if (!predictionMarket || position.averagePriceCents === null) return [];
     const { definition, title } = predictionMarket;
-    const state = stateByMarketId.get(position.marketId);
     const remainingCost = roundCoins(
       position.remainingCost ?? (position.averagePriceCents * position.quantity) / 100,
     );
@@ -116,7 +118,7 @@ export const buildBetHistory = ({
     )
       return [];
     const settlement = predictionSettlement(
-      state,
+      marketById.get(position.marketId),
       position.outcome,
       position.quantity,
       remainingCost,

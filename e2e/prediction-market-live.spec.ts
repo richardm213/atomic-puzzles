@@ -85,12 +85,12 @@ test("side bets have their own route and secondary markets stay in the dropdown"
     action: "exchangeMarketBatch",
     marketIds: [initialMarketId],
   });
+  await expect(page.getByRole("tab", { name: "All bets (0)", exact: true })).toBeVisible();
+  expect(bettingRequests).toContainEqual({ action: "predictionPositions" });
   expect(
     bettingRequests.filter(
       ({ action, marketIds }) =>
-        action === "bootstrap" ||
-        action === "predictionPositions" ||
-        marketIds?.some((id) => id !== initialMarketId),
+        action === "bootstrap" || marketIds?.some((id) => id !== initialMarketId),
     ),
   ).toEqual([]);
   await expect(page.locator(".betSlipContract em")).toHaveCount(0);
@@ -100,6 +100,12 @@ test("side bets have their own route and secondary markets stay in the dropdown"
   await page.getByRole("button", { name: "Order book view", exact: true }).click();
   await expect(page.getByText("jude 3+ pts vs max", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: /jude less than 3 pts vs max/ })).toHaveCount(0);
+  await page.getByRole("tab", { name: "All bets (0)", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Status", exact: true })).toBeVisible();
+  expect(
+    bettingRequests.filter(({ marketIds }) => marketIds?.some((id) => id !== initialMarketId)),
+  ).toEqual([]);
+  await page.getByRole("tab", { name: "Markets", exact: true }).click();
 
   await page.getByRole("button", { name: "AWC Side Bets", exact: true }).click();
   await expect(page.getByText("2026 AWC Side Bets", { exact: true })).toHaveCount(1);
@@ -356,8 +362,15 @@ test("live book updates render promptly and missed events recover without idle b
   page,
 }) => {
   const marketId = "awc-2026-champion-natso";
+  const inactiveId = "awc-2026-side-bets-strike";
+  let balance = 200;
+  let inBets = 25;
+  let positionQuantity = 0;
+  let paidOut = false;
+  let inactiveVersion = 1;
+  let deadline: number | null = null;
   await page.route("**/api/coins", (route) =>
-    route.fulfill({ json: { result: { balance: 200, inBets: 25, dailyClaimAvailable: false } } }),
+    route.fulfill({ json: { result: { balance, inBets, dailyClaimAvailable: false } } }),
   );
   let version = 1;
   let recoveryVersion = version;
@@ -403,7 +416,10 @@ test("live book updates render promptly and missed events recover without idle b
   await page.route("**/rest/v1/prediction_market_updates?**", (route) => {
     versionReads++;
     return route.fulfill({
-      json: [{ market_id: marketId, version: recoveryVersion, change_scope: "book" }],
+      json: [
+        { market_id: marketId, version: recoveryVersion, change_scope: "book" },
+        { market_id: inactiveId, version: inactiveVersion, change_scope: "book" },
+      ],
     });
   });
   const catalog = ["natso", "rabbier"].map((username, index) => ({
@@ -422,7 +438,25 @@ test("live book updates render promptly and missed events recover without idle b
     outcome_yes_country_code: null,
     outcome_no_country_code: null,
   }));
+  const inactiveMarket = {
+    ...catalog[0]!,
+    id: inactiveId,
+    group_id: "awc-2026-side-bets",
+    group_path: "/betting/awc-2026-side-bets",
+    group_title: "Side Bets",
+    display_name: "inactive strike",
+  };
+  const position = (id: string) => ({
+    market_id: id,
+    username: "e2e-player",
+    outcome: "yes",
+    quantity: positionQuantity,
+    reserved_quantity: 0,
+    average_price_cents: 31,
+    updated_at: "2026-11-08T00:00:00Z",
+  });
   const marketState = (id: string) => ({
+    nextOrderExpiry: id === marketId && deadline && Date.now() < deadline ? deadline : null,
     market: {
       id,
       question: "Who will win AWC?",
@@ -439,14 +473,14 @@ test("live book updates render promptly and missed events recover without idle b
       yes: {
         bids: id === marketId && extraOrder ? [{ priceCents: 25, quantity: 10 }] : [],
         asks:
-          id === marketId && ask !== null
+          id === marketId && ask !== null && (!deadline || Date.now() < deadline)
             ? [{ priceCents: ask, quantity: primaryCancelled ? 20 : 100 }]
             : [],
       },
       no: { bids: [], asks: [] },
     },
     fills: [],
-    positions: [],
+    positions: id === marketId && positionQuantity > 0 ? [position(id)] : [],
     orders: [
       ...(id === marketId && ask !== null && !primaryCancelled
         ? [
@@ -488,8 +522,25 @@ test("live book updates render promptly and missed events recover without idle b
   });
   await page.route("**/api/betting", async (route) => {
     const body = route.request().postDataJSON();
-    if (body.action === "exchangeMarkets") return route.fulfill({ json: { result: catalog } });
-    if (body.action === "allBets") return route.fulfill({ json: { result: [] } });
+    if (body.action === "exchangeMarkets")
+      return route.fulfill({ json: { result: [...catalog, inactiveMarket] } });
+    if (body.action === "predictionPositions") {
+      const ids = body.marketIds ?? [marketId, inactiveId];
+      return route.fulfill({
+        json: {
+          result:
+            positionQuantity > 0
+              ? ids.filter((id: string) => id === marketId || id === inactiveId).map(position)
+              : [],
+          markets: ids.map((id: string) => ({
+            id,
+            status: id === inactiveId && paidOut ? "resolved" : "open",
+            outcome: id === inactiveId && paidOut ? "yes" : null,
+            settlement_price_cents: null,
+          })),
+        },
+      });
+    }
     if (body.action === "cancelExchangeOrder") {
       expect(body.marketId).toBe(marketId);
       if (failNextCancel) {
@@ -516,7 +567,8 @@ test("live book updates render promptly and missed events recover without idle b
     }
     return route.fulfill({ status: 400, json: { error: "Unexpected test request" } });
   });
-  await page.goto("/betting/awc-2026-champion");
+  await page.goto("/betting?market=champion");
+  await page.getByRole("button", { name: "Order book view", exact: true }).click();
   const pending = page.getByRole("button", {
     name: "View your pending orders for natso",
     exact: true,
@@ -542,40 +594,75 @@ test("live book updates render promptly and missed events recover without idle b
   await expect.poll(() => versionReads).toBeGreaterThanOrEqual(idleReads + 2);
   expect(batches).toHaveLength(settledBatches);
 
-  ask = 31;
-  version++;
-  const realtimeStart = performance.now();
-  socket!.send(
-    JSON.stringify([
-      null,
-      null,
-      topic,
-      "postgres_changes",
-      {
-        ids: [1],
-        data: {
-          schema: "public",
-          table: "prediction_market_updates",
-          type: "UPDATE",
-          commit_timestamp: new Date().toISOString(),
-          errors: null,
-          columns: [
-            { name: "market_id", type: "text" },
-            { name: "version", type: "int8" },
-            { name: "change_scope", type: "text" },
-          ],
-          record: { market_id: marketId, version, change_scope: "book" },
-          old_record: {},
+  const emitUpdate = (id: string, nextVersion: number) =>
+    socket!.send(
+      JSON.stringify([
+        null,
+        null,
+        topic,
+        "postgres_changes",
+        {
+          ids: [1],
+          data: {
+            schema: "public",
+            table: "prediction_market_updates",
+            type: "UPDATE",
+            commit_timestamp: new Date().toISOString(),
+            errors: null,
+            columns: [
+              { name: "market_id", type: "text" },
+              { name: "version", type: "int8" },
+              { name: "change_scope", type: "text" },
+            ],
+            record: { market_id: id, version: nextVersion, change_scope: "book" },
+            old_record: {},
+          },
         },
-      },
-    ]),
-  );
+      ]),
+    );
+  ask = 31;
+  positionQuantity = 8;
+  balance = 192;
+  inBets = 33;
+  const realtimeStart = performance.now();
+  emitUpdate(marketId, ++version);
   await expect(
     page.getByRole("button", { name: /Ask 31 cents, 100 contracts/ }).first(),
   ).toBeVisible({ timeout: 1_000 });
   const realtimeMs = Math.round(performance.now() - realtimeStart);
   expect(realtimeMs).toBeLessThan(1_000);
   expect(batches.at(-1)).toEqual([marketId]);
+  const account = page.getByLabel("Betting account", { exact: true });
+  const allBets = page.getByRole("tab", { name: /All bets/ });
+  await expect(allBets).toHaveText("All bets (1)");
+  await expect(account).toHaveText("Net worth225In bets33Balance192");
+  await page
+    .getByRole("button", { name: /Ask 31 cents, 100 contracts/ })
+    .first()
+    .click();
+  await page
+    .getByRole("group", { name: "Order side", exact: true })
+    .getByRole("button", { name: "Sell", exact: true })
+    .click();
+  await expect(page.getByRole("spinbutton", { name: "Contracts", exact: true })).toHaveValue("8");
+  await page
+    .getByRole("group", { name: "Order side", exact: true })
+    .getByRole("button", { name: "Buy", exact: true })
+    .click();
+
+  const previousBookCount = batches.length;
+  emitUpdate(inactiveId, ++inactiveVersion);
+  await expect(allBets).toHaveText("All bets (2)");
+  expect(batches).toHaveLength(previousBookCount);
+  paidOut = true;
+  balance = 200;
+  inBets = 25;
+  // The market can settle in the same transaction that cancels orders and only signal "book".
+  // Skip the websocket event and prove the version check reconciles the inactive market.
+  inactiveVersion++;
+  await expect(allBets).toHaveText("All bets (1)", { timeout: 3_000 });
+  await expect(account).toHaveText("Net worth225In bets25Balance200");
+  expect(batches).toHaveLength(previousBookCount);
 
   ask = null;
   version++;
@@ -619,7 +706,6 @@ test("live book updates render promptly and missed events recover without idle b
     expect(contrast).toBeGreaterThanOrEqual(4.5);
   }
   await page.setViewportSize({ width: 390, height: 844 });
-  const account = page.getByLabel("Betting account", { exact: true });
   await expect(account).toBeVisible();
   await expect(account).toHaveText("Net worth225In bets25Balance200");
   await pending.click();
@@ -647,6 +733,13 @@ test("live book updates render promptly and missed events recover without idle b
   expect(cancelledOrderIds).toEqual([1, 2]);
   await page.keyboard.press("Escape");
   await expect(popup).toHaveCount(0);
+
+  deadline = Date.now() + 2_000;
+  emitUpdate(marketId, ++version);
+  const expiringAsk = page.getByRole("button", { name: /Ask 32 cents, 20 contracts/ }).first();
+  await expect(expiringAsk).toBeVisible();
+  await expect(expiringAsk).toHaveCount(0, { timeout: 3_000 });
+
   await page.goto("/betting");
   await expect(page.getByLabel("Betting account", { exact: true })).toHaveText(
     "Net worth225In bets25Balance200",

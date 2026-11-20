@@ -161,9 +161,11 @@ begin
   for update;
 
   if market_row.id is null then raise exception 'Prediction market not found'; end if;
-  if market_row.status <> 'open' or market_row.closes_at <= now() then
+  if market_row.status <> 'open' or market_row.closes_at <= clock_timestamp() then
     raise exception 'Prediction market is closed';
   end if;
+
+  perform public.expire_prediction_orders(p_market_id);
 
   if exists (
     select 1
@@ -172,6 +174,7 @@ begin
       and username = normalized_username
       and status in ('open', 'partial')
       and remaining_quantity > 0
+      and (expires_at is null or expires_at > clock_timestamp())
       and (
         (
           normalized_side = 'buy'
@@ -241,6 +244,7 @@ begin
       where market_id = p_market_id
         and status in ('open', 'partial')
         and remaining_quantity > 0
+        and (expires_at is null or expires_at > clock_timestamp())
         and username <> incoming.username
         and (
           (outcome = incoming.outcome and side = 'sell' and price_cents <= incoming.price_cents)
@@ -272,6 +276,11 @@ begin
       where username in (incoming.username, resting.username)
       order by username
       for update;
+
+      if market_row.closes_at <= clock_timestamp() then
+        raise exception 'Prediction market is closed';
+      end if;
+      if resting.expires_at <= clock_timestamp() then continue; end if;
       select balance into incoming_balance
       from public.coin_accounts where username = incoming.username;
 
@@ -380,6 +389,7 @@ begin
       where market_id = p_market_id
         and status in ('open', 'partial')
         and remaining_quantity > 0
+        and (expires_at is null or expires_at > clock_timestamp())
         and username <> incoming.username
         and (
           (outcome = incoming.outcome and side = 'buy' and price_cents >= incoming.price_cents)
@@ -411,6 +421,11 @@ begin
       where username in (incoming.username, resting.username)
       order by username
       for update;
+
+      if market_row.closes_at <= clock_timestamp() then
+        raise exception 'Prediction market is closed';
+      end if;
+      if resting.expires_at <= clock_timestamp() then continue; end if;
 
       if resting.side = 'buy' then
         resting_buy_amount := round(resting.price_cents::numeric * match_quantity / 100, 6);

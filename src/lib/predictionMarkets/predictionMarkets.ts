@@ -426,6 +426,7 @@ const marketStateSchema = z.object({
         sportsbookVolumeCoins: market.sportsbook_volume_coins,
         exchangeVolumeCoins: market.exchange_volume_coins,
       })),
+    nextOrderExpiry: z.number().nullable().optional(),
     book: z.object({
       yes: z.object({ bids: z.array(levelSchema), asks: z.array(levelSchema) }),
       no: z.object({ bids: z.array(levelSchema), asks: z.array(levelSchema) }),
@@ -478,21 +479,26 @@ export const availablePredictionContracts = (positions: readonly PredictionPosit
   return available;
 };
 
+type PredictionChanceState = {
+  market: Pick<PredictionMarketState["market"], "status" | "settlementPriceCents" | "outcome">;
+  fills?: PredictionMarketState["fills"];
+};
+
 export const predictionYesChance = (
   definition: PredictionMarketDefinition,
-  state: PredictionMarketState | undefined,
+  state: PredictionChanceState | undefined,
 ): number | undefined => {
   if (state?.market.status === "resolved") {
     return state.market.settlementPriceCents ?? (state.market.outcome === "yes" ? 100 : 0);
   }
-  const latestFill = state?.fills[0];
+  const latestFill = state?.fills?.[0];
   if (!latestFill) return definition.startingChance;
   return latestFill.outcome === "yes" ? latestFill.priceCents : 100 - latestFill.priceCents;
 };
 
 export const sortPredictionMarketsByChance = (
   definitions: readonly PredictionMarketDefinition[],
-  states: ReadonlyMap<PredictionMarketId, PredictionMarketState>,
+  states: ReadonlyMap<PredictionMarketId, PredictionChanceState>,
 ): PredictionMarketDefinition[] =>
   definitions
     .map((definition, index) => ({
@@ -546,6 +552,7 @@ const marketStatesSchema = z.object({ result: z.array(marketStateSchema.shape.re
 
 export const fetchPredictionMarkets = async (
   marketIds: readonly PredictionMarketId[],
+  signal?: AbortSignal,
 ): Promise<PredictionMarketState[]> => {
   const response = await postApi(
     "/api/betting",
@@ -554,6 +561,7 @@ export const fetchPredictionMarkets = async (
       schema: marketStatesSchema,
       errorMessage: "Unable to load prediction markets.",
       invalidMessage: "The markets returned invalid order book data.",
+      ...(signal ? { signal } : {}),
     },
   );
   return response.result;

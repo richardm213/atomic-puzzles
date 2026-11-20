@@ -1,3 +1,4 @@
+import type { BettingMarketSummary } from "../../lib/betting/betting";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -10,7 +11,6 @@ import { useUnderscoreUsernameCutoff } from "../../hooks/useUnderscoreUsernameCu
 import { formatCoinValue } from "../../lib/coins/coinDisplay";
 import {
   type PredictionMarketGroup,
-  type PredictionMarketState,
   sortPredictionMarketsByChance,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
@@ -367,7 +367,7 @@ type BettingHistoryProps = {
   myBets: BetHistoryEntry[];
   allBets: BetHistoryEntry[];
   predictionMarketGroups: PredictionMarketGroup[];
-  predictionMarketStates: PredictionMarketState[];
+  marketSummaries: BettingMarketSummary[];
   countryByPlayer: Record<string, string>;
   loading: boolean;
   error: unknown;
@@ -402,7 +402,7 @@ export const BettingHistory = ({
   myBets,
   allBets,
   predictionMarketGroups,
-  predictionMarketStates,
+  marketSummaries,
   countryByPlayer,
   loading,
   error,
@@ -417,9 +417,7 @@ export const BettingHistory = ({
   );
   const marketOptions = useMemo(() => {
     const options = new Map<string, string>();
-    const stateByMarketId = new Map(
-      predictionMarketStates.map((state) => [state.market.id, state]),
-    );
+    const stateByMarketId = new Map(marketSummaries.map((market) => [market.id, { market }]));
     const resolvedOnly = filters.status === "resolved";
     const marketsWithBets = new Set([...allBets, ...myBets].map((bet) => bet.marketId));
 
@@ -439,7 +437,6 @@ export const BettingHistory = ({
           state.market.status !== "open" &&
           state.market.sportsbookVolumeCoins <= 0 &&
           state.market.exchangeVolumeCoins <= 0 &&
-          state.fills.length === 0 &&
           !marketsWithBets.has(market.id)
         )
           continue;
@@ -451,7 +448,7 @@ export const BettingHistory = ({
     }
 
     return [...options].map(([id, label]) => ({ id, label }));
-  }, [allBets, filters.status, myBets, predictionMarketGroups, predictionMarketStates]);
+  }, [allBets, filters.status, myBets, predictionMarketGroups, marketSummaries]);
   const mine = view === "mine";
   const bets = mine ? myBets : allBets;
   const visibleBets = useMemo(

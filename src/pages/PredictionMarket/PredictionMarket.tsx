@@ -37,12 +37,12 @@ import { usePredictionMarketRealtime } from "../../lib/predictionMarkets/predict
 import {
   cancelPredictionOrder,
   formatPredictionShares,
+  isPendingPredictionOrder,
   isPredictionPrice,
   placePredictionOrder,
   type PredictionMarketDefinition,
   type PredictionMarketId,
   predictionMarketVolume,
-  type PredictionOrder,
   type PredictionOrderSide,
   type PredictionOutcome,
   predictionOutcomeLabel,
@@ -69,7 +69,7 @@ export const PredictionMarketPage = () => {
   );
   const [activeMarketId, setActiveMarketId] = useState<PredictionMarketId>("");
   const [expandedMarketId, setExpandedMarketId] = useState<PredictionMarketId | null>(null);
-  const [editingOrders, setEditingOrders] = useState<PredictionOrder[] | null>(null);
+  const [editingOrderIds, setEditingOrderIds] = useState<number[]>([]);
   const marketIds = useMemo(
     () => marketDefinitions.map((market) => market.id),
     [marketDefinitions],
@@ -78,7 +78,7 @@ export const PredictionMarketPage = () => {
     ...predictionMarketBatchQueryOptions(marketIds),
     enabled: marketIds.length > 0,
   });
-  usePredictionMarketRealtime(queryClient, marketIds);
+  usePredictionMarketRealtime(queryClient, marketIds, { username: user?.username });
   const marketStates = useMemo(() => marketsQuery.data ?? [], [marketsQuery.data]);
   const marketStateById = useMemo(
     () => new Map(marketStates.map((state) => [state.market.id, state])),
@@ -114,6 +114,9 @@ export const PredictionMarketPage = () => {
 
   const marketState =
     marketStateById.get(activeMarketId) ?? marketStateById.get(marketDefinitions[0]?.id ?? "");
+  const editingOrders = marketState?.orders.filter(
+    (order) => editingOrderIds.includes(order.id) && isPendingPredictionOrder(order),
+  );
   const price = Number(priceInput);
   const validPrice = isPredictionPrice(price);
   const {
@@ -291,7 +294,7 @@ export const PredictionMarketPage = () => {
           ownOrders={marketState.orders}
           headingLevel={2}
           titleId="order-book-title"
-          onEditOrders={setEditingOrders}
+          onEditOrders={(orders) => setEditingOrderIds(orders.map((order) => order.id))}
           onSelect={(bookSide, nextPrice, nextQuantity) =>
             startOrderFromBook(bookSide === "ask" ? "buy" : "sell", nextPrice, nextQuantity)
           }
@@ -566,12 +569,12 @@ export const PredictionMarketPage = () => {
           </>
         ) : null}
       </section>
-      {editingOrders ? (
+      {editingOrders?.length ? (
         <PredictionOrderEditor
           marketId={activeMarketId}
           outcome={outcome}
           orders={editingOrders}
-          onClose={() => setEditingOrders(null)}
+          onClose={() => setEditingOrderIds([])}
           onUpdated={(result) => {
             updateCoinBalance(result.balance);
             patchPredictionMarketState(queryClient, result.state);

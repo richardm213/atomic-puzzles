@@ -2,70 +2,41 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { allPredictionPositionsQueryOptions } from "../../lib/betting/bettingQueries";
-import type {
-  PredictionMarketGroup,
-  PredictionMarketState,
-} from "../../lib/predictionMarkets/predictionMarkets";
+import type { PredictionMarketGroup } from "../../lib/predictionMarkets/predictionMarkets";
 import { buildBetHistory } from "./bettingHistoryModel";
 
-export const useBettingHistory = ({
-  showingHistory,
-  isAuthenticated,
-  username,
-  catalog,
-  markets,
-  predictionMarketGroups,
-  predictionMarketStates,
-}: {
-  showingHistory: boolean;
-  isAuthenticated: boolean;
-  username: string;
-  catalog: { isPending: boolean; error: Error | null };
-  markets: { isPending: boolean; isError: boolean; error: Error | null };
-  predictionMarketGroups: PredictionMarketGroup[];
-  predictionMarketStates: PredictionMarketState[];
-}) => {
-  const predictionPositionsQuery = useQuery({
+export const useBettingHistory = (
+  predictionMarketGroups: PredictionMarketGroup[],
+  catalog: { isPending: boolean; error: Error | null },
+  username: string | undefined,
+) => {
+  const { data, isPending, error } = useQuery({
     ...allPredictionPositionsQueryOptions(),
-    enabled: showingHistory,
+    refetchOnMount: "always",
   });
-  const historyLoading =
-    showingHistory &&
-    (catalog.isPending || predictionPositionsQuery.isPending || markets.isPending);
-  const historyError = catalog.error ?? predictionPositionsQuery.error ?? markets.error;
-  const allHistoryBets = useMemo(() => {
-    if (!showingHistory || historyLoading || markets.isError) return [];
-    return buildBetHistory({
-      predictionPositions: predictionPositionsQuery.data ?? [],
-      predictionMarketGroups,
-      predictionMarketStates,
-    });
-  }, [
-    historyLoading,
-    predictionMarketGroups,
-    markets.isError,
-    predictionMarketStates,
-    predictionPositionsQuery.data,
-    showingHistory,
-  ]);
-  const pendingBetCount = useMemo(
-    () => allHistoryBets.filter((bet) => bet.status === "open").length,
-    [allHistoryBets],
+  const allHistoryBets = useMemo(
+    () =>
+      buildBetHistory({
+        predictionPositions: data?.positions ?? [],
+        marketSummaries: data?.markets ?? [],
+        predictionMarketGroups,
+      }),
+    [data, predictionMarketGroups],
   );
   const myBets = useMemo(
     () =>
-      isAuthenticated
+      username
         ? allHistoryBets.filter((bet) => bet.username.toLowerCase() === username.toLowerCase())
         : [],
-    [allHistoryBets, isAuthenticated, username],
+    [allHistoryBets, username],
   );
-  const myPendingBetCount = myBets.filter((bet) => bet.status === "open").length;
   return {
-    historyLoading,
-    historyError,
+    historyLoading: catalog.isPending || isPending,
+    historyError: catalog.error ?? error,
+    marketSummaries: data?.markets ?? [],
     allHistoryBets,
-    pendingBetCount,
+    pendingBetCount: allHistoryBets.filter((bet) => bet.status === "open").length,
     myBets,
-    myPendingBetCount,
+    myPendingBetCount: myBets.filter((bet) => bet.status === "open").length,
   };
 };

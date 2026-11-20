@@ -102,7 +102,7 @@ describe("BettingHistory", () => {
             ],
           },
         ]}
-        predictionMarketStates={[]}
+        marketSummaries={[]}
         countryByPlayer={{}}
         loading={false}
         error={null}
@@ -144,7 +144,7 @@ describe("BettingHistory", () => {
         myBets={bets}
         allBets={[]}
         predictionMarketGroups={[]}
-        predictionMarketStates={[]}
+        marketSummaries={[]}
         countryByPlayer={{}}
         loading={false}
         error={null}
@@ -215,13 +215,13 @@ describe("BettingHistory", () => {
             ],
           },
         ]}
-        predictionMarketStates={[
+        marketSummaries={[
           predictionState("awc-r16-natso-crepuscular", "open"),
           predictionState("awc-r16-rechesster-renaudmerle", "resolved", 10),
           predictionState("goro-ban", "resolved"),
           predictionState("closed-empty", "closed"),
           predictionState("closed-active", "closed", 10),
-        ]}
+        ].map(({ market }) => market)}
         countryByPlayer={{}}
         loading={false}
         error={null}

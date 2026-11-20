@@ -65,19 +65,48 @@ const marketSuggestionVoteResponseSchema = z.object({
 
 const predictionPositionsResponseSchema = z.object({
   result: z.array(predictionHistoryPositionSchema),
+  markets: z
+    .array(
+      z
+        .object({
+          id: z.string(),
+          status: z.enum(["open", "closed", "resolved", "refunded"]),
+          outcome: z.enum(["yes", "no"]).nullable(),
+          settlement_price_cents: z.number().nullable(),
+          sportsbook_volume_coins: z.number().default(0),
+          exchange_volume_coins: z.number().default(0),
+        })
+        .transform((market) => ({
+          id: market.id,
+          status: market.status,
+          outcome: market.outcome,
+          settlementPriceCents: market.settlement_price_cents,
+          sportsbookVolumeCoins: market.sportsbook_volume_coins,
+          exchangeVolumeCoins: market.exchange_volume_coins,
+        })),
+    )
+    .default([]),
 });
 
-export const fetchAllPredictionPositions = async (): Promise<PredictionHistoryPosition[]> => {
+export type BettingMarketSummary = z.infer<
+  typeof predictionPositionsResponseSchema
+>["markets"][number];
+
+export const fetchPredictionPositions = async (
+  marketIds?: readonly string[],
+  signal?: AbortSignal,
+): Promise<{ positions: PredictionHistoryPosition[]; markets: BettingMarketSummary[] }> => {
   const response = await postApi(
     "/api/betting",
-    { action: "predictionPositions" },
+    { action: "predictionPositions", marketIds },
     {
       schema: predictionPositionsResponseSchema,
       errorMessage: "Unable to load prediction positions.",
       invalidMessage: "The betting service returned invalid prediction positions.",
+      ...(signal ? { signal } : {}),
     },
   );
-  return response.result;
+  return { positions: response.result, markets: response.markets };
 };
 
 export const fetchMarketSuggestions = async (): Promise<MarketSuggestion[]> => {

@@ -25,7 +25,7 @@ const StrikeBetList = ({
   definition: PredictionMarketDefinition;
   onSelectBettor: (username: string) => void;
 }) => {
-  const positions = useQuery({ ...allPredictionPositionsQueryOptions(), refetchInterval: 15_000 });
+  const positions = useQuery(allPredictionPositionsQueryOptions());
   const catalog = useQuery(predictionMarketCatalogQueryOptions());
   const states = useQuery(predictionMarketBatchQueryOptions([definition.id]));
   const error = positions.error ?? catalog.error ?? states.error;
@@ -38,7 +38,7 @@ const StrikeBetList = ({
     return <InlineState kind="empty">This strike is still pending.</InlineState>;
   }
   const bets = buildBetHistory({
-    predictionPositions: positions.data ?? [],
+    predictionPositions: positions.data?.positions ?? [],
     predictionMarketGroups: catalog.data ?? [],
     predictionMarketStates: states.data ?? [],
     realizedOnly: true,

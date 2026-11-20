@@ -18,7 +18,6 @@ export const BettingPage = () => {
     view,
     selectView,
     myPendingBetCount,
-    showingHistory,
     historyLoading,
     historyError,
     pendingBetCount,
@@ -27,7 +26,7 @@ export const BettingPage = () => {
     myBets,
     allHistoryBets,
     predictionMarketGroups,
-    predictionMarketStates,
+    marketSummaries,
     countryByPlayer,
     editingOrderContext,
     setEditingOrderContext,
@@ -82,7 +81,7 @@ export const BettingPage = () => {
             onClick={() => selectView("all")}
           >
             All bets
-            {showingHistory && !historyLoading && !historyError ? ` (${pendingBetCount})` : ""}
+            {!historyLoading && !historyError ? ` (${pendingBetCount})` : ""}
           </button>
           <button
             type="button"
@@ -121,7 +120,7 @@ export const BettingPage = () => {
             myBets={myBets}
             allBets={allHistoryBets}
             predictionMarketGroups={predictionMarketGroups}
-            predictionMarketStates={predictionMarketStates}
+            marketSummaries={marketSummaries}
             countryByPlayer={countryByPlayer}
             loading={historyLoading}
             error={historyError}

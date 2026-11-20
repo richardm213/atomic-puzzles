@@ -296,6 +296,7 @@ describe("betting function", () => {
         created_at: "2026-11-14T02:00:00Z",
       },
     );
+    const scopedReads: Record<string, string[]> = {};
     mocks.createClient.mockReturnValue({
       from: (table: string) => {
         const query = {
@@ -307,7 +308,10 @@ describe("betting function", () => {
           gt: () => query,
           neq: () => query,
           eq: () => query,
-          in: () => query,
+          in: (column: string, ids: string[]) => {
+            if (column !== "reason") scopedReads[table] = ids;
+            return query;
+          },
           range: async (from: number, to: number) => ({
             data: (rows[table] ?? []).slice(from, to + 1),
             error: null,
@@ -340,16 +344,20 @@ describe("betting function", () => {
       closed_proceeds_coins: 1000,
       terminal_return_coins: 1000,
     });
-    const bootstrap = await handler({
+    const scoped = await handler({
       httpMethod: "POST",
       headers: {},
-      body: JSON.stringify({ action: "bootstrap" }),
+      body: JSON.stringify({ action: "predictionPositions", marketIds: ["strike"] }),
     });
-    expect(bootstrap.statusCode).toBe(200);
-    expect(JSON.parse(bootstrap.body).result).toEqual({
-      exchangeMarkets: [],
-      allPredictionPositions: result,
-      exchangeMarketStates: [],
+    expect(scoped.statusCode).toBe(200);
+    expect(JSON.parse(scoped.body).result).toEqual(result);
+    expect(scopedReads).toEqual({
+      prediction_markets: ["strike"],
+      prediction_positions: ["strike"],
+      prediction_fills: ["strike"],
+      prediction_position_credits: ["strike"],
+      prediction_position_nettings: ["strike"],
+      coin_transactions: ["strike"],
     });
   });
 

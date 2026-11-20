@@ -1,15 +1,22 @@
 import { REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
 import type { QueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useCallback, useEffect, useId, useRef } from "react";
 
+import { bettingQueryKeys, refreshPredictionPositions } from "../betting/bettingQueries";
+import { coinQueryKeys } from "../coins/coinQueries";
 import { getSupabaseClient } from "../supabase/client";
-import { patchPredictionMarketState, predictionMarketQueryRoot } from "./predictionMarketQueries";
+import {
+  patchPredictionMarketState,
+  predictionMarketBatchQueryOptions,
+  predictionMarketCatalogQueryOptions,
+} from "./predictionMarketQueries";
 import { fetchPredictionMarkets, type PredictionMarketId } from "./predictionMarkets";
 
 type PredictionMarketUpdate = {
   market_id: string;
   change_scope: "book" | "catalog";
   version: number;
+  updated_at?: string;
 };
 
 export const createCoalescedBatchRefresh = <Item>(
@@ -50,132 +57,190 @@ export const createCoalescedBatchRefresh = <Item>(
   };
 };
 
-const refreshMarkets = async (queryClient: QueryClient, marketIds: readonly string[]) => {
-  const states = await fetchPredictionMarkets(marketIds);
-  states.forEach((state) => patchPredictionMarketState(queryClient, state));
-};
-
 export const usePredictionMarketRealtime = (
   queryClient: QueryClient,
   marketIds: readonly PredictionMarketId[],
-  refreshOnSubscribe = true,
+  {
+    trackHistory = false,
+    username,
+  }: { trackHistory?: boolean; username?: string | undefined } = {},
 ) => {
-  const marketIdsKey = JSON.stringify([...new Set(marketIds)].sort());
+  const channelId = useId();
+  const activeIds = useRef(marketIds);
+  const refreshMarket = useRef<(id: string) => void>(() => {});
+  useEffect(() => {
+    activeIds.current = marketIds;
+  }, [marketIds]);
 
   useEffect(() => {
-    const trackedMarketIds = JSON.parse(marketIdsKey) as string[];
-    if (trackedMarketIds.length === 0) return;
-
-    const trackedMarketIdSet = new Set(trackedMarketIds);
     const supabase = getSupabaseClient();
+    const controller = new AbortController();
+    const { signal } = controller;
     const seenVersions = new Map<string, number>();
-    const pendingVersions = new Map<string, number>();
-    const refresh = createCoalescedBatchRefresh(async (changedMarketIds: readonly string[]) => {
-      const versions = changedMarketIds.map((id) => [id, pendingVersions.get(id)] as const);
-      await refreshMarkets(queryClient, changedMarketIds);
-      versions.forEach(([id, version]) => {
-        if (version !== undefined)
-          seenVersions.set(id, Math.max(seenVersions.get(id) ?? 0, version));
-      });
-    });
-    const scheduledMarketIds = new Set<string>();
-    let refreshTimer: number | undefined;
+    const catalogChanges = new Set<string>();
+    const queuedIds = new Set<string>();
+    const startedAt = Date.now();
+    let baselineReady = false;
     let checkingVersions = false;
-    let stopped = false;
+    let refreshTimer: number | undefined;
+    let lastFallback = -Infinity;
 
-    const recordUpdate = (update: Partial<PredictionMarketUpdate>) => {
-      if (!update.market_id || !trackedMarketIdSet.has(update.market_id)) return;
-      if (typeof update.version === "number") {
-        pendingVersions.set(
-          update.market_id,
-          Math.max(pendingVersions.get(update.market_id) ?? 0, update.version),
-        );
+    const invalidate = (queryKey: readonly unknown[]) =>
+      queryClient.invalidateQueries({ queryKey, exact: true }, { throwOnError: true });
+    const historyActive = () =>
+      trackHistory ||
+      queryClient
+        .getQueryCache()
+        .find({ queryKey: bettingQueryKeys.predictionPositions })
+        ?.isActive();
+    const refreshBalance = () =>
+      username ? invalidate(coinQueryKeys.summary(username)) : Promise.resolve();
+
+    const refreshBooks = async (ids: readonly string[]) => {
+      const options = predictionMarketBatchQueryOptions(activeIds.current);
+      if (queryClient.getQueryState(options.queryKey)?.fetchStatus === "fetching") {
+        await queryClient.fetchQuery({ ...options, staleTime: 0 });
       }
+      if (signal.aborted) return;
+      const tracked = new Set(activeIds.current);
+      const changed = ids.filter((id) => tracked.has(id));
+      if (!changed.length) return;
+      const states = await fetchPredictionMarkets(changed, signal);
+      if (!signal.aborted)
+        states.forEach((state) => patchPredictionMarketState(queryClient, state));
+    };
+
+    const retryOnFailure = (refresh: (ids: readonly string[]) => Promise<unknown>) =>
+      createCoalescedBatchRefresh(async (ids: readonly string[]) => {
+        const versions = ids.map((id) => seenVersions.get(id));
+        try {
+          await refresh(ids);
+        } catch {
+          ids.forEach((id, index) => {
+            if (seenVersions.get(id) === versions[index]) seenVersions.delete(id);
+          });
+        }
+      });
+    const books = retryOnFailure(refreshBooks);
+    const account = retryOnFailure(async (ids) => {
+      const changedCatalog = ids.filter((id) => catalogChanges.delete(id));
+      try {
+        await Promise.all([
+          refreshBalance(),
+          historyActive() ? refreshPredictionPositions(queryClient, ids, signal) : undefined,
+          changedCatalog.length
+            ? invalidate(predictionMarketCatalogQueryOptions().queryKey)
+            : undefined,
+        ]);
+      } catch (error) {
+        changedCatalog.forEach((id) => catalogChanges.add(id));
+        throw error;
+      }
+    });
+
+    const queue = (id: string) => {
+      queuedIds.add(id);
+      if (refreshTimer !== undefined) return;
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = undefined;
+        const ids = [...queuedIds];
+        queuedIds.clear();
+        const active = new Set(activeIds.current);
+        books.request(ids.filter((marketId) => active.has(marketId)));
+        account.request(ids);
+      }, 32);
+    };
+    refreshMarket.current = queue;
+
+    const recordUpdate = (update: PredictionMarketUpdate) => {
+      const { market_id: id, version } = update;
+      if (version <= (seenVersions.get(id) ?? 0)) return;
+      seenVersions.set(id, version);
+      if (update.change_scope === "catalog") catalogChanges.add(id);
+      queue(id);
     };
 
     const checkVersions = async () => {
-      if (stopped || checkingVersions || document.visibilityState !== "visible") return;
+      if (signal.aborted || checkingVersions || document.visibilityState !== "visible") return;
+      if (!trackHistory && !activeIds.current.length) return;
       checkingVersions = true;
       try {
-        const { data, error } = await supabase
+        const versions = supabase
           .from("prediction_market_updates")
-          .select("market_id,version,change_scope")
-          .in("market_id", trackedMarketIds);
-        if (stopped) return;
+          .select("market_id,version,change_scope,updated_at")
+          .abortSignal(signal);
+        const { data, error } = await (trackHistory
+          ? versions
+          : versions.in("market_id", [...activeIds.current]));
+        if (signal.aborted) return;
         if (error) throw error;
-        const changed = (data ?? []).filter(
-          (update) => seenVersions.get(update.market_id) !== update.version,
-        );
-        changed.forEach(recordUpdate);
-        if (changed.some((update) => update.change_scope === "catalog")) {
-          void queryClient.invalidateQueries({
-            queryKey: [...predictionMarketQueryRoot, "catalog"],
-            exact: true,
-          });
+        for (const update of (data ?? []) as PredictionMarketUpdate[]) {
+          if (
+            !baselineReady &&
+            !seenVersions.has(update.market_id) &&
+            (!update.updated_at || Date.parse(update.updated_at) < startedAt - 5_000)
+          ) {
+            seenVersions.set(update.market_id, update.version);
+          } else {
+            recordUpdate(update);
+          }
         }
-        if (changed.length) refresh.request(changed.map((update) => update.market_id));
+        baselineReady = true;
       } catch {
-        // Keep books fresh even when the lightweight recovery feed is unavailable.
-        if (!stopped) refresh.request(trackedMarketIds);
+        if (signal.aborted || performance.now() - lastFallback < 10_000) return;
+        lastFallback = performance.now();
+        books.request(activeIds.current);
+        await Promise.allSettled([
+          refreshBalance(),
+          historyActive() ? invalidate(bettingQueryKeys.predictionPositions) : undefined,
+          invalidate(predictionMarketCatalogQueryOptions().queryKey),
+        ]);
       } finally {
         checkingVersions = false;
       }
     };
 
-    const scheduleRefresh = (marketId: string) => {
-      if (document.visibilityState !== "visible") return;
-      scheduledMarketIds.add(marketId);
-      // A fixed window batches bursts without postponing updates during continuous trading.
-      if (refreshTimer !== undefined) return;
-      refreshTimer = window.setTimeout(() => {
-        refreshTimer = undefined;
-        refresh.request([...scheduledMarketIds]);
-        scheduledMarketIds.clear();
-      }, 16);
-    };
-    const refreshVisibleMarkets = () => {
-      if (document.visibilityState === "visible") refresh.request(trackedMarketIds);
-    };
-
+    const resume = () => void checkVersions();
     const channel = supabase
-      .channel(`prediction-markets:${marketIdsKey}`)
+      .channel(`prediction-markets:${channelId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "prediction_market_updates" },
-        (payload) => {
-          const update = payload.new as Partial<PredictionMarketUpdate>;
-          if (!update.market_id || !update.change_scope) return;
-          recordUpdate(update);
-          if (update.change_scope === "catalog") {
-            void queryClient.invalidateQueries({
-              queryKey: [...predictionMarketQueryRoot, "catalog"],
-              exact: true,
-            });
+        ({ new: row }) => {
+          const update = row as Partial<PredictionMarketUpdate>;
+          if (!update.market_id || !update.change_scope || typeof update.version !== "number")
+            return;
+          if (
+            document.visibilityState === "visible" &&
+            (trackHistory ||
+              activeIds.current.includes(update.market_id) ||
+              update.change_scope === "catalog")
+          ) {
+            recordUpdate(update as PredictionMarketUpdate);
           }
-          if (trackedMarketIdSet.has(update.market_id)) scheduleRefresh(update.market_id);
         },
       )
       .subscribe((status) => {
-        if (refreshOnSubscribe && status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
-          refresh.request(trackedMarketIds);
-        }
+        if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) resume();
       });
 
-    // Callers with a recent batch can wait for the first scheduled recovery check.
-    if (refreshOnSubscribe) void checkVersions();
-    const versionTimer = window.setInterval(() => void checkVersions(), 2_000);
-    document.addEventListener("visibilitychange", refreshVisibleMarkets);
-    window.addEventListener("online", refreshVisibleMarkets);
+    resume();
+    const versionTimer = window.setInterval(resume, 2_000);
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("online", resume);
 
     return () => {
-      stopped = true;
+      controller.abort();
+      refreshMarket.current = () => {};
       window.clearInterval(versionTimer);
       window.clearTimeout(refreshTimer);
-      scheduledMarketIds.clear();
-      refresh.stop();
-      document.removeEventListener("visibilitychange", refreshVisibleMarkets);
-      window.removeEventListener("online", refreshVisibleMarkets);
+      books.stop();
+      account.stop();
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("online", resume);
       void supabase.removeChannel(channel);
     };
-  }, [marketIdsKey, queryClient, refreshOnSubscribe]);
+  }, [channelId, queryClient, trackHistory, username]);
+
+  return useCallback((id: string) => refreshMarket.current(id), []);
 };
