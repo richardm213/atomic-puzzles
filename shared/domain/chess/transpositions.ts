@@ -22,6 +22,7 @@ const containsContinuation = (
   alternate: TranspositionMoveNode,
 ): boolean => {
   for (const [san, child] of alternate.children) {
+    if (splitSolutionMove(san).retry) return false;
     const match = original.children.get(san);
     if (!match || !containsContinuation(match, child)) return false;
   }
@@ -56,12 +57,13 @@ const indexLines = (fen: string, lines: string[][], displayOnly = false) => {
     path: string,
     key: string,
     repeated: boolean,
+    retryBranch: boolean,
   ): void => {
     // A repeated position belongs to this move-order prefix only. It must not
     // donate continuations to, or receive continuations from, its earlier self.
     let occurrence = occurrences.get(path);
     if (!displayOnly && !occurrence) {
-      occurrence = { position: repeated ? path : key, children: new Map() };
+      occurrence = { position: repeated || retryBranch ? path : key, children: new Map() };
       occurrences.set(path, occurrence);
     }
     const children = displayOnly
@@ -69,16 +71,20 @@ const indexLines = (fen: string, lines: string[][], displayOnly = false) => {
       : parent.children.values();
     for (const child of children) {
       const next = position.clone();
-      const uci = play(next, child.move!);
-      const nextPath = `${path} ${uci}`;
+      const san = child.move!;
+      const retry = splitSolutionMove(san).retry;
+      const nextRetryBranch = retryBranch || retry;
+      // A retry move and all its replies belong to their own line.
+      const pathMove = `${play(next, san)}${retry ? "?" : ""}`;
+      const nextPath = `${path} ${pathMove}`;
       const nextKey = positionKey(next);
       const repeats = ancestors.has(nextKey);
-      occurrence?.children.set(uci, {
-        san: child.move!,
-        position: repeats ? nextPath : nextKey,
+      occurrence?.children.set(pathMove, {
+        san,
+        position: repeats || nextRetryBranch ? nextPath : nextKey,
         key: nextKey,
       });
-      if (displayOnly && !repeats) {
+      if (displayOnly && !repeats && !nextRetryBranch) {
         const original = originals.get(nextKey);
         if (original?.firstOccurrence) {
           child.transposition = {
@@ -89,11 +95,11 @@ const indexLines = (fen: string, lines: string[][], displayOnly = false) => {
       }
       if (child.transposition?.sharedContinuation) continue;
       if (!repeats) ancestors.add(nextKey);
-      visit(child, next, nextPath, nextKey, repeats);
+      visit(child, next, nextPath, nextKey, repeats, nextRetryBranch);
       if (!repeats) ancestors.delete(nextKey);
     }
   };
-  visit(tree, position, "", rootKey, false);
+  visit(tree, position, "", rootKey, false, false);
   return { tree, occurrences, rootKey };
 };
 
@@ -125,8 +131,8 @@ export const synchronizeTranspositions = (
   for (const occurrence of occurrences.values()) {
     let edges = graph.get(occurrence.position);
     if (!edges) graph.set(occurrence.position, (edges = new Map()));
-    for (const [uci, edge] of occurrence.children) {
-      if (!edges.has(uci)) edges.set(uci, edge);
+    for (const [pathMove, edge] of occurrence.children) {
+      if (!pathMove.endsWith("?") && !edges.has(pathMove)) edges.set(pathMove, edge);
     }
   }
   if (graph.size === occurrences.size && !previousLines.length) return lines;
@@ -158,8 +164,10 @@ export const synchronizeTranspositions = (
     for (const uci of old.children.keys()) {
       if (!occurrence.children.has(uci)) edges.delete(uci);
     }
-    for (const [uci, edge] of occurrence.children) {
-      if (old.children.get(uci)?.san !== edge.san) edges.set(uci, edge);
+    for (const [pathMove, edge] of occurrence.children) {
+      if (!pathMove.endsWith("?") && old.children.get(pathMove)?.san !== edge.san) {
+        edges.set(pathMove, edge);
+      }
     }
   }
 
@@ -171,7 +179,13 @@ export const synchronizeTranspositions = (
     // Keep only explicitly entered moves at that repetition, then resume normal
     // sharing if the line subsequently reaches a new position.
     const repeated = ancestors.has(key);
-    const edges = repeated ? occurrences.get(path)?.children : graph.get(position);
+    const explicit = occurrences.get(path)?.children;
+    const edges = repeated
+      ? explicit
+      : new Map([
+          ...(graph.get(position) ?? []),
+          ...[...(explicit ?? [])].filter(([pathMove]) => pathMove.endsWith("?")),
+        ]);
     if (!edges?.size) {
       if (moves.length) result.push([...moves]);
       return;

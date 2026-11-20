@@ -838,6 +838,23 @@ describe("Chessboard orchestration", () => {
     });
   });
 
+  it("extends a solution retry without creating an unmarked copy", () => {
+    const states = renderBoard({
+      solution: "1. e4 (1. d4?)",
+      analysisMode: true,
+      solutionEditor: true,
+      solutionNavigation: { type: "solution", line: 0, ply: 0 },
+    });
+
+    play("d2", "d4");
+    play("d7", "d5");
+    expect(states.at(-1)).toMatchObject({
+      lineMoves: ["d4?", "d5"],
+      customLines: [["d4?", "d5"]],
+      solutionLines: [["e4"], ["d4?"]],
+    });
+  });
+
   it("commits transpositions before immediate navigation and subsequent edits", () => {
     const states = renderBoard({
       fen: "rnbqkb1r/p1p3p1/5p1n/1p2p2p/3P1B2/N1P4N/PP3PPP/R2QKB1R w KQkq - 1 9",

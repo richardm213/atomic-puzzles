@@ -111,4 +111,17 @@ describe("puzzle transpositions", () => {
     const rightsLines = [["Rh2", "Kf7", "Rh1", "Ke8", "Rh3"], ["Rh3"]];
     expect(synchronizeTranspositions(fen, rightsLines)).toEqual(rightsLines);
   });
+
+  it("keeps a retry continuation on its own branch even when it reaches the main line", () => {
+    const { fen } = suppliedPuzzle;
+    const accepted = ["Bc4", "Ng4", "f3", "Nf2"];
+    const retry = ["f3?", "Ng4", "Bc4"];
+    const lines = [accepted, [...retry, "Nh2"]];
+    expect(synchronizeTranspositions(fen, lines, [accepted, retry])).toEqual(lines);
+    expect(jumpsIn(buildTranspositionMoveTree(fen, lines))).toHaveLength(0);
+
+    const lateRetry = ["f3", "Ng4", "Bc4", "Nh2?", "Qe2"];
+    const shared = synchronizeTranspositions(fen, [accepted, lateRetry]);
+    expect(shared.filter((line) => line.includes("Nh2?"))).toEqual([lateRetry]);
+  });
 });

@@ -526,8 +526,6 @@ const ChessboardComponent = ({
   };
 
   const allowedSolutionContinuations = useCallback((): UciSolutionEntry[] => {
-    if (!restrictMovesToSolutionRef.current) return [];
-
     const history = historyRef.current;
     const playedMoveKeys = historyMoveKeys(history);
     const continuations: UciSolutionEntry[] = [];
@@ -539,7 +537,7 @@ const ChessboardComponent = ({
       if (followsPlayedLine && continuation) continuations.push(continuation);
     }
     return continuations;
-  }, [restrictMovesToSolutionRef]);
+  }, []);
 
   const getMovableConfig = useCallback(
     (position: Atomic): MovableConfig => {
@@ -605,11 +603,7 @@ const ChessboardComponent = ({
       const createsCustomBranch =
         previousContinuationKey !== undefined && previousContinuationKey !== moveKey;
 
-      if (
-        analysisModeRef.current &&
-        previousActiveLine.source !== "solution" &&
-        followsPreviousContinuation
-      ) {
+      if (analysisModeRef.current && followsPreviousContinuation) {
         if (previousCustomHistory) {
           const continuedHistory = cloneBoardHistory(previousCustomHistory);
           continuedHistory.index = history.index + 1;
@@ -629,12 +623,17 @@ const ChessboardComponent = ({
         saveVariation(customVariationsRef.current, cloneBoardHistory(history));
       }
 
+      // Analysis can enter a known retry move from a different branch at the same ply.
+      const knownMove =
+        analysisModeRef.current && canBrowseSolution()
+          ? allowedSolutionContinuations().find((entry) => entry.key === moveKey)
+          : undefined;
       appendBoardMove(history, {
         fen: nextFen,
         lastMove,
         uci: moveUci,
         key: moveKey,
-        san: moveSan,
+        san: knownMove?.retry ? formatSolutionMove(moveSan, knownMove.annotation) : moveSan,
       });
 
       if (analysisModeRef.current) {
@@ -649,7 +648,7 @@ const ChessboardComponent = ({
         viewRef.current.line = { source: "history" };
       }
     },
-    [analysisModeRef],
+    [allowedSolutionContinuations, analysisModeRef, canBrowseSolution],
   );
 
   const syncBoard = useCallback(
