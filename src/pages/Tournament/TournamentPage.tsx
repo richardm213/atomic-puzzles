@@ -4,11 +4,7 @@ import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import type {
-  MouseEvent as ReactMouseEvent,
-  PointerEvent as ReactPointerEvent,
-  UIEvent as ReactUIEvent,
-} from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -54,14 +50,12 @@ import {
 import { normalizeUsername } from "../../utils/playerNames";
 import { AtomicChessLeaguePage } from "./AtomicChessLeaguePage";
 import {
-  BOARD_PADDING,
   buildLoserSourcesByMatchId,
   buildStageTreeLayout,
   buildStartRoundState,
   buildZoomState,
   CARD_WIDTH,
   clampZoom,
-  COLUMN_GAP,
   DEFAULT_STAGE_ZOOM,
   getAwcCurrentRound,
   getRoundSlug,
@@ -70,7 +64,6 @@ import {
   getStageTrophyMatchId,
   getStartRoundOptions,
   getTournamentViewStorageKey,
-  HEADER_SPACE,
   isRoundRobinQualifyingStage,
   type LoserSource,
   MAX_STAGE_ZOOM,
@@ -83,9 +76,9 @@ import {
   zoomDisplayPercent,
 } from "./bracketLayout";
 import { buildRoundRobinGroups, type GroupStageHistoryEntry } from "./groupStage";
+import { TournamentBracketViewport } from "./TournamentBracketViewport";
+import { useTournamentBracketViewport } from "./useTournamentBracketViewport";
 import { WolfarenaTournamentPage } from "./WolfarenaTournamentPage";
-
-type StageKey = string;
 
 const TOURNAMENT_TAB_KEYS = new Set(["main", "losers", "qualifying", SEEDS_STAGE_KEY]);
 const SCHEDULE_DISPLAY_GRACE_MS = 60 * 60 * 1000;
@@ -115,16 +108,6 @@ const normalizeTournamentTab = (value: string | undefined): string => {
     .trim()
     .toLowerCase();
   return TOURNAMENT_TAB_KEYS.has(normalized) ? normalized : "";
-};
-
-type DragState = {
-  stageKey: string;
-  pointerId: number;
-  startX: number;
-  startY: number;
-  startScrollLeft: number;
-  startScrollTop: number;
-  moved: boolean;
 };
 
 type TournamentSeedEntry = {
@@ -254,15 +237,6 @@ const AdvanceCheck = () => (
     <FontAwesomeIcon icon={faCheck} />
   </span>
 );
-
-const isInteractivePointerTarget = (target: EventTarget | null): boolean => {
-  if (!(target instanceof Element)) return false;
-  if (target.closest(".tournamentMatchCardTree")) return false;
-
-  return Boolean(
-    target.closest("a, button, input, select, textarea, [role='button'], [role='link']"),
-  );
-};
 
 const PlayerLabel = ({
   playerName,
@@ -809,7 +783,6 @@ const TournamentStageSection = ({
   showMatchDates,
   layout,
   zoomLevel,
-  isDragging,
   startRoundName,
   automaticStartRoundName,
   topSeedMap,
@@ -821,19 +794,13 @@ const TournamentStageSection = ({
   hideStartRoundControls,
   shouldSuppressMatchClick,
   onStartRoundChange,
-  setHeaderTrackRef,
-  setScrollerRef,
-  onScrollerScroll,
-  onPointerDown,
-  onPointerMove,
-  onPointerEnd,
+  viewport,
   loserSourcesByMatchId,
 }: {
   stage: TournamentBracketStage;
   showMatchDates: boolean;
   layout: StageLayout;
   zoomLevel: number;
-  isDragging: boolean;
   startRoundName: string;
   automaticStartRoundName: string | undefined;
   topSeedMap: Map<string, number>;
@@ -845,12 +812,7 @@ const TournamentStageSection = ({
   hideStartRoundControls?: boolean;
   shouldSuppressMatchClick: () => boolean;
   onStartRoundChange: (roundName: string) => void;
-  setHeaderTrackRef: (stageKey: StageKey, node: HTMLDivElement | null) => void;
-  setScrollerRef: (stageKey: StageKey, node: HTMLDivElement | null) => void;
-  onScrollerScroll: (stageKey: StageKey, event: ReactUIEvent<HTMLDivElement>) => void;
-  onPointerDown: (stageKey: StageKey, event: ReactPointerEvent<HTMLDivElement>) => void;
-  onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
-  onPointerEnd: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  viewport: ReturnType<typeof useTournamentBracketViewport>;
   loserSourcesByMatchId: Map<string, LoserSource[]>;
 }) => {
   const [groupViews, setGroupViews] = useState<Record<string, "standings" | "matches">>({});
@@ -997,112 +959,30 @@ const TournamentStageSection = ({
           })}
         </div>
       ) : (
-        <>
-          {layout ? (
-            <div
-              className="tournamentRoundHeaderRail"
-              style={{
-                height: `${HEADER_SPACE * zoomLevel}px`,
-                marginBottom: `${-HEADER_SPACE * zoomLevel}px`,
-              }}
-            >
-              <div
-                className="tournamentRoundHeaderTrack"
-                ref={(node) => setHeaderTrackRef(stage.key, node)}
-                style={{
-                  width: `${layout.width * zoomLevel}px`,
-                }}
-              >
-                {layout.rounds.map((round, roundIndex) => (
-                  <div
-                    key={`${stage.key}-${round.roundName}-sticky`}
-                    className={`tournamentRoundHeader tournamentRoundHeaderSticky${zoomDisplayPercent(zoomLevel) < 65 ? " isCompact" : ""}`}
-                    style={{
-                      left: `${(BOARD_PADDING + roundIndex * (CARD_WIDTH + COLUMN_GAP)) * zoomLevel}px`,
-                      width: `${CARD_WIDTH * zoomLevel}px`,
-                    }}
-                  >
-                    <span>
-                      {stage.key === "qualifying" || zoomDisplayPercent(zoomLevel) < 65
-                        ? getStageRoundShortLabel(stage, round.roundName)
-                        : round.roundName}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          <div
-            className="tournamentDrawViewport"
-            aria-label={`${stage.label} draw starting at ${startRoundName}`}
-          >
-            <div
-              className={`tournamentRoundsScroller${isDragging ? " isDragging" : ""}${stage.key === "main" ? " isMainBracket" : ""}`}
-              ref={(node) => setScrollerRef(stage.key, node)}
-              onPointerDown={(event) => onPointerDown(stage.key, event)}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerEnd}
-              onPointerCancel={onPointerEnd}
-              onLostPointerCapture={onPointerEnd}
-              onScroll={(event) => onScrollerScroll(stage.key, event)}
-            >
-              {!layout ? null : (
-                <div
-                  className="tournamentTreeBoardViewport"
-                  style={{
-                    width: `${layout.width * zoomLevel}px`,
-                    height: `${layout.height * zoomLevel}px`,
-                  }}
-                >
-                  <div
-                    className={`tournamentTreeBoard${stage.key === "main" ? " isMainTree" : ""}`}
-                    style={{
-                      width: `${layout.width}px`,
-                      height: `${layout.height}px`,
-                      transform: `scale(${zoomLevel})`,
-                    }}
-                  >
-                    <svg
-                      className="tournamentTreeLines"
-                      viewBox={`0 0 ${layout.width} ${layout.height}`}
-                      preserveAspectRatio="none"
-                      aria-hidden="true"
-                    >
-                      {layout.connectors.map((connector) => (
-                        <line
-                          key={connector.key}
-                          x1={connector.x1}
-                          y1={connector.y1}
-                          x2={connector.x2}
-                          y2={connector.y2}
-                        />
-                      ))}
-                    </svg>
-
-                    {layout.positionedMatches.map((match) => (
-                      <TournamentMatchCard
-                        key={match.id}
-                        match={match}
-                        showMatchDates={showMatchDates}
-                        topSeedMap={topSeedMap}
-                        entryMarkers={entryMarkers}
-                        seedCount={seedCount}
-                        countryMap={countryMap}
-                        trophyAssetPath={trophyAssetPath}
-                        showTrophy={match.id === trophyMatchId}
-                        placeTrophyOnSide={
-                          startRoundName === "Semifinals" || startRoundName === "Finals"
-                        }
-                        shouldSuppressClick={shouldSuppressMatchClick}
-                        loserSources={loserSourcesByMatchId.get(match.id) ?? []}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </>
+        <TournamentBracketViewport
+          stage={stage}
+          layout={layout}
+          zoomLevel={zoomLevel}
+          startRoundName={startRoundName}
+          viewport={viewport}
+        >
+          {layout?.positionedMatches.map((match) => (
+            <TournamentMatchCard
+              key={match.id}
+              match={match}
+              showMatchDates={showMatchDates}
+              topSeedMap={topSeedMap}
+              entryMarkers={entryMarkers}
+              seedCount={seedCount}
+              countryMap={countryMap}
+              trophyAssetPath={trophyAssetPath}
+              showTrophy={match.id === trophyMatchId}
+              placeTrophyOnSide={startRoundName === "Semifinals" || startRoundName === "Finals"}
+              shouldSuppressClick={shouldSuppressMatchClick}
+              loserSources={loserSourcesByMatchId.get(match.id) ?? []}
+            />
+          ))}
+        </TournamentBracketViewport>
       )}
     </section>
   );
@@ -1137,11 +1017,8 @@ const BracketTournamentPage = ({
       : "";
   const [zoomLevels, setZoomLevels] = useState<Record<string, number>>({});
   const [activeStageKey, setActiveStageKey] = useState<string>("main");
-  const [draggingStage, setDraggingStage] = useState<string>("");
-  const dragStateRef = useRef<DragState | null>(null);
-  const suppressNextMatchClickRef = useRef(false);
-  const scrollerRefs = useRef<Record<string, HTMLDivElement>>({});
-  const headerTrackRefs = useRef<Record<string, HTMLDivElement>>({});
+  const viewport = useTournamentBracketViewport();
+  const { scrollerRefs, syncRoundHeaderTrack } = viewport;
   const restoredViewKeyRef = useRef<string | null>(null);
   const previousStartRoundsRef = useRef<Record<string, string>>({});
   const pendingRestoreRef = useRef<{
@@ -1206,7 +1083,7 @@ const BracketTournamentPage = ({
         pageScrollY: window.scrollY || 0,
       }),
     );
-  }, [activeStageKey, bracket, displayedStartRounds, zoomLevels]);
+  }, [activeStageKey, bracket, displayedStartRounds, scrollerRefs, zoomLevels]);
 
   useEffect(() => {
     if (!bracket) return;
@@ -1269,7 +1146,7 @@ const BracketTournamentPage = ({
       scroller.scrollTo({ left: 0, top: 0, behavior: "auto" });
       syncRoundHeaderTrack(key, 0);
     }
-  }, [displayedStartRounds]);
+  }, [displayedStartRounds, scrollerRefs, syncRoundHeaderTrack]);
 
   useEffect(() => {
     if (!bracket || !pendingRestoreRef.current || typeof window === "undefined") return;
@@ -1294,7 +1171,7 @@ const BracketTournamentPage = ({
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [bracket, displayedStartRounds, zoomLevels]);
+  }, [bracket, displayedStartRounds, scrollerRefs, syncRoundHeaderTrack, zoomLevels]);
 
   useEffect(() => {
     if (!bracket || typeof window === "undefined") return undefined;
@@ -1360,32 +1237,6 @@ const BracketTournamentPage = ({
   );
   const activeStage = visibleStages[0];
 
-  const setScrollerRef = (stageKey: string, node: HTMLDivElement | null): void => {
-    if (node) {
-      scrollerRefs.current[stageKey] = node;
-      syncRoundHeaderTrack(stageKey, node.scrollLeft);
-      return;
-    }
-
-    delete scrollerRefs.current[stageKey];
-  };
-
-  const syncRoundHeaderTrack = (stageKey: string, scrollLeft: number): void => {
-    const headerTrack = headerTrackRefs.current[stageKey];
-    if (!headerTrack) return;
-    headerTrack.style.transform = `translate3d(${-scrollLeft}px, 0, 0)`;
-  };
-
-  const setHeaderTrackRef = (stageKey: string, node: HTMLDivElement | null): void => {
-    if (node) {
-      headerTrackRefs.current[stageKey] = node;
-      syncRoundHeaderTrack(stageKey, scrollerRefs.current[stageKey]?.scrollLeft || 0);
-      return;
-    }
-
-    delete headerTrackRefs.current[stageKey];
-  };
-
   const updateStageZoom = (stageKey: string, direction: -1 | 1): void => {
     setZoomLevels((current) => ({
       ...current,
@@ -1439,10 +1290,6 @@ const BracketTournamentPage = ({
     });
   };
 
-  const handleScrollerScroll = (stageKey: string, event: ReactUIEvent<HTMLDivElement>): void => {
-    syncRoundHeaderTrack(stageKey, event.currentTarget.scrollLeft);
-  };
-
   const scrollToComments = (event: ReactMouseEvent<HTMLAnchorElement>): void => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
       return;
@@ -1461,87 +1308,6 @@ const BracketTournamentPage = ({
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
       block: "start",
     });
-  };
-
-  const shouldSuppressMatchClick = (): boolean => {
-    if (!suppressNextMatchClickRef.current) return false;
-    suppressNextMatchClickRef.current = false;
-    return true;
-  };
-
-  const isPointerOnNativeScrollbar = (element: HTMLElement, event: ReactPointerEvent): boolean => {
-    const rect = element.getBoundingClientRect();
-    const localX = event.clientX - rect.left;
-    const localY = event.clientY - rect.top;
-    const verticalScrollbarWidth = element.offsetWidth - element.clientWidth;
-    const horizontalScrollbarHeight = element.offsetHeight - element.clientHeight;
-
-    return (
-      (verticalScrollbarWidth > 0 && localX >= element.clientWidth) ||
-      (horizontalScrollbarHeight > 0 && localY >= element.clientHeight)
-    );
-  };
-
-  const handleScrollerPointerDown = (
-    stageKey: string,
-    event: ReactPointerEvent<HTMLDivElement>,
-  ): void => {
-    // Touch scrolling is deliberately left to the browser so mobile gets native
-    // momentum, gesture arbitration, and compositor-thread scrolling.
-    if (event.pointerType !== "mouse" || event.button !== 0) return;
-    if (isInteractivePointerTarget(event.target)) return;
-    if (isPointerOnNativeScrollbar(event.currentTarget, event)) return;
-
-    const currentTarget = event.currentTarget;
-    dragStateRef.current = {
-      stageKey,
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      startScrollLeft: currentTarget.scrollLeft,
-      startScrollTop: currentTarget.scrollTop,
-      moved: false,
-    };
-    setDraggingStage(stageKey);
-  };
-
-  const handleScrollerPointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
-    const dragState = dragStateRef.current;
-    if (!dragState || dragState.pointerId !== event.pointerId) return;
-
-    const deltaX = event.clientX - dragState.startX;
-    const deltaY = event.clientY - dragState.startY;
-    if (!dragState.moved) {
-      if (Math.abs(deltaX) <= 4 && Math.abs(deltaY) <= 4) return;
-      dragState.moved = true;
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-    }
-
-    event.currentTarget.scrollLeft = dragState.startScrollLeft - deltaX;
-    const targetScrollTop = dragState.startScrollTop - deltaY;
-    const maxInternalScrollTop = Math.max(
-      0,
-      event.currentTarget.scrollHeight - event.currentTarget.clientHeight,
-    );
-    const clampedScrollTop = Math.min(maxInternalScrollTop, Math.max(0, targetScrollTop));
-    event.currentTarget.scrollTop = clampedScrollTop;
-  };
-
-  const endScrollerDrag = (event: ReactPointerEvent<HTMLDivElement>): void => {
-    const dragState = dragStateRef.current;
-    if (!dragState || dragState.pointerId !== event.pointerId) return;
-
-    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
-      event.currentTarget.releasePointerCapture?.(event.pointerId);
-    }
-    suppressNextMatchClickRef.current = dragState.moved;
-    if (dragState.moved && typeof window !== "undefined") {
-      window.setTimeout(() => {
-        suppressNextMatchClickRef.current = false;
-      }, 0);
-    }
-    dragStateRef.current = null;
-    setDraggingStage("");
   };
 
   if (bracketLoading) {
@@ -1713,7 +1479,6 @@ const BracketTournamentPage = ({
               showMatchDates={showMatchDates}
               layout={stageLayouts.get(stage.key)}
               zoomLevel={zoomLevel}
-              isDragging={draggingStage === stage.key}
               startRoundName={startRoundName}
               automaticStartRoundName={automaticStartRounds[stage.key]}
               topSeedMap={topSeedMap}
@@ -1723,14 +1488,9 @@ const BracketTournamentPage = ({
               trophyAssetPath={bracket.trophyAssetPath}
               decisiveMatchId={decisiveMatchId}
               hideStartRoundControls={Boolean(bracket.hideStartRoundControls)}
-              shouldSuppressMatchClick={shouldSuppressMatchClick}
+              shouldSuppressMatchClick={viewport.shouldSuppressMatchClick}
               onStartRoundChange={(roundName) => setStageStartRound(stage.key, roundName)}
-              setHeaderTrackRef={setHeaderTrackRef}
-              setScrollerRef={setScrollerRef}
-              onScrollerScroll={handleScrollerScroll}
-              onPointerDown={handleScrollerPointerDown}
-              onPointerMove={handleScrollerPointerMove}
-              onPointerEnd={endScrollerDrag}
+              viewport={viewport}
               loserSourcesByMatchId={loserSourcesByMatchId}
             />
           );
