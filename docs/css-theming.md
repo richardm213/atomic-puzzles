@@ -27,6 +27,8 @@ recolor an individual panel or table. Change the role or its shared recipe inste
   color stays on actions, links, selected states, and branding.
 - **Semantic colors:** adjust them for contrast in Light or Dark, not to match a
   palette. A loss or rating series should stay recognizable when the palette changes.
+- **Puzzle levels:** V1–V5 badges use five distinct hues from the active palette, with
+  light/dark contrast set by the semantic tokens. The V labels keep the level explicit.
 - **Boards:** board presets and saved board settings are separate from the site
   surface tokens. The homepage gemstone diagrams use the same preset colors as
   the default playable boards.

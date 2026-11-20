@@ -1,6 +1,12 @@
 /* Default accents and canvas wash. Gemstone palettes override these without
    changing the mode's typography, borders, or surface opacity. */
 :root {
+  --puzzle-level-hue-1: 180;
+  --puzzle-level-hue-2: 250;
+  --puzzle-level-hue-3: 85;
+  --puzzle-level-hue-4: 25;
+  --puzzle-level-hue-5: 310;
+
   --market-side-a-hue: 225;
   --market-side-b-hue: 325;
   --color-primary: #315be8;
@@ -86,6 +92,12 @@
 }
 
 :root[data-palette="ruby"] {
+  --puzzle-level-hue-1: 80;
+  --puzzle-level-hue-2: 340;
+  --puzzle-level-hue-3: 210;
+  --puzzle-level-hue-4: 27;
+  --puzzle-level-hue-5: 290;
+
   --opening-chroma: 0.16;
   --opening-fill-strength: 11%;
   --opening-label-tint: 76%;
@@ -104,6 +116,12 @@
 }
 
 :root[data-palette="emerald"] {
+  --puzzle-level-hue-1: 155;
+  --puzzle-level-hue-2: 245;
+  --puzzle-level-hue-3: 90;
+  --puzzle-level-hue-4: 355;
+  --puzzle-level-hue-5: 305;
+
   --opening-hue-1: 161;
   --opening-hue-2: 219;
   --opening-hue-3: 29;
@@ -115,6 +133,12 @@
 }
 
 :root[data-palette="amethyst"] {
+  --puzzle-level-hue-1: 265;
+  --puzzle-level-hue-2: 175;
+  --puzzle-level-hue-3: 55;
+  --puzzle-level-hue-4: 335;
+  --puzzle-level-hue-5: 125;
+
   --opening-hue-1: 309;
   --opening-hue-2: 287;
   --opening-hue-3: 231;
@@ -341,6 +365,12 @@
 
 /* Black changes the materials, not the dark mode's depth or semantic colors. */
 :root[data-palette="black"] {
+  --puzzle-level-hue-1: 220;
+  --puzzle-level-hue-2: 165;
+  --puzzle-level-hue-3: 85;
+  --puzzle-level-hue-4: 25;
+  --puzzle-level-hue-5: 305;
+
   --market-side-a-hue: 250;
   --market-side-b-hue: 70;
   --theme-panel-ink: #191919;

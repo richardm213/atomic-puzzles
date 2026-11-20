@@ -473,7 +473,7 @@ body:has(.puzzlePage) {
 }
 
 .puzzleRatingBadge {
-  --puzzle-level-color: oklch(78% 0.055 255);
+  --puzzle-level-color: var(--color-puzzle-v1);
   min-height: 28px;
   display: inline-flex;
   align-items: center;
@@ -492,43 +492,23 @@ body:has(.puzzlePage) {
 }
 
 .puzzleRatingBadge[data-level="1"] {
-  --puzzle-level-color: oklch(78% 0.055 255);
+  --puzzle-level-color: var(--color-puzzle-v1);
 }
 
 .puzzleRatingBadge[data-level="2"] {
-  --puzzle-level-color: oklch(76% 0.13 245);
+  --puzzle-level-color: var(--color-puzzle-v2);
 }
 
 .puzzleRatingBadge[data-level="3"] {
-  --puzzle-level-color: oklch(78% 0.13 170);
+  --puzzle-level-color: var(--color-puzzle-v3);
 }
 
 .puzzleRatingBadge[data-level="4"] {
-  --puzzle-level-color: oklch(77% 0.17 300);
+  --puzzle-level-color: var(--color-puzzle-v4);
 }
 
 .puzzleRatingBadge[data-level="5"] {
-  --puzzle-level-color: oklch(82% 0.15 78);
-}
-
-:root[data-theme="light"] .puzzleRatingBadge[data-level="1"] {
-  --puzzle-level-color: oklch(47% 0.055 255);
-}
-
-:root[data-theme="light"] .puzzleRatingBadge[data-level="2"] {
-  --puzzle-level-color: oklch(47% 0.15 245);
-}
-
-:root[data-theme="light"] .puzzleRatingBadge[data-level="3"] {
-  --puzzle-level-color: oklch(45% 0.13 170);
-}
-
-:root[data-theme="light"] .puzzleRatingBadge[data-level="4"] {
-  --puzzle-level-color: oklch(48% 0.18 300);
-}
-
-:root[data-theme="light"] .puzzleRatingBadge[data-level="5"] {
-  --puzzle-level-color: oklch(49% 0.14 78);
+  --puzzle-level-color: var(--color-puzzle-v5);
 }
 
 .puzzleRatingBadge strong {

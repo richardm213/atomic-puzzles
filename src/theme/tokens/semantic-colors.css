@@ -39,6 +39,24 @@
   --color-rating-graph-rapid: #f0a33a;
   --color-rating-graph-atomic960: #22cda2;
   --color-calendar-monthly: #aa8cff;
+  --puzzle-level-lightness: 80%;
+  --puzzle-level-chroma: 0.14;
+  --color-puzzle-v1: oklch(
+    var(--puzzle-level-lightness) var(--puzzle-level-chroma) var(--puzzle-level-hue-1)
+  );
+  --color-puzzle-v2: oklch(
+    var(--puzzle-level-lightness) var(--puzzle-level-chroma) var(--puzzle-level-hue-2)
+  );
+  --color-puzzle-v3: oklch(
+    var(--puzzle-level-lightness) var(--puzzle-level-chroma) var(--puzzle-level-hue-3)
+  );
+  --color-puzzle-v4: oklch(
+    var(--puzzle-level-lightness) var(--puzzle-level-chroma) var(--puzzle-level-hue-4)
+  );
+  --color-puzzle-v5: oklch(
+    var(--puzzle-level-lightness) var(--puzzle-level-chroma) var(--puzzle-level-hue-5)
+  );
+
   /* A consistent grading palette, with a brighter green for clean repeat solves. */
   --color-grading-green: #8dceaa;
   --color-grading-yellow: #e4c775;
@@ -91,6 +109,8 @@
   --color-rating-graph-rapid: #9a5b00;
   --color-rating-graph-atomic960: #087f68;
   --color-calendar-monthly: #6946bd;
+  --puzzle-level-lightness: 45%;
+  --puzzle-level-chroma: 0.12;
   --color-grading-green: #326a48;
   --color-grading-yellow: #795913;
   --color-grading-orange: #934b19;
