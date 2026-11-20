@@ -84,6 +84,12 @@ describe("formatCommentAge", () => {
     [60, "1 hour ago"],
     [24 * 60, "1 day ago"],
     [3 * 24 * 60, "3 days ago"],
+    [29 * 24 * 60, "29 days ago"],
+    [30 * 24 * 60, "1 month ago"],
+    [200 * 24 * 60, "6 months ago"],
+    [364 * 24 * 60, "12 months ago"],
+    [365 * 24 * 60, "1 year ago"],
+    [730 * 24 * 60, "2 years ago"],
   ])("formats a comment posted %s minutes ago", (minutes, expected) => {
     expect(formatCommentAge(new Date(now - minutes * 60_000).toISOString(), now)).toBe(expected);
   });

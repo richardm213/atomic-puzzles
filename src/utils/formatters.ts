@@ -42,6 +42,15 @@ export const formatCommentAge = (timestamp: string, now: number): string => {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
   const days = Math.floor(hours / 24);
+  // Reddit's published relative-time formatter uses 30-day months and 365-day years.
+  if (days >= 365) {
+    const years = Math.floor(days / 365);
+    return `${years} ${years === 1 ? "year" : "years"} ago`;
+  }
+  if (days >= 30) {
+    const months = Math.floor(days / 30);
+    return `${months} ${months === 1 ? "month" : "months"} ago`;
+  }
   return `${days} ${days === 1 ? "day" : "days"} ago`;
 };
 
