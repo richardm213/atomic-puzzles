@@ -1054,11 +1054,6 @@ button.puzzleRatingBadge.editable:focus-visible {
     padding-inline: 4px;
   }
 
-  .puzzlePage > .puzzleCommunity {
-    width: min(100%, 760px);
-    justify-self: center;
-  }
-
   .puzzleIssuePrompt + .puzzleCommunity {
     margin-top: -8px;
     padding-top: 0;
@@ -1568,6 +1563,16 @@ button.puzzleRatingBadge.editable:focus-visible {
   width: 10px;
   height: 10px;
   color: var(--color-subtle);
+}
+
+.puzzleBoardColumn {
+  flex-direction: column;
+  gap: var(--board-layout-gap);
+}
+
+.puzzleBoardColumn > .puzzleCommunity,
+.puzzleBoardColumn > .puzzleIssuePrompt {
+  width: 100%;
 }
 
 .boardWrap {

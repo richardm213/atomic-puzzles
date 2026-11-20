@@ -2141,6 +2141,21 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
         ? boardState.error
         : "");
 
+  const issuePrompt =
+    !testMode && hasAttemptedActivePuzzle ? (
+      <p className="puzzleIssuePrompt">
+        <button type="button" onClick={() => setReportIssueOpen(true)}>
+          Report issue
+        </button>
+      </p>
+    ) : null;
+  const puzzleDiscussion = isAnalysisMode ? (
+    <PuzzleCommunity
+      puzzleId={activePuzzleId}
+      voteTargetId={isMobileLayout ? "mobile-puzzle-vote-slot" : "desktop-puzzle-vote-slot"}
+    />
+  ) : null;
+
   return (
     <div className="page puzzlePage" data-board-resize="puzzle">
       <Seo
@@ -2415,7 +2430,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
         {!isMobileLayout ? <div className="puzzleDetails">{renderPuzzleInfoSection()}</div> : null}
       </div>
 
-      <div className="boardWrap">
+      <div className={`boardWrap${isMobileLayout ? "" : " puzzleBoardColumn"}`}>
         <div
           ref={boardPanelRef}
           className={`boardFrame ${feedback ? `hasFeedback ${feedback.type}` : ""}`}
@@ -2496,6 +2511,12 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
             </div>
           ) : null}
         </div>
+        {!isMobileLayout ? (
+          <>
+            {issuePrompt}
+            {puzzleDiscussion}
+          </>
+        ) : null}
       </div>
 
       {!isMobileLayout ? (
@@ -2655,19 +2676,11 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
         </div>
       ) : null}
 
-      {!testMode && hasAttemptedActivePuzzle ? (
-        <p className="puzzleIssuePrompt">
-          <button type="button" onClick={() => setReportIssueOpen(true)}>
-            Report issue
-          </button>
-        </p>
-      ) : null}
-
-      {isAnalysisMode ? (
-        <PuzzleCommunity
-          puzzleId={activePuzzleId}
-          voteTargetId={isMobileLayout ? "mobile-puzzle-vote-slot" : "desktop-puzzle-vote-slot"}
-        />
+      {isMobileLayout ? (
+        <>
+          {issuePrompt}
+          {puzzleDiscussion}
+        </>
       ) : null}
     </div>
   );

@@ -597,6 +597,28 @@ test("puzzle testing shows comments and previews coins and ratings without persi
   await expect(page.getByText("An existing puzzle discussion.", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: /^500 coins/ })).toBeVisible();
 
+  // Long attempt histories belong to the details column, independently of the discussion.
+  await page.route("**/__e2e_supabase/rest/v1/puzzle_progress?**", (route) =>
+    route.fulfill({
+      json: Array.from({ length: 30 }, (_, index) => ({
+        username: `solver${index}`,
+        puzzle_id: "102",
+        first_attempt_at: "2026-11-19T00:00:00Z",
+        puzzle_correct: true,
+        has_solved: true,
+        correct_move: "1. e4",
+        attempt_color: "green",
+      })),
+    }),
+  );
+  const discussion = page.getByRole("region", { name: "Comments", exact: true });
+  await expect(discussion).toBeInViewport();
+  await page.getByRole("tab", { name: "Other attempts", exact: true }).click();
+  await expect(
+    page.getByRole("list", { name: "Other puzzle attempts" }).getByRole("listitem"),
+  ).toHaveCount(30);
+  await expect(discussion).toBeInViewport();
+
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/puzzle-test\/101$/);
   await expect(page.getByRole("heading", { name: "Test puzzle 101" })).toBeVisible();
