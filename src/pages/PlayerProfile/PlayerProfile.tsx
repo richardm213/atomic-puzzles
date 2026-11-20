@@ -7,43 +7,27 @@ import {
   faClockRotateLeft,
   faComment,
   faEllipsisVertical,
-  faMagnifyingGlass,
   faPuzzlePiece,
   faShieldHalved,
   faTrophy,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 import { CoinProfileActions } from "../../components/CoinProfileActions/CoinProfileActions";
 import { CommunityCommentCount } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
-import { DualRangeSlider } from "../../components/DualRangeSlider/DualRangeSlider";
 import { LichessGameLink } from "../../components/LichessGameLink/LichessGameLink";
-import { MatchDetails } from "../../components/MatchDetails/MatchDetails";
-import { MatchPageLink } from "../../components/MatchPageLink/MatchPageLink";
-import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { ProfileMetricCard } from "../../components/ProfileMetricCard/ProfileMetricCard";
 import { Seo } from "../../components/Seo/Seo";
-import { SourceFilterChecks } from "../../components/SourceFilterChecks/SourceFilterChecks";
-import { TimeControlFields } from "../../components/TimeControlFields/TimeControlFields";
 import { TournamentPlayerLink } from "../../components/TournamentPlayerLink/TournamentPlayerLink";
-import {
-  defaultMode,
-  modeLabels,
-  modeOptions,
-  opponentRatingSliderMax,
-  opponentRatingSliderMin,
-  pageSizeOptions,
-  publicModeOptions,
-} from "../../constants/matches";
+import { defaultMode, modeLabels, modeOptions, publicModeOptions } from "../../constants/matches";
 import { useAppSettings } from "../../context/AppSettings";
 import type { RankHistoryMode } from "../../features/profile/favoriteOpponents";
 import { FavoriteOpponentsSection } from "../../features/profile/FavoriteOpponentsSection";
-import { isClientSidePagedSearch } from "../../features/profile/profileFilters";
 import {
   getProfileHistoryTabFromLocation,
   getRankHistoryViewFromLocation,
@@ -57,13 +41,8 @@ import {
   getAliasProfileSourceLabel,
   LichessProfileIcon,
   NON_COUNTED_ALIAS_MESSAGE,
-  profileResultToneClass,
   PyChessProfileIcon,
 } from "../../features/profile/profilePresentation";
-import {
-  type ProfileMatchHistoryMode,
-  profileMatchHistoryQueryOptions,
-} from "../../features/profile/profileQueries";
 import { getVisibleProfileRatingModes } from "../../features/profile/profileRatingModes";
 import {
   fetchChampionshipTrophies,
@@ -73,8 +52,6 @@ import {
   getPublishedProfileRankingTrophies,
   getPuzzleRankingTrophies,
   getRankingTrophies,
-  isTrophyCaseSort,
-  ProfileTrophyCaseCard,
   ProfileTrophyLink,
   sortProfileTrophies,
   type TrophyCaseSort,
@@ -84,7 +61,6 @@ import { useFavoriteOpponentsModel } from "../../features/profile/useFavoriteOpp
 import { usePersistedState } from "../../hooks/usePersistedState";
 import {
   buildRankingsLocation,
-  filterMatches,
   getBestWinsForMode,
   getMonthRankHighlights,
   getMonthRanksForMode,
@@ -100,47 +76,24 @@ import {
   getAliasIdentityUsernames,
 } from "../../lib/archive/aliases";
 import { atomicTourPlayerRankingStatsQueryOptions } from "../../lib/atomicTour/queries";
-import { getTimeControlOptions } from "../../lib/matches/collection";
 import { inferExternalGameSource } from "../../lib/matches/routes";
 import { playerSocialQueryOptions } from "../../lib/playerSocial/playerSocial";
 import { puzzleRankingTrophiesQueryOptions } from "../../lib/puzzles/puzzleQueries";
 import { profileAliasQueryOptions } from "../../lib/users/aliasQueries";
 import { registeredSiteUsernameQueryOptions } from "../../lib/users/userQueries";
-import { isOneOf, toggleArrayValue } from "../../utils/arrays";
-import { getErrorMessage } from "../../utils/errors";
-import {
-  formatLocalDateTime,
-  formatOpponentWithRating,
-  formatScore,
-  formatSignedDecimal,
-} from "../../utils/formatters";
+import { isOneOf } from "../../utils/arrays";
+import { formatLocalDateTime, formatOpponentWithRating } from "../../utils/formatters";
 import { ATOMIC_OPENINGS_PATH, getOpeningTag } from "../../utils/openings";
 import { normalizeUsername } from "../../utils/playerNames";
-import { useProfileFilters } from "./useProfileFilters";
+import { ProfileMatchHistory } from "./ProfileMatchHistory";
+import { ProfileRankHistory } from "./ProfileRankHistory";
 
 const countOptions = [5, 10, 20];
-const matchPrefetchDelayMs = 750;
 const profileHighlightViewStorageKey = "atomic-profile-highlight-view";
 
 type ProfileHighlightView = "wins" | "best-ranks" | "recent-ranks";
 type RankHistorySort = "rank" | "players" | "rating" | "games";
 type SortDirection = "asc" | "desc";
-
-type NavigatorWithConnection = Navigator & {
-  connection?: {
-    effectiveType?: string;
-    saveData?: boolean;
-  };
-};
-
-const shouldSkipMatchPrefetch = (): boolean => {
-  const connection = (navigator as NavigatorWithConnection).connection;
-  return Boolean(
-    connection?.saveData ||
-    connection?.effectiveType === "slow-2g" ||
-    connection?.effectiveType === "2g",
-  );
-};
 
 const CommunityDiscussion = lazy(async () => {
   const module = await import("../../components/PuzzleCommunity/PuzzleCommunity");
@@ -159,14 +112,12 @@ export const PlayerProfilePage = ({
   username?: string;
   historyOnly?: boolean;
 }) => {
-  const queryClient = useQueryClient();
   const { profileRatingSlots, showProfileActionButtons } = useAppSettings();
   const requestedUsername = useMemo(() => String(username ?? "").trim(), [username]);
   const normalizedUsername = useMemo(
     () => normalizeUsername(requestedUsername),
     [requestedUsername],
   );
-  const [matchHistoryMode, setMatchHistoryMode] = useState<ProfileMatchHistoryMode>("all");
   const [bestWinMode, setBestWinMode] =
     useState<import("../../constants/matches").Mode>(defaultMode);
   const [bestRankMode, setBestRankMode] =
@@ -191,11 +142,7 @@ export const PlayerProfilePage = ({
     getProfileHistoryTabFromLocation(),
   );
   const [showRatingGraph, setShowRatingGraph] = useState(false);
-  const [expandedMatchKeys, setExpandedMatchKeys] = useState<string[]>([]);
-  const [displayedMatchPage, setDisplayedMatchPage] = useState(1);
   const profileActionsMenuRef = useRef<HTMLDetailsElement>(null);
-  const matchHistoryTableRef = useRef<HTMLDivElement>(null);
-  const pendingMatchPageScrollRef = useRef<number | null>(null);
   const profileAliasQuery = useQuery({
     ...profileAliasQueryOptions(requestedUsername),
     enabled: Boolean(requestedUsername),
@@ -260,33 +207,6 @@ export const PlayerProfilePage = ({
   )
     ? requestedProfileUsername.toLowerCase()
     : requestedProfileUsername;
-  const {
-    matchFiltersOpen,
-    toggleMatchFilters,
-    page,
-    setPage,
-    pageSize,
-    setPageSize,
-    appliedFilters,
-    applyFilters,
-    resetTimeControl,
-    opponentRatingMin,
-    setOpponentRatingMin,
-    opponentRatingMax,
-    setOpponentRatingMax,
-    opponentFilter,
-    setOpponentFilter,
-    startDateFilter,
-    setStartDateFilter,
-    endDateFilter,
-    setEndDateFilter,
-    sourceFilters,
-    setSourceFilter,
-    timeControlInitialFilter,
-    setTimeControlInitialFilter,
-    timeControlIncrementFilter,
-    setTimeControlIncrementFilter,
-  } = useProfileFilters(`${normalizedUsername}:${String(isExcluded)}`);
   useEffect(() => {
     if (isExcluded && (profileHistoryTab === "ranks" || profileHistoryTab === "opponents")) {
       setProfileHistoryTab("matches");
@@ -316,7 +236,6 @@ export const PlayerProfilePage = ({
   );
   const rankHistoryModeOptions: RankHistoryMode[] = ["all", ...profileModeOptions];
   const favoriteOpponentModeOptions: RankHistoryMode[] = ["all", ...profileModeOptions];
-  const matchHistoryModeOptions: ProfileMatchHistoryMode[] = ["all", ...profileModeOptions];
   const {
     rows: favoriteOpponentRows,
     mode: favoriteOpponentMode,
@@ -349,10 +268,7 @@ export const PlayerProfilePage = ({
     }
     if (!profileModeOptions.includes(bestWinMode)) setBestWinMode(defaultMode);
     if (!profileModeOptions.includes(bestRankMode)) setBestRankMode(defaultMode);
-    if (matchHistoryMode !== "all" && !profileModeOptions.includes(matchHistoryMode)) {
-      setMatchHistoryMode(defaultMode);
-    }
-  }, [bestRankMode, bestWinMode, matchHistoryMode, profileModeOptions, rankHistoryMode]);
+  }, [bestRankMode, bestWinMode, profileModeOptions, rankHistoryMode]);
   const monthRanks = useMonthRanks(
     // Archive ranking rows are keyed by the canonical player, so every profile alias shares them.
     profileDataUsername,
@@ -376,14 +292,12 @@ export const PlayerProfilePage = ({
   const [bestMonthRankCount, setBestMonthRankCount] = useState(5);
   const [bestWinCount, setBestWinCount] = useState(5);
   useEffect(() => {
-    setMatchHistoryMode("all");
     setBestWinMode(defaultMode);
     setBestRankMode(defaultMode);
     setRankHistoryMode("all");
     setRankHistorySort(null);
     setRankHistorySortDirection("asc");
     setProfileHistoryTab(getProfileHistoryTabFromLocation());
-    setExpandedMatchKeys([]);
   }, [isExcluded, normalizedUsername]);
 
   useEffect(() => {
@@ -422,164 +336,6 @@ export const PlayerProfilePage = ({
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  useEffect(() => {
-    setExpandedMatchKeys([]);
-  }, [page, matchHistoryMode, appliedFilters, canonicalUsername]);
-
-  const isClientPagedResults = isClientSidePagedSearch(appliedFilters);
-  const matchHistoryQuery = useQuery({
-    ...profileMatchHistoryQueryOptions(
-      canonicalUsername,
-      matchHistoryMode,
-      appliedFilters,
-      isClientPagedResults ? 1 : page,
-      pageSize,
-    ),
-    enabled: aliasesLoaded && profileHistoryTab === "matches" && Boolean(canonicalUsername),
-    placeholderData: keepPreviousData,
-  });
-  const matches = useMemo(
-    () => matchHistoryQuery.data?.matches ?? [],
-    [matchHistoryQuery.data?.matches],
-  );
-  const loadingMatches = matchHistoryQuery.isFetching;
-  const error = matchHistoryQuery.error
-    ? getErrorMessage(matchHistoryQuery.error, "Unable to load match history.")
-    : "";
-
-  const { initialOptions, incrementOptions } = useMemo(
-    () => getTimeControlOptions(matches),
-    [matches],
-  );
-  const filteredMatches = useMemo(
-    () => filterMatches(matches, appliedFilters),
-    [matches, appliedFilters],
-  );
-  // A new page has no query data while loading (or after a failed request).
-  // Only clamp pagination once the requested result supplies a real total.
-  const totalPages = Math.max(
-    matchHistoryQuery.data === undefined ? page : 1,
-    Math.ceil(
-      (isClientPagedResults ? filteredMatches.length : (matchHistoryQuery.data?.total ?? 0)) /
-        Math.max(1, pageSize),
-    ),
-  );
-  const currentPage = Math.min(page, totalPages);
-  const visibleMatches = useMemo(() => {
-    if (!isClientPagedResults) return filteredMatches;
-    const pageStart = (currentPage - 1) * pageSize;
-    return filteredMatches.slice(pageStart, pageStart + pageSize);
-  }, [currentPage, filteredMatches, isClientPagedResults, pageSize]);
-  const requestedServerPage = isClientPagedResults ? 1 : currentPage;
-
-  useEffect(() => {
-    const pageDataReady =
-      isClientPagedResults ||
-      (matchHistoryQuery.data !== undefined &&
-        !matchHistoryQuery.isPlaceholderData &&
-        !matchHistoryQuery.isFetching);
-    if (!pageDataReady) return;
-
-    setDisplayedMatchPage(currentPage);
-    if (pendingMatchPageScrollRef.current === null) return;
-    if (pendingMatchPageScrollRef.current !== currentPage) {
-      pendingMatchPageScrollRef.current = null;
-      return;
-    }
-    pendingMatchPageScrollRef.current = null;
-
-    const table = matchHistoryTableRef.current;
-    if (!table) return;
-    const top = Math.max(
-      0,
-      window.scrollY + table.getBoundingClientRect().top - window.innerHeight * 0.15,
-    );
-    window.scrollTo({ top, left: 0, behavior: "auto" });
-  }, [
-    currentPage,
-    isClientPagedResults,
-    matchHistoryQuery.data,
-    matchHistoryQuery.isFetching,
-    matchHistoryQuery.isPlaceholderData,
-  ]);
-
-  const handleMatchPageChange = (nextPage: number): void => {
-    if (nextPage === currentPage || loadingMatches) return;
-    pendingMatchPageScrollRef.current = nextPage;
-    setPage(nextPage);
-  };
-
-  useEffect(() => {
-    if (
-      matchHistoryQuery.isPending ||
-      !aliasesLoaded ||
-      isExcluded ||
-      matchHistoryMode === "all" ||
-      profileHistoryTab !== "matches" ||
-      isClientPagedResults ||
-      profileModeOptions.length < 2 ||
-      shouldSkipMatchPrefetch()
-    ) {
-      return;
-    }
-
-    const currentModeIndex = profileModeOptions.indexOf(matchHistoryMode);
-    const nextMode = profileModeOptions[(currentModeIndex + 1) % profileModeOptions.length];
-    if (!nextMode || nextMode === matchHistoryMode) return;
-
-    let cancelled = false;
-    const prefetch = (): void => {
-      if (cancelled) return;
-      void queryClient.prefetchQuery(
-        profileMatchHistoryQueryOptions(
-          canonicalUsername,
-          nextMode,
-          appliedFilters,
-          requestedServerPage,
-          pageSize,
-        ),
-      );
-    };
-
-    let idleCallbackId: number | undefined;
-    const delayId = window.setTimeout(() => {
-      if ("requestIdleCallback" in window) {
-        idleCallbackId = window.requestIdleCallback(prefetch, { timeout: 2_000 });
-      } else {
-        prefetch();
-      }
-    }, matchPrefetchDelayMs);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(delayId);
-      if (idleCallbackId !== undefined && "cancelIdleCallback" in window) {
-        window.cancelIdleCallback(idleCallbackId);
-      }
-    };
-  }, [
-    aliasesLoaded,
-    appliedFilters,
-    canonicalUsername,
-    isExcluded,
-    isClientPagedResults,
-    matchHistoryQuery.isPending,
-    matchHistoryMode,
-    pageSize,
-    profileHistoryTab,
-    profileModeOptions,
-    queryClient,
-    requestedServerPage,
-  ]);
-
-  const handleSearchClick = () => {
-    if (loadingMatches) return;
-    applyFilters();
-  };
-  const handleModeChange = (nextMode: ProfileMatchHistoryMode): void => {
-    setMatchHistoryMode(nextMode);
-    resetTimeControl();
-  };
   const handleProfileHistoryTabChange = (nextTab: ProfileHistoryTab): void => {
     if (profileHistoryTab === nextTab) return;
     setProfileHistoryTab(nextTab);
@@ -591,12 +347,6 @@ export const PlayerProfilePage = ({
     setRankHistoryView(nextView);
     pushProfileHistoryLocation("ranks", nextView);
   };
-
-  useEffect(() => {
-    if (currentPage !== page) {
-      setPage(currentPage);
-    }
-  }, [currentPage, page, setPage]);
 
   const bestWins = useMemo(
     () => getBestWinsForMode(ratingDisplayByMode, bestWinMode, bestWinCount),
@@ -812,9 +562,6 @@ export const PlayerProfilePage = ({
   ]);
   const hasVisibleProfileTrophies = visibleProfileTrophies.length > 0;
 
-  const toggleMatchKey = (key: string): void => {
-    setExpandedMatchKeys((current) => toggleArrayValue(current, key));
-  };
   const profileActionItems = (
     <>
       {!isExcluded && coinGiftRecipientUsername ? (
@@ -1297,515 +1044,31 @@ export const PlayerProfilePage = ({
                 </button>
               </div>
 
-              <section
-                id="profile-match-history-panel"
-                className="profileHistorySection"
-                role="tabpanel"
-                aria-labelledby="profile-match-history-tab"
-                hidden={profileHistoryTab !== "matches"}
-              >
-                {profileHistoryTab === "matches" ? (
-                  <>
-                    <div className="rankingsMeta profileHistoryMeta">
-                      <div className="profileHistoryTitleControl">
-                        <label htmlFor="profile-match-history-mode-select">
-                          <span>Mode</span>
-                          <select
-                            id="profile-match-history-mode-select"
-                            aria-label="Match history mode"
-                            value={matchHistoryMode}
-                            onChange={(event) => {
-                              const v = event.target.value;
-                              if (isOneOf(matchHistoryModeOptions, v)) {
-                                handleModeChange(v);
-                              }
-                            }}
-                          >
-                            {matchHistoryModeOptions.map((mode) => (
-                              <option key={mode} value={mode}>
-                                {mode === "all" ? "All" : (modeLabels[mode] ?? mode)}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      </div>
-                      <button
-                        type="button"
-                        className="profileMatchFilterToggle"
-                        aria-expanded={matchFiltersOpen}
-                        aria-controls="profile-match-filters"
-                        onClick={toggleMatchFilters}
-                      >
-                        {matchFiltersOpen ? "Hide filters" : "Show filters"}
-                      </button>
-                    </div>
+              <ProfileMatchHistory
+                profileHistoryTab={profileHistoryTab}
+                profileModeOptions={profileModeOptions}
+                normalizedUsername={normalizedUsername}
+                canonicalUsername={canonicalUsername}
+                aliasesLoaded={aliasesLoaded}
+                isExcluded={isExcluded}
+              />
 
-                    {matchFiltersOpen ? (
-                      <form
-                        id="profile-match-filters"
-                        className="matchFilterPanel profileMatchFilters"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          handleSearchClick();
-                        }}
-                      >
-                        <div className="matchFilterGrid">
-                          <label htmlFor="profile-page-size-select">
-                            Page size
-                            <select
-                              id="profile-page-size-select"
-                              value={pageSize}
-                              onChange={(event) => {
-                                setPageSize(Number(event.target.value));
-                                setPage(1);
-                              }}
-                            >
-                              {pageSizeOptions.map((value) => (
-                                <option key={value} value={value}>
-                                  {value}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <TimeControlFields
-                            initialId="profile-time-initial-select"
-                            incrementId="profile-time-increment-select"
-                            initialValue={timeControlInitialFilter}
-                            incrementValue={timeControlIncrementFilter}
-                            initialOptions={initialOptions}
-                            incrementOptions={incrementOptions}
-                            onInitialChange={setTimeControlInitialFilter}
-                            onIncrementChange={setTimeControlIncrementFilter}
-                            startDateId="profile-start-date-filter"
-                            endDateId="profile-end-date-filter"
-                            startDateValue={startDateFilter}
-                            endDateValue={endDateFilter}
-                            onStartDateChange={setStartDateFilter}
-                            onEndDateChange={setEndDateFilter}
-                          />
-                          <label
-                            htmlFor="profile-opponent-filter"
-                            className="profileOpponentFilterField"
-                          >
-                            Opponent
-                            <input
-                              id="profile-opponent-filter"
-                              type="text"
-                              value={opponentFilter}
-                              onChange={(event) => setOpponentFilter(event.target.value)}
-                              placeholder="username"
-                            />
-                          </label>
-                        </div>
-
-                        {!isExcluded ? (
-                          <div className="matchFilterRanges">
-                            <DualRangeSlider
-                              id="opponent-rating-min"
-                              label={`Opponent rating range: ${opponentRatingMin} - ${opponentRatingMax}`}
-                              min={opponentRatingSliderMin}
-                              max={opponentRatingSliderMax}
-                              step={10}
-                              lowerValue={opponentRatingMin}
-                              upperValue={opponentRatingMax}
-                              onLowerChange={setOpponentRatingMin}
-                              onUpperChange={setOpponentRatingMax}
-                            />
-                          </div>
-                        ) : null}
-
-                        <div className="matchFilterFooter profileMatchFilterFooter">
-                          <SourceFilterChecks values={sourceFilters} onChange={setSourceFilter} />
-                          <div className="matchFilterActions">
-                            <button
-                              className="primaryActionButton matchFilterSearch"
-                              type="submit"
-                              disabled={loadingMatches}
-                            >
-                              <FontAwesomeIcon icon={faMagnifyingGlass} aria-hidden="true" />
-                              {loadingMatches ? "Searching..." : "Search"}
-                            </button>
-                          </div>
-                        </div>
-                      </form>
-                    ) : null}
-
-                    {error ? <div className="errorText">{error}</div> : null}
-
-                    <div
-                      ref={matchHistoryTableRef}
-                      className="rankingsTableWrap matchHistoryTableWrap profileMatchTableWrap"
-                    >
-                      <table className="rankingsTable matchHistoryTable profileMatchTable">
-                        <colgroup>
-                          <col className="profileMatchDateColumn" />
-                          <col className="profileMatchOpponentColumn" />
-                          <col className="profileMatchTimeControlColumn" />
-                          <col className="profileMatchScoreColumn" />
-                          <col className="profileMatchRatingColumn" />
-                          <col className="profileMatchRdColumn" />
-                          <col className="profileMatchLinkColumn" />
-                        </colgroup>
-                        <thead>
-                          <tr>
-                            <th>Date / Time</th>
-                            <th>Opponent</th>
-                            <th>TC</th>
-                            <th>Score</th>
-                            <th>{isExcluded ? "Estimated rating (Δ)" : "Rating (Δ)"}</th>
-                            <th>RD (Δ)</th>
-                            <th aria-label="Match actions" />
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {visibleMatches.map((match) => {
-                            const matchKey = `${match.startTs}-${match.firstGameId}`;
-                            const isExpanded = expandedMatchKeys.includes(matchKey);
-                            return (
-                              <Fragment key={matchKey}>
-                                <tr
-                                  className={`expandableMatchRow${isExpanded ? " expanded" : ""}`}
-                                  tabIndex={0}
-                                  aria-expanded={isExpanded}
-                                  onClick={(event) => {
-                                    if ((event.target as HTMLElement).closest("a, button")) return;
-                                    toggleMatchKey(matchKey);
-                                  }}
-                                  onKeyDown={(event) => {
-                                    if (event.target !== event.currentTarget) return;
-                                    if (event.key !== "Enter" && event.key !== " ") return;
-                                    event.preventDefault();
-                                    toggleMatchKey(matchKey);
-                                  }}
-                                >
-                                  <td>
-                                    <LichessGameLink
-                                      gameId={match.firstGameId}
-                                      source={match.sourceValue}
-                                      mode={match.mode}
-                                      onClick={(event) => event.stopPropagation()}
-                                    >
-                                      {formatLocalDateTime(match.startTs)}
-                                    </LichessGameLink>
-                                  </td>
-                                  <td>
-                                    <PlayerLink
-                                      className="rankingLink"
-                                      username={match.opponent}
-                                      onClick={(event) => event.stopPropagation()}
-                                    >
-                                      {formatOpponentWithRating(
-                                        match.opponent,
-                                        match.opponentAfterRating,
-                                      )}
-                                    </PlayerLink>
-                                  </td>
-                                  <td>
-                                    <span className="profileTablePill timeControlValue">
-                                      {match.timeControl}
-                                    </span>
-                                  </td>
-                                  <td className="scoreCell">
-                                    <span className="profileScoreBox">
-                                      <span
-                                        className={`profileScoreValue${profileResultToneClass(
-                                          match.playerScore,
-                                          match.opponentScore,
-                                        )}`}
-                                      >
-                                        {formatScore(match.playerScore)}
-                                      </span>
-                                      <span className="scoreDash">-</span>
-                                      <span className="profileScoreValue">
-                                        {formatScore(match.opponentScore)}
-                                      </span>
-                                    </span>
-                                  </td>
-                                  <td>
-                                    <span className="profileMetricPair">
-                                      <span className="profileMetricValue">
-                                        {match.beforeRating}
-                                      </span>
-                                      <span className="profileDelta">
-                                        {formatSignedDecimal(match.ratingChange)}
-                                      </span>
-                                    </span>
-                                  </td>
-                                  <td>
-                                    <span className="profileMetricPair">
-                                      <span className="profileMetricValue">{match.beforeRd}</span>
-                                      <span className="profileDelta">
-                                        {formatSignedDecimal(match.rdChange)}
-                                      </span>
-                                    </span>
-                                  </td>
-                                  <td>
-                                    <div className="tableRowActions">
-                                      <MatchPageLink
-                                        match={{
-                                          ...match,
-                                          playerA: canonicalUsername,
-                                          playerB: match.opponent,
-                                          mode: match.mode,
-                                        }}
-                                        title="Open match page in new tab"
-                                      />
-                                    </div>
-                                  </td>
-                                </tr>
-                                {isExpanded ? (
-                                  <tr className="matchDetailsRow">
-                                    <td colSpan={7}>
-                                      <div className="matchDetailsInner">
-                                        <MatchDetails
-                                          match={{
-                                            matchId: match.matchId,
-                                            mode: match.mode,
-                                            playerA: canonicalUsername,
-                                            playerB: match.opponent,
-                                            startTs: match.startTs,
-                                            timeControl: match.timeControl,
-                                            sourceValue: match.sourceValue,
-                                            firstGameId: match.firstGameId,
-                                            scoreA: match.playerScore,
-                                            scoreB: match.opponentScore,
-                                            playerABeforeRating: match.beforeRating,
-                                            playerAAfterRating: match.afterRating,
-                                            playerABeforeRd: match.beforeRd,
-                                            playerAAfterRd: match.afterRd,
-                                            playerBBeforeRating: match.opponentBeforeRating,
-                                            playerBAfterRating: match.opponentAfterRating,
-                                            playerBBeforeRd: match.opponentBeforeRd,
-                                            playerBAfterRd: match.opponentAfterRd,
-                                            games: match.games.map((game, index) => ({
-                                              id: game.id,
-                                              index,
-                                              resultLabel: game.winner,
-                                              scoreAAfter: game.playerScoreAfter,
-                                              scoreBAfter: game.opponentScoreAfter,
-                                            })),
-                                          }}
-                                          matchKey={matchKey}
-                                          showH2HLink
-                                          showRunningScore
-                                          stopPropagation={(event) => event.stopPropagation()}
-                                        />
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ) : null}
-                              </Fragment>
-                            );
-                          })}
-                          {visibleMatches.length === 0 ? (
-                            <tr>
-                              <td colSpan={7} className="emptyRankings">
-                                {matchHistoryMode === "all"
-                                  ? "No matches found for this player with current filters across all modes."
-                                  : `No matches found for this player with current filters in ${modeLabels[matchHistoryMode]}.`}
-                              </td>
-                            </tr>
-                          ) : null}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <PaginationRow
-                      currentPage={displayedMatchPage}
-                      totalPages={totalPages}
-                      onPageChange={handleMatchPageChange}
-                      formatLabel={(current, total) => `Page ${current} / ${total}`}
-                      disabled={loadingMatches}
-                      navigationVariant="arrows"
-                    />
-                  </>
-                ) : null}
-              </section>
-
-              <section
-                id="profile-rank-history-panel"
-                className="profileHistorySection"
-                role="tabpanel"
-                aria-labelledby="profile-rank-history-tab"
-                hidden={profileHistoryTab !== "ranks"}
-              >
-                {profileHistoryTab === "ranks" ? (
-                  <>
-                    <div className="rankingsMeta profileHistoryMeta">
-                      <div className="profileHistoryTitleControl">
-                        <label htmlFor="profile-rank-history-view-select">
-                          <span>View</span>
-                          <select
-                            id="profile-rank-history-view-select"
-                            aria-label="Rank history view"
-                            value={rankHistoryView}
-                            onChange={(event) => {
-                              const nextView = event.target.value;
-                              if (nextView === "history" || nextView === "trophies") {
-                                handleRankHistoryViewChange(nextView);
-                              }
-                            }}
-                          >
-                            <option value="history">History</option>
-                            <option value="trophies">Trophy Case</option>
-                          </select>
-                        </label>
-                        {rankHistoryView === "history" ? (
-                          <label htmlFor="profile-rank-history-mode-select">
-                            <span>Mode</span>
-                            <select
-                              id="profile-rank-history-mode-select"
-                              aria-label="Rank history mode"
-                              value={rankHistoryMode}
-                              onChange={(event) => {
-                                const v = event.target.value;
-                                if (v === "all" || isOneOf(profileModeOptions, v)) {
-                                  setRankHistoryMode(v);
-                                }
-                              }}
-                            >
-                              {rankHistoryModeOptions.map((mode) => (
-                                <option key={mode} value={mode}>
-                                  {mode === "all" ? "All" : (modeLabels[mode] ?? mode)}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        ) : (
-                          <label htmlFor="profile-trophy-case-sort-select">
-                            <span>Sort</span>
-                            <select
-                              id="profile-trophy-case-sort-select"
-                              aria-label="Trophy case sort"
-                              value={trophyCaseSort}
-                              onChange={(event) => {
-                                const nextSort = event.target.value;
-                                if (isTrophyCaseSort(nextSort)) {
-                                  setTrophyCaseSort(nextSort);
-                                }
-                              }}
-                            >
-                              <option value="prestige">Prestige</option>
-                              <option value="date">Date</option>
-                            </select>
-                          </label>
-                        )}
-                      </div>
-                      <span>
-                        {rankHistoryView === "history"
-                          ? `${rankHistoryRows.length} months`
-                          : `${trophyCaseTrophies.length} trophies`}
-                      </span>
-                    </div>
-
-                    {rankHistoryView === "history" ? (
-                      <div className="rankingsTableWrap profileRankHistoryTableWrap">
-                        <table className="rankingsTable profileRankHistoryTable">
-                          <thead>
-                            <tr>
-                              <th>Month</th>
-                              <th>Mode</th>
-                              {(
-                                [
-                                  ["rank", "Rank"],
-                                  ["players", "Players"],
-                                  ["rating", "Rating"],
-                                ] as const
-                              ).map(([column, label]) => (
-                                <th
-                                  key={column}
-                                  aria-sort={
-                                    rankHistorySort === column
-                                      ? rankHistorySortDirection === "asc"
-                                        ? "ascending"
-                                        : "descending"
-                                      : "none"
-                                  }
-                                >
-                                  <button
-                                    className="profileRankHistorySortButton"
-                                    type="button"
-                                    onClick={() => handleRankHistorySort(column)}
-                                  >
-                                    {label}
-                                    <span aria-hidden="true">
-                                      {rankHistorySort === column
-                                        ? rankHistorySortDirection === "asc"
-                                          ? "↑"
-                                          : "↓"
-                                        : ""}
-                                    </span>
-                                  </button>
-                                </th>
-                              ))}
-                              <th>RD</th>
-                              <th
-                                aria-sort={
-                                  rankHistorySort === "games"
-                                    ? rankHistorySortDirection === "asc"
-                                      ? "ascending"
-                                      : "descending"
-                                    : "none"
-                                }
-                              >
-                                <button
-                                  className="profileRankHistorySortButton"
-                                  type="button"
-                                  onClick={() => handleRankHistorySort("games")}
-                                >
-                                  Games
-                                  <span aria-hidden="true">
-                                    {rankHistorySort === "games"
-                                      ? rankHistorySortDirection === "asc"
-                                        ? "↑"
-                                        : "↓"
-                                      : ""}
-                                  </span>
-                                </button>
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {rankHistoryRows.map((monthRank) => (
-                              <tr key={`rank-history-${monthRank.mode}-${monthRank.monthKey}`}>
-                                <td>
-                                  <a
-                                    className="rankingLink"
-                                    href={buildRankingsLocation(monthRank.monthKey, monthRank.mode)}
-                                  >
-                                    {monthRank.monthLabel}
-                                  </a>
-                                </td>
-                                <td>{modeLabels[monthRank.mode] ?? monthRank.mode}</td>
-                                <td>#{monthRank.rank}</td>
-                                <td>{monthRank.playerCount ?? "..."}</td>
-                                <td>{monthRank.rating ?? "—"}</td>
-                                <td>{monthRank.rd ?? "—"}</td>
-                                <td>{monthRank.games ?? "—"}</td>
-                              </tr>
-                            ))}
-                            {rankHistoryRows.length === 0 ? (
-                              <tr>
-                                <td colSpan={7} className="emptyRankings">
-                                  No rank history available.
-                                </td>
-                              </tr>
-                            ) : null}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : trophyCaseTrophies.length ? (
-                      <div className="profileTrophyCaseGrid" aria-label="Trophy case">
-                        {trophyCaseTrophies.map((trophy) => (
-                          <ProfileTrophyCaseCard key={`case-${trophy.key}`} trophy={trophy} />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="emptyRankings">No ranking or championship trophies yet.</div>
-                    )}
-                  </>
-                ) : null}
-              </section>
+              <ProfileRankHistory
+                profileHistoryTab={profileHistoryTab}
+                rankHistoryView={rankHistoryView}
+                handleRankHistoryViewChange={handleRankHistoryViewChange}
+                rankHistoryMode={rankHistoryMode}
+                profileModeOptions={profileModeOptions}
+                setRankHistoryMode={setRankHistoryMode}
+                rankHistoryModeOptions={rankHistoryModeOptions}
+                trophyCaseSort={trophyCaseSort}
+                setTrophyCaseSort={setTrophyCaseSort}
+                rankHistoryRows={rankHistoryRows}
+                trophyCaseTrophies={trophyCaseTrophies}
+                rankHistorySort={rankHistorySort}
+                rankHistorySortDirection={rankHistorySortDirection}
+                handleRankHistorySort={handleRankHistorySort}
+              />
 
               {profileHistoryTab === "opponents" ? (
                 <FavoriteOpponentsSection
