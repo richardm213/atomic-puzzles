@@ -486,11 +486,50 @@ test("recent puzzle URLs restore selection and ignore stale loads during history
   await expect(idInput).toHaveValue("301");
 });
 
-test("puzzle testing has its own solver route and previews coins without writing progress", async ({
+test("puzzle testing shows comments and previews coins and ratings without persistence", async ({
   page,
 }) => {
   const playRequests: Array<{ puzzleIds: number[]; testMode?: boolean }> = [];
   const progressRequests: unknown[] = [];
+  const persistenceRequests: string[] = [];
+  page.on("request", (request) => {
+    if (!["POST", "PATCH", "DELETE", "PUT"].includes(request.method())) return;
+    const path = new URL(request.url()).pathname;
+    const body = request.postDataJSON() as { action?: string } | null;
+    if (
+      (path === "/api/coins" && body?.action !== "summary") ||
+      (path === "/api/puzzles/rating" &&
+        !["history", "leaderboard", "trophies"].includes(body?.action ?? "")) ||
+      path.includes("/__e2e_supabase/rest/v1/")
+    )
+      persistenceRequests.push(path);
+  });
+  await page.route("**/api/coins", (route) =>
+    route.fulfill({ json: { result: { balance: 500, inBets: 0, dailyClaimAvailable: false } } }),
+  );
+  await page.route("**/api/puzzles/community", (route) => {
+    const { puzzleId } = route.request().postDataJSON();
+    return route.fulfill({
+      json: {
+        counts: { puzzle_id: puzzleId, upvotes: 0, downvotes: 0, score: 0 },
+        viewerVote: 0,
+        comments: [
+          {
+            id: 9001,
+            puzzle_id: puzzleId,
+            username: "reader",
+            body: "An existing puzzle discussion.",
+            parent_id: null,
+            created_at: "2026-11-19T00:00:00Z",
+            upvotes: 0,
+            downvotes: 0,
+            score: 0,
+            viewer_vote: 0,
+          },
+        ],
+      },
+    });
+  });
   await page.route("**/api/auth/session", (route) =>
     route.fulfill({ json: { user: { username: "seaside_tiramisu" } } }),
   );
@@ -545,9 +584,18 @@ test("puzzle testing has its own solver route and previews coins without writing
       );
     }
   };
+  await expect(page.getByRole("link", { name: /^500 coins/ })).toBeVisible();
   await playWhiteMove(3);
   await expect(page.getByText("Test incorrect attempt", { exact: true })).toBeVisible();
   await expect(page.getByText("-1.5 coins", { exact: true })).toBeVisible();
+  await expect(page.getByLabel(/^Test rating is .*decreased/)).toBeVisible();
+
+  const analysis = page.getByRole("region", { name: "Puzzle analysis" });
+  await analysis.getByRole("button", { name: "Resign and reveal the solution" }).click();
+  await analysis.getByRole("button", { name: "Confirm resignation" }).click();
+  await expect(page.getByRole("region", { name: "Comments", exact: true })).toBeVisible();
+  await expect(page.getByText("An existing puzzle discussion.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^500 coins/ })).toBeVisible();
 
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/puzzle-test\/101$/);
@@ -559,12 +607,17 @@ test("puzzle testing has its own solver route and previews coins without writing
   await expect(page.getByText("Test puzzle solved", { exact: true })).toBeVisible();
   await expect(page.getByText(/\+\d+(?:\.\d+)? coins/)).toBeVisible();
 
+  await expect(page.getByRole("region", { name: "Comments", exact: true })).toBeVisible();
+  await expect(page.getByText("An existing puzzle discussion.", { exact: true })).toBeVisible();
+
   await page.goBack();
   await expect(page).toHaveURL(/\/puzzles\/recent\/102$/);
   await expect(idInput).toHaveValue("102");
   await page.goto("/puzzles/recent/101?test=true");
   await expect(page).toHaveURL(/\/admin\/puzzle-test\/101$/);
+  await expect(details.getByLabel("Your puzzle rating is 2000", { exact: true })).toBeVisible();
   expect(playRequests.length).toBeGreaterThan(0);
   expect(playRequests.every((request) => request.testMode === true)).toBe(true);
   expect(progressRequests).toHaveLength(0);
+  expect(persistenceRequests).toHaveLength(0);
 });

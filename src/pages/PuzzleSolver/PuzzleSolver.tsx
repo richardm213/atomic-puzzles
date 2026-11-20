@@ -1878,15 +1878,11 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
           : null,
         onToggle: handleSelectOtherPuzzleAttemptsTab,
       }}
-      comments={
-        testMode
-          ? null
-          : {
-              canView: isAnalysisMode,
-              puzzleId: activePuzzleId,
-              onSelect: handleSelectCommentsTab,
-            }
-      }
+      comments={{
+        canView: isAnalysisMode,
+        puzzleId: activePuzzleId,
+        onSelect: handleSelectCommentsTab,
+      }}
     />
   );
 
@@ -2664,7 +2660,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
         </p>
       ) : null}
 
-      {!testMode && isAnalysisMode ? (
+      {isAnalysisMode ? (
         <PuzzleCommunity
           puzzleId={activePuzzleId}
           voteTargetId={isMobileLayout ? "mobile-puzzle-vote-slot" : "desktop-puzzle-vote-slot"}
