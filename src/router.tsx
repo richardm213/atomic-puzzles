@@ -418,6 +418,13 @@ const calendarRoute = createRoute({
 const bettingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/betting",
+  loader: ({ context, location }) => {
+    if (new URLSearchParams(location.searchStr).get("view") === "suggestions") return;
+    void import("./lib/predictionMarkets/predictionMarketQueries").then(
+      ({ predictionMarketCatalogQueryOptions }) =>
+        context.queryClient.prefetchQuery(predictionMarketCatalogQueryOptions()),
+    );
+  },
   component: BettingPage,
 });
 

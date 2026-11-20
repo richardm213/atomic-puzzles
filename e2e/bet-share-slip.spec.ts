@@ -22,50 +22,74 @@ test("share slips vary between openings, remain stable while open, and export th
     };
   });
   const marketId = "awc2026-final";
+  await page.routeWebSocket(/\/realtime\/v1\/websocket/, (socket) => socket.close());
   await page.route("**/api/betting", (route) => {
     const { action } = route.request().postDataJSON();
-    const bet = {
-      id: 1,
-      market_id: marketId,
-      username: "e2e-player",
-      selection: "crepuscular",
-      price_cents: 30,
-      stake: 300,
-      fee: 6,
-      total_cost: 306,
-      potential_payout: 1000,
-      status: "open",
-      payout: 0,
-      placed_at: "2026-11-01T00:00:00Z",
-      settled_at: null,
-    };
-    const market = {
-      id: marketId,
-      tournament_id: "awc2026",
-      bracket_match_id: "final",
-      round_name: "Finals",
-      round_order: 4,
-      player_one: "crepuscular",
-      player_two: "natso",
-      player_one_price: 30,
-      player_two_price: 70,
-      market_kind: "match",
-      category: "AWC Finals",
-      category_order: 1,
-      label: "Atomic World Championship 2026 Final: crepuscular vs natso",
-      tournament_betting_outcomes: [],
-      status: "open",
-      winner: null,
-      closes_at: "2099-12-31T00:00:00Z",
-      updated_at: "2026-11-01T00:00:00Z",
-      settled_at: null,
-    };
-    return route.fulfill({
-      json: {
-        result:
-          action === "allBets" || action === "bets" ? [bet] : action === "markets" ? [market] : [],
-      },
-    });
+    if (action === "exchangeMarkets")
+      return route.fulfill({
+        json: {
+          result: [
+            {
+              id: marketId,
+              group_id: "awc-2026-finals",
+              group_path: "/betting/awc-2026-finals",
+              group_title: "AWC Finals",
+              group_description: "",
+              group_order: 1,
+              display_name: "crepuscular vs natso",
+              country_code: "",
+              starting_chance: 30,
+              display_order: 1,
+              outcome_yes_label: "crepuscular",
+              outcome_no_label: "natso",
+              outcome_yes_country_code: null,
+              outcome_no_country_code: null,
+            },
+          ],
+        },
+      });
+    if (action === "predictionPositions")
+      return route.fulfill({
+        json: {
+          result: [
+            {
+              market_id: marketId,
+              username: "e2e-player",
+              outcome: "yes",
+              quantity: 1000,
+              reserved_quantity: 0,
+              average_price_cents: 30,
+              updated_at: "2026-11-01T00:00:00Z",
+            },
+          ],
+        },
+      });
+    if (action === "exchangeMarketBatch")
+      return route.fulfill({
+        json: {
+          result: [
+            {
+              market: {
+                id: marketId,
+                question: "Will crepuscular win the AWC final?",
+                resolution_rules: "Official AWC results.",
+                resolution_source_url: "https://lichess.org/team/atomic-wc",
+                closes_at: "2099-12-31T00:00:00Z",
+                status: "open",
+                outcome: null,
+                resolved_at: null,
+                settlement_price_cents: null,
+                settlement_reference_fill_id: null,
+              },
+              book: { yes: { asks: [], bids: [] }, no: { asks: [], bids: [] } },
+              fills: [],
+              positions: [],
+              orders: [],
+            },
+          ],
+        },
+      });
+    return route.fulfill({ status: 400, json: { error: "Unexpected fixture request" } });
   });
   await page.goto("/betting?view=mine");
   const trigger = page.getByRole("button", {

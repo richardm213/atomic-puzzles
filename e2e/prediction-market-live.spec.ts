@@ -5,6 +5,8 @@ import { expect, test } from "./fixtures";
 test("side bets have their own route and secondary markets stay in the dropdown", async ({
   page,
 }) => {
+  const initialMarketId = "awc-2026-semifinal-jude-3-plus-points";
+  const bettingRequests: { action: string; marketIds?: string[] }[] = [];
   const groups = [
     ["awc-2026-semifinals", "AWC 2026 Semifinals"],
     ["awc-2026-side-bets", "2026 AWC Side Bets"],
@@ -14,7 +16,7 @@ test("side bets have their own route and secondary markets stay in the dropdown"
     ["awc-2027-champion", "Who will win 2027 AWC"],
   ];
   const catalog = groups.map(([id, title], index) => ({
-    id: id === "awc-2026-semifinals" ? "awc-2026-semifinal-jude-3-plus-points" : `${id}-strike`,
+    id: id === "awc-2026-semifinals" ? initialMarketId : `${id}-strike`,
     group_id: id,
     group_path: `/betting/${id}`,
     group_title: title,
@@ -35,6 +37,7 @@ test("side bets have their own route and secondary markets stay in the dropdown"
   );
   await page.route("**/api/betting", (route) => {
     const body = route.request().postDataJSON();
+    bettingRequests.push(body);
     if (["markets", "bets", "allBets", "predictionPositions"].includes(body.action))
       return route.fulfill({ json: { result: [] } });
     if (body.action === "exchangeMarkets") return route.fulfill({ json: { result: catalog } });
@@ -78,6 +81,18 @@ test("side bets have their own route and secondary markets stay in the dropdown"
   await sportsbookInitial.click();
   await page.getByRole("button", { name: /jude less than 3 pts vs max/ }).click();
   await expect(page.locator(".betSlipContract strong")).toHaveText("jude less than 3 pts vs max");
+  expect(bettingRequests).toContainEqual({
+    action: "exchangeMarketBatch",
+    marketIds: [initialMarketId],
+  });
+  expect(
+    bettingRequests.filter(
+      ({ action, marketIds }) =>
+        action === "bootstrap" ||
+        action === "predictionPositions" ||
+        marketIds?.some((id) => id !== initialMarketId),
+    ),
+  ).toEqual([]);
   await expect(page.locator(".betSlipContract em")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /jude 3\+ pts vs max/ })).toBeVisible();
   await page.getByRole("button", { name: "Order book view", exact: true }).click();

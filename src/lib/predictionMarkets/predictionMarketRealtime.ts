@@ -161,7 +161,8 @@ export const usePredictionMarketRealtime = (
         }
       });
 
-    void checkVersions();
+    // Callers with a recent batch can wait for the first scheduled recovery check.
+    if (refreshOnSubscribe) void checkVersions();
     const versionTimer = window.setInterval(() => void checkVersions(), 2_000);
     document.addEventListener("visibilitychange", refreshVisibleMarkets);
     window.addEventListener("online", refreshVisibleMarkets);

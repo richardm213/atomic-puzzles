@@ -19,7 +19,6 @@ import { voteValueSchema } from "../../../shared/domain/voting";
 import {
   loadPredictionPositions,
   predictionFillColumns,
-  type PredictionHistoryRow,
   readPredictionRows,
 } from "../../lib/predictionPositions";
 import {
@@ -217,51 +216,47 @@ const loadPredictionMarketStates = async (
 ) => {
   const marketIds = [...new Set(requestedMarketIds)];
   if (!marketIds.length) return [];
-  const [marketResult, bookOrdersResult, fillsResult] = await Promise.all([
-    supabase.from("prediction_markets").select(exchangeMarketColumns).in("id", marketIds),
-    supabase
-      .from("prediction_orders")
-      .select(exchangeOrderColumns)
-      .in("market_id", marketIds)
-      .in("status", ["open", "partial"])
-      .order("created_at", { ascending: false })
-      .limit(10_000),
-    supabase
-      .from("prediction_fills")
-      .select(predictionFillColumns)
-      .in("market_id", marketIds)
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(Math.min(10_000, marketIds.length * 100)),
-  ]);
+  const [marketResult, bookOrdersResult, fillsResult, historyPositions, userOrdersResult] =
+    await Promise.all([
+      supabase.from("prediction_markets").select(exchangeMarketColumns).in("id", marketIds),
+      supabase
+        .from("prediction_orders")
+        .select(exchangeOrderColumns)
+        .in("market_id", marketIds)
+        .in("status", ["open", "partial"])
+        .order("created_at", { ascending: false })
+        .limit(10_000),
+      supabase
+        .from("prediction_fills")
+        .select(predictionFillColumns)
+        .in("market_id", marketIds)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(Math.min(10_000, marketIds.length * 100)),
+      username ? loadPredictionPositions(supabase, marketIds, username) : [],
+      username
+        ? supabase
+            .from("prediction_orders")
+            .select(exchangeOrderColumns)
+            .in("market_id", marketIds)
+            .eq("username", username)
+            .order("created_at", { ascending: false })
+            .limit(5_000)
+        : null,
+    ]);
   if (marketResult.error)
     throw new Error(`Unable to load prediction markets: ${marketResult.error.message}`);
   if (bookOrdersResult.error)
     throw new Error(`Unable to load prediction orders: ${bookOrdersResult.error.message}`);
   if (fillsResult.error)
     throw new Error(`Unable to load prediction fills: ${fillsResult.error.message}`);
+  if (userOrdersResult?.error)
+    throw new Error(`Unable to load your prediction orders: ${userOrdersResult.error.message}`);
 
   const markets = (marketResult.data ?? []) as unknown as ExchangeMarketRow[];
   const bookOrders = (bookOrdersResult.data ?? []) as unknown as ExchangeOrderRow[];
   const recentFills = (fillsResult.data ?? []) as unknown as ExchangeFillRow[];
-  let historyPositions: PredictionHistoryRow[] = [];
-  let userOrders: ExchangeOrderRow[] = [];
-  if (username) {
-    const [history, orders] = await Promise.all([
-      loadPredictionPositions(supabase, marketIds, username),
-      supabase
-        .from("prediction_orders")
-        .select(exchangeOrderColumns)
-        .in("market_id", marketIds)
-        .eq("username", username)
-        .order("created_at", { ascending: false })
-        .limit(5_000),
-    ]);
-    if (orders.error)
-      throw new Error(`Unable to load your prediction orders: ${orders.error.message}`);
-    historyPositions = history;
-    userOrders = (orders.data ?? []) as unknown as ExchangeOrderRow[];
-  }
+  const userOrders = (userOrdersResult?.data ?? []) as unknown as ExchangeOrderRow[];
   const bookOrdersByMarket = groupByMarketId(bookOrders);
   const recentFillsByMarket = groupByMarketId(recentFills);
   const positionsByMarket = groupByMarketId(historyPositions);

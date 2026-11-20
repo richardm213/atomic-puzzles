@@ -30,7 +30,6 @@ import {
 } from "../../lib/betting/betting";
 import {
   allPredictionPositionsQueryOptions,
-  bettingBootstrapQueryOptions,
   bettingQueryKeys,
 } from "../../lib/betting/bettingQueries";
 import { formatCoinValue, formatCoinVolume } from "../../lib/coins/coinDisplay";
@@ -191,10 +190,9 @@ export const BettingPage = () => {
   const betSlipRef = useRef<HTMLElement>(null);
   const predictionStakeRef = useRef<HTMLInputElement>(null);
 
-  const bootstrapQuery = useQuery(bettingBootstrapQueryOptions());
   const predictionCatalogQuery = useQuery({
     ...predictionMarketCatalogQueryOptions(),
-    enabled: bootstrapQuery.isError,
+    enabled: view !== "suggestions",
   });
   const predictionMarketGroups = useMemo(
     () => predictionCatalogQuery.data ?? [],
@@ -204,47 +202,39 @@ export const BettingPage = () => {
     () => predictionMarketGroups.flatMap((group) => group.markets),
     [predictionMarketGroups],
   );
+  const activePredictionGroup = predictionMarketGroups.find(
+    (group) => group.id === predictionGroupIdByCategory[marketCategory],
+  );
+  const showingHistory = view === "all" || (view === "mine" && isAuthenticated);
   const predictionPositionsQuery = useQuery({
     ...allPredictionPositionsQueryOptions(),
-    enabled: bootstrapQuery.isError || Boolean(bootstrapQuery.data),
+    enabled: showingHistory,
   });
   const coinSummaryQuery = useQuery({
     ...coinSummaryQueryOptions(username),
     enabled: isAuthenticated,
   });
-  const countriesQuery = useQuery(tournamentPlayerCountriesQueryOptions());
+  const countriesQuery = useQuery({
+    ...tournamentPlayerCountriesQueryOptions(),
+    enabled: view !== "suggestions",
+  });
   const awcBracketQuery = useQuery({
     ...tournamentBracketQueryOptions("awc2026"),
-    enabled: isAuthenticated && marketCategory === "2026 AWC Champion",
+    enabled: view === "markets" && isAuthenticated && marketCategory === "2026 AWC Champion",
   });
-  const predictionMarketIds = useMemo(
-    () => predictionMarkets.map((market) => market.id),
-    [predictionMarkets],
-  );
-  useEffect(() => {
-    if (!bootstrapQuery.data) return;
-    const bootstrapMarketIds = bootstrapQuery.data.predictionMarketGroups.flatMap((group) =>
-      group.markets.map((market) => market.id),
-    );
-    queryClient.setQueryData(
-      bettingQueryKeys.predictionPositions,
-      bootstrapQuery.data.predictionPositions,
-    );
-    queryClient.setQueryData(
-      predictionMarketCatalogQueryOptions().queryKey,
-      bootstrapQuery.data.predictionMarketGroups,
-    );
-    queryClient.setQueryData(
-      predictionMarketBatchQueryOptions(bootstrapMarketIds).queryKey,
-      bootstrapQuery.data.predictionMarketStates,
-    );
-  }, [bootstrapQuery.data, queryClient]);
+  const predictionMarketIds = useMemo(() => {
+    const markets = view === "markets" ? activePredictionGroup?.markets : undefined;
+    return (showingHistory ? predictionMarkets : (markets ?? [])).map((market) => market.id);
+  }, [activePredictionGroup?.markets, predictionMarkets, showingHistory, view]);
   const predictionMarketQuery = useQuery({
     ...predictionMarketBatchQueryOptions(predictionMarketIds),
-    refetchOnMount: false,
     enabled: predictionMarketIds.length > 0,
   });
-  usePredictionMarketRealtime(queryClient, predictionMarketIds, !bootstrapQuery.data);
+  usePredictionMarketRealtime(
+    queryClient,
+    predictionMarketQuery.data ? predictionMarketIds : [],
+    false,
+  );
   const predictionMarketStates = useMemo(
     () => predictionMarketQuery.data ?? [],
     [predictionMarketQuery.data],
@@ -260,15 +250,28 @@ export const BettingPage = () => {
       closesAt: state.market.closesAt,
     })),
   );
-  const allHistoryBets = useMemo(
-    () =>
-      buildBetHistory({
-        predictionPositions: predictionPositionsQuery.data ?? [],
-        predictionMarketGroups,
-        predictionMarketStates,
-      }),
-    [predictionMarketGroups, predictionMarketStates, predictionPositionsQuery.data],
-  );
+  const historyLoading =
+    showingHistory &&
+    (predictionCatalogQuery.isPending ||
+      predictionPositionsQuery.isPending ||
+      (predictionMarketIds.length > 0 && predictionMarketQuery.isPending));
+  const historyError =
+    predictionCatalogQuery.error ?? predictionPositionsQuery.error ?? predictionMarketQuery.error;
+  const allHistoryBets = useMemo(() => {
+    if (!showingHistory || historyLoading || predictionMarketQuery.isError) return [];
+    return buildBetHistory({
+      predictionPositions: predictionPositionsQuery.data ?? [],
+      predictionMarketGroups,
+      predictionMarketStates,
+    });
+  }, [
+    historyLoading,
+    predictionMarketGroups,
+    predictionMarketQuery.isError,
+    predictionMarketStates,
+    predictionPositionsQuery.data,
+    showingHistory,
+  ]);
   const pendingBetCount = useMemo(
     () => allHistoryBets.filter((bet) => bet.status === "open").length,
     [allHistoryBets],
@@ -279,10 +282,6 @@ export const BettingPage = () => {
   const activePredictionDisplayMode: PredictionDisplayMode = predictionMarketOnlyCategory
     ? "market"
     : predictionDisplayMode;
-  const activePredictionGroupId = predictionGroupIdByCategory[marketCategory];
-  const activePredictionGroup = predictionMarketGroups.find(
-    (group) => group.id === activePredictionGroupId,
-  );
   const activePredictionGroupOpen =
     activePredictionGroup?.markets.some((definition) => {
       const state = predictionStateByMarketId.get(definition.id);
@@ -469,24 +468,24 @@ export const BettingPage = () => {
   const myBets = useMemo(
     () =>
       isAuthenticated
-        ? buildBetHistory({
-            predictionPositions: (predictionPositionsQuery.data ?? []).filter(
-              (position) => position.username.toLowerCase() === username.toLowerCase(),
-            ),
-            predictionMarketGroups,
-            predictionMarketStates,
-          })
+        ? allHistoryBets.filter((bet) => bet.username.toLowerCase() === username.toLowerCase())
         : [],
-    [
-      isAuthenticated,
-      predictionMarketGroups,
-      predictionMarketStates,
-      predictionPositionsQuery.data,
-      username,
-    ],
+    [allHistoryBets, isAuthenticated, username],
   );
   const myPendingBetCount = myBets.filter((bet) => bet.status === "open").length;
-  const personalPredictionPnlByMarketId = useMemo(() => predictionPnlByMarketId(myBets), [myBets]);
+  const personalPredictionPnlByMarketId = useMemo(() => {
+    if (!isAuthenticated || view !== "markets" || !activePredictionGroup) return new Map();
+    const personalBets = buildBetHistory({
+      predictionPositions: predictionMarketStates.flatMap((state) =>
+        (state.historyPositions ?? []).filter(
+          (position) => position.username.toLowerCase() === username.toLowerCase(),
+        ),
+      ),
+      predictionMarketGroups: [activePredictionGroup],
+      predictionMarketStates,
+    });
+    return predictionPnlByMarketId(personalBets);
+  }, [activePredictionGroup, isAuthenticated, predictionMarketStates, username, view]);
   const activePredictionGroupPnl = useMemo(() => {
     if (!isAuthenticated || !activePredictionGroup) return null;
 
@@ -597,12 +596,6 @@ export const BettingPage = () => {
       void queryClient.invalidateQueries({ queryKey: bettingQueryKeys.predictionPositions });
     },
   });
-
-  if (
-    bootstrapQuery.isPending ||
-    (predictionCatalogQuery.isPending && !predictionMarketGroups.length)
-  )
-    return <RouteLoadingFallback />;
 
   const choosePredictionOutcome = (
     marketId: string,
@@ -727,7 +720,8 @@ export const BettingPage = () => {
             aria-selected={view === "all"}
             onClick={() => selectView("all")}
           >
-            All bets{predictionPositionsQuery.data ? ` (${pendingBetCount})` : ""}
+            All bets
+            {showingHistory && !historyLoading && !historyError ? ` (${pendingBetCount})` : ""}
           </button>
           <button
             type="button"
@@ -806,6 +800,12 @@ export const BettingPage = () => {
                 </div>
               ) : null}
               <div className="bettingMarketList">
+                {predictionCatalogQuery.isPending ? <RouteLoadingFallback /> : null}
+                {predictionMarketQuery.error ? (
+                  <InlineState kind="error">
+                    {getErrorMessage(predictionMarketQuery.error, "Unable to load market prices.")}
+                  </InlineState>
+                ) : null}
                 {activePredictionGroup && activePredictionDisplayMode === "book" ? (
                   <section
                     className={`bettingMarketGroup bettingPredictionBookGroup${
@@ -935,7 +935,7 @@ export const BettingPage = () => {
                                   disabled={Boolean(entryRestriction) || entryPrice === undefined}
                                   title={
                                     predictionRestrictionTitle(entryRestriction) ??
-                                    (entryPrice === undefined
+                                    (entryPrice === undefined && !activePredictionGroupLoading
                                       ? "No liquidity is available."
                                       : undefined)
                                   }
@@ -963,6 +963,8 @@ export const BettingPage = () => {
                                     <strong>{formatPredictionChance(entryPrice)}</strong>
                                     {entryRestriction ? (
                                       <small>Unavailable</small>
+                                    ) : activePredictionGroupLoading ? (
+                                      <small>Loading odds</small>
                                     ) : entryPrice === undefined ? (
                                       <small>No liquidity</small>
                                     ) : marketCategory === "Ban" ? (
@@ -1416,10 +1418,10 @@ export const BettingPage = () => {
             predictionMarketGroups={predictionMarketGroups}
             predictionMarketStates={predictionMarketStates}
             countryByPlayer={countryByPlayer}
-            myBetsLoading={predictionPositionsQuery.isPending}
-            allBetsLoading={predictionPositionsQuery.isPending}
-            myBetsError={predictionPositionsQuery.error}
-            allBetsError={predictionPositionsQuery.error}
+            myBetsLoading={historyLoading}
+            allBetsLoading={historyLoading}
+            myBetsError={historyError}
+            allBetsError={historyError}
           />
         )}
       </div>
