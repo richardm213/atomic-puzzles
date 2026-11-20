@@ -76,6 +76,18 @@ describe("puzzle transpositions", () => {
     expect(deleted).toHaveLength(4);
   });
 
+  it("keeps other accepted move orders complete when one continuation is marked as a retry", () => {
+    const fixture = fixtures.find((puzzle) => puzzle.id === 1209)!;
+    const lines = linesFromPgn(fixture.fen, fixture.solution);
+    const edited = [[...lines[0]!.slice(0, -1), "Rf2?"], ...lines.slice(1)];
+    const synchronized = synchronizeTranspositions(fixture.fen, edited, lines);
+
+    expect(new Set(synchronized.map((line) => line.join(" ")))).toEqual(
+      new Set(edited.map((line) => line.join(" "))),
+    );
+    expect(synchronizeTranspositions(fixture.fen, synchronized)).toEqual(synchronized);
+  });
+
   it("keeps repetitions local to their line, but still links alternate move orders", () => {
     const repeated = ["e4", "e5", "Nf3", "Nc6", "Ng1", "Nb8", "d4"];
     expect(synchronizeTranspositions(INITIAL_FEN, [repeated])).toEqual([repeated]);

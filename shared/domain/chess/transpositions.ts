@@ -162,7 +162,11 @@ export const synchronizeTranspositions = (
     if (!old) continue;
     const edges = graph.get(occurrence.position)!;
     for (const uci of old.children.keys()) {
-      if (!occurrence.children.has(uci)) edges.delete(uci);
+      // Marking this copy as a retry must not remove the move from other
+      // move orders that still explicitly accept it.
+      if (!occurrence.children.has(uci) && !occurrence.children.has(`${uci}?`)) {
+        edges.delete(uci);
+      }
     }
     for (const [pathMove, edge] of occurrence.children) {
       if (!pathMove.endsWith("?") && old.children.get(pathMove)?.san !== edge.san) {
@@ -180,12 +184,17 @@ export const synchronizeTranspositions = (
     // sharing if the line subsequently reaches a new position.
     const repeated = ancestors.has(key);
     const explicit = occurrences.get(path)?.children;
-    const edges = repeated
-      ? explicit
-      : new Map([
-          ...(graph.get(position) ?? []),
-          ...[...(explicit ?? [])].filter(([pathMove]) => pathMove.endsWith("?")),
-        ]);
+    let edges = explicit;
+    if (!repeated) {
+      edges = new Map(graph.get(position));
+      for (const [pathMove, edge] of explicit ?? []) {
+        if (!pathMove.endsWith("?")) continue;
+        // An explicit retry shadows the inherited accepted move on this line.
+        const acceptedMove = pathMove.slice(0, -1);
+        if (!explicit?.has(acceptedMove)) edges.delete(acceptedMove);
+        edges.set(pathMove, edge);
+      }
+    }
     if (!edges?.size) {
       if (moves.length) result.push([...moves]);
       return;
