@@ -14,10 +14,5 @@
 /engines/*
   Cache-Control: public, max-age=31536000, immutable
 
-/engines/atomic-stockfish/51150b0c84bb27cde06d7d356efb3fa7bd1ec11f/atomic-ft3b-1p2B.nnue
-  Content-Encoding: gzip
-  Content-Type: application/octet-stream
-  Cache-Control: public, max-age=31536000, immutable
-
 /images/*
   Cache-Control: public, max-age=604800, stale-while-revalidate=86400

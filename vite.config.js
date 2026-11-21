@@ -199,20 +199,6 @@ const localPuzzleFunctionsPlugin = ({ archiveOrigin, useLocalArchive }) => {
   };
 };
 
-// Match production encoding for the precompressed, immutable browser engine network.
-const atomicNetworkHeaders = (server) => {
-  server.middlewares.use((req, res, next) => {
-    if (
-      req.url?.split("?")[0] ===
-      "/engines/atomic-stockfish/51150b0c84bb27cde06d7d356efb3fa7bd1ec11f/atomic-ft3b-1p2B.nnue"
-    ) {
-      res.setHeader("Content-Encoding", "gzip");
-      res.setHeader("Content-Type", "application/octet-stream");
-    }
-    next();
-  });
-};
-
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const setRuntimeEnv = (name, ...candidates) => {
@@ -263,11 +249,6 @@ export default defineConfig(({ mode }) => {
       react(),
       homeSeoPlugin(),
       localNnuePlugin(),
-      {
-        name: "atomic-network-headers",
-        configureServer: atomicNetworkHeaders,
-        configurePreviewServer: atomicNetworkHeaders,
-      },
       localPuzzleFunctionsPlugin({ archiveOrigin, useLocalArchive }),
       remoteOpeningExplorerPlugin(openingExplorerOrigin),
     ],
