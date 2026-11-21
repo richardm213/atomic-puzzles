@@ -40,15 +40,22 @@ export type {
 export type ProfileCommentSort = "recent" | "top";
 export type CommunityCommentTargetFilter = CommunityTargetType | "all";
 
-const communityRequest = (body: Record<string, unknown>): Promise<CommunityDiscussion> =>
+const communityRequest = (
+  body: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<CommunityDiscussion> =>
   postApi("/api/puzzles/community", body, {
     errorMessage: "Unable to load community discussion.",
     invalidMessage: "The discussion service returned incomplete data.",
     schema: communityDiscussionSchema,
+    ...(signal ? { signal } : {}),
   });
 
-export const fetchPuzzleCommunity = (puzzleId: number): Promise<PuzzleCommunity> =>
-  communityRequest({ action: "load", puzzleId }).then((result) => {
+export const fetchPuzzleCommunity = (
+  puzzleId: number,
+  signal?: AbortSignal,
+): Promise<PuzzleCommunity> =>
+  communityRequest({ action: "load", puzzleId }, signal).then((result) => {
     const parsed = puzzleCommunitySchema.safeParse(result);
     if (!parsed.success) {
       throw new Error("The puzzle discussion service returned incomplete data.");
@@ -62,8 +69,11 @@ const targetRequestBody = (target: CommunityTarget): Record<string, unknown> => 
   targetContext: target.context ?? "",
 });
 
-export const fetchCommunityDiscussion = (target: CommunityTarget): Promise<CommunityDiscussion> =>
-  communityRequest({ action: "loadDiscussion", ...targetRequestBody(target) });
+export const fetchCommunityDiscussion = (
+  target: CommunityTarget,
+  signal?: AbortSignal,
+): Promise<CommunityDiscussion> =>
+  communityRequest({ action: "loadDiscussion", ...targetRequestBody(target) }, signal);
 
 export const saveCommunityCommentVote = (
   target: CommunityTarget,

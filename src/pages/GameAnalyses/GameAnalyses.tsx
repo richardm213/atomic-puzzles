@@ -26,10 +26,9 @@ export const GameAnalysesPage = () => {
     queryFn: () => fetchAdminGameAnalyses(page, PENDING_PAGE_SIZE),
     enabled: isAdmin,
     placeholderData: keepPreviousData,
-    refetchInterval: 5_000,
-    refetchIntervalInBackground: true,
-    refetchOnWindowFocus: "always",
-    staleTime: 0,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    staleTime: 15_000,
   });
 
   useEffect(() => {

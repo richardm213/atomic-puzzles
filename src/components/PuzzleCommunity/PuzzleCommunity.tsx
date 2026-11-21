@@ -90,7 +90,7 @@ export const CommunityDiscussion = ({
   const targetType = target.type;
   const targetId = target.id;
   const targetContext = target.context;
-  const { isAuthenticated, login, user } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, login, user } = useAuth();
   const [pendingCommentVotes, setPendingCommentVotes] = useState<Set<number>>(() => new Set());
   const [draft, setDraft] = useState(emptyDraft);
   const { body: commentBody, replyingTo } = draft;
@@ -128,7 +128,7 @@ export const CommunityDiscussion = ({
   const discussionOptions = communityDiscussionQueryOptions(currentTarget, viewerKey);
   const discussionQuery = useQuery({
     ...discussionOptions,
-    enabled: Boolean(targetId) && discussionReady,
+    enabled: Boolean(targetId) && discussionReady && !authLoading,
   });
   const community = discussionQuery.data ?? null;
   const displayName = usePlayerDisplayNames(Boolean(community?.comments.length));

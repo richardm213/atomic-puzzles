@@ -29,11 +29,11 @@ export const communityDiscussionQueryOptions = (target: CommunityTarget, viewerK
       target.context ?? "",
       viewerKey,
     ] as const,
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       target.type === "puzzle"
-        ? fetchPuzzleCommunity(Number(target.id))
-        : fetchCommunityDiscussion(target),
-    staleTime: COMMUNITY_STALE_TIME_MS,
+        ? fetchPuzzleCommunity(Number(target.id), signal)
+        : fetchCommunityDiscussion(target, signal),
+    staleTime: 2 * 60_000,
   });
 
 export const siteCommunityCommentsQueryOptions = (options: {

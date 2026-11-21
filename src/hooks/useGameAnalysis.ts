@@ -19,7 +19,7 @@ export const useGameAnalysis = (
     queryKey: queryKey(gameId),
     queryFn: () => fetchGameAnalysis(gameId),
     enabled: Boolean(gameId),
-    staleTime: 4_000,
+    staleTime: (state) => (state.state.data?.status === "ready" ? 5 * 60_000 : 4_000),
     refetchInterval: (state) => {
       const analysis = state.state.data;
       return analysis && (analysis.status === "queued" || analysis.status === "processing")
