@@ -1,4 +1,7 @@
-import { editedCommunityCommentSchema } from "../../../shared/domain/community/schemas";
+import {
+  editedCommunityCommentSchema,
+  reactionsResponseSchema,
+} from "../../../shared/domain/community/schemas";
 import type { VoteValue } from "../../../shared/domain/voting";
 import { postApi } from "../api/postApi";
 import {
@@ -68,6 +71,24 @@ export const saveCommunityCommentVote = (
   vote: VoteValue,
 ): Promise<CommunityDiscussion> =>
   communityRequest({ action: "commentVote", ...targetRequestBody(target), commentId, vote });
+
+export const saveCommunityCommentReaction = (
+  target: CommunityTarget,
+  commentId: number,
+  reaction: string,
+  reacted: boolean,
+) =>
+  postApi(
+    "/api/puzzles/community",
+    {
+      action: "commentReaction",
+      ...targetRequestBody(target),
+      commentId,
+      reaction,
+      reacted,
+    },
+    { schema: reactionsResponseSchema, errorMessage: "Unable to save reaction." },
+  );
 
 export const postCommunityComment = (
   target: CommunityTarget,

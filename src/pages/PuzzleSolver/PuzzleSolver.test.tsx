@@ -1479,7 +1479,10 @@ See ${studyUrl}.`;
       await waitFor(() => expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true));
       await user.click(explanationTab);
       await user.click(screen.getByRole("button", { name: "Add explanation" }));
-      await user.type(screen.getByRole("textbox", { name: "Puzzle explanation" }), content);
+      await user.type(
+        screen.getByRole("textbox", { name: "Puzzle explanation" }),
+        content.replaceAll("\n", "{Enter}"),
+      );
       await user.click(screen.getByRole("button", { name: "Save explanation" }));
 
       await waitFor(() =>
@@ -1533,10 +1536,18 @@ See ${studyUrl}.`;
     expect(mocks.recordPuzzleProgress).not.toHaveBeenCalled();
     await user.click(explanationTab);
     await user.click(screen.getByRole("button", { name: "Edit" }));
-    expect(screen.getByRole("textbox", { name: "Puzzle explanation" })).toHaveValue(
+    expect(screen.getByRole("textbox", { name: "Puzzle explanation" })).toHaveTextContent(
       mocks.puzzleExplanation,
     );
-    await user.type(screen.getByRole("textbox", { name: "Puzzle explanation" }), " Updated.");
+    const explanationInput = screen.getByRole("textbox", { name: "Puzzle explanation" });
+    explanationInput.focus();
+    const range = document.createRange();
+    range.selectNodeContents(explanationInput);
+    range.collapse(false);
+    window.getSelection()?.removeAllRanges();
+    window.getSelection()?.addRange(range);
+    fireEvent(document, new Event("selectionchange"));
+    await user.keyboard(" Updated.");
     await user.click(screen.getByRole("button", { name: "Save explanation" }));
     await waitFor(() =>
       expect(mocks.updatePuzzleExplanation).toHaveBeenCalledWith(

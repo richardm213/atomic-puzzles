@@ -3,7 +3,7 @@ import { HttpError } from "../../platform/errors";
 
 let nativeReactions: Promise<Set<string>> | undefined;
 
-export const validateProfileReaction = async (reaction: string) => {
+export const validateReaction = async (reaction: string) => {
   if (isImagePlayerFlair(reaction)) return reaction;
 
   nativeReactions ??= import("emojibase-data/en/compact.json").then(

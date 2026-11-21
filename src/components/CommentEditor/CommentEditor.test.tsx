@@ -32,13 +32,57 @@ const moveCaret = (editor: HTMLElement, offset: number) => {
   fireEvent(document, new Event("selectionchange"));
 };
 
-const Editor = ({ initial = "" }: { initial?: string }) => {
+const Editor = ({
+  initial = "",
+  maxLength,
+  onChange,
+}: {
+  initial?: string;
+  maxLength?: number;
+  onChange?: (value: string) => void;
+}) => {
   const [value, setValue] = useState(initial);
-  return <CommentEditor aria-label="Comment" value={value} onValueChange={setValue} />;
+  return (
+    <CommentEditor
+      aria-label="Comment"
+      value={value}
+      {...(maxLength === undefined ? {} : { maxLength })}
+      onValueChange={(value) => {
+        setValue(value);
+        onChange?.(value);
+      }}
+    />
+  );
 };
 
 describe("CommentEditor", () => {
   beforeEach(() => search.mockReset());
+
+  it("turns a completed typed emote into an image while preserving its source and literal code", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Editor onChange={onChange} />);
+    const input = screen.getByRole("textbox", { name: "Comment" });
+    await user.type(input, "Nice :kekwbrug:!");
+    expect(screen.getByRole("img", { name: "kekwbrug" })).toBeVisible();
+    expect(onChange).toHaveBeenLastCalledWith("Nice :kekwbrug:!");
+    await user.keyboard("{Enter}");
+    await user.keyboard("`:kekwbrug:`");
+    expect(screen.getAllByRole("img", { name: "kekwbrug" })).toHaveLength(1);
+    expect(input.textContent).toContain("`:kekwbrug:`");
+  });
+
+  it("enforces the configured source length without blocking deletion", async () => {
+    const user = userEvent.setup();
+    render(<Editor initial="12345" maxLength={5} />);
+    const input = screen.getByRole("textbox", { name: "Comment" });
+    await user.click(input);
+    moveCaret(input, 5);
+    await user.keyboard("6");
+    expect(input.textContent).toBe("12345");
+    await user.keyboard("{Backspace}");
+    expect(input.textContent).toBe("1234");
+  });
 
   it("waits for three mention characters and replaces the full name at the caret using the keyboard", async () => {
     const user = userEvent.setup();

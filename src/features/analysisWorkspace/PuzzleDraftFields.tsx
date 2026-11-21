@@ -2,6 +2,7 @@ import "./PuzzleComposer.css";
 
 import type { ReactNode } from "react";
 
+import { CommentEditor } from "../../components/CommentEditor/CommentEditor";
 import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
 
 export const OPA_STYLE_DESCRIPTION =
@@ -43,15 +44,16 @@ export const PuzzleDraftFields = ({
         />
         OPA style
       </label>
-      <PuzzleDraftField label="Explanation">
-        <textarea
-          rows={2}
+      <div className="boardPuzzleComposerField">
+        <span>Explanation</span>
+        <CommentEditor
+          aria-label="Explanation"
           maxLength={5000}
           value={value.explanation}
-          onChange={(event) => onChange({ explanation: event.target.value })}
-          disabled={disabled}
+          onValueChange={(explanation) => onChange({ explanation })}
+          readOnly={disabled}
         />
-      </PuzzleDraftField>
+      </div>
       <PuzzleMotifsPanel
         visible
         tags={value.tags ?? []}

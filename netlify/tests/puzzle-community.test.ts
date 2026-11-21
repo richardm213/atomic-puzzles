@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { communityDiscussionSchema } from "../../shared/domain/community/schemas";
-import { validateProfileReaction } from "../features/community/profileReactions";
+import { validateReaction } from "../features/community/reactions";
 import {
   buildPuzzleCommentNotificationRecipients,
   excludeRecipientsWithUnreadPuzzleNotifications,
@@ -371,19 +371,21 @@ describe("puzzle-community function", () => {
   });
 
   it("accepts catalog emotes and emoji variants while rejecting arbitrary reaction text", async () => {
-    await expect(validateProfileReaction("kekwbrug")).resolves.toBe("kekwbrug");
-    await expect(validateProfileReaction("👍🏽")).resolves.toBe("👍🏽");
-    await expect(validateProfileReaction("anything else")).rejects.toMatchObject({
+    await expect(validateReaction("kekwbrug")).resolves.toBe("kekwbrug");
+    await expect(validateReaction("👍🏽")).resolves.toBe("👍🏽");
+    await expect(validateReaction("anything else")).rejects.toMatchObject({
       statusCode: 400,
     });
   });
 
-  it("requires login to react to a profile", async () => {
+  it.each([
+    { action: "setProfileReaction", username: "alice" },
+    { action: "commentReaction", puzzleId: 1, commentId: 2 },
+  ])("requires login for $action", async (target) => {
     const response = await handler({
       httpMethod: "POST",
       body: JSON.stringify({
-        action: "setProfileReaction",
-        username: "alice",
+        ...target,
         reaction: "🤠",
         reacted: true,
       }),
@@ -395,6 +397,7 @@ describe("puzzle-community function", () => {
     { action: "vote", puzzleId: 1, vote: 1 },
     { action: "editComment", puzzleId: 1, commentId: 2, body: "Nice puzzle" },
     { action: "setProfileReaction", username: "alice", reaction: "🤠", reacted: false },
+    { action: "commentReaction", puzzleId: 1, commentId: 2, reaction: "kekwbrug", reacted: true },
   ])("rejects a cross-site $action mutation", async (input) => {
     const response = await handler({
       httpMethod: "POST",

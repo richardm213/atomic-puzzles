@@ -1378,7 +1378,6 @@ button.puzzleRatingBadge.editable:focus-visible {
 }
 
 .puzzleExplanationEditButton:focus-visible,
-.puzzleExplanationForm textarea:focus-visible,
 .puzzleExplanationFormActions button:focus-visible {
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;
@@ -1389,21 +1388,10 @@ button.puzzleRatingBadge.editable:focus-visible {
   gap: 8px;
 }
 
-.puzzleExplanationForm textarea {
-  width: 100%;
+.puzzleExplanationForm .commentEditorInput {
   min-height: 116px;
-  resize: vertical;
-  padding: 10px;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-elevated);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.5;
 }
 
-.puzzleExplanationForm textarea:disabled,
 .puzzleExplanationFormActions button:disabled {
   cursor: wait;
   opacity: 0.58;
@@ -2059,7 +2047,7 @@ button.puzzleRatingBadge.editable:focus-visible {
   }
 
   .mobileActionCard .puzzleExplanation p,
-  .mobileActionCard .puzzleExplanationForm textarea {
+  .mobileActionCard .puzzleExplanationForm .commentEditorInput {
     font-size: 16px;
   }
 

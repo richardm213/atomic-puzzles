@@ -347,9 +347,18 @@ export class CommunityService {
           .map((comment) => Number(comment.target_id)),
       ),
     ];
-    const attempted = await this.repository.listAttemptedPuzzles(options.viewerUsername, puzzleIds);
+    const [attempted, reactions] = await Promise.all([
+      this.repository.listAttemptedPuzzles(options.viewerUsername, puzzleIds),
+      this.repository.loadCommentReactions(
+        comments.map((comment) => Number(comment.id)),
+        options.viewerUsername,
+      ),
+    ]);
     return {
-      comments: buildCommunityHistoryRows(comments, commentCounts, attempted),
+      comments: buildCommunityHistoryRows(comments, commentCounts, attempted).map((comment) => ({
+        ...comment,
+        reactions: reactions[String(comment.id)] ?? [],
+      })),
       total: allComments.length,
       page: options.page,
       pageSize: options.pageSize,

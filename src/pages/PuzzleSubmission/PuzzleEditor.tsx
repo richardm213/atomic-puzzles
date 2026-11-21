@@ -8,6 +8,7 @@ import { type ReactNode, useId, useMemo, useRef, useState } from "react";
 import { AtomicDbEvalBar } from "../../components/AtomicDbEngine/AtomicDbEngine";
 import { BoardWorkspace } from "../../components/BoardWorkspace/BoardWorkspace";
 import { Chessboard, type ChessboardProps } from "../../components/Chessboard/Chessboard";
+import { CommentEditor } from "../../components/CommentEditor/CommentEditor";
 import { MoveNotation } from "../../components/MoveNotation/MoveNotation";
 import { PlaybackButtons } from "../../components/PlaybackButtons/PlaybackButtons";
 import { AnalysisEngineExplorerPanels } from "../../features/analysisWorkspace/AnalysisEngineExplorerPanels";
@@ -848,16 +849,16 @@ const PuzzleEditorDraft = ({
             </>
           ) : null}
           {showExplanation ? (
-            <label className="puzzleEditorExplanationField">
+            <div className="puzzleEditorExplanationField">
               <span>Explanation</span>
-              <textarea
+              <CommentEditor
+                aria-label="Explanation"
+                maxLength={5000}
                 value={value.explanation}
-                rows={5}
-                spellCheck
                 readOnly={readOnly}
-                onChange={(event) => onChange({ ...value, explanation: event.target.value })}
+                onValueChange={(explanation) => onChange({ ...value, explanation })}
               />
-            </label>
+            </div>
           ) : null}
           {feedbackMessage}
           {beforeActions}

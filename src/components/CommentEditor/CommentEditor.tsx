@@ -23,6 +23,7 @@ type Props = {
   "aria-label": string;
   placeholder?: string;
   readOnly?: boolean;
+  maxLength?: number;
   value: string;
   onValueChange: (value: string) => void;
   onEscape?: () => void;
@@ -91,7 +92,10 @@ const useMentionResults = (query: string | undefined) => {
 };
 
 export const CommentEditor = forwardRef<HTMLElement, Props>(
-  ({ value, onValueChange, id, placeholder, readOnly, onEscape, "aria-label": label }, ref) => {
+  (
+    { value, onValueChange, id, placeholder, readOnly, maxLength, onEscape, "aria-label": label },
+    ref,
+  ) => {
     const resultsRef = useRef<HTMLDivElement>(null);
     const resultsId = useId();
     const pickerId = useId();
@@ -184,6 +188,7 @@ export const CommentEditor = forwardRef<HTMLElement, Props>(
     const { host, editor } = useCommentEditor({
       value,
       enabled,
+      ...(maxLength === undefined ? {} : { maxLength }),
       attributes: {
         ...(id ? { id } : {}),
         ...(placeholder ? { "aria-placeholder": placeholder } : {}),

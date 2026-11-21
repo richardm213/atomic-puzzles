@@ -35,6 +35,7 @@ export const communityRequestSchema = z
       "comment",
       "editComment",
       "commentVote",
+      "commentReaction",
       "profileComments",
       "profileKarma",
       "profileReactions",
@@ -69,7 +70,7 @@ export const communityRequestSchema = z
       context.addIssue({ code: "custom", message: "A profile username is required." });
     }
     if (
-      input.action === "setProfileReaction" &&
+      ["setProfileReaction", "commentReaction"].includes(input.action) &&
       (input.reaction === undefined || input.reacted === undefined)
     ) {
       context.addIssue({
@@ -83,13 +84,20 @@ export const communityRequestSchema = z
     if (["vote", "commentVote"].includes(input.action) && input.vote === undefined) {
       context.addIssue({ code: "custom", message: "A vote is required." });
     }
-    if (["commentVote", "editComment"].includes(input.action) && !input.commentId) {
+    if (
+      ["commentVote", "editComment", "commentReaction"].includes(input.action) &&
+      !input.commentId
+    ) {
       context.addIssue({ code: "custom", message: "A comment identifier is required." });
     }
     if (["comment", "editComment"].includes(input.action) && input.body === undefined) {
       context.addIssue({ code: "custom", message: "A comment body is required." });
     }
-    if (["loadDiscussion", "comment", "editComment", "commentVote"].includes(input.action)) {
+    if (
+      ["loadDiscussion", "comment", "editComment", "commentVote", "commentReaction"].includes(
+        input.action,
+      )
+    ) {
       const targetType = input.targetType ?? (input.puzzleId ? "puzzle" : undefined);
       const targetId = input.targetId ?? input.puzzleId;
       if (!targetType || targetId === undefined) {
@@ -102,16 +110,19 @@ export const communityRequestSchema = z
 
 export type CommunityRequest = z.output<typeof communityRequestSchema>;
 
-export const profileReactionsSchema = z.object({
-  reactions: z.array(
-    z.object({
-      reaction: z.string().min(1).max(80),
-      count: z.number().int().positive(),
-      reacted: z.boolean(),
-    }),
-  ),
+export const emoteReactionsSchema = z.array(
+  z.object({
+    reaction: z.string().min(1).max(80),
+    count: z.number().int().positive(),
+    reacted: z.boolean(),
+  }),
+);
+export type EmoteReaction = z.infer<typeof emoteReactionsSchema>[number];
+export const reactionsResponseSchema = z.object({
+  reactions: emoteReactionsSchema,
 });
-export type ProfileReaction = z.infer<typeof profileReactionsSchema>["reactions"][number];
+export const profileReactionsSchema = reactionsResponseSchema;
+export type ProfileReaction = EmoteReaction;
 
 export const editedCommunityCommentSchema = z.object({
   id: positiveIntegerSchema,
@@ -144,6 +155,7 @@ export const communityCommentSchema = z.object({
   downvotes: z.coerce.number(),
   score: z.coerce.number(),
   viewer_vote: voteValueSchema,
+  reactions: emoteReactionsSchema.optional(),
 });
 
 export const communityDiscussionSchema = z.object({
@@ -177,6 +189,7 @@ export const communityHistoryCommentSchema = z.object({
   created_at: z.string(),
   upvotes: z.coerce.number(),
   content_hidden: z.boolean(),
+  reactions: emoteReactionsSchema.optional(),
 });
 
 export const communityCommentsPageSchema = z.object({

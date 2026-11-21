@@ -35,6 +35,7 @@ import { getErrorMessage } from "../../utils/errors";
 import { formatCommentAge, formatLocalDateTime } from "../../utils/formatters";
 import { CommentEditor } from "../CommentEditor/CommentEditor";
 import { CommentMarkdown } from "../CommentMarkdown/CommentMarkdown";
+import { CommentReactions } from "../CommentReactions/CommentReactions";
 import { ProfileReactions } from "../ProfileReactions/ProfileReactions";
 
 const collapsedCommentsSchema = z.array(z.number().int().positive());
@@ -579,6 +580,13 @@ export const CommunityDiscussion = ({
               <>
                 <CommentMarkdown className="puzzleCommentText" body={comment.body} />
                 <div className="puzzleCommentActions">
+                  {comment.id > 0 ? (
+                    <CommentReactions
+                      commentId={comment.id}
+                      target={currentTarget}
+                      reactions={comment.reactions}
+                    />
+                  ) : null}
                   {allowCommentVotes ? (
                     <div
                       className="commentVoteGroup"

@@ -1,4 +1,4 @@
-.profileReactions {
+.reactionControls {
   position: relative;
   display: flex;
   flex-wrap: wrap;
@@ -6,7 +6,7 @@
   gap: var(--space-1);
 }
 
-.profileReactionButton {
+.reactionButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -21,42 +21,42 @@
   font-size: 16px;
 }
 
-.profileReactionButton:is(:hover, [aria-pressed="true"]) {
+.reactionButton:is(:hover, [aria-pressed="true"]) {
   border-color: var(--color-primary);
   background: var(--color-accent-soft-bg);
 }
 
-.profileReactionButton:focus-visible {
+.reactionButton:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
-.profileReactionButton[aria-disabled="true"] {
+.reactionButton[aria-disabled="true"] {
   cursor: default;
 }
 
-.profileReactionCount,
-.profileReactionAdd svg:last-child {
+.reactionCount,
+.reactionAdd svg:last-child {
   font-size: 12px;
 }
 
-.profileReactions > .commentEmojiPicker {
+.reactionControls > .commentEmojiPicker {
   right: auto;
   left: 0;
 }
 
-.profileReactionsPickerAbove > .commentEmojiPicker {
+.reactionPickerAbove > .commentEmojiPicker {
   top: auto;
   bottom: calc(100% + var(--space-1));
 }
 
-.profileReactionError {
+.reactionError {
   color: var(--color-danger);
   font-size: var(--text-sm);
 }
 
 @media (max-width: 680px) {
-  .profileReactionButton {
+  .reactionButton {
     min-width: var(--control-height-touch);
     min-height: var(--control-height-touch);
   }

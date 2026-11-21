@@ -467,7 +467,10 @@ describe("PuzzleEditor move tree", () => {
 
     expect(screen.getByRole("textbox", { name: "Solution PGN" })).toHaveAttribute("readonly");
     expect(screen.getByRole("textbox", { name: "Event" })).toHaveAttribute("readonly");
-    expect(screen.getByRole("textbox", { name: "Explanation" })).toHaveAttribute("readonly");
+    expect(screen.getByRole("textbox", { name: "Explanation" })).toHaveAttribute(
+      "aria-readonly",
+      "true",
+    );
     expect(screen.getByTestId("board-restrictions")).toHaveTextContent("true");
     expect(screen.queryByRole("button", { name: "Delete current line" })).toBeNull();
   });

@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { type FormEvent, type ReactNode, useState } from "react";
 
+import { CommentEditor } from "../../components/CommentEditor/CommentEditor";
 import { CommentMarkdown } from "../../components/CommentMarkdown/CommentMarkdown";
 import { CommunityCommentsButton } from "../../components/CommunityCommentsLink/CommunityCommentsLink";
 import { PuzzleAttemptResult } from "../../components/PuzzleAttemptResult/PuzzleAttemptResult";
@@ -201,13 +202,13 @@ export const PuzzleInfoSection = ({
               >
                 Puzzle explanation
               </label>
-              <textarea
+              <CommentEditor
                 id={`puzzle-explanation-${explanation.puzzleId}`}
+                aria-label="Puzzle explanation"
                 value={explanation.draft}
                 maxLength={5000}
-                rows={5}
-                onChange={(event) => explanation.onDraftChange(event.target.value)}
-                disabled={explanation.saveStatus.state === "saving"}
+                onValueChange={explanation.onDraftChange}
+                readOnly={explanation.saveStatus.state === "saving"}
               />
               <div className="puzzleExplanationFormActions">
                 <button
@@ -223,11 +224,7 @@ export const PuzzleInfoSection = ({
               </div>
             </form>
           ) : explanation.hasContent ? (
-            <CommentMarkdown
-              className="puzzleExplanationContent"
-              body={explanation.content}
-              emotes={false}
-            />
+            <CommentMarkdown className="puzzleExplanationContent" body={explanation.content} />
           ) : (
             <p className="puzzleExplanationEmpty">No explanation has been added yet.</p>
           )}

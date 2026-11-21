@@ -9,7 +9,12 @@ import { type EditorProps, EditorView } from "prosemirror-view";
 import { useLayoutEffect, useRef } from "react";
 
 import { MAX_COMMENT_LENGTH } from "../../../shared/domain/community/schemas";
-import { commentDocumentText, createCommentDocument } from "./commentEditorDocument";
+import { commentEmojiByCode, commentShortcode } from "../../lib/community/commentEmojis";
+import {
+  commentDocumentText,
+  commentEmoteRanges,
+  createCommentDocument,
+} from "./commentEditorDocument";
 
 const createState = (source: string) =>
   EditorState.create({
@@ -24,6 +29,7 @@ const createState = (source: string) =>
 type CommentEditorOptions = {
   value: string;
   enabled: boolean;
+  maxLength?: number;
   attributes: Record<string, string>;
   onValueChange: (source: string) => void;
   onSelectionChange: (view: EditorView) => void;
@@ -78,9 +84,48 @@ export const useCommentEditor = (options: CommentEditorOptions) => {
       },
       clipboardTextSerializer: ({ content }) => content.textBetween(0, content.size, "\n"),
       dispatchTransaction(transaction) {
+        // Normalize completed shortcodes after input, including mobile keyboards and paste.
+        // Only inspect text immediately before the caret, never an existing emote node.
+        if (
+          transaction.docChanged &&
+          !view.composing &&
+          transaction.selection.empty &&
+          transaction.selection.$from.nodeBefore?.isText &&
+          transaction.selection.$from.nodeBefore.text?.endsWith(":")
+        ) {
+          const caret = transaction.selection.from;
+          const before = transaction.doc.textBetween(0, caret, "\n");
+          const match = before.endsWith(":")
+            ? Array.from(before.matchAll(commentShortcode)).find(
+                (match) => match.index + match[0].length === before.length,
+              )
+            : undefined;
+          if (match && commentEmojiByCode(match[1]!, null)?.kind === "custom") {
+            let openCode = 0;
+            for (const run of before.matchAll(/(?<!\\)`+/g)) {
+              if (!openCode) openCode = run[0].length;
+              else if (openCode === run[0].length) openCode = 0;
+            }
+            if (
+              !openCode &&
+              commentEmoteRanges(commentDocumentText(transaction.doc)).some(
+                (range) => range.to === before.length,
+              )
+            ) {
+              transaction.replaceWith(
+                caret - match[0].length,
+                caret,
+                transaction.doc.type.schema.nodes.emote!.create({ source: match[0] }),
+              );
+            }
+          }
+        }
         const before = transaction.docChanged ? commentDocumentText(view.state.doc) : "";
         const after = transaction.docChanged ? commentDocumentText(transaction.doc) : "";
-        if (after.length > MAX_COMMENT_LENGTH && after.length > before.length) {
+        if (
+          after.length > (current.current.maxLength ?? MAX_COMMENT_LENGTH) &&
+          after.length > before.length
+        ) {
           view.updateState(view.state);
           return;
         }

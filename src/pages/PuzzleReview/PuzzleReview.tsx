@@ -11,6 +11,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
+import { CommentEditor } from "../../components/CommentEditor/CommentEditor";
 import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
 import { PuzzleStartingFenWarning } from "../../components/PuzzleStartingFenWarning/PuzzleStartingFenWarning";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
@@ -353,18 +354,16 @@ export const PuzzleReviewPage = () => {
                 showSolutionPgnField={false}
                 boardFooter={
                   <>
-                    <label className="puzzleReviewBoardExplanation">
+                    <div className="puzzleReviewBoardExplanation">
                       <span>Explanation</span>
-                      <textarea
+                      <CommentEditor
+                        aria-label="Explanation"
+                        maxLength={5000}
                         value={value.explanation}
-                        rows={5}
-                        spellCheck
                         readOnly={!isReviewer}
-                        onChange={(event) =>
-                          changeValue({ ...value, explanation: event.target.value })
-                        }
+                        onValueChange={(explanation) => changeValue({ ...value, explanation })}
                       />
-                    </label>
+                    </div>
                     {isReviewer ? (
                       <div className="puzzleReviewHistory" aria-label="Edit history">
                         <button

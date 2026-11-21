@@ -14,6 +14,8 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 
+import { CommentEditor } from "../../components/CommentEditor/CommentEditor";
+import { CommentMarkdown } from "../../components/CommentMarkdown/CommentMarkdown";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { PuzzleAttemptResult } from "../../components/PuzzleAttemptResult/PuzzleAttemptResult";
 import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
@@ -426,22 +428,23 @@ export const PuzzleRecentPage = () => {
             }
             boardFooter={
               editing ? (
-                <label className="puzzleReviewBoardExplanation">
+                <div className="puzzleReviewBoardExplanation">
                   <span>Explanation</span>
-                  <textarea
+                  <CommentEditor
+                    aria-label="Explanation"
+                    maxLength={5000}
                     value={value.explanation}
-                    rows={5}
                     readOnly={!editing || deleted}
-                    onChange={(event) => setValue({ ...value, explanation: event.target.value })}
+                    onValueChange={(explanation) => setValue({ ...value, explanation })}
                   />
-                </label>
+                </div>
               ) : explanation ? (
                 <section
                   className="puzzleReviewBoardExplanation"
                   aria-labelledby="recent-puzzle-explanation-heading"
                 >
                   <h2 id="recent-puzzle-explanation-heading">Explanation</h2>
-                  <p>{explanation}</p>
+                  <CommentMarkdown className="puzzleExplanationContent" body={explanation} />
                 </section>
               ) : null
             }

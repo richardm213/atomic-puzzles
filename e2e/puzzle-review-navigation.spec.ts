@@ -643,3 +643,133 @@ test("puzzle testing shows comments and previews coins and ratings without persi
   expect(progressRequests).toHaveLength(0);
   expect(persistenceRequests).toHaveLength(0);
 });
+
+test("explanations and comment reactions share emotes without extra discussion reads", async ({
+  page,
+}) => {
+  let explanation = "An existing :kappa: explanation.";
+  let reacted = false;
+  let rejectReaction = true;
+  let discussionReads = 0;
+  const reactions = () => (reacted ? [{ reaction: "kekwbrug", count: 1, reacted: true }] : []);
+  await page.route("**/api/puzzles/play", (route) =>
+    route.fulfill({
+      json: {
+        puzzles: [
+          {
+            ...queuePuzzle,
+            id: 101,
+            author: "e2e-player",
+            explanation,
+            tags: [],
+            solution: "1. e4",
+          },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/puzzles/progress", (route) =>
+    route.fulfill({
+      json: {
+        runId: null,
+        graded: false,
+        availableAt: null,
+        permanent: true,
+        hasAttempted: true,
+        hasSolved: true,
+        misses: 0,
+        color: "green",
+      },
+    }),
+  );
+  await page.route("**/api/puzzles/explanation", async (route) => {
+    explanation = route.request().postDataJSON().explanation;
+    await route.fulfill({ json: { puzzleId: 101, explanation } });
+  });
+  await page.route("**/api/puzzles/community", async (route) => {
+    const body = route.request().postDataJSON();
+    if (body.action === "commentReaction") {
+      if (rejectReaction) {
+        rejectReaction = false;
+        return route.fulfill({ status: 500, json: { error: "Temporary failure" } });
+      }
+      reacted = body.reacted;
+      return route.fulfill({ json: { reactions: reactions() } });
+    }
+    discussionReads += 1;
+    return route.fulfill({
+      json: {
+        counts: { puzzle_id: 101, upvotes: 0, downvotes: 0, score: 0 },
+        viewerVote: 0,
+        comments: [
+          {
+            id: 9001,
+            puzzle_id: 101,
+            username: "reader",
+            body: "A :kekwbrug: discussion.",
+            parent_id: null,
+            created_at: "2026-11-19T00:00:00Z",
+            upvotes: 0,
+            downvotes: 0,
+            score: 0,
+            viewer_vote: 0,
+            reactions: reactions(),
+          },
+        ],
+      },
+    });
+  });
+  const solve = async () => {
+    const board = page.locator("cg-board");
+    await expect(board).toBeVisible();
+    const bounds = (await board.boundingBox())!;
+    for (const rank of [2, 4])
+      await page.mouse.click(
+        bounds.x + (4.5 * bounds.width) / 8,
+        bounds.y + ((8.5 - rank) * bounds.height) / 8,
+      );
+  };
+  await page.goto("/solve/101");
+  await page.getByRole("tab", { name: "Explanation", exact: true }).click();
+  await expect(page.getByRole("img", { name: "kappa", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const editor = page.getByRole("textbox", { name: "Puzzle explanation" });
+  await editor.fill("");
+  await editor.pressSequentially("An attack ");
+  // Text insertion without keydown also covers mobile input and accessibility keyboards.
+  await editor.evaluate(() => document.execCommand("insertText", false, ":kekwbrug:"));
+  await editor.pressSequentially("!");
+  await expect(editor.getByRole("img", { name: "kekwbrug" })).toBeVisible();
+  await page.getByRole("button", { name: "Save explanation" }).click();
+  await expect(page.getByRole("img", { name: "kekwbrug", exact: true })).toBeVisible();
+  expect(explanation).toBe("An attack :kekwbrug:!");
+  await solve();
+  await page.getByRole("tab", { name: /Chat|Comments/ }).click();
+  const controls = page.getByRole("group", { name: "Comment reactions" });
+  const chooseReaction = async () => {
+    await controls.getByRole("button", { name: "Add reaction" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: ":kekwbrug:", exact: true }).click();
+  };
+  const readsBefore = discussionReads;
+  await chooseReaction();
+  await expect(controls.getByRole("alert")).toBeVisible();
+  await expect(controls.getByRole("button", { name: "kekwbrug, 1 reaction" })).toHaveCount(0);
+  await chooseReaction();
+  await expect(controls.getByRole("button", { name: "kekwbrug, 1 reaction" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  expect(discussionReads).toBe(readsBefore);
+  await page.reload();
+  await solve();
+  await page.getByRole("tab", { name: /Chat|Comments/ }).click();
+  await expect(controls.getByRole("button", { name: "kekwbrug, 1 reaction" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await controls.getByRole("button", { name: "Add reaction" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(controls.getByRole("button", { name: "Add reaction" })).toBeFocused();
+});

@@ -6,6 +6,7 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useEffect, useState } from "react";
 
 import { CommentMarkdown } from "../../components/CommentMarkdown/CommentMarkdown";
+import { CommentReactions } from "../../components/CommentReactions/CommentReactions";
 import { CommunityCommentTargetLink } from "../../components/CommunityCommentTargetLink/CommunityCommentTargetLink";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
@@ -190,7 +191,18 @@ export const CommentsPage = () => {
                         <span>Comment hidden until you attempt this puzzle.</span>
                       </p>
                     ) : (
-                      <CommentMarkdown className="siteCommentBody" body={comment.body ?? ""} />
+                      <>
+                        <CommentMarkdown className="siteCommentBody" body={comment.body ?? ""} />
+                        <CommentReactions
+                          commentId={comment.id}
+                          reactions={comment.reactions}
+                          target={{
+                            type: comment.target_type,
+                            id: comment.target_id,
+                            context: comment.target_context,
+                          }}
+                        />
+                      </>
                     )}
                   </div>
                 </article>

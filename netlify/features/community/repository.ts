@@ -347,6 +347,40 @@ export class CommunityRepository {
     return { reactions: data };
   }
 
+  async loadCommentReactions(commentIds: number[], viewer: string | null) {
+    if (!commentIds.length) return {};
+    const { data, error } = await this.supabase.rpc("get_community_comment_reactions", {
+      p_comment_ids: commentIds,
+      p_viewer: viewer,
+    });
+    if (error) throw new Error(`Unable to load comment reactions: ${error.message}`);
+    return (data ?? {}) as Record<string, unknown>;
+  }
+
+  async setCommentReaction(
+    target: CommunityTarget,
+    commentId: number,
+    viewer: string,
+    reaction: string,
+    reacted: boolean,
+  ) {
+    const targetIds =
+      target.type === "profile" ? await this.resolveProfileTargetIds(target.id) : [target.id];
+    const { data, error } = await this.supabase.rpc("set_community_comment_reaction", {
+      p_comment_id: commentId,
+      p_target_type: target.type,
+      p_target_ids: targetIds,
+      p_target_context: target.context,
+      p_viewer: viewer,
+      p_reaction: reaction,
+      p_reacted: reacted,
+    });
+    if (error?.code === "P0002")
+      throw new HttpError(400, "That comment does not belong to this discussion.");
+    if (error) throw new Error(`Unable to save comment reaction: ${error.message}`);
+    return { reactions: data };
+  }
+
   async savePuzzleVote(puzzleId: number, username: string, vote: VoteValue): Promise<void> {
     const result =
       vote === 0

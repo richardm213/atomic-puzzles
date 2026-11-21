@@ -371,7 +371,13 @@
 }
 
 .puzzleCommentActions {
+  position: relative;
   flex-wrap: wrap;
+}
+
+/* Anchor the picker to the full toolbar, rather than a single reaction button. */
+.puzzleCommentActions > .reactionControls {
+  position: static;
 }
 
 .commentVoteGroup {

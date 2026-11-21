@@ -6,7 +6,7 @@ import { createServerSupabase } from "../../platform/environment";
 import { HttpError } from "../../platform/errors";
 import { jsonResponse } from "../../platform/response";
 import { parseJsonBody } from "../../platform/validation";
-import { validateProfileReaction } from "./profileReactions";
+import { validateReaction } from "./reactions";
 import { CommunityRepository } from "./repository";
 import { CommunityService, isPublicCommunityReadAction, readCommunityTarget } from "./service";
 
@@ -15,6 +15,7 @@ const mutationActions = new Set([
   "comment",
   "editComment",
   "commentVote",
+  "commentReaction",
   "setProfileReaction",
 ]);
 
@@ -48,7 +49,7 @@ export const communityRoute = async (event: FunctionEvent) => {
       context: "",
     });
     if (input.action === "setProfileReaction") {
-      const reaction = await validateProfileReaction(input.reaction!);
+      const reaction = await validateReaction(input.reaction!);
       return respond(
         200,
         await repository.setProfileReaction(
@@ -119,6 +120,19 @@ export const communityRoute = async (event: FunctionEvent) => {
     return respond(
       200,
       await service.voteOnComment(target, input.commentId!, identity.username!, input.vote!),
+    );
+  }
+  if (input.action === "commentReaction") {
+    const reaction = await validateReaction(input.reaction!);
+    return respond(
+      200,
+      await repository.setCommentReaction(
+        target,
+        input.commentId!,
+        identity.username!,
+        reaction,
+        input.reacted!,
+      ),
     );
   }
   if (input.action === "editComment") {

@@ -51,6 +51,30 @@ export const commentEditorSchema = new Schema({
 });
 
 type MarkdownNode = ReturnType<typeof fromMarkdown>["children"][number];
+export const commentEmoteRanges = (source: string) => {
+  const ranges: Array<{ from: number; to: number; source: string }> = [];
+  const visit = (node: MarkdownNode | ReturnType<typeof fromMarkdown>): void => {
+    if (node.type === "text") {
+      const start = node.position?.start.offset;
+      const end = node.position?.end.offset;
+      if (start === undefined || end === undefined) return;
+      for (const match of source.slice(start, end).matchAll(commentShortcode)) {
+        const at = start + match.index;
+        if (source[at - 1] !== "\\" && emoteFromSource(match[0])) {
+          ranges.push({ from: at, to: at + match[0].length, source: match[0] });
+        }
+      }
+    } else if (
+      "children" in node &&
+      !["link", "linkReference", "image", "imageReference"].includes(node.type)
+    ) {
+      node.children.forEach(visit);
+    }
+  };
+  if (source.includes(":")) visit(fromMarkdown(source));
+  return ranges;
+};
+
 export const createCommentDocument = (source: string) => {
   const { nodes } = commentEditorSchema;
   const lines: Node[][] = [[]];
@@ -62,26 +86,11 @@ export const createCommentDocument = (source: string) => {
       if (part) lines.at(-1)!.push(commentEditorSchema.text(part));
     });
   };
-  const visit = (node: MarkdownNode | ReturnType<typeof fromMarkdown>): void => {
-    if (node.type === "text") {
-      const start = node.position?.start.offset;
-      const end = node.position?.end.offset;
-      if (start === undefined || end === undefined) return;
-      for (const match of source.slice(start, end).matchAll(commentShortcode)) {
-        const at = start + match.index;
-        if (source[at - 1] === "\\" || !emoteFromSource(match[0])) continue;
-        appendText(source.slice(offset, at));
-        lines.at(-1)!.push(nodes.emote.create({ source: match[0] }));
-        offset = at + match[0].length;
-      }
-    } else if (
-      "children" in node &&
-      !["link", "linkReference", "image", "imageReference"].includes(node.type)
-    ) {
-      node.children.forEach(visit);
-    }
-  };
-  if (source.includes(":")) visit(fromMarkdown(source));
+  for (const range of commentEmoteRanges(source)) {
+    appendText(source.slice(offset, range.from));
+    lines.at(-1)!.push(nodes.emote.create({ source: range.source }));
+    offset = range.to;
+  }
   appendText(source.slice(offset));
   return nodes.doc.create(
     null,

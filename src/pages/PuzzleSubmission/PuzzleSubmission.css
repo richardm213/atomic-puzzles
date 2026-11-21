@@ -418,7 +418,6 @@
 }
 
 .puzzleEditorSolutionField textarea,
-.puzzleEditorExplanationField textarea,
 .puzzleEditorEventField input {
   width: 100%;
   min-height: 76px;
@@ -468,7 +467,7 @@
   min-height: 210px;
 }
 
-.puzzleEditorExplanationField textarea {
+.puzzleEditorExplanationField .commentEditorInput {
   min-height: 110px;
 }
 
@@ -685,16 +684,8 @@
   white-space: pre-wrap;
 }
 
-.puzzleReviewBoardExplanation textarea {
-  width: 100%;
+.puzzleReviewBoardExplanation .commentEditorInput {
   min-height: 110px;
-  padding: 10px 12px;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-ui);
-  background: var(--color-panel-strong);
-  color: var(--color-text);
-  font: 13px/1.45 var(--font-mono, monospace);
-  resize: vertical;
 }
 
 .puzzleReviewHistory {
@@ -1121,7 +1112,6 @@
 .puzzleEditor textarea:focus-visible,
 .puzzleEditorFields input:focus-visible,
 .puzzleEditorFenField input:focus-visible,
-.puzzleReviewBoardExplanation textarea:focus-visible,
 .puzzleReviewHistory button:focus-visible,
 .puzzleReviewField input:focus-visible,
 .puzzleRecentNavigation input:focus-visible,
