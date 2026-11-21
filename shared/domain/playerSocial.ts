@@ -661,6 +661,10 @@ const PLAYER_EMOTES = [
 const ATOMIC_LOGOS = {
   "atomic-dark": { label: "Atomic Dark", path: "/favicon.ico" },
   "atomic-blue": { label: "Atomic Blue", path: "/images/brand/atomic-logo-light.png" },
+  "atomic-blue-original": {
+    label: "Atomic Blue (Original)",
+    path: "/images/brand/atomic-logo-light.png",
+  },
   "atomic-amethyst": {
     label: "Atomic Amethyst",
     path: "/images/flairs/atomic-amethyst.png",
