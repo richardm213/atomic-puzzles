@@ -9,8 +9,8 @@ These are the official release artifacts. Compiler flags, memory/thread settings
 artifact sizes and supported network formats are recorded in manifest.json.
 Release-provided checksums are preserved in SHA256SUMS.
 
-The matching atomic-ft3b-1p2B.nnue network is hosted separately in Supabase Storage,
-compressed for delivery. The worker verifies the decompressed network against SHA-256
+The matching atomic-ft3b-1p2B.nnue network is served from this directory with gzip
+content encoding. The worker verifies the decompressed network against SHA-256
 `a32645ea6749c2500119bd53b55cc5baf2f6c502659f247e5e5ca4f26ea48e29`
 before loading it. The release reports the browser bench signature as 416708 nodes.
 

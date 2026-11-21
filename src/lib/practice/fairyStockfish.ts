@@ -386,13 +386,9 @@ const ATOMIC_STOCKFISH_WORKER_URL =
 const ATOMIC_STOCKFISH_NNUE_SHA256 =
   "a32645ea6749c2500119bd53b55cc5baf2f6c502659f247e5e5ca4f26ea48e29";
 
-const atomicStockfishNetworkUrl = (): string => {
-  const configuredUrl = import.meta.env.VITE_ATOMIC_STOCKFISH_NNUE_URL?.trim();
-  if (configuredUrl) return configuredUrl;
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim().replace(/\/$/, "");
-  if (!supabaseUrl) throw new Error("Atomic-Stockfish network URL is not configured");
-  return `${supabaseUrl}/storage/v1/object/public/engine-assets/atomic-stockfish/51150b0c84bb27cde06d7d356efb3fa7bd1ec11f/atomic-ft3b-1p2B-gzip.nnue`;
-};
+const atomicStockfishNetworkUrl = (): string =>
+  import.meta.env.VITE_ATOMIC_STOCKFISH_NNUE_URL?.trim() ||
+  new URL("atomic-ft3b-1p2B.nnue", new URL(ATOMIC_STOCKFISH_WORKER_URL, location.origin)).href;
 
 const initializeAtomicStockfish = async (): Promise<StockfishEngine> => {
   if (!globalThis.crossOriginIsolated || typeof SharedArrayBuffer === "undefined") {
