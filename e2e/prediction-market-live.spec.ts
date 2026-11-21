@@ -412,8 +412,14 @@ test("live book updates render promptly and missed events recover without idle b
   let incrementalReads = 0;
   const initialUpdateAt = new Date(Date.now() - 10_000).toISOString();
   let socket: WebSocketRoute | undefined;
+  let websocketAvailable = true;
+  let bookUpdatedAt = initialUpdateAt;
   let topic = "";
   await page.routeWebSocket(/\/realtime\/v1\/websocket/, (connection) => {
+    if (!websocketAvailable) {
+      connection.close();
+      return;
+    }
     socket = connection;
     connection.onMessage((message) => {
       const [joinRef, ref, channel, event, payload] = JSON.parse(String(message));
@@ -445,14 +451,15 @@ test("live book updates render promptly and missed events recover without idle b
   });
   await page.route("**/rest/v1/prediction_market_updates?**", (route) => {
     versionReads++;
-    if (new URL(route.request().url()).searchParams.has("updated_at")) incrementalReads++;
+    const since = new URL(route.request().url()).searchParams.get("updated_at");
+    if (since) incrementalReads++;
     return route.fulfill({
       json: [
         {
           market_id: marketId,
           version: recoveryVersion,
           change_scope: "book",
-          updated_at: initialUpdateAt,
+          updated_at: bookUpdatedAt,
         },
         {
           market_id: inactiveId,
@@ -460,7 +467,7 @@ test("live book updates render promptly and missed events recover without idle b
           change_scope: "book",
           updated_at: initialUpdateAt,
         },
-      ],
+      ].filter((row) => !since || Date.parse(row.updated_at) >= Date.parse(since.slice(4))),
     });
   });
   const catalog = ["natso", "rabbier"].map((username, index) => ({
@@ -716,10 +723,19 @@ test("live book updates render promptly and missed events recover without idle b
   await expect(pending).toHaveCount(0);
   expect(recoveryMs).toBeLessThan(6_500);
   expect(batches.at(-1)).toEqual([marketId]);
+  // A dropped socket must catch changes that fall behind the incremental poll cursor.
   ask = 32;
   extraOrder = true;
   recoveryVersion = ++version;
-  await expect(pending).toBeVisible();
+  bookUpdatedAt = new Date(Date.parse(initialUpdateAt) - 60_000).toISOString();
+  websocketAvailable = false;
+  const disconnectTime = performance.now();
+  socket!.close();
+  await expect(pending).toBeVisible({ timeout: 3_500 });
+  const disconnectedRecoveryMs = Math.round(performance.now() - disconnectTime);
+  expect(batches.at(-1)).toEqual([marketId]);
+  websocketAvailable = true;
+
   for (const mode of ["light", "dark"]) {
     await page.getByRole("button", { name: "Open settings", exact: true }).click();
     await page.getByLabel("Color mode", { exact: true }).selectOption(mode);
@@ -775,18 +791,24 @@ test("live book updates render promptly and missed events recover without idle b
   await page.keyboard.press("Escape");
   await expect(popup).toHaveCount(0);
 
-  deadline = Date.now() + 2_000;
-  emitUpdate(marketId, ++version);
+  deadline = Date.now() + 8_000;
+  bookUpdatedAt = new Date().toISOString();
+  recoveryVersion = ++version;
   const expiringAsk = page.getByRole("button", { name: /Ask 32 cents, 20 contracts/ }).first();
   await expect(expiringAsk).toBeVisible();
-  await expect(expiringAsk).toHaveCount(0, { timeout: 6_500 });
+  await expect(expiringAsk).toHaveCount(0, { timeout: 9_000 });
 
   await page.goto("/betting");
   await expect(page.getByLabel("Betting account", { exact: true })).toHaveText(
     "Net worth225In bets25Balance200",
   );
   console.log(
-    JSON.stringify({ realtimeMs, missedEventRecoveryMs: recoveryMs, idleBookDownloads: 0 }),
+    JSON.stringify({
+      realtimeMs,
+      missedEventRecoveryMs: recoveryMs,
+      disconnectedRecoveryMs,
+      idleBookDownloads: 0,
+    }),
   );
 });
 

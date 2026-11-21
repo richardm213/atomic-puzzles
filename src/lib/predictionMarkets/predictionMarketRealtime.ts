@@ -89,6 +89,7 @@ export const usePredictionMarketRealtime = (
     let baselineReady = false;
     let checkingVersions = false;
     let socketLive = false;
+    let needsFullCheck = true;
     let lastVersionCheck = -Infinity;
     let refreshTimer: number | undefined;
     let lastFallback = -Infinity;
@@ -186,7 +187,13 @@ export const usePredictionMarketRealtime = (
       checkingVersions = true;
       lastVersionCheck = now;
       try {
-        const fullCheck = !latestUpdateTime || now - lastFullCheck >= FULL_VERSION_CHECK_MS;
+        // Recover gaps on reconnect, even when a transaction committed with an older timestamp.
+        const fullCheck =
+          needsFullCheck ||
+          !socketLive ||
+          !latestUpdateTime ||
+          now - lastFullCheck >= FULL_VERSION_CHECK_MS;
+        needsFullCheck = false;
         let versions = supabase
           .from("prediction_market_updates")
           .select("market_id,version,change_scope,updated_at")
@@ -235,10 +242,13 @@ export const usePredictionMarketRealtime = (
       }
     };
 
-    const resume = () => void checkVersions();
+    const resume = () => {
+      needsFullCheck = true;
+      void checkVersions();
+    };
     const poll = () => {
       const interval = socketLive ? LIVE_RECOVERY_MS : OFFLINE_RECOVERY_MS;
-      if (performance.now() - lastVersionCheck >= interval) resume();
+      if (needsFullCheck || performance.now() - lastVersionCheck >= interval) void checkVersions();
     };
     const channel = supabase
       .channel(`prediction-markets:${channelId}`)
@@ -260,7 +270,10 @@ export const usePredictionMarketRealtime = (
         },
       )
       .subscribe((status) => {
-        socketLive = status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED;
+        const connected = status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED;
+        if (connected === socketLive) return;
+        socketLive = connected;
+        if (baselineReady) resume();
       });
 
     resume();
