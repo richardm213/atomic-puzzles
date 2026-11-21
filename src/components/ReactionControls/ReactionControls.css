@@ -35,6 +35,19 @@
   cursor: default;
 }
 
+.reactionButton.reactionAdd {
+  min-height: 30px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.reactionButton.reactionAdd:is(:hover, [aria-expanded="true"]) {
+  background: var(--color-panel-deep);
+  color: var(--color-heading);
+}
+
 .reactionCount,
 .reactionAdd svg:last-child {
   font-size: 12px;
@@ -56,7 +69,8 @@
 }
 
 @media (max-width: 680px) {
-  .reactionButton {
+  .reactionButton,
+  .reactionButton.reactionAdd {
     min-width: var(--control-height-touch);
     min-height: var(--control-height-touch);
   }
