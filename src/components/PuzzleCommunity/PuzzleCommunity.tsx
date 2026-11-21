@@ -580,13 +580,6 @@ export const CommunityDiscussion = ({
               <>
                 <CommentMarkdown className="puzzleCommentText" body={comment.body} />
                 <div className="puzzleCommentActions">
-                  {comment.id > 0 ? (
-                    <CommentReactions
-                      commentId={comment.id}
-                      target={currentTarget}
-                      reactions={comment.reactions}
-                    />
-                  ) : null}
                   {allowCommentVotes ? (
                     <div
                       className="commentVoteGroup"
@@ -629,6 +622,13 @@ export const CommunityDiscussion = ({
                     <FontAwesomeIcon icon={faReply} aria-hidden="true" />
                     Reply
                   </button>
+                  {comment.id > 0 ? (
+                    <CommentReactions
+                      commentId={comment.id}
+                      target={currentTarget}
+                      reactions={comment.reactions}
+                    />
+                  ) : null}
                   {canEdit ? (
                     <button
                       className="commentEditButton"
