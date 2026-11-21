@@ -1,5 +1,7 @@
+import { tournamentMatchColumns } from "../../../shared/domain/tournamentMatchColumns";
 import { isMode, type Mode } from "../../constants/matches";
 import { cachedRequest } from "../../utils/requestCache";
+import { apiRequest } from "../api/postApi";
 import { getSupabaseClient } from "../supabase/client";
 import { fetchAllSupabaseRows, loadSupabaseRows } from "../supabase/rows";
 
@@ -189,9 +191,6 @@ export const compareTournamentStartDates = (
   );
 };
 
-const TOURNAMENT_MATCHES_SELECT_COLUMNS =
-  "tournament,bracket,round,order,id,match_id,played_on,p1,p2,s1,s2,winner_to,loser_to,outcome_type,replacement_player,replacement_for,replacement_note,replacement_history";
-const TOURNAMENT_BRACKET_SELECT_COLUMNS = `${TOURNAMENT_MATCHES_SELECT_COLUMNS},scheduled_at`;
 const PLAYER_COUNTRIES_SELECT_COLUMNS = "player_name,country_code";
 const TOURNAMENT_SEEDS_SELECT_COLUMNS = "tournament,player_name,seed";
 const TOURNAMENT_CATALOG_WITH_DATES_SELECT_COLUMNS =
@@ -923,23 +922,20 @@ export const addEmptyMainBracketRounds = (
   return augmented;
 };
 
-const fetchTournamentMatchRows = async (tournamentId: string): Promise<TournamentMatch[]> =>
-  requestBracketData(tournamentId, tournamentMatchesCache, "tournamentMatches", async () => {
-    const supabase = getSupabaseClient();
-    const buildQuery = (columns: string) => () =>
-      supabase.from(TOURNAMENT_MATCHES_TABLE).select(columns).eq("tournament", tournamentId);
+const loadPublicTournamentMatches = async (parameters: URLSearchParams) => {
+  const { rows } = await apiRequest<{ rows: TournamentMatchRowFromDb[] }>(
+    `/api/public-data?${parameters}`,
+    { errorMessage: "Unable to load tournament matches." },
+  );
+  return rows.map(normalizeMatchRow);
+};
 
-    const loadRows = (columns: string) =>
-      fetchAllSupabaseRows<TournamentMatchRowFromDb>(TOURNAMENT_MATCHES_TABLE, buildQuery(columns));
-    const rows = await loadRows(TOURNAMENT_BRACKET_SELECT_COLUMNS).catch((error: unknown) => {
-      // Preserve the bracket while the schedule migration is pending.
-      if (error instanceof Error && error.message.includes("scheduled_at")) {
-        return loadRows(TOURNAMENT_MATCHES_SELECT_COLUMNS);
-      }
-      throw error;
-    });
-    return rows.map(normalizeMatchRow);
-  });
+const fetchTournamentMatchRows = async (tournamentId: string): Promise<TournamentMatch[]> =>
+  requestBracketData(tournamentId, tournamentMatchesCache, "tournamentMatches", () =>
+    loadPublicTournamentMatches(
+      new URLSearchParams({ resource: "tournament-bracket", tournamentId }),
+    ),
+  );
 
 export const fetchTournamentPlayerAppearances = async (
   usernames: string[],
@@ -949,24 +945,34 @@ export const fetchTournamentPlayerAppearances = async (
   const cacheKey = normalizedUsernames.sort().join("|");
 
   return cachedRequest(tournamentPlayerHistoryCache, [cacheKey], async () => {
-    const [catalog, allMatches, seedMapsByTournament] = await Promise.all([
+    const [catalog, matches] = await Promise.all([
       fetchTournamentCatalog(),
-      fetchAllSupabaseRows<TournamentMatchRowFromDb>(TOURNAMENT_MATCHES_TABLE, () =>
-        getSupabaseClient()
-          .from(TOURNAMENT_MATCHES_TABLE)
-          .select(TOURNAMENT_MATCHES_SELECT_COLUMNS),
-      ).then((rows) => rows.map(normalizeMatchRow)),
-      fetchAllSupabaseRows<{
-        tournament?: string | null;
-        player_name?: string | null;
-        seed?: number | string | null;
-      }>(TOURNAMENT_SEEDS_TABLE, () =>
-        getSupabaseClient().from(TOURNAMENT_SEEDS_TABLE).select(TOURNAMENT_SEEDS_SELECT_COLUMNS),
-      ).then(buildTournamentSeedMaps),
+      loadPublicTournamentMatches(
+        new URLSearchParams({
+          resource: "tournament-player-matches",
+          players: JSON.stringify(normalizedUsernames),
+        }),
+      ),
     ]);
+    if (!matches.length) return [];
+    const tournamentIds = [...new Set(matches.map((match) => match.tournament))];
+    const seedMapsByTournament = await fetchAllSupabaseRows<{
+      tournament?: string | null;
+      player_name?: string | null;
+      seed?: number | string | null;
+    }>(TOURNAMENT_SEEDS_TABLE, () =>
+      getSupabaseClient()
+        .from(TOURNAMENT_SEEDS_TABLE)
+        .select(TOURNAMENT_SEEDS_SELECT_COLUMNS)
+        .in("tournament", tournamentIds)
+        .gte("seed", 1)
+        .lte("seed", 16)
+        .order("tournament")
+        .order("seed"),
+    ).then(buildTournamentSeedMaps);
     return buildTournamentPlayerAppearances(
       catalog,
-      allMatches,
+      matches,
       normalizedUsernames,
       seedMapsByTournament,
     );
@@ -1130,7 +1136,7 @@ export const getTournamentMatchLocation = async (
         TOURNAMENT_MATCHES_TABLE,
         getSupabaseClient()
           .from(TOURNAMENT_MATCHES_TABLE)
-          .select(TOURNAMENT_MATCHES_SELECT_COLUMNS)
+          .select(tournamentMatchColumns)
           .eq("match_id", normalizedMatchId),
       );
 

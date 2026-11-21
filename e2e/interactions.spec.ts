@@ -3,34 +3,36 @@ import { expect, test } from "./fixtures";
 test("bracket dates default off, persist when enabled, and never hide upcoming schedules", async ({
   page,
 }) => {
-  await page.route("**/rest/v1/tournament_matches?**", (route) =>
+  await page.route("**/api/public-data?resource=tournament-bracket&**", (route) =>
     route.fulfill({
-      json: [
-        {
-          id: "played-semi",
-          tournament: "awc2026",
-          bracket: "main",
-          round: "Semifinals",
-          order: 1,
-          p1: "alpha",
-          p2: "beta",
-          s1: 6,
-          s2: 2,
-          played_on: "2026-10-15",
-        },
-        {
-          id: "scheduled-semi",
-          tournament: "awc2026",
-          bracket: "main",
-          round: "Semifinals",
-          order: 2,
-          p1: "gamma",
-          p2: "delta",
-          s1: 0,
-          s2: 0,
-          scheduled_at: "2099-11-08T19:00:00Z",
-        },
-      ],
+      json: {
+        rows: [
+          {
+            id: "played-semi",
+            tournament: "awc2026",
+            bracket: "main",
+            round: "Semifinals",
+            order: 1,
+            p1: "alpha",
+            p2: "beta",
+            s1: 6,
+            s2: 2,
+            played_on: "2026-10-15",
+          },
+          {
+            id: "scheduled-semi",
+            tournament: "awc2026",
+            bracket: "main",
+            round: "Semifinals",
+            order: 2,
+            p1: "gamma",
+            p2: "delta",
+            s1: 0,
+            s2: 0,
+            scheduled_at: "2099-11-08T19:00:00Z",
+          },
+        ],
+      },
     }),
   );
   await page.goto("/tournaments/awc2026");

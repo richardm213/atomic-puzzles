@@ -588,7 +588,7 @@ describe("main bracket completion", () => {
 });
 
 describe("tournament data sources in development", () => {
-  it("loads brackets, player history, seeds and countries from Supabase without local file fallbacks", async () => {
+  it("loads public bracket data and scopes player history to the requested names", async () => {
     const rowsByTable: Record<string, unknown[]> = {
       tournament_catalog: [
         {
@@ -619,6 +619,7 @@ describe("tournament data sources in development", () => {
         {
           select: vi.fn(),
           eq: vi.fn(),
+          in: vi.fn(),
           order: vi.fn(),
           gte: vi.fn(),
           lte: vi.fn(),
@@ -628,6 +629,7 @@ describe("tournament data sources in development", () => {
       for (const method of [
         query.select,
         query.eq,
+        query.in,
         query.order,
         query.gte,
         query.lte,
@@ -636,7 +638,7 @@ describe("tournament data sources in development", () => {
         method.mockReturnValue(query);
       return query;
     });
-    const fetch = vi.fn().mockRejectedValue(new Error("Local files must not be requested"));
+    const fetch = vi.fn(async () => Response.json({ rows: rowsByTable.tournament_matches }));
     vi.stubGlobal("fetch", fetch);
     try {
       const bracket = await getTournamentBracket("database-cup");
@@ -650,7 +652,17 @@ describe("tournament data sources in development", () => {
       expect(sourceMocks.from.mock.calls.map(([table]) => table)).toEqual(
         expect.arrayContaining(["tournament_matches", "tournament_seeds", "player_countries"]),
       );
-      expect(fetch).not.toHaveBeenCalled();
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/public-data?resource=tournament-bracket&tournamentId=database-cup",
+        expect.any(Object),
+      );
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/public-data?resource=tournament-player-matches&players=%5B%22alpha%22%5D",
+        expect.any(Object),
+      );
+      expect(
+        sourceMocks.from.mock.calls.filter(([table]) => table === "tournament_matches"),
+      ).toHaveLength(1); // Only the exact archived-match lookup goes directly to the table.
     } finally {
       vi.unstubAllGlobals();
     }

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { tournamentMatchColumns } from "../../shared/domain/tournamentMatchColumns";
 import { defineFunction, type FunctionEvent } from "../platform/defineFunction";
 import { createServerSupabase } from "../platform/environment";
 import { HttpError } from "../platform/errors";
@@ -11,6 +12,8 @@ const resourceSchema = z.enum([
   "puzzle-catalog",
   "puzzle-ranking-trophies",
   "puzzle-solver-index",
+  "tournament-bracket",
+  "tournament-player-matches",
 ]);
 const puzzleSetFields = "id,event_name,event_date,players,source_id";
 const puzzleCatalogColumns = [
@@ -32,10 +35,56 @@ const cacheHeaders = {
   "Netlify-CDN-Cache-Control": "public, durable, s-maxage=300, stale-while-revalidate=3600",
 };
 
+const bracketCacheHeaders = {
+  "Cache-Control": "public, max-age=15, stale-while-revalidate=60",
+  "Netlify-CDN-Cache-Control": "public, durable, s-maxage=30, stale-while-revalidate=60",
+};
+const tournamentIdSchema = z.string().regex(/^[a-z0-9-]{1,80}$/);
+const tournamentPlayersSchema = z.array(z.string().min(1).max(100)).min(1).max(32);
+
 const publicDataRoute = async (event: FunctionEvent) => {
   const parsed = resourceSchema.safeParse(event.queryStringParameters?.resource);
   if (!parsed.success) throw new HttpError(400, "Choose a valid public data resource.");
   const supabase = createServerSupabase("Public data service");
+
+  if (parsed.data === "tournament-bracket" || parsed.data === "tournament-player-matches") {
+    const isBracket = parsed.data === "tournament-bracket";
+    const makeQuery = () => {
+      if (isBracket) {
+        const id = tournamentIdSchema.safeParse(event.queryStringParameters?.tournamentId);
+        if (!id.success) throw new HttpError(400, "Choose a valid tournament.");
+        return supabase
+          .from("tournament_matches")
+          .select(`${tournamentMatchColumns},scheduled_at`)
+          .eq("tournament", id.data)
+          .order("id");
+      }
+      let players: unknown;
+      try {
+        players = JSON.parse(event.queryStringParameters?.players ?? "");
+      } catch {
+        throw new HttpError(400, "Choose valid tournament players.");
+      }
+      const parsedPlayers = tournamentPlayersSchema.safeParse(players);
+      if (!parsedPlayers.success) throw new HttpError(400, "Choose valid tournament players.");
+      return supabase
+        .rpc("get_tournament_player_matches", { p_players: parsedPlayers.data })
+        .select(tournamentMatchColumns)
+        .order("tournament")
+        .order("id");
+    };
+    const rows: unknown[] = [];
+    for (let from = 0; ; from += 1_000) {
+      const { data, error } = await makeQuery().range(from, from + 999);
+      if (error) throw new Error(`Unable to load tournament matches: ${error.message}`);
+      if (data !== null && !Array.isArray(data))
+        throw new Error("The database returned invalid tournament matches.");
+      const page = Array.isArray(data) ? data : [];
+      rows.push(...page);
+      if (page.length < 1_000) break;
+    }
+    return jsonResponse(200, { rows }, bracketCacheHeaders);
+  }
 
   if (parsed.data === "puzzle-ranking-trophies") {
     const { data, error } = await supabase.rpc("get_puzzle_ranking_trophies");
