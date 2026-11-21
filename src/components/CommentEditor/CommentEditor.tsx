@@ -97,6 +97,7 @@ export const CommentEditor = forwardRef<HTMLElement, Props>(
     { value, onValueChange, id, placeholder, readOnly, maxLength, onEscape, "aria-label": label },
     ref,
   ) => {
+    const pickerOwner = useRef<HTMLDivElement>(null);
     const resultsRef = useRef<HTMLDivElement>(null);
     const resultsId = useId();
     const pickerId = useId();
@@ -259,10 +260,8 @@ export const CommentEditor = forwardRef<HTMLElement, Props>(
 
     return (
       <div
+        ref={pickerOwner}
         className={popupAbove ? "commentEditor commentPopupAbove" : "commentEditor"}
-        onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) setPickerOpen(false);
-        }}
       >
         <div ref={host} />
         <button
@@ -292,6 +291,8 @@ export const CommentEditor = forwardRef<HTMLElement, Props>(
             native={native}
             onSelect={selectEmoji}
             onClose={closePicker}
+            onDismiss={() => setPickerOpen(false)}
+            ownerRef={pickerOwner}
           />
         ) : null}
         {activeToken ? (

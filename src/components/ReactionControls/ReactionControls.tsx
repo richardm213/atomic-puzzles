@@ -45,6 +45,7 @@ export const ReactionControls = ({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerAbove, setPickerAbove] = useState(false);
   const pickerId = useId();
+  const pickerOwner = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const native = useNativeCommentEmojis(pickerOpen);
   const canReact = () => {
@@ -59,12 +60,10 @@ export const ReactionControls = ({
   const triggerLabel = commentActions ? "Comment actions" : "Add reaction";
   return (
     <div
+      ref={pickerOwner}
       className={pickerAbove ? "reactionControls reactionPickerAbove" : "reactionControls"}
       role="group"
       aria-label={label}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setPickerOpen(false);
-      }}
     >
       {reactions.map(({ reaction, reacted, count }) => {
         const emoji = commentEmojiByCode(reaction, null);
@@ -128,6 +127,8 @@ export const ReactionControls = ({
           id={pickerId}
           native={native}
           onClose={closePicker}
+          onDismiss={() => setPickerOpen(false)}
+          ownerRef={pickerOwner}
           {...(commentActions?.onEdit
             ? {
                 onEdit: () => {

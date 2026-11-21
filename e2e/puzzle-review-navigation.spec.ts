@@ -748,6 +748,11 @@ test("explanations and comment reactions share emotes without extra discussion r
     "content",
     /atomic-logo-light\.png/,
   );
+  await page.getByRole("button", { name: "Choose an emote", exact: true }).click();
+  const editorPicker = page.getByRole("dialog", { name: "Choose an emote" });
+  await editorPicker.getByRole("searchbox", { name: "Search emotes" }).fill("cmonbrug");
+  await editorPicker.getByRole("button", { name: ":cmonbrug:", exact: true }).click();
+  await expect(editor.getByRole("img", { name: "cmonbrug" })).toBeVisible();
   await editor.fill("");
   await editor.pressSequentially("An attack ");
   // Text insertion without keydown also covers mobile input and accessibility keyboards.

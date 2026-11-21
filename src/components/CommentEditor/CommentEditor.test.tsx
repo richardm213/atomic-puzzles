@@ -181,7 +181,10 @@ describe("CommentEditor", () => {
     const searchInput = screen.getByRole("searchbox", { name: "Search emotes" });
     expect(searchInput).toHaveFocus();
     await user.type(searchInput, "rofl");
-    await user.click(await screen.findByRole("button", { name: ":rofl:" }));
+    const emoji = await screen.findByRole("button", { name: ":rofl:" });
+    // Some browsers blur the search input without reporting the clicked option as relatedTarget.
+    fireEvent.blur(searchInput, { relatedTarget: null });
+    await user.click(emoji);
     expect(input.textContent).toBe("Good move 🤣 ");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });

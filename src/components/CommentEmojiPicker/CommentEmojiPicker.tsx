@@ -1,6 +1,6 @@
 import "./CommentEmojiPicker.css";
 
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, type RefObject, useEffect, useRef, useState } from "react";
 
 import {
   type CommentEmoji,
@@ -22,6 +22,8 @@ export const CommentEmojiPicker = ({
   native,
   onSelect,
   onClose,
+  onDismiss,
+  ownerRef,
   onEdit,
   editDisabled,
 }: {
@@ -29,6 +31,8 @@ export const CommentEmojiPicker = ({
   native: NativeEmojiCatalog | null;
   onSelect: (emoji: CommentEmoji) => void;
   onClose: () => void;
+  onDismiss: () => void;
+  ownerRef: RefObject<HTMLElement>;
   onEdit?: () => void;
   editDisabled?: boolean;
 }) => {
@@ -52,6 +56,23 @@ export const CommentEmojiPicker = ({
   const first = groups.find(({ emojis }) => emojis.length)?.emojis[0];
 
   useEffect(() => searchRef.current?.focus(), []);
+
+  useEffect(() => {
+    const owner = ownerRef.current;
+    if (!owner) return;
+    const document = owner.ownerDocument;
+    // Safari and touch browsers can blur the search field before an option receives a click.
+    // Dismiss only when the pointer or focus actually moves outside the owning control.
+    const dismissOutside = (event: Event) => {
+      if (event.target instanceof Node && !owner.contains(event.target)) onDismiss();
+    };
+    document.addEventListener("pointerdown", dismissOutside, true);
+    document.addEventListener("focusin", dismissOutside);
+    return () => {
+      document.removeEventListener("pointerdown", dismissOutside, true);
+      document.removeEventListener("focusin", dismissOutside);
+    };
+  }, [onDismiss, ownerRef]);
 
   const closeOnEscape = (event: KeyboardEvent) => {
     if (event.key !== "Escape") return false;
