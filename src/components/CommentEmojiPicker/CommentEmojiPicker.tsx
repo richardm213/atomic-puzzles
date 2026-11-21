@@ -22,11 +22,15 @@ export const CommentEmojiPicker = ({
   native,
   onSelect,
   onClose,
+  onEdit,
+  editDisabled,
 }: {
   id: string;
   native: NativeEmojiCatalog | null;
   onSelect: (emoji: CommentEmoji) => void;
   onClose: () => void;
+  onEdit?: () => void;
+  editDisabled?: boolean;
 }) => {
   const customEmojiGroups = useCustomEmojiGroups();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -83,8 +87,24 @@ export const CommentEmojiPicker = ({
   };
 
   return (
-    <div id={id} className="commentEmojiPicker" role="dialog" aria-label="Choose an emote">
+    <div
+      id={id}
+      className="commentEmojiPicker"
+      role="dialog"
+      aria-label={onEdit ? "Comment actions" : "Choose an emote"}
+    >
       <div className="commentEmojiPickerControls">
+        {onEdit ? (
+          <button
+            className="commentEmojiPickerEdit"
+            type="button"
+            disabled={editDisabled}
+            onClick={onEdit}
+            onKeyDown={closeOnEscape}
+          >
+            Edit
+          </button>
+        ) : null}
         <input
           ref={searchRef}
           type="search"

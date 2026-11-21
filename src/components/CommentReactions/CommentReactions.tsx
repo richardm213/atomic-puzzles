@@ -19,10 +19,14 @@ export const CommentReactions = ({
   commentId,
   target,
   reactions = emptyReactions,
+  onEdit,
+  editDisabled = false,
 }: {
   commentId: number;
   target: CommunityTarget;
   reactions?: EmoteReaction[] | undefined;
+  onEdit?: (() => void) | undefined;
+  editDisabled?: boolean;
 }) => {
   const { user } = useAuth();
   const viewer = user?.username ?? "anonymous";
@@ -87,6 +91,7 @@ export const CommentReactions = ({
   return (
     <ReactionControls
       label="Comment reactions"
+      commentActions={{ onEdit, editDisabled }}
       reactions={withReactionSelection(current, pending ? mutation.variables.selection : undefined)}
       pending={pending}
       error={mutation.isError && mutation.variables.viewer === viewer}

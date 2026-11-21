@@ -27,6 +27,20 @@
   color: var(--color-text);
 }
 
+.commentEmojiPickerEdit {
+  min-height: var(--control-height-touch);
+  padding-inline: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-ui);
+  background: transparent;
+  color: var(--color-text);
+  text-align: start;
+}
+
+.commentEmojiPickerEdit:hover:not(:disabled) {
+  background: var(--color-panel-deep);
+}
+
 .commentEmojiPickerBody {
   max-height: min(38dvh, 290px);
   overflow-y: auto;

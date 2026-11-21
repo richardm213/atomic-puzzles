@@ -1,6 +1,6 @@
 import "./ReactionControls.css";
 
-import { faFaceSmile, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsisVertical, faFaceSmile, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useId, useRef, useState } from "react";
 
@@ -31,6 +31,7 @@ export const ReactionControls = ({
   onReact,
   onOpen,
   label,
+  commentActions,
 }: {
   reactions: EmoteReaction[];
   pending: boolean;
@@ -38,6 +39,7 @@ export const ReactionControls = ({
   onReact: (selection: ReactionSelection) => void;
   onOpen?: () => void;
   label: string;
+  commentActions?: { onEdit?: (() => void) | undefined; editDisabled?: boolean };
 }) => {
   const { isAuthenticated, login } = useAuth();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -54,6 +56,7 @@ export const ReactionControls = ({
     setPickerOpen(false);
     trigger.current?.focus();
   };
+  const triggerLabel = commentActions ? "Comment actions" : "Add reaction";
   return (
     <div
       className={pickerAbove ? "reactionControls reactionPickerAbove" : "reactionControls"}
@@ -90,16 +93,16 @@ export const ReactionControls = ({
       })}
       <button
         ref={trigger}
-        className="reactionButton reactionAdd"
+        className={`reactionButton reactionAdd${commentActions ? " commentActionsTrigger" : ""}`}
         type="button"
-        title="Add reaction"
-        aria-label="Add reaction"
+        title={triggerLabel}
+        aria-label={triggerLabel}
         aria-haspopup="dialog"
         aria-expanded={pickerOpen}
         aria-controls={pickerOpen ? pickerId : undefined}
         aria-disabled={pending}
         onClick={(event) => {
-          if (pending || !canReact()) return;
+          if (pending || (!commentActions && !canReact())) return;
           if (pickerOpen) {
             closePicker();
             return;
@@ -111,19 +114,35 @@ export const ReactionControls = ({
           setPickerOpen(true);
         }}
       >
-        <FontAwesomeIcon icon={faFaceSmile} aria-hidden="true" />
-        <FontAwesomeIcon icon={faPlus} aria-hidden="true" />
+        {commentActions ? (
+          <FontAwesomeIcon icon={faEllipsisVertical} aria-hidden="true" />
+        ) : (
+          <>
+            <FontAwesomeIcon icon={faFaceSmile} aria-hidden="true" />
+            <FontAwesomeIcon icon={faPlus} aria-hidden="true" />
+          </>
+        )}
       </button>
       {pickerOpen ? (
         <CommentEmojiPicker
           id={pickerId}
           native={native}
           onClose={closePicker}
+          {...(commentActions?.onEdit
+            ? {
+                onEdit: () => {
+                  closePicker();
+                  commentActions.onEdit?.();
+                },
+                editDisabled: Boolean(commentActions.editDisabled),
+              }
+            : {})}
           onSelect={(emoji) => {
             const reaction = emoji.kind === "custom" ? emoji.code : emoji.unicode;
             closePicker();
             if (
-              isAuthenticated &&
+              !pending &&
+              canReact() &&
               !reactions.some((row) => row.reaction === reaction && row.reacted)
             ) {
               onReact({ reaction, reacted: true });

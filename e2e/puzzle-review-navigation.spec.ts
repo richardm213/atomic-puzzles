@@ -760,14 +760,14 @@ test("explanations and comment reactions share emotes without extra discussion r
   await solve();
   await page.getByRole("tab", { name: /Chat|Comments/ }).click();
   const controls = page.getByRole("group", { name: "Comment reactions" });
-  await controls.getByRole("button", { name: "Add reaction" }).click();
+  await controls.getByRole("button", { name: "Comment actions" }).click();
   const picker = page.getByRole("dialog", { name: "Choose an emote" });
   await picker.getByRole("searchbox", { name: "Search emotes" }).fill("atomic");
   await expect(picker.getByRole("button", { name: ":atomic-blue:", exact: true })).toBeVisible();
   await expect(picker.getByRole("button", { name: ":atomic-dark:", exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape");
   const chooseReaction = async () => {
-    await controls.getByRole("button", { name: "Add reaction" }).click();
+    await controls.getByRole("button", { name: "Comment actions" }).click();
     await page.getByRole("dialog").getByRole("button", { name: ":kekwbrug:", exact: true }).click();
   };
   const readsBefore = discussionReads;
@@ -791,10 +791,10 @@ test("explanations and comment reactions share emotes without extra discussion r
   await page.getByLabel("Color mode", { exact: true }).selectOption("dark");
   await page.getByRole("button", { name: "Open settings", exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
-  await controls.getByRole("button", { name: "Add reaction" }).click();
+  await controls.getByRole("button", { name: "Comment actions" }).click();
   await picker.getByRole("searchbox", { name: "Search emotes" }).fill("atomic");
   await expect(picker.getByRole("button", { name: ":atomic-dark:", exact: true })).toBeVisible();
   await expect(picker.getByRole("button", { name: ":atomic-blue:", exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape");
-  await expect(controls.getByRole("button", { name: "Add reaction" })).toBeFocused();
+  await expect(controls.getByRole("button", { name: "Comment actions" })).toBeFocused();
 });

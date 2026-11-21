@@ -434,8 +434,7 @@
   color: var(--color-heading);
 }
 
-.commentReplyButton,
-.commentEditButton {
+.commentReplyButton {
   min-height: 30px;
   padding: 0 8px;
   border: 0;
@@ -450,15 +449,9 @@
   margin-right: 5px;
 }
 
-.commentReplyButton:hover,
-.commentEditButton:not(:disabled):hover {
+.commentReplyButton:hover {
   background: var(--color-panel-deep);
   color: var(--color-heading);
-}
-
-.commentEditButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
 }
 
 .commentBranchToggle:focus-visible,

@@ -272,7 +272,7 @@ export const CommunityDiscussion = ({
     requestAnimationFrame(() => {
       document
         .getElementById(`comment-${id}`)
-        ?.querySelector<HTMLButtonElement>(".commentEditButton")
+        ?.querySelector<HTMLButtonElement>(".commentActionsTrigger")
         ?.focus();
     });
   };
@@ -627,24 +627,20 @@ export const CommunityDiscussion = ({
                       commentId={comment.id}
                       target={currentTarget}
                       reactions={comment.reactions}
+                      editDisabled={editDraft !== null}
+                      onEdit={
+                        canEdit
+                          ? () => {
+                              editCommentMutation.reset();
+                              setEditDraft({
+                                id: comment.id,
+                                body: comment.body,
+                                original: comment.body,
+                              });
+                            }
+                          : undefined
+                      }
                     />
-                  ) : null}
-                  {canEdit ? (
-                    <button
-                      className="commentEditButton"
-                      type="button"
-                      disabled={editDraft !== null}
-                      onClick={() => {
-                        editCommentMutation.reset();
-                        setEditDraft({
-                          id: comment.id,
-                          body: comment.body,
-                          original: comment.body,
-                        });
-                      }}
-                    >
-                      Edit
-                    </button>
                   ) : null}
                 </div>
               </>

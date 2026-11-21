@@ -115,6 +115,7 @@ describe("PuzzleCommunity", () => {
   });
 
   it("renders Markdown and legacy links without interpreting unsafe links or HTML", async () => {
+    const user = userEvent.setup();
     mocks.fetchCommunityDiscussion.mockResolvedValueOnce({
       comments: [
         {
@@ -149,6 +150,7 @@ describe("PuzzleCommunity", () => {
     );
     expect(await comment.findByText(/🤣 :unknown_emote:/)).toBeVisible();
     expect(comment.getByText("@code :kekw: :rofl:")).toBeVisible();
+    await user.click(comment.getByRole("button", { name: "Comment actions" }));
     expect(comment.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
   });
 
@@ -176,7 +178,8 @@ describe("PuzzleCommunity", () => {
       return { id: 9, body: next };
     });
     render(<CommunityDiscussion target={target} />);
-    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.click(await screen.findByRole("button", { name: "Comment actions" }));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
     const editor = screen.getByRole("textbox", { name: "Edit comment (Markdown)" });
     expect(editor.textContent).toBe(original.replaceAll("\n", ""));
     expect(editor).toHaveFocus();
