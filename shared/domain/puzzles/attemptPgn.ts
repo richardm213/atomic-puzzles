@@ -8,7 +8,7 @@ export const formatPuzzleAttemptPgn = (fen: string, lines: string[][]): string =
     .filter(Boolean)
     .join(" ")}`;
 
-// Show the first choice in the solution, or the opening move if the line never branches.
+// Retry branches describe mistakes, so only accepted continuations count as choices.
 export const correctAttemptMoveIndex = (
   solutionLines: readonly UciSolutionLine[],
   playedLength: number,
@@ -19,7 +19,12 @@ export const correctAttemptMoveIndex = (
     mainLine.findIndex(
       (move, index) =>
         index < playedLength &&
-        solutionLines.some((line) => line[index] && line[index].key !== move.key),
+        solutionLines.some(
+          (line) =>
+            line[index] &&
+            line[index].key !== move.key &&
+            !line.slice(0, index + 1).some((entry) => entry.retry),
+        ),
     ),
   );
 };

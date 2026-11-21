@@ -722,40 +722,46 @@ describe("Chessboard orchestration", () => {
     vi.useRealTimers();
   });
 
-  it("numbers a later correct divergence from its actual solution ply", () => {
-    vi.useFakeTimers();
-    const onAttemptResolved = vi.fn();
-    renderBoard({
-      fen: STARTING_FEN.replace(/1$/, "7"),
-      analysisMode: false,
-      solution: "7. e4 e5 8. Nf3 Nc6 9. Bb5 (9. Bc4)",
-      onAttemptResolved,
-    });
+  it.each([
+    { alternatives: "(9. Bc4)", destination: "c4", san: "Bc4", listedMove: "9. Bc4" },
+    { alternatives: "(9. Bc4?) (9. d4?)", destination: "b5", san: "Bb5", listedMove: "7. e4" },
+  ] as const)(
+    "lists $listedMove with alternatives $alternatives",
+    ({ alternatives, destination, san, listedMove }) => {
+      vi.useFakeTimers();
+      const onAttemptResolved = vi.fn();
+      renderBoard({
+        fen: STARTING_FEN.replace(/1$/, "7"),
+        analysisMode: false,
+        solution: `7. e4 e5 8. Nf3 Nc6 9. Bb5 ${alternatives}`,
+        onAttemptResolved,
+      });
 
-    play("e2", "e4");
-    act(() => {
-      vi.advanceTimersByTime(250);
-    });
-    play("g1", "f3");
-    act(() => {
-      vi.advanceTimersByTime(250);
-    });
-    play("f1", "c4");
-    act(() => {
-      vi.advanceTimersByTime(250);
-    });
+      play("e2", "e4");
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      play("g1", "f3");
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      play("f1", destination);
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
 
-    expect(onAttemptResolved).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        puzzleId: "test",
-        puzzleCorrect: true,
-        incorrectMove: null,
-        correctMove: "9. Bc4",
-        attemptPgn: expect.stringContaining("7. e4 e5 8. Nf3 Nc6 9. Bc4 *"),
-      }),
-    );
-    vi.useRealTimers();
-  });
+      expect(onAttemptResolved).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          puzzleId: "test",
+          puzzleCorrect: true,
+          incorrectMove: null,
+          correctMove: listedMove,
+          attemptPgn: expect.stringContaining(`7. e4 e5 8. Nf3 Nc6 9. ${san} *`),
+        }),
+      );
+      vi.useRealTimers();
+    },
+  );
 
   it("reports the first solution choice when the player takes a later variation", () => {
     vi.useFakeTimers();
