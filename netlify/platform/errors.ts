@@ -40,6 +40,18 @@ export const errorResponse = (error: unknown, fallbackMessage: string): Function
     );
   }
 
+  // PostgREST exposes the gateway's quota message without a structured error code.
+  if (error instanceof Error && /\bexceed_(?:cached_)?egress_quota\b/.test(error.message)) {
+    return jsonResponse(
+      503,
+      {
+        error: "The site database is temporarily unavailable. Try again in a minute.",
+        code: "database_quota",
+      },
+      { "Retry-After": "60" },
+    );
+  }
+
   globalThis.console?.error(error);
   return jsonResponse(500, { error: fallbackMessage, code: "internal_error" });
 };

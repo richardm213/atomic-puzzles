@@ -6,7 +6,7 @@ import {
   predictionPriceHistorySchema,
 } from "../../../shared/domain/predictionHistory";
 import { predictionTraderHistorySchema } from "../../../shared/domain/predictionTraderHistory";
-import { postApi } from "../api/postApi";
+import { ApiError, postApi } from "../api/postApi";
 import {
   fetchPredictionMarketGroups,
   fetchPredictionMarkets,
@@ -71,6 +71,9 @@ export const predictionMarketBatchQueryOptions = (marketIds: readonly Prediction
     queryFn: ({ signal }) => fetchPredictionMarkets(uniqueMarketIds, signal),
     staleTime: 1_000,
     refetchInterval: ({ state }) => {
+      if (state.error instanceof ApiError && state.error.retryAfterMs > 0) {
+        return state.error.retryAfterMs;
+      }
       const nextExpiry = Math.min(
         ...(state.data ?? []).map((market) => market.nextOrderExpiry ?? Infinity),
       );

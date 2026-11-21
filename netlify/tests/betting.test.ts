@@ -29,6 +29,28 @@ describe("betting function", () => {
     vi.unstubAllEnvs();
   });
 
+  it("reports an upstream egress restriction as temporary downtime", async () => {
+    const query = {
+      select: vi.fn().mockReturnThis(),
+      not: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      then: (resolve: (value: unknown) => void) =>
+        resolve({
+          data: null,
+          error: { message: "Service restricted: exceed_cached_egress_quota" },
+        }),
+    };
+    mocks.createClient.mockReturnValue({ from: vi.fn().mockReturnValue(query) });
+    const response = await handler({
+      httpMethod: "POST",
+      headers: {},
+      body: JSON.stringify({ action: "exchangeMarkets" }),
+    });
+    expect(response.statusCode).toBe(503);
+    expect(response.headers["Retry-After"]).toBe("60");
+    expect(JSON.parse(response.body ?? "{}")).toMatchObject({ code: "database_quota" });
+  });
+
   it("loads public trader history scoped to the strike and player and rejects filter injection", async () => {
     const eq = vi.fn();
     const or = vi.fn();

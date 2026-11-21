@@ -4,9 +4,8 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { allPredictionPositionsQueryOptions } from "../../lib/betting/bettingQueries";
+import { strikePredictionPositionsQueryOptions } from "../../lib/betting/bettingQueries";
 import {
-  predictionMarketBatchQueryOptions,
   predictionMarketCatalogQueryOptions,
   predictionPriceHistoryQueryOptions,
 } from "../../lib/predictionMarkets/predictionMarketQueries";
@@ -44,8 +43,17 @@ it.each(["resolved", "closed", "open"] as const)(
         settlement: { time: end, price: 100 },
       });
     }
-    client.setQueryData(allPredictionPositionsQueryOptions().queryKey, {
-      markets: [],
+    client.setQueryData(strikePredictionPositionsQueryOptions("strike").queryKey, {
+      markets: [
+        {
+          id: "strike",
+          status,
+          outcome: "yes",
+          settlementPriceCents: null,
+          sportsbookVolumeCoins: 0,
+          exchangeVolumeCoins: 0,
+        },
+      ],
       positions: [
         {
           marketId: "strike",
@@ -87,28 +95,6 @@ it.each(["resolved", "closed", "open"] as const)(
         description: "",
         displayOrder: 0,
         markets: [definition],
-      },
-    ]);
-    client.setQueryData(predictionMarketBatchQueryOptions(["strike"]).queryKey, [
-      {
-        market: {
-          id: "strike",
-          question: "Champion?",
-          resolutionRules: "",
-          resolutionSourceUrl: "https://example.com",
-          closesAt: "2026-12-01T00:00:00Z",
-          settlementReferenceFillId: null,
-          sportsbookVolumeCoins: 0,
-          exchangeVolumeCoins: 0,
-          status,
-          outcome: "yes",
-          resolvedAt: null,
-          settlementPriceCents: null,
-        },
-        book: { yes: { bids: [], asks: [] }, no: { bids: [], asks: [] } },
-        fills: [],
-        positions: [],
-        orders: [],
       },
     ]);
     const user = userEvent.setup();

@@ -10,10 +10,7 @@ export const useBettingHistory = (
   catalog: { isPending: boolean; error: Error | null },
   username: string | undefined,
 ) => {
-  const { data, isPending, error } = useQuery({
-    ...allPredictionPositionsQueryOptions(),
-    refetchOnMount: "always",
-  });
+  const { data, isPending, error } = useQuery(allPredictionPositionsQueryOptions());
   const allHistoryBets = useMemo(
     () =>
       buildBetHistory({

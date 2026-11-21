@@ -1,5 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 
+import { ApiError } from "../api/postApi";
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -7,7 +9,8 @@ export const queryClient = new QueryClient({
       // between archive/ranking pages (or using Back) paints from memory instead of rebuilding
       // the same database view after React Query's short default garbage-collection window.
       gcTime: 30 * 60 * 1_000,
-      retry: 1,
+      retry: (count, error) =>
+        count < 1 && !(error instanceof ApiError && error.code === "database_quota"),
       staleTime: 30_000,
       // A tab-focus refresh competes with the first click/keypress after returning to the site.
       // Mutations explicitly invalidate affected data and stale queries still refresh on mount.

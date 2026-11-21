@@ -165,6 +165,7 @@ test("completed strike opens on P&L and loads chart history only when selected",
 }) => {
   let completedStatus: "resolved" | "closed" | "open" = "resolved";
   const marketId = "awc-2026-champion-natso";
+  const positionScopes: Array<string[] | undefined> = [];
   const periods: string[] = [];
   const end = Date.parse("2026-11-14T12:00:00Z");
   await page.routeWebSocket(/\/realtime\/v1\/websocket/, (socket) => socket.close());
@@ -187,8 +188,24 @@ test("completed strike opens on P&L and loads chart history only when selected",
     const body = route.request().postDataJSON();
     if (["markets", "bets", "allBets"].includes(body.action))
       return route.fulfill({ json: { result: [] } });
-    if (body.action === "predictionPositions")
-      return route.fulfill({ json: { result: [position] } });
+    if (body.action === "predictionPositions") {
+      positionScopes.push(body.marketIds);
+      return route.fulfill({
+        json: {
+          result: [position],
+          markets: [
+            {
+              id: marketId,
+              status: completedStatus,
+              outcome: completedStatus === "resolved" ? "yes" : null,
+              settlement_price_cents: null,
+              sportsbook_volume_coins: 0,
+              exchange_volume_coins: 0,
+            },
+          ],
+        },
+      });
+    }
     if (body.action === "exchangeMarkets")
       return route.fulfill({
         json: {
@@ -301,6 +318,7 @@ test("completed strike opens on P&L and loads chart history only when selected",
   await page.getByRole("button", { name: "View bets on natso", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "natso", exact: true });
   await expect(dialog.getByRole("table")).toContainText("+8.85");
+  expect(positionScopes).toEqual([[marketId]]);
   await expect(dialog.getByRole("row").filter({ hasText: "e2e-player" })).toHaveCount(1);
   expect(periods).toEqual([]);
   const bettorRow = dialog.getByRole("row").filter({ hasText: "e2e-player" });
@@ -381,6 +399,7 @@ test("live book updates render promptly and missed events recover without idle b
   await page.route("**/api/coins", (route) =>
     route.fulfill({ json: { result: { balance, inBets, dailyClaimAvailable: false } } }),
   );
+  test.slow();
   let version = 1;
   let recoveryVersion = version;
   let ask: number | null = 30;
@@ -390,6 +409,8 @@ test("live book updates render promptly and missed events recover without idle b
   const cancelledOrderIds: number[] = [];
   const batches: string[][] = [];
   let versionReads = 0;
+  let incrementalReads = 0;
+  const initialUpdateAt = new Date(Date.now() - 10_000).toISOString();
   let socket: WebSocketRoute | undefined;
   let topic = "";
   await page.routeWebSocket(/\/realtime\/v1\/websocket/, (connection) => {
@@ -424,10 +445,21 @@ test("live book updates render promptly and missed events recover without idle b
   });
   await page.route("**/rest/v1/prediction_market_updates?**", (route) => {
     versionReads++;
+    if (new URL(route.request().url()).searchParams.has("updated_at")) incrementalReads++;
     return route.fulfill({
       json: [
-        { market_id: marketId, version: recoveryVersion, change_scope: "book" },
-        { market_id: inactiveId, version: inactiveVersion, change_scope: "book" },
+        {
+          market_id: marketId,
+          version: recoveryVersion,
+          change_scope: "book",
+          updated_at: initialUpdateAt,
+        },
+        {
+          market_id: inactiveId,
+          version: inactiveVersion,
+          change_scope: "book",
+          updated_at: initialUpdateAt,
+        },
       ],
     });
   });
@@ -597,10 +629,10 @@ test("live book updates render promptly and missed events recover without idle b
   await expect(editor).toHaveCount(0);
   await expect.poll(() => Boolean(socket && topic)).toBe(true);
   // Let the subscription and recovery baseline settle before measuring.
-  await expect.poll(() => versionReads).toBeGreaterThanOrEqual(2);
+  await expect.poll(() => incrementalReads, { timeout: 7_000 }).toBeGreaterThanOrEqual(1);
   const settledBatches = batches.length;
   const idleReads = versionReads;
-  await expect.poll(() => versionReads).toBeGreaterThanOrEqual(idleReads + 2);
+  await expect.poll(() => versionReads, { timeout: 7_000 }).toBeGreaterThanOrEqual(idleReads + 1);
   expect(batches).toHaveLength(settledBatches);
 
   const emitUpdate = (id: string, nextVersion: number) =>
@@ -669,7 +701,7 @@ test("live book updates render promptly and missed events recover without idle b
   // The market can settle in the same transaction that cancels orders and only signal "book".
   // Skip the websocket event and prove the version check reconciles the inactive market.
   inactiveVersion++;
-  await expect(allBets).toHaveText("All bets (1)", { timeout: 3_000 });
+  await expect(allBets).toHaveText("All bets (1)", { timeout: 6_500 });
   await expect(account).toHaveText("Net worth225In bets25Balance200");
   expect(batches).toHaveLength(previousBookCount);
 
@@ -678,11 +710,11 @@ test("live book updates render promptly and missed events recover without idle b
   recoveryVersion = version;
   const recoveryStart = performance.now();
   await expect(page.getByRole("button", { name: /Ask 31 cents, 100 contracts/ })).toHaveCount(0, {
-    timeout: 3_000,
+    timeout: 6_500,
   });
   const recoveryMs = Math.round(performance.now() - recoveryStart);
   await expect(pending).toHaveCount(0);
-  expect(recoveryMs).toBeLessThan(3_000);
+  expect(recoveryMs).toBeLessThan(6_500);
   expect(batches.at(-1)).toEqual([marketId]);
   ask = 32;
   extraOrder = true;
@@ -747,7 +779,7 @@ test("live book updates render promptly and missed events recover without idle b
   emitUpdate(marketId, ++version);
   const expiringAsk = page.getByRole("button", { name: /Ask 32 cents, 20 contracts/ }).first();
   await expect(expiringAsk).toBeVisible();
-  await expect(expiringAsk).toHaveCount(0, { timeout: 3_000 });
+  await expect(expiringAsk).toHaveCount(0, { timeout: 6_500 });
 
   await page.goto("/betting");
   await expect(page.getByLabel("Betting account", { exact: true })).toHaveText(

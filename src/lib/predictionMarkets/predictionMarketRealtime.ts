@@ -12,6 +12,12 @@ import {
 } from "./predictionMarketQueries";
 import { fetchPredictionMarkets, type PredictionMarketId } from "./predictionMarkets";
 
+const LIVE_RECOVERY_MS = 5_000;
+const OFFLINE_RECOVERY_MS = 2_000;
+const FULL_VERSION_CHECK_MS = 60_000;
+const VERSION_OVERLAP_MS = 10_000;
+const QUOTA_BACKOFF_MS = 60_000;
+
 type PredictionMarketUpdate = {
   market_id: string;
   change_scope: "book" | "catalog";
@@ -82,8 +88,13 @@ export const usePredictionMarketRealtime = (
     const startedAt = Date.now();
     let baselineReady = false;
     let checkingVersions = false;
+    let socketLive = false;
+    let lastVersionCheck = -Infinity;
     let refreshTimer: number | undefined;
     let lastFallback = -Infinity;
+    let lastFullCheck = -Infinity;
+    let latestUpdateTime = 0;
+    let quotaBlockedUntil = 0;
 
     const invalidate = (queryKey: readonly unknown[]) =>
       queryClient.invalidateQueries({ queryKey, exact: true }, { throwOnError: true });
@@ -116,6 +127,7 @@ export const usePredictionMarketRealtime = (
         try {
           await refresh(ids);
         } catch {
+          lastFullCheck = -Infinity;
           ids.forEach((id, index) => {
             if (seenVersions.get(id) === versions[index]) seenVersions.delete(id);
           });
@@ -127,6 +139,7 @@ export const usePredictionMarketRealtime = (
       try {
         await Promise.all([
           refreshBalance(),
+          ...ids.map((id) => invalidate(bettingQueryKeys.strikePositions(id))),
           historyActive() ? refreshPredictionPositions(queryClient, ids, signal) : undefined,
           changedCatalog.length
             ? invalidate(predictionMarketCatalogQueryOptions().queryKey)
@@ -161,24 +174,46 @@ export const usePredictionMarketRealtime = (
     };
 
     const checkVersions = async () => {
-      if (signal.aborted || checkingVersions || document.visibilityState !== "visible") return;
+      const now = performance.now();
+      if (
+        signal.aborted ||
+        checkingVersions ||
+        now < quotaBlockedUntil ||
+        document.visibilityState !== "visible"
+      )
+        return;
       if (!trackHistory && !activeIds.current.length) return;
       checkingVersions = true;
+      lastVersionCheck = now;
       try {
-        const versions = supabase
+        const fullCheck = !latestUpdateTime || now - lastFullCheck >= FULL_VERSION_CHECK_MS;
+        let versions = supabase
           .from("prediction_market_updates")
           .select("market_id,version,change_scope,updated_at")
           .abortSignal(signal);
-        const { data, error } = await (trackHistory
-          ? versions
-          : versions.in("market_id", [...activeIds.current]));
+        if (!trackHistory) versions = versions.in("market_id", [...activeIds.current]);
+        // Overlap the cursor for transactions that commit out of order. A periodic full
+        // check also catches delayed transactions and strikes added to the visible list.
+        if (!fullCheck)
+          versions = versions.gte(
+            "updated_at",
+            new Date(latestUpdateTime - VERSION_OVERLAP_MS).toISOString(),
+          );
+        const { data, error, status } = await versions;
         if (signal.aborted) return;
+        if (status === 402) {
+          quotaBlockedUntil = performance.now() + QUOTA_BACKOFF_MS;
+          return;
+        }
         if (error) throw error;
+        if (fullCheck) lastFullCheck = now;
         for (const update of (data ?? []) as PredictionMarketUpdate[]) {
+          const updatedAt = Date.parse(update.updated_at ?? "");
+          if (Number.isFinite(updatedAt)) latestUpdateTime = Math.max(latestUpdateTime, updatedAt);
           if (
             !baselineReady &&
             !seenVersions.has(update.market_id) &&
-            (!update.updated_at || Date.parse(update.updated_at) < startedAt - 5_000)
+            (!Number.isFinite(updatedAt) || updatedAt < startedAt - 5_000)
           ) {
             seenVersions.set(update.market_id, update.version);
           } else {
@@ -201,6 +236,10 @@ export const usePredictionMarketRealtime = (
     };
 
     const resume = () => void checkVersions();
+    const poll = () => {
+      const interval = socketLive ? LIVE_RECOVERY_MS : OFFLINE_RECOVERY_MS;
+      if (performance.now() - lastVersionCheck >= interval) resume();
+    };
     const channel = supabase
       .channel(`prediction-markets:${channelId}`)
       .on(
@@ -221,11 +260,11 @@ export const usePredictionMarketRealtime = (
         },
       )
       .subscribe((status) => {
-        if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) resume();
+        socketLive = status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED;
       });
 
     resume();
-    const versionTimer = window.setInterval(resume, 2_000);
+    const versionTimer = window.setInterval(poll, 1_000);
     document.addEventListener("visibilitychange", resume);
     window.addEventListener("online", resume);
 
