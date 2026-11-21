@@ -4,10 +4,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useRef } from "react";
 
 import {
+  isThemeAtomicLogo,
   PLAYER_FLAIR_GROUPS,
   type PlayerFlair,
   playerFlairLabel,
+  themeAtomicLogo,
 } from "../../../shared/domain/playerSocial";
+import { useColorMode } from "../../context/AppSettings";
 import { useAuth } from "../../context/AuthContext";
 import {
   type PlayerSocial,
@@ -31,6 +34,7 @@ const countryOptions = isoCountryCodes
   .sort((left, right) => left.displayName.localeCompare(right.displayName));
 
 export const PlayerFlairPicker = ({ username }: { username: string }) => {
+  const atomicLogo = themeAtomicLogo(useColorMode());
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const queryClient = useQueryClient();
@@ -60,6 +64,7 @@ export const PlayerFlairPicker = ({ username }: { username: string }) => {
   });
 
   if (!social || !isSelf || !isAuthenticated) return null;
+  const selectedFlair = social.flair && isThemeAtomicLogo(social.flair) ? atomicLogo : social.flair;
 
   return (
     <>
@@ -113,19 +118,21 @@ export const PlayerFlairPicker = ({ username }: { username: string }) => {
             <section key={group.label} className="playerFlairGroup">
               <h3>{group.label}</h3>
               <div className="playerFlairGrid">
-                {group.flairs.map((flair) => (
-                  <button
-                    key={flair}
-                    type="button"
-                    aria-label={`Use ${playerFlairLabel(flair)} flair`}
-                    title={playerFlairLabel(flair)}
-                    aria-pressed={social.flair === flair}
-                    disabled={flairMutation.isPending}
-                    onClick={() => flairMutation.mutate(flair)}
-                  >
-                    <PlayerFlairIcon flair={flair} decorative />
-                  </button>
-                ))}
+                {group.flairs
+                  .filter((flair) => !isThemeAtomicLogo(flair) || flair === atomicLogo)
+                  .map((flair) => (
+                    <button
+                      key={flair}
+                      type="button"
+                      aria-label={`Use ${playerFlairLabel(flair)} flair`}
+                      title={playerFlairLabel(flair)}
+                      aria-pressed={selectedFlair === flair}
+                      disabled={flairMutation.isPending}
+                      onClick={() => flairMutation.mutate(flair)}
+                    >
+                      <PlayerFlairIcon flair={flair} decorative />
+                    </button>
+                  ))}
               </div>
             </section>
           ))}

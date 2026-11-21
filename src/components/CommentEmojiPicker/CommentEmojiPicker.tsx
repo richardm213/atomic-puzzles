@@ -4,9 +4,9 @@ import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import {
   type CommentEmoji,
-  customEmojiGroups,
   type NativeEmojiCatalog,
   searchCommentEmojis,
+  useCustomEmojiGroups,
 } from "../../lib/community/commentEmojis";
 import { PlayerFlairIcon } from "../PlayerFlair/PlayerFlair";
 
@@ -28,12 +28,13 @@ export const CommentEmojiPicker = ({
   onSelect: (emoji: CommentEmoji) => void;
   onClose: () => void;
 }) => {
+  const customEmojiGroups = useCustomEmojiGroups();
   const searchRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const searching = Boolean(query.trim());
-  const matches = searching ? searchCommentEmojis(query, native, 120) : null;
+  const matches = searching ? searchCommentEmojis(query, native, 120, customEmojiGroups) : null;
   const groups = matches
     ? [
         { label: "Emotes and Atomic logos", emojis: matches.custom },

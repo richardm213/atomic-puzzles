@@ -1,7 +1,13 @@
+import "../PlayerFlair/PlayerFlair.css";
+
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { type Node, Schema } from "prosemirror-model";
 
-import { playerFlairImagePath, playerFlairLabel } from "../../../shared/domain/playerSocial";
+import {
+  isThemeAtomicLogo,
+  playerFlairImagePath,
+  playerFlairLabel,
+} from "../../../shared/domain/playerSocial";
 import { commentEmojiByCode, commentShortcode } from "../../lib/community/commentEmojis";
 import { appAssetPath } from "../../utils/appAssetPath";
 
@@ -41,6 +47,7 @@ export const commentEditorSchema = new Schema({
                 alt: playerFlairLabel(emoji.code),
                 class: "playerFlairImage inlineEmoteImage",
                 "data-comment-emote": source,
+                "data-atomic-logo": isThemeAtomicLogo(emoji.code) ? emoji.code : null,
                 draggable: "false",
               },
             ]

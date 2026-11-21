@@ -769,6 +769,9 @@ export const useAppSettings = (): AppSettingsContextValue => {
   return context;
 };
 
+export const useColorMode = (): ColorMode =>
+  useContext(AppSettingsContext)?.colorMode ?? DEFAULT_COLOR_MODE;
+
 // Standalone board embeds keep the default bindings without requiring the site shell.
 export const useKeyboardShortcutSettings = (): KeyboardShortcutSettings =>
   useContext(AppSettingsContext)?.keyboardShortcuts ?? DEFAULT_KEYBOARD_SHORTCUTS;

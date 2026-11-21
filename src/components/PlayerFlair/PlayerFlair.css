@@ -6,6 +6,15 @@
   vertical-align: -0.125em;
 }
 
+/* Stored flairs and shortcodes retain their identity when the viewer switches modes. */
+:root[data-theme="light"] .playerFlairImage[data-atomic-logo="atomic-dark"] {
+  content: url("/images/brand/atomic-logo-light.png");
+}
+
+:root[data-theme="dark"] .playerFlairImage[data-atomic-logo="atomic-blue"] {
+  content: url("/favicon.ico");
+}
+
 .playerFlairImage.inlineEmoteImage {
   width: auto;
   max-width: 2em;

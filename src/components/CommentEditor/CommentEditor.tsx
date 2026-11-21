@@ -11,6 +11,7 @@ import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useState } f
 import {
   type CommentEmoji,
   searchCommentEmojis,
+  useCustomEmojiGroups,
   useNativeCommentEmojis,
 } from "../../lib/community/commentEmojis";
 import type { UsernameSearchSuggestion } from "../../lib/users/usernameSearch";
@@ -108,9 +109,12 @@ export const CommentEditor = forwardRef<HTMLElement, Props>(
     const activeToken = enabled && !pickerOpen ? token : null;
     const mentionQuery = activeToken?.kind === "mention" ? activeToken.query : undefined;
     const emojiQuery = activeToken?.kind === "emoji" ? activeToken.query : undefined;
+    const customEmojiGroups = useCustomEmojiGroups();
     const native = useNativeCommentEmojis(Boolean(enabled && (pickerOpen || emojiQuery)));
     const mentions = useMentionResults(mentionQuery);
-    const emojiMatches = emojiQuery ? searchCommentEmojis(emojiQuery, native, 8) : null;
+    const emojiMatches = emojiQuery
+      ? searchCommentEmojis(emojiQuery, native, 8, customEmojiGroups)
+      : null;
     const suggestions = emojiMatches
       ? [...emojiMatches.custom, ...emojiMatches.unicode].map((emoji) => ({
           key: emoji.kind === "native" ? emoji.unicode : emoji.code,

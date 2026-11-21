@@ -1,6 +1,7 @@
 import "./PlayerFlair.css";
 
 import {
+  isThemeAtomicLogo,
   type PlayerFlair,
   playerFlairImagePath,
   playerFlairLabel,
@@ -28,6 +29,7 @@ export const PlayerFlairIcon = ({
   return (
     <img
       className={className ? `playerFlairImage ${className}` : "playerFlairImage"}
+      data-atomic-logo={isThemeAtomicLogo(flair) ? flair : undefined}
       src={appAssetPath(path)}
       alt={decorative ? "" : playerFlairLabel(flair)}
       decoding="async"

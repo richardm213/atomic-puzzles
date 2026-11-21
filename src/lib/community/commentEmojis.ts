@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 
 import {
+  isThemeAtomicLogo,
   PLAYER_IMAGE_FLAIR_GROUPS,
   type PlayerFlair,
   playerFlairLabel,
+  themeAtomicLogo,
 } from "../../../shared/domain/playerSocial";
+import { type ColorMode, useColorMode } from "../../context/AppSettings";
 
 type CustomEmoji = {
   kind: "custom";
@@ -24,17 +27,25 @@ export type NativeCommentEmoji = {
 export type CommentEmoji = CustomEmoji | NativeCommentEmoji;
 export type EmojiGroup = { label: string; emojis: readonly CommentEmoji[] };
 
-export const customEmojiGroups: EmojiGroup[] = PLAYER_IMAGE_FLAIR_GROUPS.map(
-  ({ label, flairs }) => ({
+const customEmojiGroups = PLAYER_IMAGE_FLAIR_GROUPS.map(({ label, flairs }) => ({
+  label,
+  emojis: flairs.map((code): CustomEmoji => ({
+    kind: "custom",
+    code,
+    label: playerFlairLabel(code),
+    names: code === "peepobusiness" ? [code, "pepobusiness"] : [code],
+  })),
+}));
+
+const groupsForMode = (mode: ColorMode) =>
+  customEmojiGroups.map(({ label, emojis }) => ({
     label,
-    emojis: flairs.map((code) => ({
-      kind: "custom",
-      code,
-      label: playerFlairLabel(code),
-      names: code === "peepobusiness" ? [code, "pepobusiness"] : [code],
-    })),
-  }),
-);
+    emojis: emojis.filter(({ code }) => !isThemeAtomicLogo(code) || code === themeAtomicLogo(mode)),
+  }));
+
+const themedEmojiGroups = { light: groupsForMode("light"), dark: groupsForMode("dark") };
+
+export const useCustomEmojiGroups = () => themedEmojiGroups[useColorMode()];
 
 const customEmojis = customEmojiGroups.flatMap(({ emojis }) => emojis);
 const customByCode = new Map(
@@ -100,9 +111,14 @@ export const searchCommentEmojis = (
   query: string,
   native: NativeEmojiCatalog | null,
   limit: number,
+  groups: readonly EmojiGroup[],
 ) => {
   const name = query.trim().replace(/^:|:$/g, "").toLowerCase().replaceAll(" ", "_");
-  const custom = searchGroup(customEmojis, name, limit);
+  const custom = searchGroup(
+    groups.flatMap(({ emojis }) => emojis),
+    name,
+    limit,
+  );
   const unicode = searchGroup(native?.emojis ?? [], name, limit - custom.length);
   return { custom, unicode };
 };

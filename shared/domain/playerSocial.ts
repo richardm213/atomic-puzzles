@@ -689,6 +689,12 @@ export const PLAYER_FLAIRS = PLAYER_FLAIR_GROUPS.flatMap<PlayerFlair>(({ flairs 
   ...PlayerFlair[],
 ];
 
+export const isThemeAtomicLogo = (flair: string) =>
+  flair === "atomic-dark" || flair === "atomic-blue";
+
+export const themeAtomicLogo = (colorMode: "light" | "dark") =>
+  colorMode === "light" ? "atomic-blue" : "atomic-dark";
+
 export const isImagePlayerFlair = (flair: string) => isAtomicLogo(flair) || emoteNames.has(flair);
 
 export const playerFlairLabel = (flair: PlayerFlair) =>

@@ -647,7 +647,7 @@ test("puzzle testing shows comments and previews coins and ratings without persi
 test("explanations and comment reactions share emotes without extra discussion reads", async ({
   page,
 }) => {
-  let explanation = "An existing :kappa: explanation.";
+  let explanation = "An existing :kappa: :atomic-dark: explanation.";
   let reacted = false;
   let rejectReaction = true;
   let discussionReads = 0;
@@ -729,11 +729,25 @@ test("explanations and comment reactions share emotes without extra discussion r
         bounds.y + ((8.5 - rank) * bounds.height) / 8,
       );
   };
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "atomic-puzzles.site-appearance",
+      JSON.stringify({ theme: "amethyst", colorMode: "light" }),
+    );
+  });
   await page.goto("/solve/101");
   await page.getByRole("tab", { name: "Explanation", exact: true }).click();
   await expect(page.getByRole("img", { name: "kappa", exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Atomic Dark", exact: true })).toHaveCSS(
+    "content",
+    /atomic-logo-light\.png/,
+  );
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   const editor = page.getByRole("textbox", { name: "Puzzle explanation" });
+  await expect(editor.getByRole("img", { name: "Atomic Dark", exact: true })).toHaveCSS(
+    "content",
+    /atomic-logo-light\.png/,
+  );
   await editor.fill("");
   await editor.pressSequentially("An attack ");
   // Text insertion without keydown also covers mobile input and accessibility keyboards.
@@ -746,6 +760,12 @@ test("explanations and comment reactions share emotes without extra discussion r
   await solve();
   await page.getByRole("tab", { name: /Chat|Comments/ }).click();
   const controls = page.getByRole("group", { name: "Comment reactions" });
+  await controls.getByRole("button", { name: "Add reaction" }).click();
+  const picker = page.getByRole("dialog", { name: "Choose an emote" });
+  await picker.getByRole("searchbox", { name: "Search emotes" }).fill("atomic");
+  await expect(picker.getByRole("button", { name: ":atomic-blue:", exact: true })).toBeVisible();
+  await expect(picker.getByRole("button", { name: ":atomic-dark:", exact: true })).toHaveCount(0);
+  await page.keyboard.press("Escape");
   const chooseReaction = async () => {
     await controls.getByRole("button", { name: "Add reaction" }).click();
     await page.getByRole("dialog").getByRole("button", { name: ":kekwbrug:", exact: true }).click();
@@ -767,9 +787,14 @@ test("explanations and comment reactions share emotes without extra discussion r
     "aria-pressed",
     "true",
   );
+  await page.getByRole("button", { name: "Open settings", exact: true }).click();
+  await page.getByLabel("Color mode", { exact: true }).selectOption("dark");
+  await page.getByRole("button", { name: "Open settings", exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await controls.getByRole("button", { name: "Add reaction" }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await picker.getByRole("searchbox", { name: "Search emotes" }).fill("atomic");
+  await expect(picker.getByRole("button", { name: ":atomic-dark:", exact: true })).toBeVisible();
+  await expect(picker.getByRole("button", { name: ":atomic-blue:", exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(controls.getByRole("button", { name: "Add reaction" })).toBeFocused();
 });
