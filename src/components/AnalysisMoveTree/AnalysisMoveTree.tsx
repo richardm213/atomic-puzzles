@@ -268,7 +268,7 @@ export const AnalysisMoveTree = ({
     const jump = target
       ? [
           <TranspositionJump
-            key={`${keyPrefix}-transposition`}
+            key={`${keyPrefix}-transposition-${ply}`}
             onClick={() => onSelect(target.lineIndex, target.moveIndex)}
           />,
         ]

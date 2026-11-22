@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { INITIAL_FEN } from "chessops/fen";
 
 import fixtures from "../../lib/chess/fixtures/transpositionPuzzles.json";
 import {
@@ -15,6 +16,29 @@ const lines = [
 ];
 
 describe("AnalysisMoveTree", () => {
+  it("shows one jump along a shared move sequence and keeps the deeper line playable", () => {
+    const original = ["Nf3", "Nf6", "Nc3", "Nc6", "e3", "e6"];
+    const longer = ["Nc3", "Nc6", "Nf3", "Nf6", "e3", "e6", "d3"];
+    const onSelect = vi.fn();
+    render(
+      <AnalysisMoveTree
+        lines={[original, longer]}
+        moves={longer}
+        currentPly={longer.length}
+        pinnedLineIndex={1}
+        initialFen={INITIAL_FEN}
+        onSelect={onSelect}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Go to original continuation" }));
+    expect(onSelect).toHaveBeenLastCalledWith(0, 3);
+    const lastMove = screen.getByRole("button", { current: "step" });
+    expect(lastMove).toHaveTextContent("d3");
+    fireEvent.click(lastMove);
+    expect(onSelect).toHaveBeenLastCalledWith(1, 6);
+  });
+
   it("highlights the visible continuation when navigating through nested transpositions", () => {
     const puzzle = fixtures.find((fixture) => fixture.id === 1209)!;
     const puzzleLines = parseSolutionUciLines(puzzle.fen, puzzle.solution).map((line) =>

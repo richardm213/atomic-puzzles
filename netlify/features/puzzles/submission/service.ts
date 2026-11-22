@@ -9,14 +9,10 @@ import { normalizePuzzlePlayers } from "../../../../shared/domain/puzzles/puzzle
 import {
   compactPuzzleSolution,
   parsePuzzlePgnInput,
+  validateParsedPuzzleSubmission,
   type PuzzlePositionHistory,
   type PuzzleSubmissionValue,
 } from "../../../../shared/domain/puzzles/puzzleSubmission";
-import {
-  createAtomicPosition,
-  normalizeSolutionPgn,
-  parseSolutionUciLines,
-} from "../../../../shared/domain/puzzles/solutionPgn";
 import { HttpError } from "../../../platform/errors";
 import type { loadMatchPuzzleContext } from "./matchContext";
 import type { PuzzleSubmissionRepository } from "./repository";
@@ -28,7 +24,8 @@ export type PuzzleSubmissionInput = PuzzleSubmissionValue & {
   positionMoves?: PuzzlePositionHistory["positionMoves"] | undefined;
 };
 
-const PUBLIC_DOMAIN_ERROR = /^(Invalid (FEN|atomic position|PGN)|Enter PGN|The PGN)/;
+const PUBLIC_DOMAIN_ERROR =
+  /^(Invalid (FEN|atomic position|PGN)|Enter |The PGN|The moves are not a legal atomic line)/;
 
 export class PuzzleSubmissionService {
   constructor(private readonly repository: PuzzleSubmissionRepository) {}
@@ -40,11 +37,10 @@ export class PuzzleSubmissionService {
   ) {
     const parsedPgn = parsePuzzlePgnInput(input.solution, input.fen);
     const fen = parsedPgn.fen;
-    const solution = compactPuzzleSolution(parsedPgn.solution);
-    createAtomicPosition(fen);
-    if (parseSolutionUciLines(fen, solution).length === 0) {
-      throw new HttpError(400, "The moves are not legal from this atomic position.");
-    }
+    const solution = validateParsedPuzzleSubmission(input, {
+      ...parsedPgn,
+      solution: compactPuzzleSolution(parsedPgn.solution),
+    }).solution;
     const initialFen = input.positionInitialFen ?? fallbackInitialFen;
     const history =
       input.positionMoves && initialFen
@@ -65,7 +61,7 @@ export class PuzzleSubmissionService {
         : normalizedUsername;
     return {
       fen,
-      solution: compactPuzzleSolution(normalizeSolutionPgn(fen, solution)),
+      solution: compactPuzzleSolution(solution),
       event: parsedPgn.event || input.event,
       // Event metadata remains unset until it can be reviewed, while the
       // explicitly supplied players can safely populate the participants.

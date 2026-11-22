@@ -41,7 +41,7 @@ import {
   serializeSanLinesToPgn,
   splitSolutionMove,
 } from "../../lib/chess/pgn";
-import { synchronizeTranspositions } from "../../lib/chess/transpositions";
+import { synchronizePuzzleTranspositions } from "../../lib/chess/transpositions";
 import {
   ensurePuzzlePgnHeaders,
   parsePuzzlePgnInput,
@@ -235,7 +235,7 @@ const PuzzleEditorDraft = ({
     const draftLines = parseSolutionUciLines(nextFen, parsed.solution).map((line) =>
       convertUciLineToSan(nextFen, line),
     );
-    const synced = synchronizeTranspositions(
+    const synced = synchronizePuzzleTranspositions(
       nextFen,
       draftLines,
       canEditSolution && !replacesRoot ? solutionLines : [],
@@ -317,7 +317,7 @@ const PuzzleEditorDraft = ({
   ): void => {
     const nextPly = targetPly ?? nextLines[targetLineIndex]?.length ?? 0;
     const retainedMoves = nextLines[targetLineIndex]?.slice(0, nextPly) ?? [];
-    nextLines = synchronizeTranspositions(appliedFen, nextLines, solutionLines);
+    nextLines = synchronizePuzzleTranspositions(appliedFen, nextLines, solutionLines);
     const accepted = acceptedPgnRef.current;
     const headers = accepted.headers || ensurePuzzlePgnHeaders("", appliedFen);
 
@@ -381,13 +381,11 @@ const PuzzleEditorDraft = ({
     if (!line || !move) return;
 
     try {
-      const nextLines = solutionLines.map((candidate, candidateIndex) =>
-        candidateIndex === lineIndex
-          ? candidate.map((candidateMove, candidateMoveIndex) =>
-              candidateMoveIndex === moveIndex
-                ? formatSolutionMove(splitSolutionMove(candidateMove).san, annotation)
-                : candidateMove,
-            )
+      const prefix = line.slice(0, moveIndex + 1);
+      const replacement = formatSolutionMove(splitSolutionMove(move).san, annotation);
+      const nextLines = solutionLines.map((candidate) =>
+        prefix.every((entry, index) => candidate[index] === entry)
+          ? [...candidate.slice(0, moveIndex), replacement, ...candidate.slice(moveIndex + 1)]
           : candidate,
       );
       commitSolutionLines(nextLines, lineIndex, { targetPly: moveIndex + 1 });

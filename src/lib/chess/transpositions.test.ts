@@ -11,6 +11,7 @@ import {
 } from "./pgn";
 import {
   buildTranspositionMoveTree,
+  synchronizePuzzleTranspositions,
   synchronizeTranspositions,
   type TranspositionMoveNode,
 } from "./transpositions";
@@ -24,6 +25,34 @@ const jumpsIn = (node: TranspositionMoveNode): TranspositionMoveNode[] =>
   node.transposition ? [node] : [...node.children.values()].flatMap(jumpsIn);
 
 describe("puzzle transpositions", () => {
+  it("stores and edits a transposed retry in both PGN branches", () => {
+    const fen = "rn1qk1nr/ppp3p1/5p2/1N2p2p/1b1P1B2/2P4N/PPb2PPP/R2QKB1R w KQkq - 5 10";
+    const solution = "10. Qc1 Bd1 11. Bc4 (11. Bd3 exd4 12. Qe3+) exd4 12. Qe3+ (12. Nd6+?)";
+    const saved = validatePuzzleSubmission({ fen, solution, explanation: "", event: "" });
+    const lines = linesFromPgn(fen, saved.solution);
+    const retries = lines.filter((line) => line.at(-1) === "Nd6+?");
+    expect(retries.map((line) => line[2]).sort()).toEqual(["Bc4", "Bd3"]);
+    expect(synchronizePuzzleTranspositions(fen, lines)).toEqual(lines);
+
+    const edited = lines.map((line) =>
+      line[2] === "Bd3" && line.at(-1) === "Nd6+?" ? [...line.slice(0, -1), "Nd6+"] : line,
+    );
+    const updated = synchronizePuzzleTranspositions(fen, edited, lines);
+    expect(
+      updated
+        .filter((line) => line.at(-1) === "Nd6+")
+        .map((line) => line[2])
+        .sort(),
+    ).toEqual(["Bc4", "Bd3"]);
+    expect(updated.some((line) => line.includes("Nd6+?"))).toBe(false);
+
+    const marked = updated.map((line) =>
+      line[2] === "Bc4" && line.at(-1) === "Nd6+" ? [...line.slice(0, -1), "Nd6+?"] : line,
+    );
+    expect(
+      new Set(synchronizePuzzleTranspositions(fen, marked, updated).map((line) => line.join(" "))),
+    ).toEqual(new Set(lines.map((line) => line.join(" "))));
+  });
   it("materializes the supplied puzzle's shared continuation and saves complete legal PGN", () => {
     const { fen, solution } = suppliedPuzzle;
     const lines = linesFromPgn(fen, solution);
@@ -133,7 +162,10 @@ describe("puzzle transpositions", () => {
     expect(jumpsIn(buildTranspositionMoveTree(fen, lines))).toHaveLength(0);
 
     const lateRetry = ["f3", "Ng4", "Bc4", "Nh2?", "Qe2"];
-    const shared = synchronizeTranspositions(fen, [accepted, lateRetry]);
-    expect(shared.filter((line) => line.includes("Nh2?"))).toEqual([lateRetry]);
+    const shared = synchronizePuzzleTranspositions(fen, [accepted, lateRetry]);
+    expect(shared.filter((line) => line.includes("Nh2?"))).toEqual([
+      ["Bc4", "Ng4", "f3", "Nh2?"],
+      lateRetry,
+    ]);
   });
 });

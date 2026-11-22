@@ -6,7 +6,7 @@ import {
   serializeUciLinesToPgn,
   stripRetiredMoveAnnotations,
 } from "../chess/pgn";
-import { synchronizeTranspositions } from "../chess/transpositions";
+import { synchronizePuzzleTranspositions } from "../chess/transpositions";
 import { normalizePuzzleMotifTags } from "./puzzleMotifs";
 
 export type PuzzlePositionHistory = {
@@ -126,7 +126,7 @@ export const validateParsedPuzzleSubmission = (
   }
 
   const sanLines = solutionLines.map((line) => convertUciLineToSan(fen, line));
-  const synchronized = synchronizeTranspositions(fen, sanLines);
+  const synchronized = synchronizePuzzleTranspositions(fen, sanLines);
   const normalizedSolution =
     JSON.stringify(synchronized) !== JSON.stringify(sanLines)
       ? serializeSanLinesToPgn(fen, synchronized)
