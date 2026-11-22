@@ -7,8 +7,9 @@ import { buildAliasesLookup } from "../../lib/users/aliasesLookup";
 import { aliasQueryKeys } from "../../lib/users/aliasQueries";
 import { playerNameQueryKeys } from "../../lib/users/playerNameQueries";
 import { GameComments } from "./GameComments";
+import { useGameTournament } from "./useGameTournament";
 
-vi.mock("./useGameTournament", () => ({ useGameTournament: () => ({ isTournament: true }) }));
+vi.mock("./useGameTournament", () => ({ useGameTournament: vi.fn(() => ({ isTournament: true })) }));
 vi.mock("../../components/PlayerLink/PlayerLink", () => ({
   PlayerLink: ({ username, children }: { username: string; children: string }) => (
     <a href={`/@/${username}`}>{children}</a>
@@ -18,6 +19,7 @@ vi.mock("../../components/PlayerLink/PlayerLink", () => ({
 const setup = (
   messages: Array<{ username: string; text: string }>,
   nicknames: Array<{ username: string; nickname: string }> = [],
+  gameOverrides: Partial<ArchiveGame> = {},
 ) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(
@@ -55,14 +57,29 @@ const setup = (
   );
   render(
     <QueryClientProvider client={client}>
-      <GameComments game={{ spectator_chat: messages } as ArchiveGame} />
+      <GameComments game={{ spectator_chat: messages, ...gameOverrides } as ArchiveGame} />
     </QueryClientProvider>,
   );
   return client;
 };
 
 describe("spectator chat player names", () => {
-  beforeEach(() => window.localStorage.clear());
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.mocked(useGameTournament).mockReturnValue({ isTournament: true } as ReturnType<
+      typeof useGameTournament
+    >);
+  });
+
+  it("shows captured PyChess chat for games outside tournaments", () => {
+    vi.mocked(useGameTournament).mockReturnValue({ isTournament: false } as ReturnType<
+      typeof useGameTournament
+    >);
+    setup([{ username: "grevozin", text: "well played" }], [], { source: "pychess" });
+    expect(screen.getByRole("region", { name: "Spectator chat" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "wolfram_ep" })).toBeVisible();
+    expect(screen.getByText("well played")).toBeVisible();
+  });
 
   it("resolves aliases before nickname lookup and links to the canonical profile without rewriting messages", () => {
     setup(

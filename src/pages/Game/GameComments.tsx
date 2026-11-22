@@ -10,8 +10,9 @@ export const GameComments = ({ game }: { game: ArchiveGame }) => {
   const [hideChat, setHideChat] = usePersistedState("game-hide-chat", z.boolean(), false);
   const { isTournament } = useGameTournament(game);
   const messages = game.spectator_chat;
-  const displayName = usePlayerDisplayNames(isTournament && Boolean(messages?.length));
-  if (!isTournament) return null;
+  const showChat = isTournament || game.source === "pychess";
+  const displayName = usePlayerDisplayNames(showChat && Boolean(messages?.length));
+  if (!showChat) return null;
   return (
     <section className="gameComments" aria-label="Spectator chat">
       <header className="gameCommentsHeader">
