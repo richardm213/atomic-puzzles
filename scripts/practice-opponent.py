@@ -12,6 +12,7 @@ import numpy as np
 import torch
 from native_player import WORKSPACE
 from opening_index.source import position_fen,position_key
+from practice_tactics import MIN_RATING, TacticalCheck
 
 
 def position(request):
@@ -26,6 +27,7 @@ def position(request):
 
 def main():
     torch.set_num_threads(2);models={};exposure=None;rng=np.random.default_rng()
+    tactical_check = None
     for line in sys.stdin:
         request={}
         try:
@@ -69,6 +71,11 @@ def main():
             if choices:
                 probabilities=np.array([m['probability'] for m in choices]);probabilities/=probabilities.sum()
                 move=choices[rng.choice(len(choices),p=probabilities)]['move']
+                if model_name == 'human' and ratings[0] >= MIN_RATING:
+                    if tactical_check is None:
+                        from general_stream import NETWORK
+                        tactical_check = TacticalCheck(NETWORK)
+                    move = tactical_check.safer_move(board, move, [choice['move'] for choice in choices])
             else:move=None
             response={'id':request.get('id'),'fen':request['fen'],'move':move}
         except Exception as error:
