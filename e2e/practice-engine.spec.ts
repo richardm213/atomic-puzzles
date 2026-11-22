@@ -17,7 +17,7 @@ test("practice hands off below the game threshold and honors engine speed", asyn
     route.fulfill({ status: 404, json: { code: "position_not_found" } }),
   );
   // Exercise the real browser worker connection and board playback without fetching the hosted NNUE.
-  await page.route("**/engines/atomic-stockfish/*/atomic-stockfish.worker.js", (route) =>
+  await page.route("**/engines/atomic-stockfish/*/atomic-stockfish-gzip.worker.js", (route) =>
     route.fulfill({
       contentType: "text/javascript",
       headers: { "cross-origin-embedder-policy": "require-corp" },
@@ -260,7 +260,7 @@ test("engine handoff stays on the branch, rewinding restores the database, and s
   await page.route("**/api/atomicdb-analysis?**", (route) =>
     route.fulfill({ status: 404, json: {} }),
   );
-  await page.route("**/engines/atomic-stockfish/*/atomic-stockfish.worker.js", (route) =>
+  await page.route("**/engines/atomic-stockfish/*/atomic-stockfish-gzip.worker.js", (route) =>
     route.fulfill({
       contentType: "text/javascript",
       headers: { "cross-origin-embedder-policy": "require-corp" },

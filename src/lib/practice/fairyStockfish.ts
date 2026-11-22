@@ -382,13 +382,13 @@ type AtomicWorkerResponse =
   | { type: "search" };
 
 const ATOMIC_STOCKFISH_WORKER_URL =
-  "/engines/atomic-stockfish/51150b0c84bb27cde06d7d356efb3fa7bd1ec11f/atomic-stockfish-gzip.worker.js";
+  "/engines/atomic-stockfish/be45b9fcb62c5141913b19b8c97b685ddfb22732/atomic-stockfish-gzip.worker.js";
 const ATOMIC_STOCKFISH_NNUE_SHA256 =
-  "a32645ea6749c2500119bd53b55cc5baf2f6c502659f247e5e5ca4f26ea48e29";
+  "c8e590d82efc3d29dfeba37323efd5fb094744e3561a07d58d9780c5c05db807";
 
 const atomicStockfishNetworkUrl = (): string =>
   import.meta.env.VITE_ATOMIC_STOCKFISH_NNUE_URL?.trim() ||
-  new URL("atomic-ft3b-1p2B.nnue-gzip", new URL(ATOMIC_STOCKFISH_WORKER_URL, location.origin)).href;
+  new URL("atomic-ft5-0p8B.nnue-gzip", new URL(ATOMIC_STOCKFISH_WORKER_URL, location.origin)).href;
 
 const initializeAtomicStockfish = async (): Promise<StockfishEngine> => {
   if (!globalThis.crossOriginIsolated || typeof SharedArrayBuffer === "undefined") {
