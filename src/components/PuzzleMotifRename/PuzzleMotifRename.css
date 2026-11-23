@@ -90,14 +90,17 @@
   color: var(--color-danger);
 }
 
-.motifRenameActions {
+:is(.motifRenameActions, .motifRenamePresets) {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: var(--space-2);
 }
 
-.motifRenameActions button {
+.motifRenameActions {
+  justify-content: flex-end;
+}
+
+:is(.motifRenameActions, .motifRenamePresets) button {
   min-height: var(--control-height-touch);
   padding: 0 var(--space-3);
   border: 1px solid var(--color-border-strong);
@@ -113,11 +116,13 @@
     border-color 200ms ease;
 }
 
-.motifRenameActions button:hover:not(:disabled) {
+:is(.motifRenameActions, .motifRenamePresets) button:hover:not(:disabled),
+.motifRenamePresets button[aria-pressed="true"] {
   border-color: var(--color-primary-soft);
 }
 
-.motifRenameActions button:active:not(:disabled) {
+:is(.motifRenameActions, .motifRenamePresets) button:active:not(:disabled),
+.motifRenamePresets button[aria-pressed="true"] {
   background: var(--color-surface-inset-strong);
 }
 

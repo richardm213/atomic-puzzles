@@ -5,6 +5,7 @@ export type PuzzleMotif = {
   name: string;
   description: string;
   parentTag?: string;
+  alternateNames?: readonly string[];
 };
 
 const openingTheoryMotif = (id: string, name: string, pgn: string): PuzzleMotif => ({
@@ -24,6 +25,7 @@ export const puzzleMotifs: PuzzleMotif[] = [
   {
     tag: "queen_angles",
     name: "Queen angles",
+    alternateNames: ["Queen invasion"],
     description:
       "The queen maneuvers around the position to create threats the defense cannot meet.",
   },
@@ -74,6 +76,7 @@ export const puzzleMotifs: PuzzleMotif[] = [
   {
     tag: "zwischenzug",
     name: "Zwischenzug",
+    alternateNames: ["Intermediate move", "In-between move"],
     description:
       "A forcing move is inserted before the natural continuation. Often, it lets a player escape a threat with tempo and then resume the intended line.",
   },
@@ -206,9 +209,9 @@ export const puzzleMotifs: PuzzleMotif[] = [
   },
   {
     tag: "tempo",
-    name: "Tempo",
+    name: "Capture",
     description:
-      "A forcing move compels the opponent to respond, often with a capture, passing the move back to you with a gained tempo.",
+      "A player makes a more useful move instead of spending a tempo on a capture. A forcing move may make the opponent capture instead, leaving the player free to continue the attack.",
   },
   {
     tag: "discovered_mate",
@@ -266,11 +269,13 @@ export const puzzleMotifs: PuzzleMotif[] = [
   {
     tag: "stuck_pawn",
     name: "Stuck pawn",
+    alternateNames: ["Trapped pawn", "Nail"],
     description: "A pawn stuck under another piece becomes a target.",
   },
   {
     tag: "stuck_piece",
     name: "Stuck piece",
+    alternateNames: ["Trapped piece"],
     description:
       "A piece with no useful or safe move becomes trapped, attacked, or a target for an explosion.",
   },

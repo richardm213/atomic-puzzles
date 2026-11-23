@@ -98,8 +98,9 @@ export const motifExamples: Readonly<Record<string, MotifExample | undefined>> =
     pgn: "6... Qh4 7. g3 dxe4",
   },
   tempo: {
-    fen: "rnb1k1nr/p7/2p2pp1/2q4p/1Q1P3N/2P1pP2/PP4PP/R1B1K2R w KQkq - 4 14",
-    pgn: "14. Qb7 Bxb7 15. dxc5",
+    fen: "rn1qkb1r/pp4pp/2p2p2/3p2B1/6b1/4PN2/PPPQ1PPP/RN2KB1R w KQkq - 0 7",
+    pgn: "7. Qa5 b6",
+    note: "With …b6, Black keeps both queens on the board, blocks Qxd8#, and attacks the queen on a5.",
   },
   discovered_mate: {
     fen: "2kr1b2/pp1b4/8/4p1p1/PP4P1/8/1BPN1P2/2KR4 b - - 1 17",

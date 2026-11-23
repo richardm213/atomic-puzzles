@@ -41,6 +41,10 @@ const RenameDialog = ({ motif, name, onClose }: RenameProps & { onClose: () => v
     if (saveName(motif.tag, value)) close();
     else setError("Couldn’t save your name. Check that browser storage is enabled and try again.");
   };
+  const updateDraft = (value: string) => {
+    setDraft(value);
+    setError("");
+  };
 
   return createPortal(
     <dialog
@@ -76,11 +80,22 @@ const RenameDialog = ({ motif, name, onClose }: RenameProps & { onClose: () => v
             required
             maxLength={PUZZLE_MOTIF_NAME_MAX_LENGTH}
             value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              setError("");
-            }}
+            onChange={(event) => updateDraft(event.target.value)}
           />
+          {motif.alternateNames?.length ? (
+            <div className="motifRenamePresets" role="group" aria-label="Suggested names">
+              {motif.alternateNames.map((alternate) => (
+                <button
+                  key={alternate}
+                  type="button"
+                  aria-pressed={draft === alternate}
+                  onClick={() => updateDraft(alternate)}
+                >
+                  {alternate}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {error ? <p role="alert">{error}</p> : null}
         </div>
 
