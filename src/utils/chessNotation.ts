@@ -49,7 +49,7 @@ export const sanLineFromUci = (fen: string, moves: string[]): string[] => {
     const sanMoves: string[] = [];
     for (const uci of moves) {
       const move = moveFromUci(position, uci);
-      if (!move || !position.isLegal(move)) break;
+      if (!move) break;
       sanMoves.push(makeSan(position, move));
       position.play(move);
     }

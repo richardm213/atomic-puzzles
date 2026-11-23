@@ -15,21 +15,12 @@ import {
   serializeSanLinesToPgn,
   serializeUciLinesToPgn,
   splitSolutionMove,
-  squareName,
   stripSolutionMoveAnnotation,
   toComparableUci,
 } from "./solutionPgn";
 
 const BLACK_TO_MOVE_FEN = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
 const BLACK_TO_MOVE_LONG_FEN = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 37";
-
-describe("squareName", () => {
-  it("translates file/rank into algebraic coordinates", () => {
-    expect(squareName(0, 0)).toBe("a1");
-    expect(squareName(4, 1)).toBe("e2");
-    expect(squareName(7, 7)).toBe("h8");
-  });
-});
 
 describe("movePrefix", () => {
   it("returns a move number for white plies", () => {

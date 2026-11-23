@@ -57,7 +57,7 @@ export const AtomicDbAnalysisBlock = ({
         databaseStatus: "idle",
         fen,
       });
-      if (move) onPlayLine([move]);
+      return move ? onPlayLine([move]) : false;
     },
   });
   return (

@@ -25,6 +25,8 @@ export type AtomicDbPosition = {
   point: number | null;
   bestMove: string | null;
   moves: AtomicDbMove[];
+  // A restricted search can find mate for a move without proving mate for the position.
+  mate?: number | null;
 };
 
 export type AtomicDbResult = {
@@ -409,10 +411,20 @@ export const getAtomicDbPositionEvaluation = (
   fen: string,
 ): AtomicDbEvaluation => {
   if (!position) return UNKNOWN_EVALUATION;
+  const turn = turnFromFen(fen);
+  if (typeof position.mate === "number") {
+    return { type: "mate", value: fromSideToMovePerspective(position.mate, turn) };
+  }
 
   const bestMove = position.moves.find((move) => move.uci === position.bestMove);
-  if (bestMove?.mate !== null && bestMove?.mate !== undefined) {
-    return getAtomicDbMoveEvaluation(bestMove, fen);
+  if (bestMove && position.mate === undefined) {
+    const bestEvaluation = getAtomicDbMoveEvaluation(bestMove, fen);
+    if (
+      bestEvaluation.type === "mate" &&
+      (bestMove.mate !== null || bestMove.score === position.score)
+    ) {
+      return bestEvaluation;
+    }
   }
 
   return evaluationFromValues({
@@ -421,7 +433,7 @@ export const getAtomicDbPositionEvaluation = (
     closure: position.closure,
     point: position.point,
     outcome: position.outcome,
-    turn: turnFromFen(fen),
+    turn,
   });
 };
 

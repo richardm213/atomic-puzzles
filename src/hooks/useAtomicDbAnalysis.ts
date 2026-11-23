@@ -4,6 +4,7 @@ import {
   type AnalysisLines,
   analyzedAtomicDbMoves,
   createAnalysisMoveComposer,
+  verifyAtomicDbMates,
 } from "../lib/atomicDb/analysisMoves";
 import {
   loadAtomicDbAnalysisBundle,
@@ -127,7 +128,7 @@ export const useAtomicDbAnalysis = (
       legalMoveCount > 0 ? Math.min(requestedLines, legalMoveCount) : requestedLines;
     const plyCount = clampInteger(requestedPlyCount, 1, MAX_ATOMIC_DB_PLIES);
     const databaseLineCount = Math.min(lineCount, MAX_ATOMIC_DB_LINES);
-    const { distinctPosition, linesForMoves, engineResult } = createAnalysisMoveComposer(
+    const { databaseResult, linesForMoves, engineResult } = createAnalysisMoveComposer(
       fen,
       lineCount,
       plyCount,
@@ -163,14 +164,14 @@ export const useAtomicDbAnalysis = (
     };
 
     const publishCachedPosition = (rawPosition: AtomicDbPosition): void => {
-      const position = distinctPosition(rawPosition);
+      const { position, lines } = databaseResult(rawPosition, cachedLinesFor(rawPosition));
       setState({
         result: { fen, position },
         requestedFen: fen,
         requestedOptions: requestOptions,
         status: "loading",
         error: "",
-        principalVariations: linesForMoves(position.moves, cachedLinesFor(rawPosition)),
+        principalVariations: linesForMoves(position.moves, lines),
         source: "atomicdb",
       });
     };
@@ -268,20 +269,36 @@ export const useAtomicDbAnalysis = (
       rawPosition: AtomicDbPosition | null,
       lines: AnalysisLines,
     ): void => {
-      const position = rawPosition && distinctPosition(rawPosition);
-      if (fallbackToEngine) {
-        if (!position?.moves.length) {
-          startEngine(true);
-          return;
-        }
-        if (analyzedAtomicDbMoves(fen, position).length < lineCount) {
-          database = { position, lines };
-          startEngine();
-          return;
-        }
+      const analysis = rawPosition && databaseResult(rawPosition, lines);
+      if (fallbackToEngine && !analysis?.position.moves.length) {
+        startEngine(true);
+        return;
       }
-      engine?.controller.abort();
-      publishPosition(position, lines);
+      if (
+        analysis &&
+        fallbackToEngine &&
+        analyzedAtomicDbMoves(fen, analysis.position).length < lineCount
+      ) {
+        database = analysis;
+        startEngine();
+      } else {
+        engine?.controller.abort();
+        publishPosition(analysis?.position ?? null, analysis?.lines ?? lines);
+      }
+      if (!analysis) return;
+      // Publish the database result immediately. The position-scoped check only replaces
+      // values for which Atomic-Stockfish found a mate.
+      void verifyAtomicDbMates(fen, analysis, controller.signal, true)
+        .then((verified) => {
+          if (controller.signal.aborted || verified === analysis) return;
+          if (database) {
+            database = verified;
+            publishEngine();
+          } else {
+            publishPosition(verified.position, verified.lines);
+          }
+        })
+        .catch(() => undefined);
     };
 
     const abort = () => {

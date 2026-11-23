@@ -1,16 +1,22 @@
 import { faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { type CSSProperties, type FormEvent, useRef, useState } from "react";
+import { type CSSProperties, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
-import { GAME_ANALYSIS_COST } from "../../../shared/domain/gameAnalysis";
+import {
+  GAME_ANALYSIS_COST,
+  type StoredAtomicDbPosition,
+} from "../../../shared/domain/gameAnalysis";
 import type { ArchiveGame } from "../../lib/archive/games";
 import { decodeGameResult } from "../../lib/archive/games";
+import { verifyAtomicDbMates } from "../../lib/atomicDb/analysisMoves";
 import type {
   GameAnalysisRecord,
   GameMoveAssessment,
   MoveClassification,
 } from "../../lib/gameAnalysis/gameAnalysis";
+import { atomicDbGamePosition } from "../../lib/gameAnalysis/preload";
 import { appAssetPath } from "../../utils/appAssetPath";
+import { formatAtomicDbEvaluation, getAtomicDbPositionEvaluation } from "../../utils/atomicDb";
 import { getErrorMessage } from "../../utils/errors";
 
 const REVIEWED_CLASSIFICATIONS: MoveClassification[] = ["inaccuracy", "mistake", "blunder"];
@@ -23,6 +29,7 @@ const labelFor = (classification: MoveClassification, count: number): string => 
 
 const EvaluationGraph = ({
   evaluations,
+  positions,
   moves,
   assessments,
   currentPly,
@@ -30,6 +37,7 @@ const EvaluationGraph = ({
   onNavigate,
 }: {
   evaluations: number[];
+  positions: StoredAtomicDbPosition[];
   moves: string[];
   assessments: GameMoveAssessment[];
   currentPly: number;
@@ -37,6 +45,49 @@ const EvaluationGraph = ({
   onNavigate: (ply: number) => void;
 }) => {
   const [hoveredPly, setHoveredPly] = useState<number | null>(null);
+  const [verifiedMate, setVerifiedMate] = useState<{
+    position: StoredAtomicDbPosition;
+    label: string;
+  } | null>(null);
+  const hoveredPosition = hoveredPly === null ? undefined : positions[hoveredPly];
+  const hoveredAnalysis = useMemo(
+    () => (hoveredPosition ? atomicDbGamePosition(hoveredPosition) : null),
+    [hoveredPosition],
+  );
+  const hoveredPositionEvaluation = hoveredAnalysis
+    ? getAtomicDbPositionEvaluation(hoveredAnalysis.position, hoveredAnalysis.fen)
+    : null;
+  useEffect(() => {
+    if (!hoveredPosition || !hoveredAnalysis?.position) return;
+    const controller = new AbortController();
+    const { fen, position, principalVariations } = hoveredAnalysis;
+    const timeout = window.setTimeout(() => {
+      void verifyAtomicDbMates(fen, { position, lines: principalVariations }, controller.signal)
+        .then((result) => {
+          if (controller.signal.aborted || result.position === position) return;
+          const evaluation = getAtomicDbPositionEvaluation(result.position, fen);
+          if (evaluation.type === "mate") {
+            setVerifiedMate({
+              position: hoveredPosition,
+              label: formatAtomicDbEvaluation(evaluation),
+            });
+          }
+        })
+        .catch(() => undefined);
+    }, 160);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [hoveredAnalysis, hoveredPosition]);
+  const mateLabel =
+    verifiedMate?.position === hoveredPosition
+      ? verifiedMate?.label
+      : hoveredPositionEvaluation?.type === "mate"
+        ? formatAtomicDbEvaluation(hoveredPositionEvaluation)
+        : undefined;
+  const evaluationLabel = (value: number, ply: number) =>
+    (ply === hoveredPly && mateLabel) || formatAtomicDbEvaluation({ type: "centipawns", value });
   const width = 1000;
   const height = 230;
   const visibleEvaluations = evaluations
@@ -93,7 +144,7 @@ const EvaluationGraph = ({
             key={ply}
             type="button"
             className={currentPly === ply ? "current" : ""}
-            aria-label={`Go to ${moveLabel(ply)}, advantage ${evaluation > 0 ? "+" : ""}${(evaluation / 100).toFixed(1)}`}
+            aria-label={`Go to ${moveLabel(ply)}, advantage ${evaluationLabel(evaluation, ply)}`}
             onClick={() => onNavigate(ply)}
             onMouseEnter={() => setHoveredPly(ply)}
             onMouseLeave={() => setHoveredPly((current) => (current === ply ? null : current))}
@@ -127,10 +178,7 @@ const EvaluationGraph = ({
                 ? ` [${labelFor(hoveredAssessment.classification, 1)}]`
                 : ""}
             </strong>
-            <span>
-              Advantage: {hoveredEvaluation > 0 ? "+" : ""}
-              {(hoveredEvaluation / 100).toFixed(1)}
-            </span>
+            <span>Advantage: {evaluationLabel(hoveredEvaluation, hoveredPoint.ply)}</span>
           </div>
         </>
       ) : null}
@@ -323,6 +371,7 @@ export const GameComputerAnalysis = ({
     <div className="gameComputerResult">
       <EvaluationGraph
         evaluations={analysis.result.evaluations}
+        positions={analysis.result.positions}
         moves={moves}
         assessments={analysis.result.assessments}
         currentPly={currentPly}

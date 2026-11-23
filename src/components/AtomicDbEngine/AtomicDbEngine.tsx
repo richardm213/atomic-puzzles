@@ -9,10 +9,7 @@ import { useKeyboardShortcutSettings } from "../../context/AppSettings";
 import type { AtomicDbAnalysisState } from "../../hooks/useAtomicDbAnalysis";
 import type { AtomicDbEngineSettings } from "../../hooks/useAtomicDbEngineSettings";
 import { useBoardActionShortcuts } from "../../hooks/useBoardActionShortcuts";
-import {
-  keyboardShortcutAria,
-  keyboardShortcutHint,
-} from "../../lib/keyboardShortcuts";
+import { keyboardShortcutAria, keyboardShortcutHint } from "../../lib/keyboardShortcuts";
 import { localAnalysisEngineLabel } from "../../lib/practice/localAnalysisEngine";
 import {
   atomicDbPositionUrl,
@@ -73,7 +70,7 @@ const analysisSourceLabel = (
   } else if (analysis.source === "mixed") {
     // The meter describes the position score, not the sources of its candidate lines.
     const best = view.position?.moves.find((move) => move.uci === view.position?.bestMove);
-    if (best?.origin === "engine" && best.mate !== null) source = engine;
+    if (best?.origin === "engine" && view.evaluation.type === "mate") source = engine;
   }
   return threatMode ? `Threat · ${source}` : source;
 };
@@ -160,7 +157,7 @@ export const AtomicDbEngineControls = ({
       ? {
           toggleThreat: () => {
             if (!settings.enabled || !threatAvailable) return false;
-            onThreatModeChange(!threatMode);
+            return onThreatModeChange(!threatMode);
           },
         }
       : {}),

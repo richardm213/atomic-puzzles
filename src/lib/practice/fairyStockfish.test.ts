@@ -123,6 +123,15 @@ describe("parseEngineCandidate", () => {
       timeMs: 4,
     });
   });
+
+  it("distinguishes an exact UCI mate score from search bounds", () => {
+    expect(parseEngineCandidate("info depth 20 score mate -5 upperbound pv e2e4")).toBeNull();
+    expect(parseEngineCandidate("info depth 20 score mate 8 lowerbound pv e2e4")).toBeNull();
+    expect(parseEngineCandidate("info depth 20 score mate -5 pv e2e4")).toMatchObject({
+      scoreType: "mate",
+      score: -5,
+    });
+  });
 });
 
 describe("Fairy-Stockfish evaluation cache threshold", () => {
@@ -173,11 +182,14 @@ describe("Fairy-Stockfish evaluation cache threshold", () => {
     ).toBe(true);
   });
 
-  it("isolates single-line and multi-line evaluations in the cache", () => {
+  it("isolates evaluation cache entries by line count and allowed root moves", () => {
     const fen = "r3k2r/pp4pp/2p1b3/3p2q1/8/5PPB/1P2Q2P/R3K1NR w KQkq - 4 14";
 
     expect(fairyStockfishEvaluationCacheKey("atomic-stockfish", fen, 1)).not.toBe(
       fairyStockfishEvaluationCacheKey("atomic-stockfish", fen, 5),
+    );
+    expect(fairyStockfishEvaluationCacheKey("atomic-stockfish", fen, 1, "b1c3")).not.toBe(
+      fairyStockfishEvaluationCacheKey("atomic-stockfish", fen, 1),
     );
   });
 });

@@ -15,7 +15,9 @@ const UCI_MOVE = /^[a-h][1-8][a-h][1-8][nbrq]?$/;
 const outcome = (status: string): AtomicDbOutcome =>
   status === "WHITE_WIN" || status === "BLACK_WIN" || status === "DRAW" ? status : "UNKNOWN";
 
-const preloadPosition = (stored: StoredAtomicDbPosition): PreloadedAtomicDbGamePosition => {
+export const atomicDbGamePosition = (
+  stored: StoredAtomicDbPosition,
+): PreloadedAtomicDbGamePosition => {
   const principalVariations: Record<string, string[]> = {};
   const moves: AtomicDbPosition["moves"] = [];
   const storedMoves = stored.candidates?.length
@@ -106,5 +108,5 @@ export const preloadCompletedGameAnalysis = (analysis: GameAnalysisRecord | null
     clearPreloadedAtomicDbGamePositions();
     return;
   }
-  replacePreloadedAtomicDbGamePositions(analysis.result.positions.map(preloadPosition));
+  replacePreloadedAtomicDbGamePositions(analysis.result.positions.map(atomicDbGamePosition));
 };

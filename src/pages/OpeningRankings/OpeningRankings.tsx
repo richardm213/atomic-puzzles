@@ -4,6 +4,7 @@ import { INITIAL_FEN as STARTING_FEN } from "chessops/fen";
 import { useCallback, useEffect, useState } from "react";
 
 import { Seo } from "../../components/Seo/Seo";
+import { verifyAtomicDbMates } from "../../lib/atomicDb/analysisMoves";
 import {
   type AtomicDbEvaluation,
   atomicDbPositionUrl,
@@ -225,23 +226,42 @@ export const OpeningRankingsPage = () => {
     const controller = new AbortController();
     setStatus("loading");
     void fetchAtomicDbPositions(openingFens, controller.signal)
-      .then((positions) => {
+      .then(async (positions) => {
         if (controller.signal.aborted) return;
-        const rankings = openingsWithFens
-          .map((opening) => {
-            const position = positions[opening.fen] ?? null;
-            return {
-              ...opening,
-              key: position?.key ?? null,
-              evaluation: getAtomicDbPositionEvaluation(position, opening.fen),
-            };
-          })
-          .sort(
-            (left, right) =>
-              evaluationSortValue(right.evaluation) - evaluationSortValue(left.evaluation),
-          );
-        setEntries(rankings);
+        const byEvaluation = (left: OpeningRanking, right: OpeningRanking) =>
+          evaluationSortValue(right.evaluation) - evaluationSortValue(left.evaluation);
+        const rankings = openingsWithFens.map((opening) => {
+          const position = positions[opening.fen] ?? null;
+          return {
+            ...opening,
+            key: position?.key ?? null,
+            evaluation: getAtomicDbPositionEvaluation(position, opening.fen),
+          };
+        });
+        setEntries([...rankings].sort(byEvaluation));
         setStatus("ready");
+        const verified = await Promise.all(
+          rankings.map(async (ranking) => {
+            const position = positions[ranking.fen];
+            if (!position) return ranking;
+            const result = await verifyAtomicDbMates(
+              ranking.fen,
+              { position, lines: {} },
+              controller.signal,
+            ).catch(() => null);
+            if (!result || result.position === position) return ranking;
+            return {
+              ...ranking,
+              evaluation: getAtomicDbPositionEvaluation(result.position, ranking.fen),
+            };
+          }),
+        );
+        if (
+          !controller.signal.aborted &&
+          verified.some((entry, index) => entry !== rankings[index])
+        ) {
+          setEntries(verified.sort(byEvaluation));
+        }
       })
       .catch(() => {
         if (!controller.signal.aborted) setStatus("error");

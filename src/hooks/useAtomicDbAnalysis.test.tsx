@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { analyzeFairyStockfishPosition } from "../lib/practice/fairyStockfish";
+import { getAtomicDbPositionEvaluation } from "../utils/atomicDb";
 import { useAtomicDbAnalysis } from "./useAtomicDbAnalysis";
 
 vi.mock("../lib/practice/fairyStockfish", () => ({
@@ -345,6 +346,103 @@ describe("useAtomicDbAnalysis", () => {
       ],
     });
     expect(result.current.principalVariations.e1c1).toEqual(["e1c1", "a7a6"]);
+  });
+
+  it("merges a Chess960 castling alias while preserving an independent king move", async () => {
+    const fen = "r2k3r/pp6/8/8/8/8/PP6/R3K2R b KQkq - 0 991";
+    const nextFen = fen.replace("991", "992");
+    const position = {
+      best_move: "d8a8",
+      moves: [
+        { uci: "d8a8", score: 82 },
+        { uci: "d8c8", score: 53 },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(bundleResponse(position, { d8c8: ["d8c8", "a2a3", "d8d7"] }))
+        .mockResolvedValueOnce(bundleResponse(position, { d8c8: ["d8c8", "a2a3", "c8b8"] })),
+    );
+    const { result, rerender } = renderHook(
+      ({ currentFen }) => useAtomicDbAnalysis(currentFen, { debounceMs: 0, lineCount: 2 }),
+      { initialProps: { currentFen: fen } },
+    );
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.result?.position?.moves.map(({ uci }) => uci)).toEqual(["d8a8"]);
+    expect(result.current.principalVariations.d8a8).toEqual(["d8a8", "a2a3", "d8d7"]);
+
+    rerender({ currentFen: nextFen });
+    await waitFor(() => expect(result.current.result?.fen).toBe(nextFen));
+    expect(result.current.result?.position?.moves.map(({ uci }) => uci)).toEqual(["d8a8", "d8c8"]);
+  });
+
+  it("uses an unrestricted mate for the position and checks extreme candidates at their own roots", async () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 993";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        bundleResponse({
+          best_move: "e2e4",
+          score: 10_000,
+          moves: [
+            { uci: "e2e4", score: 10_000 },
+            { uci: "g1f3", score: -4_000 },
+            { uci: "a2a3", score: 4_000 },
+            { uci: "c2c4", score: 3_999 },
+          ],
+        }),
+      ),
+    );
+    analyzeWithEngineMock
+      .mockResolvedValueOnce([{ move: "d2d4", multipv: 1, scoreType: "mate", score: 5 }])
+      .mockResolvedValueOnce([
+        { move: "e2e4", multipv: 1, scoreType: "mate", score: 8 },
+        { move: "a2a3", multipv: 2, scoreType: "cp", score: 4_100 },
+        {
+          move: "g1f3",
+          multipv: 3,
+          scoreType: "mate",
+          score: -3,
+          principalVariation: ["g1f3", "d7d5"],
+        },
+      ]);
+    const { result } = renderHook(() => useAtomicDbAnalysis(fen, { lineCount: 5 }));
+    await waitFor(() => expect(result.current.result?.position?.bestMove).toBe("d2d4"));
+    expect(analyzeWithEngineMock).toHaveBeenCalledTimes(2);
+    expect(analyzeWithEngineMock.mock.calls[1]?.[5]?.searchMoves).toEqual(["e2e4", "g1f3", "a2a3"]);
+    expect(result.current.result?.position?.moves).toMatchObject([
+      { uci: "d2d4", mate: 5, origin: "engine" },
+      { uci: "e2e4", mate: 8 },
+      { uci: "g1f3", mate: -3 },
+      { uci: "a2a3", score: 4_000, mate: null },
+      { uci: "c2c4", score: 3_999, mate: null },
+    ]);
+    expect(result.current.principalVariations.g1f3).toEqual(["g1f3", "d7d5"]);
+  });
+
+  it("does not use a forced loss on one move as proof that the position is lost", async () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 994";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        bundleResponse({
+          best_move: "e2e4",
+          score: -10_000,
+          moves: [{ uci: "e2e4", score: -10_000 }],
+        }),
+      ),
+    );
+    analyzeWithEngineMock
+      .mockResolvedValueOnce([{ move: "d2d4", multipv: 1, scoreType: "cp", score: 52 }])
+      .mockResolvedValueOnce([{ move: "e2e4", multipv: 1, scoreType: "mate", score: -3 }]);
+    const { result } = renderHook(() => useAtomicDbAnalysis(fen, { lineCount: 1 }));
+    await waitFor(() => expect(result.current.result?.position?.moves[0]?.mate).toBe(-3));
+    expect(getAtomicDbPositionEvaluation(result.current.result?.position ?? null, fen)).toEqual({
+      type: "centipawns",
+      value: -10_000,
+    });
   });
 
   it("uses Stockfish after two seconds and discards its search when AtomicDB wins or the board changes", async () => {

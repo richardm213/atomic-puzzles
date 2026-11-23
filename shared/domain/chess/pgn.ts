@@ -1,8 +1,8 @@
-import type { Move, NormalMove, Role } from "chessops";
-import { normalizeMove } from "chessops/chess";
+import type { Move, NormalMove } from "chessops";
+import { castlingSide, normalizeMove } from "chessops/chess";
 import { makeFen, parseFen } from "chessops/fen";
 import { makeSan, parseSan } from "chessops/san";
-import { makeUci, parseSquare } from "chessops/util";
+import { kingCastlesTo, makeUci, parseUci } from "chessops/util";
 import { Atomic } from "chessops/variant";
 
 type Position = Atomic;
@@ -40,13 +40,6 @@ export type SolutionMoveNode<TExtras = Record<string, unknown>> = TExtras & {
   firstOccurrence: FirstOccurrence;
 };
 
-const promotionByCode: Record<string, Role> = {
-  q: "queen",
-  r: "rook",
-  b: "bishop",
-  n: "knight",
-};
-
 export const createAtomicPosition = (fen: string): Position => {
   const parsed = parseFen(fen);
   if (parsed.isErr) throw new Error(`Invalid FEN: ${parsed.error.message}`);
@@ -57,25 +50,33 @@ export const createAtomicPosition = (fen: string): Position => {
   return created.value;
 };
 
-export const squareName = (file: number, rank: number): string =>
-  `${String.fromCharCode("a".charCodeAt(0) + file)}${rank + 1}`;
+const castleFromKingDestination = (position: Position, move: NormalMove): NormalMove | null => {
+  if (move.promotion || position.board.kingOf(position.turn) !== move.from) return null;
+  for (const side of ["a", "h"] as const) {
+    const rook = position.castles.rook[position.turn][side];
+    if (rook === undefined || kingCastlesTo(position.turn, side) !== move.to) continue;
+    const castle = { from: move.from, to: rook };
+    if (position.isLegal(castle)) return castle;
+  }
+  return null;
+};
+
+export const atomicCastleFromKingDestination = (position: Position, uci: string): string | null => {
+  const move = parseUci(uci);
+  if (!move || !isNormalMove(move)) return null;
+  const castle = castleFromKingDestination(position, move);
+  return castle ? makeUci(castle) : null;
+};
 
 export const moveFromUci = (position: Position, uci: string): Move | null => {
-  const from = parseSquare(uci.slice(0, 2));
-  const to = parseSquare(uci.slice(2, 4));
-  if (from === undefined || to === undefined) return null;
-
-  const piece = position.board.get(from);
-  const targetSquare = uci.slice(2, 4);
-  const promotionCode = uci[4];
-  const targetRank = targetSquare[1];
-  const isBackRank = targetRank === "1" || targetRank === "8";
-  const promotion: Role | undefined =
-    (promotionCode !== undefined ? promotionByCode[promotionCode] : undefined) ??
-    (piece?.role === "pawn" && isBackRank ? "queen" : undefined);
-
-  const move: Move = promotion ? { from, to, promotion } : { from, to };
-  return position.isLegal(move) ? move : null;
+  const move = parseUci(uci);
+  if (!move || !isNormalMove(move)) return null;
+  const { from, to } = move;
+  if (!move.promotion && (to < 8 || to >= 56) && position.board.pawn.has(from)) {
+    move.promotion = "queen";
+  }
+  if (normalizeMove(position, move).to !== to) return castleFromKingDestination(position, move);
+  return position.isLegal(move) ? move : castleFromKingDestination(position, move);
 };
 
 export const canonicalAtomicMoveUci = (position: Position, uci: string): string | null => {
@@ -116,22 +117,12 @@ export const toComparableUci = (position: Position, uci: string, move?: Move | n
   const normalized = uci.toLowerCase();
   const activeMove = move ?? moveFromUci(position, normalized);
   if (!activeMove || !isNormalMove(activeMove)) return normalized;
-
-  const piece = position.board.get(activeMove.from);
-  if (piece?.role !== "king") return normalized;
-
-  const fromFile = activeMove.from % 8;
-  const fromRank = Math.floor(activeMove.from / 8);
-  const toFile = activeMove.to % 8;
-  const toRank = Math.floor(activeMove.to / 8);
-  const fileDelta = toFile - fromFile;
-
-  if (fromRank !== toRank || Math.abs(fileDelta) < 2) return normalized;
-
-  const castledKingFile = fromFile + 2 * Math.sign(fileDelta);
-  if (castledKingFile < 0 || castledKingFile > 7) return normalized;
-
-  return `${squareName(fromFile, fromRank)}${squareName(castledKingFile, fromRank)}`;
+  const side = castlingSide(position, activeMove);
+  if (!side) return normalized;
+  const castle = makeUci(normalizeMove(position, activeMove));
+  const destination = makeUci({ from: activeMove.from, to: kingCastlesTo(position.turn, side) });
+  // Keep established puzzle keys when the landing square unambiguously means castling.
+  return canonicalAtomicMoveUci(position, destination) === castle ? destination : castle;
 };
 
 export type AnnotatedSolutionMove = {
