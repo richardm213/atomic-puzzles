@@ -595,6 +595,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
       (normalizedUsername === PUZZLE_EXPLANATION_LEGACY_EDITOR &&
         normalizedAuthor === PUZZLE_EXPLANATION_LEGACY_AUTHOR));
   const hasExplanation = explanation.trim().length > 0;
+  const completionInfoTab = hasExplanation ? "explanation" : "solution";
   const orientation = orientationFromFen(fen);
   const currentFen = boardState.fen || fen;
   const selectableSetPuzzleIndexes = useMemo(
@@ -952,9 +953,9 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
         correct: puzzleCorrect,
       });
       if (puzzleCorrect) {
-        setActivePuzzleInfoTab("solution");
+        setActivePuzzleInfoTab(completionInfoTab);
         setSolutionNavigation(null);
-        setPinnedSolutionLineIndex(puzzleCorrect ? null : 0);
+        setPinnedSolutionLineIndex(null);
       }
       if (testMode) {
         const misses = testMissesRef.current;
@@ -988,6 +989,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     [
       activePuzzleKey,
       activePuzzleRating,
+      completionInfoTab,
       enqueuePuzzleProgressWrite,
       testMode,
       userPuzzleRatingQuery.data,
@@ -1181,9 +1183,9 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
     onNext: canGoToNextPuzzle ? handleNextPuzzle : undefined,
   });
 
-  const revealSolution = () => {
+  const revealSolution = (tab: "solution" | "explanation" = "solution") => {
     dispatchPuzzleSession({ type: "reveal-solution" });
-    setActivePuzzleInfoTab("solution");
+    setActivePuzzleInfoTab(tab);
     setSolutionNavigation(null);
     if (isMobileLayout) {
       window.requestAnimationFrame(() => {
@@ -1238,7 +1240,7 @@ const PuzzleSolver = ({ testMode }: { testMode: boolean }) => {
         resigned: true,
       });
     }
-    revealSolution();
+    revealSolution(completionInfoTab);
   };
 
   const handleSelectOtherPuzzleAttemptsTab = () => {

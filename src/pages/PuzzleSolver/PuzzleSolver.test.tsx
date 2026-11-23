@@ -473,7 +473,7 @@ describe("PuzzleSolverPage solution options", () => {
         fireEvent.click(await screen.findByRole("button", { name: "Confirm resignation" }));
       }
 
-      await user.click(explanationTab);
+      expect(explanationTab).toHaveAttribute("aria-selected", "true");
       expect(screen.getByText(mocks.puzzleExplanation)).toBeVisible();
       await user.click(attemptsTab);
       expect(await screen.findByRole("list", { name: "Other puzzle attempts" })).toHaveTextContent(
@@ -1422,12 +1422,14 @@ describe("PuzzleSolverPage solution options", () => {
     expect(within(moveNavigation).queryByTitle("Opening explorer")).not.toBeInTheDocument();
 
     await user.click(await screen.findByRole("button", { name: "Resign and reveal the solution" }));
+    expect(explanationTab).toBeDisabled();
     fireEvent.click(await screen.findByRole("button", { name: "Confirm resignation" }));
 
     await waitFor(() => {
       expect(mocks.chessboardProps.at(-1)?.showSolution).toBe(true);
       expect(mocks.chessboardProps.at(-1)?.analysisMode).toBe(true);
     });
+    expect(screen.getByText(mocks.puzzleExplanation)).toBeVisible();
     expect(
       screen.queryByRole("button", { name: "Resign and reveal the solution" }),
     ).not.toBeInTheDocument();
