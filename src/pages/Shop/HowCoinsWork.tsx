@@ -10,6 +10,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
+import { PUZZLE_CREATION_REWARDS } from "../../../shared/domain/puzzles/puzzleCreationRewards";
 import type { PuzzleAttemptColor } from "../../../shared/domain/puzzles/puzzleGrading";
 import { PuzzleAttemptResult } from "../../components/PuzzleAttemptResult/PuzzleAttemptResult";
 import { Seo } from "../../components/Seo/Seo";
@@ -254,15 +255,18 @@ export const HowCoinsWorkPage = () => (
       <section className="coinGuideSection" aria-labelledby="create-puzzle-rewards">
         <h2 id="create-puzzle-rewards">Create puzzles</h2>
         <dl className="coinRuleList">
-          {[
-            ["Publish a puzzle", 5],
-            ["Not too simple", 3],
-            ["Clear explanation", 2],
-          ].map(([label, amount]) => (
+          {(
+            [
+              ["Publish a puzzle", PUZZLE_CREATION_REWARDS.base],
+              ["Not too simple", PUZZLE_CREATION_REWARDS.complexity],
+              ["Clear explanation", PUZZLE_CREATION_REWARDS.explanation],
+              ["Great explanation", PUZZLE_CREATION_REWARDS.greatExplanation],
+            ] as const
+          ).map(([label, amount]) => (
             <div key={label}>
               <dt>{label}</dt>
               <dd>
-                <CoinAmount amount={Number(amount)} />
+                <CoinAmount amount={amount} />
               </dd>
             </div>
           ))}

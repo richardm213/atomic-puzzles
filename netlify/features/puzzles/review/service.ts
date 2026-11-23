@@ -15,6 +15,7 @@ export type PuzzleReviewAction =
       puzzleId: number;
       complexityBonus: boolean;
       explanationBonus: boolean;
+      greatExplanationBonus: boolean;
     }
   | {
       action: "update";
@@ -66,6 +67,7 @@ export class PuzzleReviewService {
           input.puzzleId,
           input.complexityBonus,
           input.explanationBonus,
+          input.greatExplanationBonus,
         ),
       };
     }

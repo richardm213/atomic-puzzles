@@ -1,4 +1,4 @@
--- Run in Firefox on the current database after puzzle_submission_tag_rewards.sql.
+-- Run in Firefox on the current database after puzzle_creation_great_explanation_bonus.sql.
 -- Every fixture and credit rolls back; restore the puzzle sequence touched by approval.
 begin;
 do $$
@@ -34,12 +34,27 @@ begin
     -- Remove one creator tag and add a reviewer tag before approval.
     update public.puzzles_queue set tags=array['fork','material','tempo'],
       submitted_tags=array['fork','material','tempo'] where id=queued.id;
-    published_id := public.approve_queued_puzzle(queued.id,'seaside_tiramisu',first_id,false,false);
+    begin
+      perform public.approve_queued_puzzle(queued.id,'seaside_tiramisu',first_id,true,true,true);
+      raise exception 'Great explanation reward accepted a submission with no explanation';
+    exception when sqlstate 'PT400' then
+      null;
+    end;
+    update public.puzzles_queue set explanation='The forcing move clears a line for the attack.'
+      where id=queued.id;
+    published_id := public.approve_queued_puzzle(queued.id,'seaside_tiramisu',first_id,true,true,true);
+    if (select metadata->>'greatExplanationBonus' from public.coin_transactions
+        where source_key='puzzle:' || published_id) is distinct from '3' then
+      raise exception 'Creation ledger receipt must identify the great explanation bonus';
+    end if;
+    if current_setting('app.puzzle_creation_great_explanation_bonus',true) = 'true' then
+      raise exception 'Great explanation selection escaped approval';
+    end if;
     if (select reward from public.puzzle_submission_tag_credits where puzzle_id=published_id) <> 0.40 then
       raise exception 'Only surviving creator tags should earn approval credit';
     end if;
     if (select coin_amount from public.notifications where puzzle_id=published_id
-        and notification_type='puzzle_approved' and recipient_username='maracker') <> 5.40 then
+        and notification_type='puzzle_approved' and recipient_username='maracker') is distinct from 13.40 then
       raise exception 'Approval notification must include creation and tag rewards';
     end if;
     if (select submitted_tags from public.puzzles where id=published_id)
@@ -97,5 +112,5 @@ begin
   end;
 end;
 $$;
-select 'queue timing, approval, direct publication, combined notifications, hierarchy, idempotency and reversals passed' as checks;
+select 'queue timing, approval bonuses, direct publication, combined notifications, hierarchy, idempotency and reversals passed' as checks;
 rollback;

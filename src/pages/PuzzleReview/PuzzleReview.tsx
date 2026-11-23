@@ -11,6 +11,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
+import { PUZZLE_CREATION_REWARDS } from "../../../shared/domain/puzzles/puzzleCreationRewards";
 import { CommentEditor } from "../../components/CommentEditor/CommentEditor";
 import { PuzzleMotifsPanel } from "../../components/PuzzleMotifsPanel/PuzzleMotifsPanel";
 import { PuzzleStartingFenWarning } from "../../components/PuzzleStartingFenWarning/PuzzleStartingFenWarning";
@@ -59,6 +60,9 @@ export const PuzzleReviewPage = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [complexityBonus, setComplexityBonus] = useState(true);
   const [explanationBonus, setExplanationBonus] = useState(false);
+  const [greatExplanationBonus, setGreatExplanationBonus] = useState(false);
+  const hasExplanation = value.explanation.trim().length > 0;
+  const awardGreatExplanation = hasExplanation && greatExplanationBonus;
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -208,6 +212,7 @@ export const PuzzleReviewPage = () => {
     setTags(nextTags);
     setComplexityBonus(true);
     setExplanationBonus(false);
+    setGreatExplanationBonus(false);
     setSelectedId(row.id);
     setMessage("");
     setError("");
@@ -247,6 +252,7 @@ export const PuzzleReviewPage = () => {
       const puzzleId = await approveQueuedPuzzle(selectedId, requestedPuzzleId, {
         complexity: complexityBonus,
         explanation: explanationBonus,
+        greatExplanation: awardGreatExplanation,
       });
       const nextPuzzleId = puzzleId + 1;
       const nextQueue = queue
@@ -444,7 +450,7 @@ export const PuzzleReviewPage = () => {
               {isReviewer ? (
                 <div className="puzzleReviewDecisionRow">
                   <fieldset className="puzzleReviewBonuses">
-                    <legend>Bonuses beyond the +5 base reward</legend>
+                    <legend>Bonuses beyond the +{PUZZLE_CREATION_REWARDS.base} base reward</legend>
                     <div className="puzzleReviewBonusOptions">
                       <label>
                         <input
@@ -452,7 +458,7 @@ export const PuzzleReviewPage = () => {
                           checked={complexityBonus}
                           onChange={(event) => setComplexityBonus(event.target.checked)}
                         />
-                        <span>+3 Not overly simplistic</span>
+                        <span>+{PUZZLE_CREATION_REWARDS.complexity} Not overly simplistic</span>
                       </label>
                       <label>
                         <input
@@ -460,11 +466,24 @@ export const PuzzleReviewPage = () => {
                           checked={explanationBonus}
                           onChange={(event) => setExplanationBonus(event.target.checked)}
                         />
-                        <span>+2 Explanation</span>
+                        <span>+{PUZZLE_CREATION_REWARDS.explanation} Explanation</span>
+                      </label>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={awardGreatExplanation}
+                          disabled={!hasExplanation}
+                          onChange={(event) => setGreatExplanationBonus(event.target.checked)}
+                        />
+                        <span>+{PUZZLE_CREATION_REWARDS.greatExplanation} Great explanation</span>
                       </label>
                     </div>
                     <output>
-                      Total +{5 + (complexityBonus ? 3 : 0) + (explanationBonus ? 2 : 0)}
+                      Total +
+                      {PUZZLE_CREATION_REWARDS.base +
+                        (complexityBonus ? PUZZLE_CREATION_REWARDS.complexity : 0) +
+                        (explanationBonus ? PUZZLE_CREATION_REWARDS.explanation : 0) +
+                        (awardGreatExplanation ? PUZZLE_CREATION_REWARDS.greatExplanation : 0)}
                     </output>
                   </fieldset>
                   <div className="puzzleReviewActions">

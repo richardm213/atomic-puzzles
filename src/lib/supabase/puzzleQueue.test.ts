@@ -101,7 +101,7 @@ describe("puzzle queue review client", () => {
     );
     const fetchMock = vi.mocked(fetch);
     await expect(
-      approveQueuedPuzzle(4, 42, { complexity: false, explanation: true }),
+      approveQueuedPuzzle(4, 42, { complexity: false, explanation: true, greatExplanation: true }),
     ).resolves.toBe(42);
     const [, request] = fetchMock.mock.calls[0] ?? [];
     expect(JSON.parse(String(request?.body))).toEqual({
@@ -110,6 +110,7 @@ describe("puzzle queue review client", () => {
       puzzleId: 42,
       complexityBonus: false,
       explanationBonus: true,
+      greatExplanationBonus: true,
     });
   });
 

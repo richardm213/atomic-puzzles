@@ -68,6 +68,7 @@ export class PuzzleReviewRepository {
     puzzleId: number,
     complexityBonus: boolean,
     explanationBonus: boolean,
+    greatExplanationBonus: boolean,
   ): Promise<number> {
     const { data, error } = await this.supabase.rpc("approve_queued_puzzle", {
       p_queue_id: id,
@@ -75,6 +76,7 @@ export class PuzzleReviewRepository {
       p_puzzle_id: puzzleId,
       p_complexity_bonus: complexityBonus,
       p_explanation_bonus: explanationBonus,
+      p_great_explanation_bonus: greatExplanationBonus,
     });
     if (error) {
       if (
@@ -89,12 +91,13 @@ export class PuzzleReviewRepository {
       if (/could not find the function.*approve_queued_puzzle/i.test(error.message)) {
         throw new HttpError(
           503,
-          "Puzzle approval is not configured yet. Run the latest puzzles_queue.sql in Supabase.",
+          "Puzzle approval is not configured yet. Apply the latest puzzle approval migration.",
         );
       }
       if (/puzzle id .* already exists/i.test(error.message)) {
         throw new HttpError(409, error.message);
       }
+      if (error.code === "PT400") throw new HttpError(400, error.message);
       throw new Error(`Unable to approve puzzle: ${error.message}`);
     }
     const approvedPuzzleId = Number(data);

@@ -187,6 +187,7 @@ describe("puzzle-review function", () => {
         puzzleId: 42,
         complexityBonus: false,
         explanationBonus: true,
+        greatExplanationBonus: true,
       }),
     });
 
@@ -198,6 +199,7 @@ describe("puzzle-review function", () => {
       p_puzzle_id: 42,
       p_complexity_bonus: false,
       p_explanation_bonus: true,
+      p_great_explanation_bonus: true,
     });
   });
 
@@ -239,7 +241,7 @@ describe("puzzle-review function", () => {
 
     expect(response.statusCode).toBe(503);
     expect(JSON.parse(response.body)).toEqual({
-      error: "Puzzle approval is not configured yet. Run the latest puzzles_queue.sql in Supabase.",
+      error: "Puzzle approval is not configured yet. Apply the latest puzzle approval migration.",
       code: "service_unavailable",
     });
   });

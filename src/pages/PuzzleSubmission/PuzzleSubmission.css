@@ -1071,8 +1071,13 @@
   background: color-mix(in srgb, var(--color-primary) 10%, var(--color-panel-strong));
 }
 
-.puzzleReviewBonusOptions label:hover {
+.puzzleReviewBonusOptions label:hover:not(:has(input:disabled)) {
   border-color: var(--color-primary);
+}
+
+.puzzleReviewBonusOptions label:has(input:disabled) {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .puzzleReviewBonusOptions input {

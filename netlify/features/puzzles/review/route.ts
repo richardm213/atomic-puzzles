@@ -41,6 +41,7 @@ const reviewBodySchema = z.discriminatedUnion("action", [
     puzzleId: z.number().int().positive(),
     complexityBonus: z.boolean().default(true),
     explanationBonus: z.boolean().default(false),
+    greatExplanationBonus: z.boolean().default(false),
   }),
   puzzleFieldsSchema.extend({ action: z.literal("update"), id: z.number().int().positive() }),
 ]);
