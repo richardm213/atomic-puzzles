@@ -23,7 +23,7 @@
   --color-danger: #fca5a5;
   --color-success-soft-text: var(--color-success);
   --color-pnl-profit: var(--color-success-soft-text);
-  --color-pnl-loss: var(--color-danger);
+  --color-pnl-loss: var(--color-payout-loss);
   --color-motif-confirmed: var(--color-success);
   --color-motif-unconfirmed: var(--color-danger);
   --color-loss-strip-bg: #3a1520;

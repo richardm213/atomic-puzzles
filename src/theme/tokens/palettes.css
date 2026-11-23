@@ -168,6 +168,7 @@
 :root[data-palette="ruby"] {
   --market-side-a-hue: 25;
   --market-side-b-hue: 225;
+  --color-pnl-loss: var(--color-market-yes);
   --gem-hue: 20;
   --gem-action-chroma: 0.18;
   --gem-accent-chroma: 0.18;
@@ -289,7 +290,6 @@
   --gem-nav-hue: 27;
   --color-primary-soft: #ff4b4b;
   --color-pnl-profit: #4ade80;
-  --color-pnl-loss: #ff626b;
   --color-primary-pale: #ff6565;
   --color-market-yes: var(--color-primary-soft);
   --gem-material-hue: 260;
