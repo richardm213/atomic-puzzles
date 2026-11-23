@@ -154,7 +154,6 @@ const marketPresentation: Record<
     buttonLabels?: Partial<Record<PredictionOutcome, string>>;
     clinchRule?: string;
     displayOutcomes?: readonly PredictionOutcome[];
-    sportsbookButtonsOnly?: boolean;
     sortPriority: number;
   }
 > = {
@@ -174,7 +173,6 @@ const marketPresentation: Record<
   "awc2026-lb-r3-m1-quasabianth-plus-2": {
     buttonLabels: { yes: "quasa", no: "rechess" },
     displayOutcomes: ["no", "yes"],
-    sportsbookButtonsOnly: true,
     clinchRule:
       "Add 2 points to Quasabianth’s score. Quasa +2 wins if Quasabianth wins the match or loses by 1 point. Rechess -2 wins if Rechesster wins by 3 or more. If Rechesster wins by exactly 2, such as 6–4, it’s a push and both sides pay 50¢ per contract.",
     sortPriority: 1,
@@ -189,9 +187,6 @@ const marketPresentation: Record<
 
 export const predictionMarketDisplayOutcomes = (id: PredictionMarketId) =>
   marketPresentation[id]?.displayOutcomes ?? predictionOutcomes;
-
-export const predictionSportsbookButtonsOnly = (id: PredictionMarketId) =>
-  marketPresentation[id]?.sportsbookButtonsOnly === true;
 
 export const predictionMarketMatchupLabel = (
   definition: PredictionMarketDefinition,

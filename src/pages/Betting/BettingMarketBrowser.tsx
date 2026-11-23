@@ -4,7 +4,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { InlineState } from "../../components/InlineState/InlineState";
 import { PredictionMarketExplainer } from "../../components/PredictionMarketExplainer/PredictionMarketExplainer";
 import { PredictionMarketGroupHeader } from "../../components/PredictionTrading/PredictionMarketGroupHeader";
-import { PredictionMarketIdentity } from "../../components/PredictionTrading/PredictionMarketIdentity";
 import { PredictionMarketPnl } from "../../components/PredictionTrading/PredictionMarketPnl";
 import { PredictionMarketTable } from "../../components/PredictionTrading/PredictionMarketTable";
 import { PredictionOrderBook } from "../../components/PredictionTrading/PredictionOrderBook";
@@ -18,7 +17,6 @@ import {
   predictionMarketDisplayOutcomes,
   predictionOutcomeCountryCode,
   predictionOutcomeLabel,
-  predictionSportsbookButtonsOnly,
   predictionSportsbookOutcomeLabel,
   suggestedPredictionPrice,
 } from "../../lib/predictionMarkets/predictionMarkets";
@@ -172,10 +170,6 @@ export const BettingMarketBrowser = ({
               const state = predictionStateByMarketId.get(definition.id);
               const userProfit = personalPredictionPnlByMarketId.get(definition.id);
               const clinchNote = predictionMarketClinchNote(definition.id);
-              const inlineRules = predictionSportsbookButtonsOnly(definition.id);
-              const rulesHelp = clinchNote ? (
-                <PredictionMarketExplainer label="Clinch rules" text={clinchNote} />
-              ) : null;
               const sportsbookOutcomes = winnerMarket
                 ? [winnerPosition]
                 : predictionMarketDisplayOutcomes(definition.id);
@@ -210,15 +204,9 @@ export const BettingMarketBrowser = ({
               }
               return (
                 <article
-                  className={`bettingMarketCard${inlineRules ? " bettingMarketCard--inline-rules" : ""}`}
+                  className={`bettingMarketCard${clinchNote ? " bettingMarketCard--inline-rules" : ""}`}
                   key={definition.id}
                 >
-                  {rulesHelp && !inlineRules ? (
-                    <div className="predictionSharedStrikeHeading">
-                      <PredictionMarketIdentity definition={definition} density="compact" />
-                      {rulesHelp}
-                    </div>
-                  ) : null}
                   <div
                     className={`bettingOutcomes${
                       winnerMarket ? " bettingPredictionBookOutcome" : ""
@@ -282,7 +270,9 @@ export const BettingMarketBrowser = ({
                       );
                     })}
                   </div>
-                  {inlineRules ? rulesHelp : null}
+                  {clinchNote ? (
+                    <PredictionMarketExplainer label="Clinch rules" text={clinchNote} />
+                  ) : null}
                   {isAuthenticated && state ? (
                     <PredictionMarketPnl value={userProfit} positions={state.positions} />
                   ) : null}
