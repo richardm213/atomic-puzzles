@@ -26,7 +26,7 @@ it("preserves the signed handicap when abbreviating matchup buttons", () => {
     outcomeLabels: { yes: "quasabianth +1.5", no: "rechesster -1.5" },
   };
   expect(predictionOutcomeAbbreviation(market, "yes")).toBe("quasa +1.5");
-  expect(predictionOutcomeAbbreviation(market, "no")).toBe("rechess -1.5");
+  expect(predictionOutcomeAbbreviation(market, "no")).toBe("re -1.5");
 });
 
 it("marks only live orders with unfilled contracts as pending", () => {

@@ -168,7 +168,7 @@ const marketPresentation: Record<
   },
   "awc2026-lb-r3-m1-quasabianth-plus-2": {
     clinchRule:
-      "Add 1.5 points to Quasabianth’s score. Quasa +1.5 wins if Quasabianth wins the match or loses by 1 point. Rechess -1.5 wins if Rechesster wins by 2 or more, such as 6–4.",
+      "Add 1.5 points to Quasabianth’s score. Quasa +1.5 wins if Quasabianth wins the match or loses by 1 point. Re -1.5 wins if Rechesster wins by 2 or more, such as 6–4.",
     sortPriority: 1,
   },
   "awc2026-lb-r3-m2-rabbier-plus-3": {
@@ -222,7 +222,7 @@ export const predictionOutcomeAbbreviation = (
     judebaetorrens: "jude",
     theatomicstorm: "storm",
     renaudmerle: "renaud",
-    rechesster: "rechess",
+    rechesster: "re",
     dandan2016: "dan",
     rabbier: "rabbie",
     maxwellssilvrhammer: "max",
