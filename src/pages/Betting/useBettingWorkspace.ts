@@ -46,6 +46,7 @@ const predictionDisplayModeSchema = z.enum(["book", "market"]);
 const predictionDisplayModeStorageKey = "betting:prediction-display-mode";
 const defaultMarketCategory = "AWC Semifinals";
 export const otherMarketCategories: readonly string[] = [
+  "AWC Losers 2",
   "AWC Quarterfinals",
   "AWC Round of 16",
   "AWC Losers 1",
@@ -53,6 +54,7 @@ export const otherMarketCategories: readonly string[] = [
 ];
 const predictionGroupIdByCategory = {
   "AWC Semifinals": "awc-2026-semifinals",
+  "AWC Losers 3": "awc-2026-losers-round-3",
   "AWC Losers 2": "awc-2026-losers-round-2",
   "AWC Quarterfinals": "awc-2026-quarterfinals",
   "2026 AWC Champion": "awc-2026-champion",

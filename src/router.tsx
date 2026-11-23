@@ -466,6 +466,18 @@ const awcLosersRound1PredictionMarketRoute = createRoute({
   component: PredictionMarketPage,
 });
 
+const awcLosersRound2PredictionMarketRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/betting/awc-2026-losers-round-2",
+  component: PredictionMarketPage,
+});
+
+const awcLosersRound3PredictionMarketRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/betting/awc-2026-losers-round-3",
+  component: PredictionMarketPage,
+});
+
 const awcSemifinalsPredictionMarketRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/betting/awc-2026-semifinals",
@@ -994,6 +1006,8 @@ const routeTree = rootRoute.addChildren([
   awcSemifinalsPredictionMarketRoute,
   awcQuarterfinalsPredictionMarketRoute,
   awcLosersRound1PredictionMarketRoute,
+  awcLosersRound2PredictionMarketRoute,
+  awcLosersRound3PredictionMarketRoute,
   awcRoundOf16PredictionMarketRoute,
   tournamentRoute,
   tournamentTabRoute,

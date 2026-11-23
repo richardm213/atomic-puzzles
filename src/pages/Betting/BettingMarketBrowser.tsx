@@ -33,6 +33,7 @@ const singleColumnGroups = new Set([
   "awc-2026-semifinals",
   "awc-2026-losers-round-1",
   "awc-2026-losers-round-2",
+  "awc-2026-losers-round-3",
 ]);
 
 export const BettingMarketBrowser = ({

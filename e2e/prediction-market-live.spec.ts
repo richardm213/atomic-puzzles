@@ -8,7 +8,9 @@ test("Betting categories show active groups and omit retired markets", async ({ 
   const groups = [
     ["awc-2026-semifinals", "AWC 2026 Semifinals"],
     ["ban-2026", "Ban markets"],
+    ["awc-2026-losers-round-1", "AWC 2026 Losers Round 1"],
     ["awc-2026-losers-round-2", "AWC 2026 Losers Round 2"],
+    ["awc-2026-losers-round-3", "AWC 2026 Losers Round 3"],
     ["awc-2026-round-of-16", "AWC 2026 Round of 16"],
     ["november-atomic-shield-2026", "November Atomic Shield"],
     ["awc-2026-champion", "Who will win 2026 AWC"],
@@ -114,13 +116,14 @@ test("Betting categories show active groups and omit retired markets", async ({ 
   await ban.click();
   await expect(ban).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByText("Ban markets", { exact: true })).toBeVisible();
-  const losers2 = page.getByRole("button", { name: "AWC Losers 2", exact: true });
-  await losers2.click();
-  await expect(losers2).toHaveAttribute("aria-pressed", "true");
+  const other = page.getByRole("combobox", { name: "Other markets", exact: true });
+  await expect(categories.getByRole("button", { name: "AWC Losers 2", exact: true })).toHaveCount(
+    0,
+  );
+  await other.selectOption("AWC Losers 2");
   await expect(page.getByText("AWC 2026 Losers Round 2", { exact: true })).toBeVisible();
   await page.reload();
-  await expect(losers2).toHaveAttribute("aria-pressed", "true");
-  const other = page.getByRole("combobox", { name: "Other markets", exact: true });
+  await expect(other).toHaveValue("AWC Losers 2");
   await expect(categories.getByRole("button", { name: "Nov Shield", exact: true })).toHaveCount(0);
   await expect(other.getByRole("option", { name: "Nov Shield", exact: true })).toHaveCount(0);
   const champion = categories.getByRole("button", { name: "AWC Champion", exact: true });
@@ -155,6 +158,14 @@ test("Betting categories show active groups and omit retired markets", async ({ 
   await expect(
     categories.getByRole("button", { name: "AWC Semifinals", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
+  for (const round of [1, 2, 3]) {
+    await page.goto(`/betting?market=losers-${round}`);
+    await page.getByRole("link", { name: /Open market/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/betting/awc-2026-losers-round-${round}$`));
+    await expect(
+      page.getByRole("heading", { name: `AWC 2026 Losers Round ${round}`, exact: true }),
+    ).toBeVisible();
+  }
   await page.goto("/betting/awc-2026-side-bets");
   await expect(page).toHaveURL(/\/betting\?/);
   await expect(page.getByRole("heading", { name: "Betting", exact: true })).toBeVisible();
