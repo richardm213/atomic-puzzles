@@ -26,7 +26,7 @@ begin
       ('awc2026-lb-r3-m1-quasabianth-plus-2', 'quasabianth +1.5'),
       ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +3'),
       ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +1.5')
-    ) or (m.id = 'awc2026-lb-r3-m1-quasabianth-plus-2' and m.resolution_rules not like '%is a push%')) and (
+    ) or (m.id = 'awc2026-lb-r3-m1-quasabianth-plus-2' and m.resolution_rules not like '%50¢ per contract%')) and (
       m.status <> 'open' or m.exchange_volume_coins <> 0 or m.sportsbook_volume_coins <> 0
       or exists (select 1 from public.prediction_orders o where o.market_id = m.id and o.status in ('open', 'partial'))
       or exists (select 1 from public.prediction_fills f where f.market_id = m.id)
@@ -48,7 +48,7 @@ with strikes (id_suffix, match_id, question, display_name, yes_label, no_label, 
     ('quasabianth-plus-2', 'awc2026-lb-r3-m1',
      'Will quasabianth cover +2 against rechesster?',
      'quasabianth +2 vs rechesster -2', 'quasabianth +2', 'rechesster -2',
-     'Add 2 points to quasabianth''s score. Quasabianth +2 wins if quasabianth wins the match or loses by 1 point. Rechesster -2 wins if rechesster wins by 3 or more. Exactly 2 points, such as 6–4 for rechesster, is a push and remaining stakes are refunded.', 4),
+     'Add 2 points to quasabianth''s score. Quasabianth +2 wins if quasabianth wins the match or loses by 1 point. Rechesster -2 wins if rechesster wins by 3 or more. If rechesster wins by exactly 2, such as 6–4, the strike pushes and both sides settle at 50¢ per contract.', 4),
     ('rabbier-plus-3', 'awc2026-lb-r3-m2',
      'Will rabbier cover +2.5 against sutcunuri?',
      'rabbier +2.5 vs sutcunuri -2.5', 'rabbier +2.5', 'sutcunuri -2.5',
@@ -89,7 +89,7 @@ where (prediction_markets.id, prediction_markets.outcome_yes_label) in (
   ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +1.5')
 ) or (
   prediction_markets.id = 'awc2026-lb-r3-m1-quasabianth-plus-2'
-  and prediction_markets.resolution_rules not like '%is a push%'
+  and prediction_markets.resolution_rules not like '%50¢ per contract%'
 );
 
 update public.prediction_markets

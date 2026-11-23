@@ -11,6 +11,7 @@ import type {
 import {
   predictionMarketClinchNote,
   predictionOutcomeAbbreviation,
+  predictionOutcomeLabel,
   predictionOutcomes,
   predictionYesChance,
   sortPredictionMarketsByChance,
@@ -159,7 +160,10 @@ export const PredictionMarketTable = ({
                     className={`predictionSharedMarketPrice predictionSharedMarketPrice--${entry}`}
                     aria-pressed={selected}
                     disabled={availability?.disabled}
-                    title={availability?.title}
+                    title={
+                      availability?.title ??
+                      (clinchNote ? predictionOutcomeLabel(definition, entry) : undefined)
+                    }
                     onClick={() =>
                       onSelectOutcome(
                         definition,

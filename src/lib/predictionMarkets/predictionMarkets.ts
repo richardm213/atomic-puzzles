@@ -150,6 +150,7 @@ const marketPresentation: Record<
   {
     sportsbookLabels?: Record<PredictionOutcome, string>;
     matchupLabels?: Partial<Record<PredictionOutcome, string>>;
+    buttonLabels?: Partial<Record<PredictionOutcome, string>>;
     clinchRule?: string;
     sortPriority: number;
   }
@@ -163,15 +164,18 @@ const marketPresentation: Record<
   },
   "awc2026-lb-r3-m1-rechesster-6-0": {
     matchupLabels: { no: "quasabianth" },
+    buttonLabels: { yes: "Yes", no: "No" },
     clinchRule: "Rechesster must clinch exactly 6–0.",
     sortPriority: 2,
   },
   "awc2026-lb-r3-m1-quasabianth-plus-2": {
+    buttonLabels: { yes: "quasa", no: "rechess" },
     clinchRule:
-      "Add 2 points to Quasabianth’s score. Quasa +2 wins if Quasabianth wins the match or loses by 1 point. Re -2 wins if Rechesster wins by 3 or more. Exactly 2 points, such as 6–4 for Rechesster, is a push and remaining stakes are refunded.",
+      "Add 2 points to Quasabianth’s score. Quasa +2 wins if Quasabianth wins the match or loses by 1 point. Rechess -2 wins if Rechesster wins by 3 or more. If Rechesster wins by exactly 2, such as 6–4, it’s a push and both sides pay 50¢ per contract.",
     sortPriority: 1,
   },
   "awc2026-lb-r3-m2-rabbier-plus-3": {
+    buttonLabels: { yes: "rabbie", no: "sut" },
     clinchRule:
       "Add 2.5 points to Rabbier’s score. Rabbie +2.5 wins if Rabbier wins the match or loses by 1 or 2 points, such as 6–4. Sut -2.5 wins if Sutcunuri wins by 3 or more, such as 6–3.",
     sortPriority: 1,
@@ -222,14 +226,15 @@ export const predictionOutcomeAbbreviation = (
     judebaetorrens: "jude",
     theatomicstorm: "storm",
     renaudmerle: "renaud",
-    rechesster: "re",
+    rechesster: "rechess",
     dandan2016: "dan",
     rabbier: "rabbie",
     maxwellssilvrhammer: "max",
   };
-  return predictionOutcomeUnderscoreLabel(definition, outcome).replace(
-    /^(\S+)(?=$| (?:[+-]\d+(?:\.\d+)?|\d+[-–]\d+)$)/,
-    (name) => abbreviations[name.toLowerCase()] ?? name,
+  return (
+    marketPresentation[definition?.id ?? ""]?.buttonLabels?.[outcome] ??
+    abbreviations[predictionOutcomeLabel(definition, outcome).toLowerCase()] ??
+    predictionOutcomeUnderscoreLabel(definition, outcome)
   );
 };
 

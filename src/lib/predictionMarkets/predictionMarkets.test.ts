@@ -12,21 +12,30 @@ import {
   predictionMarketStateResultSchema,
   predictionMarketVolume,
   predictionOutcomeAbbreviation,
+  predictionOutcomeLabel,
   predictionTakerFee,
   quotePredictionBuy,
   quotePredictionSell,
   sortPredictionMarketsByChance,
 } from "./predictionMarkets";
 
-it("preserves the signed handicap when abbreviating matchup buttons", () => {
+it("uses player names on spread buttons and Yes and No on the exact-score strike", () => {
   const market = {
-    id: "handicap",
+    id: "awc2026-lb-r3-m1-quasabianth-plus-2",
     username: "quasabianth vs rechesster",
     countryCode: "RU",
-    outcomeLabels: { yes: "quasabianth +1.5", no: "rechesster -1.5" },
+    outcomeLabels: { yes: "quasabianth +2", no: "rechesster -2" },
   };
-  expect(predictionOutcomeAbbreviation(market, "yes")).toBe("quasa +1.5");
-  expect(predictionOutcomeAbbreviation(market, "no")).toBe("re -1.5");
+  expect(predictionOutcomeAbbreviation(market, "yes")).toBe("quasa");
+  expect(predictionOutcomeAbbreviation(market, "no")).toBe("rechess");
+  expect(predictionOutcomeLabel(market, "yes")).toBe("quasabianth +2");
+  const exactScore = {
+    ...market,
+    id: "awc2026-lb-r3-m1-rechesster-6-0",
+    outcomeLabels: { yes: "rechesster 6-0", no: "Any other score" },
+  };
+  expect(predictionOutcomeAbbreviation(exactScore, "yes")).toBe("Yes");
+  expect(predictionOutcomeAbbreviation(exactScore, "no")).toBe("No");
 });
 
 it("marks only live orders with unfilled contracts as pending", () => {
