@@ -14,7 +14,10 @@ type TooltipPosition = {
   bottom?: number;
 };
 
-export const PredictionMarketExplainer = () => {
+export const PredictionMarketExplainer = ({
+  label = "How prediction markets work",
+  text = explanation,
+}: { label?: string; text?: string } = {}) => {
   const tooltipId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -63,10 +66,14 @@ export const PredictionMarketExplainer = () => {
         ref={buttonRef}
         type="button"
         className="predictionMarketExplainerButton"
-        aria-label="How prediction markets work"
+        aria-label={label}
         aria-describedby={tooltipId}
+        onClick={showTooltip}
         onFocus={showTooltip}
         onBlur={() => setIsVisible(false)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setIsVisible(false);
+        }}
       >
         ?
       </button>
@@ -78,7 +85,7 @@ export const PredictionMarketExplainer = () => {
               role="tooltip"
               style={tooltipStyle ?? undefined}
             >
-              {explanation}
+              {text}
             </span>,
             document.body,
           )

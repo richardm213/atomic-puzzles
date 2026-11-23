@@ -4,10 +4,9 @@ import { Fragment } from "react";
 
 import type { PredictionMarketDefinition } from "../../lib/predictionMarkets/predictionMarkets";
 import {
+  predictionMarketMatchupLabel,
   predictionOutcomeCountryCode,
-  predictionOutcomeLabel,
   predictionOutcomes,
-  predictionOutcomeUnderscoreLabel,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 
@@ -42,24 +41,25 @@ export const PredictionMarketIdentity = ({
     <span
       className={`predictionSharedIdentity predictionSharedIdentity--matchup predictionSharedIdentity--${density}`}
     >
-      {predictionOutcomes.map((outcome, index) => (
-        <Fragment key={outcome}>
-          {index > 0 ? <span className="predictionSharedIdentityVs">vs</span> : null}
-          <span className="predictionSharedIdentityPlayer">
-            <img
-              src={countryCodeToFlagUrl(predictionOutcomeCountryCode(definition, outcome))}
-              alt=""
-              crossOrigin="anonymous"
-              loading="lazy"
-              decoding="async"
-              aria-hidden="true"
-            />
-            <strong title={predictionOutcomeLabel(definition, outcome)}>
-              {predictionOutcomeUnderscoreLabel(definition, outcome)}
-            </strong>
-          </span>
-        </Fragment>
-      ))}
+      {predictionOutcomes.map((outcome, index) => {
+        const label = predictionMarketMatchupLabel(definition, outcome);
+        return (
+          <Fragment key={outcome}>
+            {index > 0 ? <span className="predictionSharedIdentityVs">vs</span> : null}
+            <span className="predictionSharedIdentityPlayer">
+              <img
+                src={countryCodeToFlagUrl(predictionOutcomeCountryCode(definition, outcome))}
+                alt=""
+                crossOrigin="anonymous"
+                loading="lazy"
+                decoding="async"
+                aria-hidden="true"
+              />
+              <strong title={label}>{label}</strong>
+            </span>
+          </Fragment>
+        );
+      })}
     </span>
   );
 };

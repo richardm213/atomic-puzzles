@@ -9,12 +9,14 @@ import type {
   PredictionOutcome,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import {
+  predictionMarketClinchNote,
   predictionOutcomeAbbreviation,
   predictionOutcomes,
   predictionYesChance,
   sortPredictionMarketsByChance,
   suggestedPredictionPrice,
 } from "../../lib/predictionMarkets/predictionMarkets";
+import { PredictionMarketExplainer } from "../PredictionMarketExplainer/PredictionMarketExplainer";
 import { PredictionMarketIdentity } from "./PredictionMarketIdentity";
 import { PredictionMarketPnl } from "./PredictionMarketPnl";
 import { PredictionPendingOrders } from "./PredictionPendingOrders";
@@ -84,6 +86,7 @@ export const PredictionMarketTable = ({
       const selectedMarket = activeMarketId === definition.id;
       const pnl = pnlByMarketId?.get(definition.id);
       const drawerId = `prediction-market-table-${definition.id}`;
+      const clinchNote = predictionMarketClinchNote(definition.id);
 
       return (
         <div
@@ -101,7 +104,9 @@ export const PredictionMarketTable = ({
               state={state}
             />
           ) : (
-            <div className="predictionSharedMarketSummary">
+            <div
+              className={`predictionSharedMarketSummary${clinchNote ? " predictionSharedMarketSummary--with-rules" : ""}`}
+            >
               <button
                 type="button"
                 className="predictionSharedMarketToggle"
@@ -128,6 +133,11 @@ export const PredictionMarketTable = ({
                   <strong>{chance === undefined ? "—" : `${chance}%`}</strong>
                 </span>
               </button>
+              {clinchNote ? (
+                <span className="predictionSharedMarketRules">
+                  <PredictionMarketExplainer label="Clinch rules" text={clinchNote} />
+                </span>
+              ) : null}
               {isAuthenticated ? (
                 <PredictionPendingOrders definition={definition} orders={state?.orders ?? []} />
               ) : null}

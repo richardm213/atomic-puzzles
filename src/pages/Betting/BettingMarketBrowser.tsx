@@ -2,7 +2,9 @@ import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { InlineState } from "../../components/InlineState/InlineState";
+import { PredictionMarketExplainer } from "../../components/PredictionMarketExplainer/PredictionMarketExplainer";
 import { PredictionMarketGroupHeader } from "../../components/PredictionTrading/PredictionMarketGroupHeader";
+import { PredictionMarketIdentity } from "../../components/PredictionTrading/PredictionMarketIdentity";
 import { PredictionMarketPnl } from "../../components/PredictionTrading/PredictionMarketPnl";
 import { PredictionMarketTable } from "../../components/PredictionTrading/PredictionMarketTable";
 import { PredictionOrderBook } from "../../components/PredictionTrading/PredictionOrderBook";
@@ -12,6 +14,7 @@ import { predictionOrderRestrictionMessage } from "../../lib/betting/betting";
 import { formatCoinVolume } from "../../lib/coins/coinDisplay";
 import {
   formatPredictionChance,
+  predictionMarketClinchNote,
   predictionOutcomeCountryCode,
   predictionOutcomeLabel,
   predictionOutcomes,
@@ -168,6 +171,7 @@ export const BettingMarketBrowser = ({
             {sortedActivePredictionMarkets.map((definition) => {
               const state = predictionStateByMarketId.get(definition.id);
               const userProfit = personalPredictionPnlByMarketId.get(definition.id);
+              const clinchNote = predictionMarketClinchNote(definition.id);
               const isCompleted = state !== undefined && state.market.status !== "open";
               if (isCompleted) {
                 const resolvedOutcome = state.market.outcome ?? "no";
@@ -199,6 +203,12 @@ export const BettingMarketBrowser = ({
               }
               return (
                 <article className="bettingMarketCard" key={definition.id}>
+                  {clinchNote ? (
+                    <div className="predictionSharedStrikeHeading">
+                      <PredictionMarketIdentity definition={definition} density="compact" />
+                      <PredictionMarketExplainer label="Clinch rules" text={clinchNote} />
+                    </div>
+                  ) : null}
                   <div
                     className={`bettingOutcomes${
                       winnerMarket ? " bettingPredictionBookOutcome" : ""

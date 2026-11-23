@@ -148,8 +148,10 @@ export const predictionOutcomeLabel = (
 const marketPresentation: Record<
   string,
   {
-    sportsbookLabels: Record<PredictionOutcome, string>;
-    sortLast: boolean;
+    sportsbookLabels?: Record<PredictionOutcome, string>;
+    matchupLabels?: Partial<Record<PredictionOutcome, string>>;
+    clinchingScore?: string;
+    sortLast?: boolean;
   }
 > = {
   "awc-2026-semifinal-jude-3-plus-points": {
@@ -159,13 +161,40 @@ const marketPresentation: Record<
     },
     sortLast: true,
   },
+  "awc2026-lb-r3-m1-rechesster-6-0": {
+    matchupLabels: { no: "quasabianth" },
+    clinchingScore: "6–0",
+    sortLast: true,
+  },
+  "awc2026-lb-r3-m1-quasabianth-plus-2": {
+    clinchingScore: "6–4",
+    sortLast: true,
+  },
+  "awc2026-lb-r3-m2-rabbier-plus-3": {
+    clinchingScore: "6–3",
+    sortLast: true,
+  },
+};
+
+export const predictionMarketMatchupLabel = (
+  definition: PredictionMarketDefinition,
+  outcome: PredictionOutcome,
+): string =>
+  marketPresentation[definition.id]?.matchupLabels?.[outcome] ??
+  predictionOutcomeUnderscoreLabel(definition, outcome);
+
+export const predictionMarketClinchNote = (marketId: PredictionMarketId): string | undefined => {
+  const score = marketPresentation[marketId]?.clinchingScore;
+  return score
+    ? `Decided when the match is clinched. If it’s clinched at ${score}, that’s the score used. Games played afterward don’t count.`
+    : undefined;
 };
 
 export const predictionSportsbookOutcomeLabel = (
   definition: PredictionMarketDefinition | undefined,
   outcome: PredictionOutcome,
 ): string =>
-  marketPresentation[definition?.id ?? ""]?.sportsbookLabels[outcome] ??
+  marketPresentation[definition?.id ?? ""]?.sportsbookLabels?.[outcome] ??
   predictionOutcomeLabel(definition, outcome);
 
 export const comparePredictionMarketPriority = (

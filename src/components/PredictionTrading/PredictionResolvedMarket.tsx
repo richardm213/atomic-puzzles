@@ -5,7 +5,11 @@ import type {
   PredictionMarketState,
   PredictionOutcome,
 } from "../../lib/predictionMarkets/predictionMarkets";
-import { predictionOutcomeLabel } from "../../lib/predictionMarkets/predictionMarkets";
+import {
+  predictionMarketClinchNote,
+  predictionOutcomeLabel,
+} from "../../lib/predictionMarkets/predictionMarkets";
+import { PredictionMarketExplainer } from "../PredictionMarketExplainer/PredictionMarketExplainer";
 import { PredictionMarketIdentity } from "./PredictionMarketIdentity";
 import { PredictionMarketPnl } from "./PredictionMarketPnl";
 import { PredictionPositionHoldings } from "./PredictionPositionHoldings";
@@ -36,6 +40,7 @@ export const PredictionResolvedMarket = ({
       ? state.market.settlementPriceCents
       : displayedSettlementPriceCents;
   const visiblePnl = pnl !== undefined && Math.abs(pnl) >= 0.005 ? pnl : undefined;
+  const clinchNote = predictionMarketClinchNote(definition.id);
   const outcomeLabel =
     state.market.status !== "resolved"
       ? state.market.status === "refunded"
@@ -48,9 +53,12 @@ export const PredictionResolvedMarket = ({
   return (
     <div className="predictionSharedResolvedMarket">
       <span className="predictionSharedResolvedIdentity">
-        <PredictionStrikeBets definition={definition} className="predictionSharedResolvedBets">
-          <PredictionMarketIdentity definition={definition} density={density} />
-        </PredictionStrikeBets>
+        <span className="predictionSharedStrikeHeading">
+          <PredictionStrikeBets definition={definition} className="predictionSharedResolvedBets">
+            <PredictionMarketIdentity definition={definition} density={density} />
+          </PredictionStrikeBets>
+          {clinchNote ? <PredictionMarketExplainer label="Clinch rules" text={clinchNote} /> : null}
+        </span>
         {visiblePnl !== undefined ? (
           <PredictionMarketPnl value={visiblePnl} />
         ) : showHoldings && pnl === undefined ? (
