@@ -151,7 +151,7 @@ const marketPresentation: Record<
     sportsbookLabels?: Record<PredictionOutcome, string>;
     matchupLabels?: Partial<Record<PredictionOutcome, string>>;
     clinchRule?: string;
-    sortLast?: boolean;
+    sortPriority: number;
   }
 > = {
   "awc-2026-semifinal-jude-3-plus-points": {
@@ -159,22 +159,22 @@ const marketPresentation: Record<
       yes: "jude 3+ pts vs max",
       no: "jude less than 3 pts vs max",
     },
-    sortLast: true,
+    sortPriority: 1,
   },
   "awc2026-lb-r3-m1-rechesster-6-0": {
     matchupLabels: { no: "quasabianth" },
     clinchRule: "Rechesster must clinch exactly 6–0.",
-    sortLast: true,
+    sortPriority: 2,
   },
   "awc2026-lb-r3-m1-quasabianth-plus-2": {
     clinchRule:
       "Add 1.5 points to Quasabianth’s score. Quasa +1.5 wins if Quasabianth wins the match or loses by 1 point. Rechess -1.5 wins if Rechesster wins by 2 or more, such as 6–4.",
-    sortLast: true,
+    sortPriority: 1,
   },
   "awc2026-lb-r3-m2-rabbier-plus-3": {
     clinchRule:
       "Add 2.5 points to Rabbier’s score. Rabbie +2.5 wins if Rabbier wins the match or loses by 1 or 2 points, such as 6–4. Sut -2.5 wins if Sutcunuri wins by 3 or more, such as 6–3.",
-    sortLast: true,
+    sortPriority: 1,
   },
 };
 
@@ -203,8 +203,8 @@ export const comparePredictionMarketPriority = (
   left: PredictionMarketDefinition,
   right: PredictionMarketDefinition,
 ): number =>
-  Number(Boolean(marketPresentation[left.id]?.sortLast)) -
-  Number(Boolean(marketPresentation[right.id]?.sortLast));
+  (marketPresentation[left.id]?.sortPriority ?? 0) -
+  (marketPresentation[right.id]?.sortPriority ?? 0);
 
 export const predictionOutcomeAbbreviation = (
   definition: PredictionMarketDefinition | undefined,

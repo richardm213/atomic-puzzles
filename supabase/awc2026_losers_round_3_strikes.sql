@@ -41,7 +41,7 @@ with strikes (id_suffix, match_id, question, display_name, yes_label, no_label, 
     ('rechesster-6-0', 'awc2026-lb-r3-m1',
      'Will rechesster clinch the match against quasabianth 6–0?',
      'rechesster 6-0 vs quasabianth', 'rechesster 6-0', 'Any other score',
-     'Yes wins only if rechesster clinches exactly 6–0. Any other clinching score resolves No.', 3),
+     'Yes wins only if rechesster clinches exactly 6–0. Any other clinching score resolves No.', 6),
     ('quasabianth-plus-2', 'awc2026-lb-r3-m1',
      'Will quasabianth cover +1.5 against rechesster?',
      'quasabianth +1.5 vs rechesster -1.5', 'quasabianth +1.5', 'rechesster -1.5',
@@ -84,5 +84,9 @@ where (prediction_markets.id, prediction_markets.outcome_yes_label) in (
   ('awc2026-lb-r3-m1-quasabianth-plus-2', 'quasabianth +2'),
   ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +3')
 );
+
+update public.prediction_markets
+set display_order = 6
+where id = 'awc2026-lb-r3-m1-rechesster-6-0' and display_order is distinct from 6;
 
 commit;

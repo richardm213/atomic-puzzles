@@ -124,6 +124,19 @@ describe("predictionMarketVolume", () => {
 });
 
 describe("sortPredictionMarketsByChance", () => {
+  it("keeps the exact score below both handicap strikes when its chance changes", () => {
+    const definitions = [
+      { id: "awc2026-lb-r3-m1-rechesster-6-0", startingChance: 60 },
+      { id: "awc2026-lb-r3-m1-quasabianth-plus-2", startingChance: 30 },
+      { id: "awc2026-lb-r3-m2-rabbier-plus-3", startingChance: 40 },
+    ].map((market) => ({ ...market, username: market.id, countryCode: "" }));
+
+    expect(sortPredictionMarketsByChance(definitions, new Map()).map(({ id }) => id)).toEqual([
+      "awc2026-lb-r3-m2-rabbier-plus-3",
+      "awc2026-lb-r3-m1-quasabianth-plus-2",
+      "awc2026-lb-r3-m1-rechesster-6-0",
+    ]);
+  });
   it("orders strikes from highest to lowest probability and keeps ties stable", () => {
     const definitions = [
       {
