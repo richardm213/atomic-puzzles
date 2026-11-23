@@ -13,18 +13,15 @@ describe("puzzle session", () => {
       analysis: false,
       hasAttempted: false,
       canGiveUp: false,
-      canViewSolution: false,
     });
     expect(getPuzzleSessionAccess(session, 0, false, true)).toMatchObject({
       canGiveUp: true,
-      canViewSolution: false,
       hasAttempted: false,
     });
     expect(getPuzzleSessionAccess(session, 1, false)).toEqual({
       analysis: false,
       hasAttempted: true,
       canGiveUp: true,
-      canViewSolution: true,
     });
   });
 
@@ -37,10 +34,9 @@ describe("puzzle session", () => {
       analysis: false,
       canGiveUp: true,
     });
-    expect(getPuzzleSessionAccess(wrong, 0, true)).toMatchObject({
+    expect(getPuzzleSessionAccess(wrong, 0, true, true)).toMatchObject({
       analysis: false,
       canGiveUp: false,
-      canViewSolution: false,
     });
 
     const correct = puzzleSessionReducer(wrong, {
@@ -50,9 +46,7 @@ describe("puzzle session", () => {
     expect(getPuzzleSessionAccess(correct, 1, false)).toMatchObject({
       analysis: true,
       canGiveUp: false,
-      canViewSolution: true,
     });
-    expect(correct.solutionRevealed).toBe(true);
   });
 
   it("keeps a returning player in solve mode after a miss and locks a new visit", () => {
@@ -64,20 +58,19 @@ describe("puzzle session", () => {
       type: "board-feedback",
       feedback: { type: "wrong", title: "Incorrect", icon: "×" },
     });
-    expect(withFeedback).toMatchObject({ attempt: "wrong", solutionRevealed: false });
+    expect(withFeedback.attempt).toBe("wrong");
     expect(getPuzzleSessionAccess(withFeedback, 0, false).analysis).toBe(false);
     expect(
       puzzleSessionReducer(withFeedback, {
         type: "attempt-resolved",
         correct: true,
       }),
-    ).toMatchObject({ attempt: "solved", solutionRevealed: true });
+    ).toMatchObject({ attempt: "solved" });
 
     const nextVisit = puzzleSessionReducer(withFeedback, { type: "reset" });
     expect(getPuzzleSessionAccess(nextVisit, 0, false)).toMatchObject({
       analysis: false,
       canGiveUp: false,
-      canViewSolution: false,
     });
   });
 });

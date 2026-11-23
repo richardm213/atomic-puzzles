@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   DAILY_PUZZLE_ATTEMPT_LIMIT,
+  DAILY_PUZZLE_ATTEMPT_LIMIT_CODE,
   isTimestampInUtcDay,
 } from "../../../shared/domain/puzzles/dailyAttemptLimit";
 import type { PuzzleGradingState } from "../../../shared/domain/puzzles/puzzleGrading";
@@ -155,6 +156,7 @@ export const usePuzzleProgress = ({
       attemptDurationMs,
       attemptPgn,
       resigned = false,
+      onSaved,
     }: {
       puzzleId: string | number | null | undefined;
       puzzleCorrect: boolean;
@@ -163,6 +165,7 @@ export const usePuzzleProgress = ({
       attemptDurationMs: number | null;
       attemptPgn?: string;
       resigned?: boolean;
+      onSaved?: () => void;
     }): void => {
       const normalizedPuzzleId = toPuzzleKey(puzzleId);
       if (!normalizedPuzzleId || !username) return;
@@ -251,11 +254,18 @@ export const usePuzzleProgress = ({
             void queryClient.invalidateQueries({ queryKey: puzzleQueryKeys.ratingEvents });
           }
           if (result?.ratingEvent) onRatingEvent(normalizedPuzzleId, result.ratingEvent);
+          onSaved?.();
         } catch (error) {
-          if (error instanceof ApiError && error.code === "daily_puzzle_attempt_limit") {
+          const code = error instanceof ApiError ? error.code : null;
+          if (code === DAILY_PUZZLE_ATTEMPT_LIMIT_CODE) {
             setDailyAttemptCount(DAILY_PUZZLE_ATTEMPT_LIMIT);
           }
-          retryProgressWriteRef.current = write;
+          retryProgressWriteRef.current =
+            code === DAILY_PUZZLE_ATTEMPT_LIMIT_CODE ||
+            code === "puzzle_run_finished" ||
+            code === "puzzle_rating_excluded"
+              ? null
+              : write;
           setProgressSaveError(
             getErrorMessage(error, "Unable to save this attempt. Please retry."),
           );

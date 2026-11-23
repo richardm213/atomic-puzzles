@@ -8,8 +8,7 @@ export type CompletionFeedback = {
 
 // Saved history is an input, never the result of the current visit.
 export type PuzzleSessionState = {
-  attempt: "unresolved" | "wrong" | "solved";
-  solutionRevealed: boolean;
+  attempt: "unresolved" | "wrong" | "solved" | "revealed";
   feedback: CompletionFeedback | null;
 };
 
@@ -21,12 +20,11 @@ export type PuzzleSessionAction =
 
 export const createInitialPuzzleSession = (): PuzzleSessionState => ({
   attempt: "unresolved",
-  solutionRevealed: false,
   feedback: null,
 });
 
 export const isPuzzleSessionInAnalysis = (state: PuzzleSessionState): boolean =>
-  state.attempt === "solved" || state.solutionRevealed;
+  state.attempt === "solved" || state.attempt === "revealed";
 
 export const getPuzzleSessionAccess = (
   state: PuzzleSessionState,
@@ -35,15 +33,11 @@ export const getPuzzleSessionAccess = (
   previouslySolved = false,
 ) => {
   const analysis = isPuzzleSessionInAnalysis(state);
-  const hasAttempted =
-    state.attempt !== "unresolved" || state.solutionRevealed || resumedMisses > 0;
+  const hasAttempted = state.attempt !== "unresolved" || resumedMisses > 0;
   return {
     analysis,
     hasAttempted,
-    canGiveUp:
-      !analysis &&
-      (previouslySolved || (!retryMovePending && (state.attempt === "wrong" || resumedMisses > 0))),
-    canViewSolution: hasAttempted && !retryMovePending,
+    canGiveUp: !analysis && !retryMovePending && (previouslySolved || hasAttempted),
   };
 };
 
@@ -59,11 +53,10 @@ export const puzzleSessionReducer = (
       if (isPuzzleSessionInAnalysis(state)) return state;
       return {
         attempt: action.correct ? "solved" : "wrong",
-        solutionRevealed: action.correct,
         feedback: null,
       };
     case "reveal-solution":
-      return { ...state, solutionRevealed: true };
+      return isPuzzleSessionInAnalysis(state) ? state : { ...state, attempt: "revealed" };
     case "board-feedback":
       return state.feedback === action.feedback ? state : { ...state, feedback: action.feedback };
   }

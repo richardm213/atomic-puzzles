@@ -213,11 +213,14 @@ test("solving after a mistake earns coins while the first move and time stay in 
   await page.goto("/solve/102");
   await expect(page.locator("cg-board")).toBeVisible();
   const draftButton = page.getByRole("button", { name: "Submit puzzle", exact: true });
+  const analysis = page.getByRole("region", { name: "Puzzle analysis" });
   await expect(draftButton).toHaveCount(0);
   await playBlackMove(page, "a7a6");
   await expect(page.getByText("-1.5 coins", { exact: true })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Explanation", exact: true })).toBeDisabled();
   await expect(page.getByRole("tab", { name: "Other attempts", exact: true })).toBeDisabled();
+  await expect(page.getByText("Play e5 followed by Nc6.")).toHaveCount(0);
+  await expect(analysis.getByRole("button", { name: /e5|Nc6/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Resign and reveal the solution" })).toBeEnabled();
   await playBlackMove(page, "e7e5");
   await expect(
@@ -236,7 +239,6 @@ test("solving after a mistake earns coins while the first move and time stay in 
   await expect(page.getByLabel("Attempt time 0:30")).toBeVisible();
   await expect(page.getByLabel("Solved on the second try", { exact: true })).toBeVisible();
 
-  const analysis = page.getByRole("region", { name: "Puzzle analysis" });
   await analysis.getByRole("button", { name: /e5/ }).click();
   await playBlackMove(page, "c2c3");
   await analysis.getByRole("button", { name: /e5/ }).click();
