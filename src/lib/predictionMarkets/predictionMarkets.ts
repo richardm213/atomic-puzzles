@@ -4,6 +4,7 @@ import {
   type PredictionBookLevel,
   type PredictionOrderSide,
   type PredictionOutcome,
+  predictionOutcomes,
 } from "../../../shared/domain/betting";
 import { formatPricePercentageValue } from "../../utils/formatters";
 import { idempotentRequest } from "../api/idempotentRequest";

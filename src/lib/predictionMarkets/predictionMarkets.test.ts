@@ -36,6 +36,7 @@ it("uses player names on spread buttons and Yes and No on the exact-score strike
       predictionSportsbookOutcomeLabel(market, outcome),
     ),
   ).toEqual(["rechesster -2", "quasabianth +2"]);
+  expect(predictionMarketDisplayOutcomes("awc2026-lb-r3-m1")).toEqual(["yes", "no"]);
   const exactScore = {
     ...market,
     id: "awc2026-lb-r3-m1-rechesster-6-0",
