@@ -7,12 +7,14 @@ import {
   isPendingPredictionOrder,
   predictionBuyOrderCost,
   predictionMarketCatalogRowSchema,
+  predictionMarketDisplayOutcomes,
   predictionMarketGroupsFromRows,
   type PredictionMarketState,
   predictionMarketStateResultSchema,
   predictionMarketVolume,
   predictionOutcomeAbbreviation,
   predictionOutcomeLabel,
+  predictionSportsbookOutcomeLabel,
   predictionTakerFee,
   quotePredictionBuy,
   quotePredictionSell,
@@ -29,6 +31,11 @@ it("uses player names on spread buttons and Yes and No on the exact-score strike
   expect(predictionOutcomeAbbreviation(market, "yes")).toBe("quasa");
   expect(predictionOutcomeAbbreviation(market, "no")).toBe("rechess");
   expect(predictionOutcomeLabel(market, "yes")).toBe("quasabianth +2");
+  expect(
+    predictionMarketDisplayOutcomes(market.id).map((outcome) =>
+      predictionSportsbookOutcomeLabel(market, outcome),
+    ),
+  ).toEqual(["rechesster -2", "quasabianth +2"]);
   const exactScore = {
     ...market,
     id: "awc2026-lb-r3-m1-rechesster-6-0",

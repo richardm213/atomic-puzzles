@@ -7,7 +7,11 @@ import { createPortal } from "react-dom";
 
 import { strikePredictionPositionsQueryOptions } from "../../lib/betting/bettingQueries";
 import { predictionMarketCatalogQueryOptions } from "../../lib/predictionMarkets/predictionMarketQueries";
-import type { PredictionMarketDefinition } from "../../lib/predictionMarkets/predictionMarkets";
+import {
+  type PredictionMarketDefinition,
+  predictionMarketDisplayOutcomes,
+  predictionOutcomeLabel,
+} from "../../lib/predictionMarkets/predictionMarkets";
 import { BetHistoryTable } from "../../pages/Betting/BettingHistory";
 import { buildBetHistory } from "../../pages/Betting/bettingHistoryModel";
 import { getErrorMessage } from "../../utils/errors";
@@ -75,7 +79,9 @@ export const PredictionStrikeBets = ({
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const title = definition.outcomeLabels
-    ? `${definition.outcomeLabels.yes} vs ${definition.outcomeLabels.no}`
+    ? predictionMarketDisplayOutcomes(definition.id)
+        .map((outcome) => predictionOutcomeLabel(definition, outcome))
+        .join(" vs ")
     : definition.username;
   useEffect(() => {
     const pane = dialog.current;

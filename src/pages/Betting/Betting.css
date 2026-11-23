@@ -268,6 +268,22 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.bettingMarketCard--inline-rules {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.bettingMarketCard--inline-rules .predictionSharedMarketPnl {
+  grid-column: 1 / -1;
+}
+
+@media (pointer: coarse) {
+  .bettingMarketCard--inline-rules .predictionMarketExplainerButton {
+    width: 44px;
+    height: 44px;
+  }
+}
+
 .bettingExchangeCard {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
@@ -439,6 +455,11 @@
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.bettingMarketCard--inline-rules .bettingOutcomePlayer > span {
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .bettingOutcomeQuote {

@@ -10,9 +10,9 @@ import type {
 } from "../../lib/predictionMarkets/predictionMarkets";
 import {
   predictionMarketClinchNote,
+  predictionMarketDisplayOutcomes,
   predictionOutcomeAbbreviation,
   predictionOutcomeLabel,
-  predictionOutcomes,
   predictionYesChance,
   sortPredictionMarketsByChance,
   suggestedPredictionPrice,
@@ -150,7 +150,7 @@ export const PredictionMarketTable = ({
               className="predictionSharedMarketPrices"
               aria-label={`${definition.username} outcome`}
             >
-              {predictionOutcomes.map((entry) => {
+              {predictionMarketDisplayOutcomes(definition.id).map((entry) => {
                 const displayedPrice = state?.book[entry].asks[0]?.priceCents;
                 const availability = outcomeAvailability?.(definition, entry);
                 const selected = selectedMarket && selectedOutcome === entry;

@@ -15,10 +15,10 @@ import { formatCoinVolume } from "../../lib/coins/coinDisplay";
 import {
   formatPredictionChance,
   predictionMarketClinchNote,
-  predictionOutcomeAbbreviation,
+  predictionMarketDisplayOutcomes,
   predictionOutcomeCountryCode,
   predictionOutcomeLabel,
-  predictionOutcomes,
+  predictionSportsbookButtonsOnly,
   predictionSportsbookOutcomeLabel,
   suggestedPredictionPrice,
 } from "../../lib/predictionMarkets/predictionMarkets";
@@ -70,7 +70,6 @@ export const BettingMarketBrowser = ({
   const winnerMarket = isWinnerCategory(marketCategory);
   const isOtherMarket = otherMarketCategories.includes(marketCategory);
   const sportsbook = activePredictionDisplayMode === "book";
-  const sportsbookOutcomes = winnerMarket ? [winnerPosition] : predictionOutcomes;
   const restrictionTitle = (restriction: ReturnType<typeof predictionRestrictionFor>) =>
     restriction
       ? predictionOrderRestrictionMessage(restriction, activePredictionGroup?.id)
@@ -173,6 +172,13 @@ export const BettingMarketBrowser = ({
               const state = predictionStateByMarketId.get(definition.id);
               const userProfit = personalPredictionPnlByMarketId.get(definition.id);
               const clinchNote = predictionMarketClinchNote(definition.id);
+              const inlineRules = predictionSportsbookButtonsOnly(definition.id);
+              const rulesHelp = clinchNote ? (
+                <PredictionMarketExplainer label="Clinch rules" text={clinchNote} />
+              ) : null;
+              const sportsbookOutcomes = winnerMarket
+                ? [winnerPosition]
+                : predictionMarketDisplayOutcomes(definition.id);
               const isCompleted = state !== undefined && state.market.status !== "open";
               if (isCompleted) {
                 const resolvedOutcome = state.market.outcome ?? "no";
@@ -203,11 +209,14 @@ export const BettingMarketBrowser = ({
                 );
               }
               return (
-                <article className="bettingMarketCard" key={definition.id}>
-                  {clinchNote ? (
+                <article
+                  className={`bettingMarketCard${inlineRules ? " bettingMarketCard--inline-rules" : ""}`}
+                  key={definition.id}
+                >
+                  {rulesHelp && !inlineRules ? (
                     <div className="predictionSharedStrikeHeading">
                       <PredictionMarketIdentity definition={definition} density="compact" />
-                      <PredictionMarketExplainer label="Clinch rules" text={clinchNote} />
+                      {rulesHelp}
                     </div>
                   ) : null}
                   <div
@@ -226,9 +235,7 @@ export const BettingMarketBrowser = ({
                         : predictionOutcomeCountryCode(definition, entry);
                       const entryLabel = winnerMarket
                         ? definition.username
-                        : clinchNote
-                          ? predictionOutcomeAbbreviation(definition, entry)
-                          : predictionSportsbookOutcomeLabel(definition, entry);
+                        : predictionSportsbookOutcomeLabel(definition, entry);
                       return (
                         <button
                           type="button"
@@ -275,6 +282,7 @@ export const BettingMarketBrowser = ({
                       );
                     })}
                   </div>
+                  {inlineRules ? rulesHelp : null}
                   {isAuthenticated && state ? (
                     <PredictionMarketPnl value={userProfit} positions={state.positions} />
                   ) : null}

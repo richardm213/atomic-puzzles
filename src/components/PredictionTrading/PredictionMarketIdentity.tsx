@@ -4,9 +4,9 @@ import { Fragment } from "react";
 
 import type { PredictionMarketDefinition } from "../../lib/predictionMarkets/predictionMarkets";
 import {
+  predictionMarketDisplayOutcomes,
   predictionMarketMatchupLabel,
   predictionOutcomeCountryCode,
-  predictionOutcomes,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 
@@ -41,7 +41,7 @@ export const PredictionMarketIdentity = ({
     <span
       className={`predictionSharedIdentity predictionSharedIdentity--matchup predictionSharedIdentity--${density}`}
     >
-      {predictionOutcomes.map((outcome, index) => {
+      {predictionMarketDisplayOutcomes(definition.id).map((outcome, index) => {
         const label = predictionMarketMatchupLabel(definition, outcome);
         return (
           <Fragment key={outcome}>
