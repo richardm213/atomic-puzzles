@@ -7,6 +7,7 @@ import type {
 } from "../../lib/predictionMarkets/predictionMarkets";
 import {
   predictionMarketClinchNote,
+  predictionMarketDisplayOutcomes,
   predictionOutcomeLabel,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { PredictionMarketExplainer } from "../PredictionMarketExplainer/PredictionMarketExplainer";
@@ -51,7 +52,10 @@ export const PredictionResolvedMarket = ({
         : `Settled ${settlementPriceCents}¢`;
 
   return (
-    <div className="predictionSharedResolvedMarket">
+    <div
+      className="predictionSharedResolvedMarket"
+      data-prediction-first-outcome={predictionMarketDisplayOutcomes(definition.id)[0]}
+    >
       <span className="predictionSharedResolvedIdentity">
         <span className="predictionSharedStrikeHeading">
           <PredictionStrikeBets definition={definition} className="predictionSharedResolvedBets">

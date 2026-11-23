@@ -88,9 +88,11 @@ export const PredictionMarketTable = ({
       const pnl = pnlByMarketId?.get(definition.id);
       const drawerId = `prediction-market-table-${definition.id}`;
       const clinchNote = predictionMarketClinchNote(definition.id);
+      const displayOutcomes = predictionMarketDisplayOutcomes(definition.id);
 
       return (
         <div
+          data-prediction-first-outcome={displayOutcomes[0]}
           className={`predictionSharedMarketRow${
             selectedMarket && !isCompleted ? " predictionSharedMarketRow--active" : ""
           }${isCompleted ? " predictionSharedMarketRow--resolved" : ""}`}
@@ -150,7 +152,7 @@ export const PredictionMarketTable = ({
               className="predictionSharedMarketPrices"
               aria-label={`${definition.username} outcome`}
             >
-              {predictionMarketDisplayOutcomes(definition.id).map((entry) => {
+              {displayOutcomes.map((entry) => {
                 const displayedPrice = state?.book[entry].asks[0]?.priceCents;
                 const availability = outcomeAvailability?.(definition, entry);
                 const selected = selectedMarket && selectedOutcome === entry;

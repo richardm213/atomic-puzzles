@@ -170,9 +170,8 @@ export const BettingMarketBrowser = ({
               const state = predictionStateByMarketId.get(definition.id);
               const userProfit = personalPredictionPnlByMarketId.get(definition.id);
               const clinchNote = predictionMarketClinchNote(definition.id);
-              const sportsbookOutcomes = winnerMarket
-                ? [winnerPosition]
-                : predictionMarketDisplayOutcomes(definition.id);
+              const displayOutcomes = predictionMarketDisplayOutcomes(definition.id);
+              const sportsbookOutcomes = winnerMarket ? [winnerPosition] : displayOutcomes;
               const isCompleted = state !== undefined && state.market.status !== "open";
               if (isCompleted) {
                 const resolvedOutcome = state.market.outcome ?? "no";
@@ -205,6 +204,7 @@ export const BettingMarketBrowser = ({
               return (
                 <article
                   className={`bettingMarketCard${clinchNote ? " bettingMarketCard--inline-rules" : ""}`}
+                  data-prediction-first-outcome={displayOutcomes[0]}
                   key={definition.id}
                 >
                   <div
@@ -228,6 +228,7 @@ export const BettingMarketBrowser = ({
                         <button
                           type="button"
                           className={entrySelected ? "isSelected" : ""}
+                          data-prediction-outcome={entry}
                           aria-pressed={entrySelected}
                           disabled={Boolean(entryRestriction) || entryPrice === undefined}
                           title={

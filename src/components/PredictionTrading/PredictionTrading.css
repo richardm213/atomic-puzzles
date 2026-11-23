@@ -232,11 +232,11 @@
 }
 
 .predictionSharedHoldings--comfortable .predictionSharedHolding--yes .predictionSharedHoldingCheck {
-  background: var(--color-market-yes);
+  background: var(--prediction-outcome-yes, var(--color-market-yes));
 }
 
 .predictionSharedHoldings--comfortable .predictionSharedHolding--no .predictionSharedHoldingCheck {
-  background: var(--color-market-no);
+  background: var(--prediction-outcome-no, var(--color-market-no));
 }
 
 .predictionSharedHoldings--compact {
@@ -496,18 +496,23 @@
     transform 120ms ease;
 }
 
+[data-prediction-first-outcome="no"] {
+  --prediction-outcome-yes: var(--color-market-no);
+  --prediction-outcome-no: var(--color-market-yes);
+}
+
 .predictionSharedHolding--yes,
 .predictionSharedMarketPrice--yes,
 .predictionSharedResolvedSide--yes,
 .predictionSharedBookTrade--yes {
-  color: var(--color-market-yes);
+  color: var(--prediction-outcome-yes, var(--color-market-yes));
 }
 
 .predictionSharedHolding--no,
 .predictionSharedMarketPrice--no,
 .predictionSharedResolvedSide--no,
 .predictionSharedBookTrade--no {
-  color: var(--color-market-no);
+  color: var(--prediction-outcome-no, var(--color-market-no));
 }
 
 .predictionSharedMarketPrice:hover,

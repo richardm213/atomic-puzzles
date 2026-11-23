@@ -451,6 +451,7 @@
 .bettingOutcomePlayer > span {
   min-width: 0;
   overflow: hidden;
+  color: var(--betting-outcome-color, inherit);
   font-size: var(--text-body);
   font-weight: 650;
   text-overflow: ellipsis;
@@ -460,6 +461,14 @@
 .bettingMarketCard--inline-rules .bettingOutcomePlayer > span {
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+.bettingMarketCard[data-prediction-first-outcome="no"] [data-prediction-outcome="yes"] {
+  --betting-outcome-color: var(--prediction-outcome-yes);
+}
+
+.bettingMarketCard[data-prediction-first-outcome="no"] [data-prediction-outcome="no"] {
+  --betting-outcome-color: var(--prediction-outcome-no);
 }
 
 .bettingOutcomeQuote {
@@ -473,7 +482,7 @@
 .bettingOutcomeQuote strong {
   flex: none;
   min-width: 42px;
-  color: var(--color-heading);
+  color: var(--betting-outcome-color, var(--color-heading));
   font-size: var(--text-body);
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -485,10 +494,6 @@
   font-weight: 650;
   line-height: 1.15;
   white-space: nowrap;
-}
-
-.bettingOutcomes button.isSelected .bettingOutcomeQuote strong {
-  color: var(--color-heading);
 }
 
 .betSlip {

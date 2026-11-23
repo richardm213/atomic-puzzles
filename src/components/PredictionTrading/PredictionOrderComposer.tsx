@@ -9,10 +9,10 @@ import type {
 } from "../../lib/predictionMarkets/predictionMarkets";
 import {
   MAX_PREDICTION_ORDER_QUANTITY,
+  predictionMarketDisplayOutcomes,
   predictionOutcomeAbbreviation,
   predictionOutcomeCountryCode,
   predictionOutcomeLabel,
-  predictionOutcomes,
 } from "../../lib/predictionMarkets/predictionMarkets";
 import { countryCodeToFlagUrl } from "../../utils/countryFlags";
 import { PredictionPrice } from "./PredictionPrice";
@@ -96,7 +96,7 @@ export const PredictionOrderComposer = ({
       role="group"
       aria-label="Prediction outcome"
     >
-      {predictionOutcomes.map((entry) => (
+      {predictionMarketDisplayOutcomes(definition.id).map((entry) => (
         <button
           type="button"
           aria-pressed={outcome === entry}
