@@ -599,6 +599,21 @@ describe("archive-data function", () => {
     );
   });
 
+  it("recovers after a failed archive schema lookup", async () => {
+    mocks.execute
+      .mockRejectedValueOnce(new Error("Archive connection failed"))
+      .mockResolvedValueOnce({ rows: [{ value: "7" }] });
+    const { handler } = await import("../functions/archive-data");
+    const request = { queryStringParameters: { resource: "health" } };
+
+    const failed = await handler(request);
+    expect(failed.statusCode).toBe(500);
+
+    const recovered = await handler(request);
+    expect(recovered.statusCode).toBe(200);
+    expect(JSON.parse(recovered.body)).toEqual({ ok: true, schemaVersion: "7" });
+  });
+
   it("requires both server-only Turso credentials", async () => {
     delete process.env.TURSO_MATCHES_AUTH_TOKEN;
     const { handler } = await import("../functions/archive-data");

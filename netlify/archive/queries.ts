@@ -34,6 +34,10 @@ const getSchemaVersion = (): Promise<ArchiveSchemaVersion> => {
     .then((result) => {
       const value = Number(result.rows[0]?.value);
       return value >= 7 ? 7 : value >= 5 ? 5 : value === 4 ? 4 : value === 3 ? 3 : 2;
+    })
+    .catch((error: unknown) => {
+      schemaVersionPromise = null;
+      throw error;
     });
   return schemaVersionPromise;
 };
