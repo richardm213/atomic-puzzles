@@ -168,12 +168,12 @@ const marketPresentation: Record<
   },
   "awc2026-lb-r3-m1-quasabianth-plus-2": {
     clinchRule:
-      "Add 1.5 points to Quasabianth’s score. Quasa +1.5 wins if Quasabianth wins the match or loses by 1 point. Re -1.5 wins if Rechesster wins by 2 or more, such as 6–4.",
+      "Add 2 points to Quasabianth’s score. Quasa +2 wins if Quasabianth wins the match or loses by 1 point. Re -2 wins if Rechesster wins by 3 or more. Exactly 2 points, such as 6–4 for Rechesster, is a push and remaining stakes are refunded.",
     sortPriority: 1,
   },
   "awc2026-lb-r3-m2-rabbier-plus-3": {
     clinchRule:
-      "Add 1.5 points to Rabbier’s score. Rabbie +1.5 wins if Rabbier wins the match or loses by 1 point. Sut -1.5 wins if Sutcunuri wins by 2 or more, such as 6–4.",
+      "Add 2.5 points to Rabbier’s score. Rabbie +2.5 wins if Rabbier wins the match or loses by 1 or 2 points, such as 6–4. Sut -2.5 wins if Sutcunuri wins by 3 or more, such as 6–3.",
     sortPriority: 1,
   },
 };

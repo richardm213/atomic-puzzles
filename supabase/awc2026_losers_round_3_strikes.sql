@@ -22,14 +22,16 @@ begin
   end if;
   if exists (
     select 1 from public.prediction_markets m
-    where (m.id, m.outcome_yes_label) in (
-      ('awc2026-lb-r3-m1-quasabianth-plus-2', 'quasabianth +2'),
+    where ((m.id, m.outcome_yes_label) in (
+      ('awc2026-lb-r3-m1-quasabianth-plus-2', 'quasabianth +1.5'),
       ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +3'),
-      ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +2.5')
-    ) and (
+      ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +1.5')
+    ) or (m.id = 'awc2026-lb-r3-m1-quasabianth-plus-2' and m.resolution_rules not like '%is a push%')) and (
       m.status <> 'open' or m.exchange_volume_coins <> 0 or m.sportsbook_volume_coins <> 0
       or exists (select 1 from public.prediction_orders o where o.market_id = m.id and o.status in ('open', 'partial'))
+      or exists (select 1 from public.prediction_fills f where f.market_id = m.id)
       or exists (select 1 from public.prediction_positions p where p.market_id = m.id and p.quantity > 0)
+      or exists (select 1 from public.prediction_position_credits c where c.market_id = m.id)
     )
   ) then
     raise exception 'Cannot change a handicap strike with trading activity';
@@ -44,13 +46,13 @@ with strikes (id_suffix, match_id, question, display_name, yes_label, no_label, 
      'rechesster 6-0 vs quasabianth', 'rechesster 6-0', 'Any other score',
      'Yes wins only if rechesster clinches exactly 6–0. Any other clinching score resolves No.', 6),
     ('quasabianth-plus-2', 'awc2026-lb-r3-m1',
-     'Will quasabianth cover +1.5 against rechesster?',
-     'quasabianth +1.5 vs rechesster -1.5', 'quasabianth +1.5', 'rechesster -1.5',
-     'Add 1.5 points to quasabianth''s score. Quasabianth +1.5 wins if quasabianth wins the match or loses by 1 point. Rechesster -1.5 wins if rechesster wins by 2 or more, such as 6–4.', 4),
+     'Will quasabianth cover +2 against rechesster?',
+     'quasabianth +2 vs rechesster -2', 'quasabianth +2', 'rechesster -2',
+     'Add 2 points to quasabianth''s score. Quasabianth +2 wins if quasabianth wins the match or loses by 1 point. Rechesster -2 wins if rechesster wins by 3 or more. Exactly 2 points, such as 6–4 for rechesster, is a push and remaining stakes are refunded.', 4),
     ('rabbier-plus-3', 'awc2026-lb-r3-m2',
-     'Will rabbier cover +1.5 against sutcunuri?',
-     'rabbier +1.5 vs sutcunuri -1.5', 'rabbier +1.5', 'sutcunuri -1.5',
-     'Add 1.5 points to rabbier''s score. Rabbier +1.5 wins if rabbier wins the match or loses by 1 point. Sutcunuri -1.5 wins if sutcunuri wins by 2 or more, such as 6–4.', 5)
+     'Will rabbier cover +2.5 against sutcunuri?',
+     'rabbier +2.5 vs sutcunuri -2.5', 'rabbier +2.5', 'sutcunuri -2.5',
+     'Add 2.5 points to rabbier''s score. Rabbier +2.5 wins if rabbier wins the match or loses by 1 or 2 points, such as 6–4. Sutcunuri -2.5 wins if sutcunuri wins by 3 or more, such as 6–3.', 5)
 )
 insert into public.prediction_markets (
   id, question, resolution_rules, resolution_source_url, closes_at, status,
@@ -82,9 +84,12 @@ on conflict (id) do update set
   outcome_yes_label = excluded.outcome_yes_label,
   outcome_no_label = excluded.outcome_no_label
 where (prediction_markets.id, prediction_markets.outcome_yes_label) in (
-  ('awc2026-lb-r3-m1-quasabianth-plus-2', 'quasabianth +2'),
+  ('awc2026-lb-r3-m1-quasabianth-plus-2', 'quasabianth +1.5'),
   ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +3'),
-  ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +2.5')
+  ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +1.5')
+) or (
+  prediction_markets.id = 'awc2026-lb-r3-m1-quasabianth-plus-2'
+  and prediction_markets.resolution_rules not like '%is a push%'
 );
 
 update public.prediction_markets

@@ -33,6 +33,10 @@ additional notifications after a successful admin-page settlement.
 4. **Resolve every applicable market**
    - Resolve the prediction match strike and applicable championship strikes, cancelling remaining
      open orders safely. Sportsbook view trades these same prediction contracts.
+   - Resolve Losers Round 3 score and spread strikes from the score at the clinch. If Rechesster
+     clinches by exactly two points, the Rechesster −2 / Quasabianth +2 strike pushes. Refund
+     remaining stakes and verify the ledger and notifications. Use a guarded manual settlement
+     for a traded push because the admin refund action accepts only strikes without trades.
    - Imported positions in `prediction_position_credits` already represent the former fixed-price
      bets. They settle once through the prediction resolver; never pay the read-only archives.
 
