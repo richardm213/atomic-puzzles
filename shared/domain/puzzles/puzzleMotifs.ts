@@ -209,7 +209,7 @@ export const puzzleMotifs: PuzzleMotif[] = [
   },
   {
     tag: "tempo",
-    name: "Capture",
+    name: "Capture tempo",
     description:
       "A player makes a more useful move instead of spending a tempo on a capture. A forcing move may make the opponent capture instead, leaving the player free to continue the attack.",
   },
