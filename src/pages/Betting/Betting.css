@@ -92,10 +92,6 @@
   gap: var(--space-5);
 }
 
-.bettingMarketView--exchange {
-  grid-template-columns: minmax(0, 1fr) 288px;
-}
-
 .bettingMarketColumn {
   min-width: 0;
   display: grid;
@@ -439,7 +435,7 @@
 .bettingOutcomePlayer > span {
   min-width: 0;
   overflow: hidden;
-  font-size: 0.82rem;
+  font-size: var(--text-body);
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -457,14 +453,14 @@
   flex: none;
   min-width: 42px;
   color: var(--color-heading);
-  font-size: 0.82rem;
+  font-size: var(--text-body);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
 .bettingOutcomeQuote small {
   color: var(--color-muted);
-  font-size: 0.68rem;
+  font-size: var(--text-sm);
   font-weight: 650;
   line-height: 1.15;
   white-space: nowrap;
@@ -571,7 +567,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--color-heading);
-  font-size: 0.9rem;
+  font-size: var(--text-body);
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1114,19 +1110,19 @@
 }
 
 .betStatus--won {
-  border-color: color-mix(in srgb, var(--color-success) 48%, var(--color-border));
-  color: var(--color-success);
+  border-color: color-mix(in srgb, var(--color-pnl-profit) 48%, var(--color-border));
+  color: var(--color-pnl-profit);
 }
 
 .betStatus--lost {
-  border-color: color-mix(in srgb, var(--color-danger) 42%, var(--color-border));
-  color: var(--color-danger);
+  border-color: color-mix(in srgb, var(--color-pnl-loss) 42%, var(--color-border));
+  color: var(--color-pnl-loss);
 }
 
 .betStatus--prediction {
-  border-color: color-mix(in srgb, var(--color-market-yes) 48%, var(--color-border));
-  background: color-mix(in srgb, var(--color-market-yes) 8%, transparent);
-  color: var(--color-market-yes);
+  border-color: color-mix(in srgb, var(--color-success-soft-text) 48%, var(--color-border));
+  background: var(--color-success-soft-bg);
+  color: var(--color-success-soft-text);
 }
 
 .bettingLoginPrompt {

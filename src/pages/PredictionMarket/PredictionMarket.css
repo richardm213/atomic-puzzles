@@ -4,9 +4,6 @@
 }
 
 .predictionMarketShell {
-  --prediction-yes: var(--color-market-yes);
-  --prediction-no: var(--color-market-no);
-
   min-width: 0;
   width: 100%;
   max-width: var(--site-page-max-width);
@@ -16,7 +13,7 @@
   background: var(--color-panel);
   box-shadow: var(--shadow-panel);
   overflow: hidden;
-  font-size: 14px;
+  font-size: var(--text-body);
 }
 
 .predictionMarketHeader {
@@ -304,17 +301,17 @@
   padding: 4px 8px;
   border: 1px solid currentColor;
   border-radius: 999px;
+  background: color-mix(in srgb, var(--prediction-trade-side) 9%, transparent);
+  color: var(--prediction-trade-side);
   font-weight: 650;
 }
 
 .predictionTradeQuote--yes {
-  background: color-mix(in srgb, var(--prediction-yes) 9%, transparent);
-  color: var(--prediction-yes);
+  --prediction-trade-side: var(--color-market-yes);
 }
 
 .predictionTradeQuote--no {
-  background: color-mix(in srgb, var(--prediction-no) 9%, transparent);
-  color: var(--prediction-no);
+  --prediction-trade-side: var(--color-market-no);
 }
 
 .predictionTradeQuantity {

@@ -21,7 +21,8 @@
   --color-profit-strip-text: #070c16;
   --color-warning: #facc15;
   --color-danger: #fca5a5;
-  --color-pnl-profit: var(--color-success);
+  --color-success-soft-text: var(--color-success);
+  --color-pnl-profit: var(--color-success-soft-text);
   --color-pnl-loss: var(--color-danger);
   --color-motif-confirmed: var(--color-success);
   --color-motif-unconfirmed: var(--color-danger);
@@ -91,12 +92,14 @@
   --color-payout-loss: #d51b32;
   --color-profit-strip-bg: #d1fae5;
   --color-profit-strip-text: #0d6b3a;
+  --color-success-soft-text: var(--color-profit-strip-text);
   --color-warning: #a86d00;
   --color-danger: #dc2626;
   --color-motif-confirmed: var(--color-profit-strip-text);
   --color-motif-unconfirmed: var(--color-loss-strip-text);
   --color-loss-strip-bg: #fee2e2;
   --color-loss-strip-text: #b91c1c;
+  --color-pnl-loss: var(--color-loss-strip-text);
   --color-market-yes: oklch(42% 0.12 var(--market-side-a-hue));
   --color-market-no: oklch(42% 0.12 var(--market-side-b-hue));
   --color-on-market: var(--color-on-primary);

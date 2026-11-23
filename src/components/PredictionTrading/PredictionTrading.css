@@ -3,6 +3,8 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  font-size: var(--text-body);
+  line-height: 1.35;
 }
 
 .predictionSharedIdentity--matchup {
@@ -32,12 +34,15 @@
   min-width: 0;
   overflow: hidden;
   color: var(--color-heading);
+  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .predictionSharedIdentityVs {
   flex: none;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
 }
 
 .predictionSharedIdentity--compact {
@@ -47,10 +52,6 @@
 .predictionSharedIdentity--compact img {
   width: 20px;
   height: 14px;
-}
-
-.predictionSharedIdentity--comfortable strong {
-  font-size: 15px;
 }
 
 .predictionSharedPrice {
@@ -90,7 +91,7 @@
 .predictionSharedGroupQuestion {
   min-width: 0;
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-2);
 }
 
 .predictionSharedGroupTitle {
@@ -109,11 +110,10 @@
 
 .predictionSharedGroupTitle strong {
   min-width: 0;
-  overflow: hidden;
   color: var(--color-heading);
-  font-size: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: var(--text-control);
+  line-height: 1.3;
+  text-wrap: balance;
 }
 
 .predictionSharedGroupMeta {
@@ -122,10 +122,12 @@
   column-gap: var(--space-6);
   row-gap: var(--space-2);
   align-items: center;
+  color: var(--color-muted);
+  font-size: var(--text-sm);
 }
 
 .predictionSharedGroupMeta small {
-  color: var(--color-muted);
+  font-size: inherit;
 }
 
 .predictionSharedStatus {
@@ -133,7 +135,9 @@
   align-items: center;
   padding: 2px 7px;
   border-radius: 999px;
-  font-size: 10px;
+  background: var(--color-surface-inset-strong);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
   font-weight: 650;
   letter-spacing: 0.04em;
   line-height: 1.35;
@@ -142,26 +146,15 @@
 
 .predictionSharedStatus--comfortable {
   padding: 4px 9px;
-  font-size: 12px;
 }
 
 .predictionSharedStatus--open {
   background: var(--color-success-soft-bg);
-  color: var(--color-success) !important;
-}
-
-:root[data-theme="light"][data-gemstone-theme] .predictionSharedStatus--open {
-  color: var(--color-profit-strip-text) !important;
-}
-
-.predictionSharedStatus--closed {
-  background: var(--color-surface-inset-strong);
-  color: var(--color-market-no) !important;
+  color: var(--color-success-soft-text);
 }
 
 .predictionSharedStatus--loading {
-  background: var(--color-surface-elevated-strong);
-  color: var(--color-muted) !important;
+  color: var(--color-muted);
 }
 
 .predictionSharedRoi {
@@ -177,17 +170,19 @@
 }
 
 .predictionSharedRoi--profit {
-  background: var(--color-profit-strip-bg);
-  color: var(--color-profit-strip-text);
+  background: var(--color-success-soft-bg);
 }
 
 .predictionSharedRoi--loss {
-  background: var(--color-loss-strip-bg);
-  color: var(--color-loss-strip-text);
+  background: var(--color-danger-soft-bg);
 }
 
 .predictionSharedGroupAction {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   color: var(--color-primary-pale);
+  font-size: var(--text-body);
   font-weight: 650;
   text-decoration: none;
 }
@@ -215,14 +210,6 @@
   gap: 5px;
 }
 
-.predictionSharedHolding--yes {
-  color: var(--prediction-yes, var(--color-market-yes));
-}
-
-.predictionSharedHolding--no {
-  color: var(--prediction-no, var(--color-market-no));
-}
-
 .predictionSharedHolding > strong,
 .predictionSharedHoldingPrice {
   color: inherit;
@@ -245,11 +232,11 @@
 }
 
 .predictionSharedHoldings--comfortable .predictionSharedHolding--yes .predictionSharedHoldingCheck {
-  background: var(--prediction-yes, var(--color-market-yes));
+  background: var(--color-market-yes);
 }
 
 .predictionSharedHoldings--comfortable .predictionSharedHolding--no .predictionSharedHoldingCheck {
-  background: var(--prediction-no, var(--color-market-no));
+  background: var(--color-market-no);
 }
 
 .predictionSharedHoldings--compact {
@@ -265,9 +252,17 @@
 }
 
 .predictionSharedMarketTable {
+  --prediction-chance-width: 96px;
+  --prediction-price-width: minmax(176px, 240px);
+
   display: grid;
   border-block: 1px solid var(--color-border);
   container-type: inline-size;
+}
+
+.predictionSharedMarketTable--comfortable {
+  --prediction-chance-width: 112px;
+  --prediction-price-width: minmax(196px, 280px);
 }
 
 .predictionSharedGroupHeader + .predictionSharedMarketTable {
@@ -280,12 +275,9 @@
 
 .predictionSharedMarketRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 112px minmax(196px, 280px);
+  grid-template-columns: minmax(0, 1fr) var(--prediction-chance-width) var(--prediction-price-width);
   gap: 18px;
   align-items: center;
-}
-
-.predictionSharedMarketRow {
   min-height: 68px;
   padding: 10px 18px;
   border-top: 1px solid var(--color-border);
@@ -301,8 +293,7 @@
 
 .predictionSharedMarketToggle {
   display: grid;
-  grid-column: 1 / 3;
-  grid-template-columns: minmax(0, 1fr) 112px;
+  grid-template-columns: minmax(0, 1fr) var(--prediction-chance-width);
   gap: 18px;
   align-items: center;
   width: 100%;
@@ -344,7 +335,7 @@
 .predictionSharedMarketChance {
   position: relative;
   display: block;
-  min-width: 112px;
+  min-width: 0;
   text-align: center;
 }
 
@@ -365,7 +356,7 @@
 .predictionPendingOrdersButton {
   position: absolute;
   top: 50%;
-  right: 80px;
+  right: calc(var(--prediction-chance-width) - 32px);
   display: grid;
   place-items: center;
   width: 44px;
@@ -442,17 +433,17 @@
 
 .predictionSharedMarketChance strong {
   color: var(--color-heading);
-  font-size: 18px;
+  font-size: var(--text-control);
   font-variant-numeric: tabular-nums;
 }
 
 .predictionSharedMarketTable--comfortable .predictionSharedMarketChance strong {
-  font-size: 20px;
+  font-size: 1.125rem;
 }
 
 .predictionSharedMarketPrices {
   display: grid;
-  grid-template-columns: repeat(2, minmax(90px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -465,23 +456,27 @@
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: transparent;
-  font-size: 14px;
+  font-size: var(--text-body);
   font-weight: 650;
-}
-
-.predictionSharedMarketPrice {
+  font-variant-numeric: tabular-nums;
   transition:
     border-color 160ms ease,
     background-color 160ms ease,
     transform 120ms ease;
 }
 
-.predictionSharedMarketPrice--yes {
-  color: var(--prediction-yes, var(--color-market-yes));
+.predictionSharedHolding--yes,
+.predictionSharedMarketPrice--yes,
+.predictionSharedResolvedSide--yes,
+.predictionSharedBookTrade--yes {
+  color: var(--color-market-yes);
 }
 
-.predictionSharedMarketPrice--no {
-  color: var(--prediction-no, var(--color-market-no));
+.predictionSharedHolding--no,
+.predictionSharedMarketPrice--no,
+.predictionSharedResolvedSide--no,
+.predictionSharedBookTrade--no {
+  color: var(--color-market-no);
 }
 
 .predictionSharedMarketPrice:hover,
@@ -519,28 +514,27 @@
 .predictionSharedMarketPnl {
   flex: 0 0 100%;
   color: var(--color-text-secondary);
-  font-size: 16px;
+  font-size: var(--text-sm);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
-.predictionSharedMarketPnl--profit {
-  color: var(--color-success);
+.predictionSharedRoi--profit,
+.predictionSharedMarketPnl--profit,
+.predictionSharedSummary .isPositive {
+  color: var(--color-pnl-profit);
 }
 
-.predictionSharedMarketPnl--loss {
-  color: var(--color-danger);
+.predictionSharedRoi--loss,
+.predictionSharedMarketPnl--loss,
+.predictionSharedSummary .isNegative {
+  color: var(--color-pnl-loss);
 }
 
 .predictionSharedResolvedSide {
-  color: var(--color-market-yes);
-  font-size: 16px;
+  font-size: var(--text-body);
   font-weight: 650;
   text-align: right;
-}
-
-.predictionSharedResolvedSide--no {
-  color: var(--color-market-no);
 }
 
 .predictionSharedResolvedSide--price {
@@ -577,14 +571,17 @@
     grid-row: 2;
     justify-self: start;
   }
+}
 
-  .predictionSharedMarketRow,
-  .predictionSharedMarketToggle {
-    grid-template-columns: minmax(0, 1fr) auto;
+@container (max-width: 620px) {
+  .predictionSharedMarketRow {
+    --prediction-chance-width: 88px;
+
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px 14px;
   }
 
-  .predictionSharedMarketToggle,
+  .predictionSharedMarketSummary,
   .predictionSharedMarketPrices,
   .predictionSharedMarketResolved {
     grid-column: 1 / -1;
@@ -596,22 +593,14 @@
   }
 }
 
-@container (max-width: 620px) {
-  .predictionSharedMarketRow,
-  .predictionSharedMarketToggle {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px 14px;
+@container (max-width: 420px) {
+  .predictionSharedIdentity--matchup {
+    flex-wrap: wrap;
+    row-gap: var(--space-1);
   }
 
-  .predictionSharedMarketToggle,
-  .predictionSharedMarketPrices,
-  .predictionSharedMarketResolved {
-    grid-column: 1 / -1;
-  }
-
-  .predictionSharedMarketResolved {
-    justify-self: end;
-    margin-right: var(--space-4);
+  .predictionSharedIdentity--matchup .predictionSharedIdentityPlayer:last-child {
+    flex-basis: 100%;
   }
 }
 
@@ -656,7 +645,7 @@
   padding: 8px 12px;
   border-bottom: 1px solid var(--color-border);
   color: var(--color-subtle);
-  font-size: 11px;
+  font-size: var(--text-sm);
   text-transform: uppercase;
 }
 
@@ -696,6 +685,7 @@
   border-top: 1px solid var(--color-border);
   background: transparent;
   color: var(--color-heading);
+  font-size: var(--text-body);
   font-variant-numeric: tabular-nums;
 }
 
@@ -704,29 +694,26 @@
   z-index: -1;
   inset: 0 auto 0 0;
   width: var(--prediction-book-bar, 8px);
+  background: color-mix(in srgb, var(--prediction-book-side) 24%, transparent);
   content: "";
 }
 
-.predictionSharedBookLevel--ask::before {
-  background: color-mix(in srgb, var(--color-market-no) 24%, transparent);
+.predictionSharedBookLevel--ask {
+  --prediction-book-side: var(--color-market-no);
 }
 
-.predictionSharedBookLevel--bid::before {
-  background: color-mix(in srgb, var(--color-market-yes) 24%, transparent);
+.predictionSharedBookLevel--bid {
+  --prediction-book-side: var(--color-market-yes);
 }
 
-.predictionSharedBookLevel--ask strong,
-.predictionSharedBookLevel--ask span {
-  color: var(--color-market-no);
-}
-
-.predictionSharedBookLevel--bid strong,
-.predictionSharedBookLevel--bid span {
-  color: var(--color-market-yes);
+.predictionSharedBookLevel strong,
+.predictionSharedBookLevel span {
+  color: var(--prediction-book-side);
 }
 
 .predictionSharedBookLevel b:last-child {
   color: var(--color-text-secondary);
+  white-space: nowrap;
 }
 
 .predictionSharedBookLevel:hover {
@@ -770,15 +757,8 @@
   padding: 10px 12px;
   border-block: 1px solid var(--color-border);
   background: var(--color-panel-deep);
+  font-size: var(--text-body);
   font-weight: 650;
-}
-
-.predictionSharedBookTrade--yes {
-  color: var(--color-market-yes);
-}
-
-.predictionSharedBookTrade--no {
-  color: var(--color-market-no);
 }
 
 .predictionSharedBookEmpty {
@@ -795,7 +775,11 @@
 
 .predictionSharedBook--compact .predictionSharedBookLabels {
   padding-block: 7px;
-  font-size: 10px;
+}
+
+.predictionSharedBook--compact .predictionSharedBookHeader h2,
+.predictionSharedBook--compact .predictionSharedBookHeader h3 {
+  font-size: var(--text-body);
 }
 
 .predictionSharedComposer {
@@ -991,14 +975,6 @@
 
 .predictionSharedSummary dd small {
   font-size: 10px;
-}
-
-.predictionSharedSummary .isPositive {
-  color: var(--color-success);
-}
-
-.predictionSharedSummary .isNegative {
-  color: var(--color-danger);
 }
 
 .predictionSharedComposer--compact {

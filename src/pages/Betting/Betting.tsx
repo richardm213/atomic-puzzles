@@ -100,7 +100,7 @@ export const BettingPage = () => {
         ) : null}
 
         {view === "markets" ? (
-          <section className="bettingMarketView bettingMarketView--exchange" role="tabpanel">
+          <section className="bettingMarketView" role="tabpanel">
             <BettingMarketBrowser {...browser} />
             <BettingOrderTicket {...ticket} />
           </section>
