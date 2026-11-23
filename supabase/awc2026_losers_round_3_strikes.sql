@@ -24,7 +24,8 @@ begin
     select 1 from public.prediction_markets m
     where (m.id, m.outcome_yes_label) in (
       ('awc2026-lb-r3-m1-quasabianth-plus-2', 'quasabianth +2'),
-      ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +3')
+      ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +3'),
+      ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +2.5')
     ) and (
       m.status <> 'open' or m.exchange_volume_coins <> 0 or m.sportsbook_volume_coins <> 0
       or exists (select 1 from public.prediction_orders o where o.market_id = m.id and o.status in ('open', 'partial'))
@@ -47,9 +48,9 @@ with strikes (id_suffix, match_id, question, display_name, yes_label, no_label, 
      'quasabianth +1.5 vs rechesster -1.5', 'quasabianth +1.5', 'rechesster -1.5',
      'Add 1.5 points to quasabianth''s score. Quasabianth +1.5 wins if quasabianth wins the match or loses by 1 point. Rechesster -1.5 wins if rechesster wins by 2 or more, such as 6–4.', 4),
     ('rabbier-plus-3', 'awc2026-lb-r3-m2',
-     'Will rabbier cover +2.5 against sutcunuri?',
-     'rabbier +2.5 vs sutcunuri -2.5', 'rabbier +2.5', 'sutcunuri -2.5',
-     'Add 2.5 points to rabbier''s score. Rabbier +2.5 wins if rabbier wins the match or loses by 1 or 2 points, such as 6–4. Sutcunuri -2.5 wins if sutcunuri wins by 3 or more, such as 6–3.', 5)
+     'Will rabbier cover +1.5 against sutcunuri?',
+     'rabbier +1.5 vs sutcunuri -1.5', 'rabbier +1.5', 'sutcunuri -1.5',
+     'Add 1.5 points to rabbier''s score. Rabbier +1.5 wins if rabbier wins the match or loses by 1 point. Sutcunuri -1.5 wins if sutcunuri wins by 2 or more, such as 6–4.', 5)
 )
 insert into public.prediction_markets (
   id, question, resolution_rules, resolution_source_url, closes_at, status,
@@ -82,7 +83,8 @@ on conflict (id) do update set
   outcome_no_label = excluded.outcome_no_label
 where (prediction_markets.id, prediction_markets.outcome_yes_label) in (
   ('awc2026-lb-r3-m1-quasabianth-plus-2', 'quasabianth +2'),
-  ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +3')
+  ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +3'),
+  ('awc2026-lb-r3-m2-rabbier-plus-3', 'rabbier +2.5')
 );
 
 update public.prediction_markets

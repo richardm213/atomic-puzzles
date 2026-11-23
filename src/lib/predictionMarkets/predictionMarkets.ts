@@ -173,7 +173,7 @@ const marketPresentation: Record<
   },
   "awc2026-lb-r3-m2-rabbier-plus-3": {
     clinchRule:
-      "Add 2.5 points to Rabbier’s score. Rabbie +2.5 wins if Rabbier wins the match or loses by 1 or 2 points, such as 6–4. Sut -2.5 wins if Sutcunuri wins by 3 or more, such as 6–3.",
+      "Add 1.5 points to Rabbier’s score. Rabbie +1.5 wins if Rabbier wins the match or loses by 1 point. Sut -1.5 wins if Sutcunuri wins by 2 or more, such as 6–4.",
     sortPriority: 1,
   },
 };
