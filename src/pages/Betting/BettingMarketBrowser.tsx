@@ -15,6 +15,7 @@ import { formatCoinVolume } from "../../lib/coins/coinDisplay";
 import {
   formatPredictionChance,
   predictionMarketClinchNote,
+  predictionOutcomeAbbreviation,
   predictionOutcomeCountryCode,
   predictionOutcomeLabel,
   predictionOutcomes,
@@ -225,7 +226,9 @@ export const BettingMarketBrowser = ({
                         : predictionOutcomeCountryCode(definition, entry);
                       const entryLabel = winnerMarket
                         ? definition.username
-                        : predictionSportsbookOutcomeLabel(definition, entry);
+                        : clinchNote
+                          ? predictionOutcomeAbbreviation(definition, entry)
+                          : predictionSportsbookOutcomeLabel(definition, entry);
                       return (
                         <button
                           type="button"

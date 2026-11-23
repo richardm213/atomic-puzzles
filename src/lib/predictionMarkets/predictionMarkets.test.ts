@@ -11,11 +11,23 @@ import {
   type PredictionMarketState,
   predictionMarketStateResultSchema,
   predictionMarketVolume,
+  predictionOutcomeAbbreviation,
   predictionTakerFee,
   quotePredictionBuy,
   quotePredictionSell,
   sortPredictionMarketsByChance,
 } from "./predictionMarkets";
+
+it("preserves the signed handicap when abbreviating matchup buttons", () => {
+  const market = {
+    id: "handicap",
+    username: "quasabianth vs rechesster",
+    countryCode: "RU",
+    outcomeLabels: { yes: "quasabianth +1.5", no: "rechesster -1.5" },
+  };
+  expect(predictionOutcomeAbbreviation(market, "yes")).toBe("quasa +1.5");
+  expect(predictionOutcomeAbbreviation(market, "no")).toBe("rechess -1.5");
+});
 
 it("marks only live orders with unfilled contracts as pending", () => {
   const partial = {

@@ -150,7 +150,7 @@ const marketPresentation: Record<
   {
     sportsbookLabels?: Record<PredictionOutcome, string>;
     matchupLabels?: Partial<Record<PredictionOutcome, string>>;
-    clinchingScore?: string;
+    clinchRule?: string;
     sortLast?: boolean;
   }
 > = {
@@ -163,15 +163,17 @@ const marketPresentation: Record<
   },
   "awc2026-lb-r3-m1-rechesster-6-0": {
     matchupLabels: { no: "quasabianth" },
-    clinchingScore: "6–0",
+    clinchRule: "Rechesster must clinch exactly 6–0.",
     sortLast: true,
   },
   "awc2026-lb-r3-m1-quasabianth-plus-2": {
-    clinchingScore: "6–4",
+    clinchRule:
+      "Add 1.5 points to Quasabianth’s score. Quasa +1.5 wins if Quasabianth wins the match or loses by 1 point. Rechess -1.5 wins if Rechesster wins by 2 or more, such as 6–4.",
     sortLast: true,
   },
   "awc2026-lb-r3-m2-rabbier-plus-3": {
-    clinchingScore: "6–3",
+    clinchRule:
+      "Add 2.5 points to Rabbier’s score. Rabbie +2.5 wins if Rabbier wins the match or loses by 1 or 2 points, such as 6–4. Sut -2.5 wins if Sutcunuri wins by 3 or more, such as 6–3.",
     sortLast: true,
   },
 };
@@ -184,9 +186,9 @@ export const predictionMarketMatchupLabel = (
   predictionOutcomeUnderscoreLabel(definition, outcome);
 
 export const predictionMarketClinchNote = (marketId: PredictionMarketId): string | undefined => {
-  const score = marketPresentation[marketId]?.clinchingScore;
-  return score
-    ? `Decided when the match is clinched. If it’s clinched at ${score}, that’s the score used. Games played afterward don’t count.`
+  const rule = marketPresentation[marketId]?.clinchRule;
+  return rule
+    ? `Only the score when the match is clinched counts. Games played afterward don’t count. ${rule}`
     : undefined;
 };
 
@@ -208,7 +210,6 @@ export const predictionOutcomeAbbreviation = (
   definition: PredictionMarketDefinition | undefined,
   outcome: PredictionOutcome,
 ): string => {
-  const label = predictionOutcomeLabel(definition, outcome);
   const abbreviations: Record<string, string> = {
     natso: "natso",
     crepuscular: "crep",
@@ -226,8 +227,9 @@ export const predictionOutcomeAbbreviation = (
     rabbier: "rabbie",
     maxwellssilvrhammer: "max",
   };
-  return (
-    abbreviations[label.toLowerCase()] ?? predictionOutcomeUnderscoreLabel(definition, outcome)
+  return predictionOutcomeUnderscoreLabel(definition, outcome).replace(
+    /^(\S+)(?=$| (?:[+-]\d+(?:\.\d+)?|\d+[-–]\d+)$)/,
+    (name) => abbreviations[name.toLowerCase()] ?? name,
   );
 };
 
