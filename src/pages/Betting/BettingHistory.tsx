@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
+import { awcBettingRoundTitle } from "../../../shared/domain/betting";
 import { isPublicBettor } from "../../../shared/domain/bettorProfile";
 import { BetShareSlip } from "../../components/BetShareSlip/BetShareSlip";
 import { InlineState } from "../../components/InlineState/InlineState";
@@ -49,15 +50,19 @@ const BetHistoryBettorLink = ({ username }: { username: string }) => {
   );
 };
 
+const awc2027WinnerGroupId = "awc-2027-champion";
+
 const filterHistoryBets = ({
   bets,
   status,
   marketId,
+  awc2027MarketIds,
   bettor,
 }: {
   bets: BetHistoryEntry[];
   status: string;
   marketId: string;
+  awc2027MarketIds: ReadonlySet<string>;
   bettor?: string;
 }): BetHistoryEntry[] => {
   const normalizedBettor = bettor?.trim().toLowerCase() ?? "";
@@ -68,7 +73,10 @@ const filterHistoryBets = ({
   return bets.filter(
     (bet) =>
       matchesStatus(bet) &&
-      (marketId === "all" || bet.marketId === marketId) &&
+      (marketId === "all" ||
+        (marketId === awc2027WinnerGroupId
+          ? awc2027MarketIds.has(bet.marketId)
+          : bet.marketId === marketId)) &&
       (!normalizedBettor || bet.username.toLowerCase().includes(normalizedBettor)),
   );
 };
@@ -421,6 +429,16 @@ export const BettingHistory = ({
   const [filters, setFilters] = useState(() =>
     historyFiltersFromSearch(view, typeof window === "undefined" ? "" : window.location.search),
   );
+  const awc2027MarketIds = useMemo(
+    () =>
+      new Set(
+        predictionMarketGroups
+          .find((group) => group.id === awc2027WinnerGroupId)
+          ?.markets.map((market) => market.id),
+      ),
+    [predictionMarketGroups],
+  );
+  const marketFilter = awc2027MarketIds.has(filters.market) ? awc2027WinnerGroupId : filters.market;
   const marketOptions = useMemo(() => {
     const options = new Map<string, string>();
     const stateByMarketId = new Map(marketSummaries.map((market) => [market.id, { market }]));
@@ -429,6 +447,7 @@ export const BettingHistory = ({
 
     for (const group of predictionMarketGroups) {
       if (group.id.includes("shield")) continue;
+      const roundTitle = awcBettingRoundTitle(group.id);
       for (const market of sortPredictionMarketsByChance(group.markets, stateByMarketId)) {
         const state = stateByMarketId.get(market.id);
         if (resolvedOnly && state?.market.status !== "resolved") continue;
@@ -446,10 +465,17 @@ export const BettingHistory = ({
           !marketsWithBets.has(market.id)
         )
           continue;
+        if (group.id === awc2027WinnerGroupId) {
+          options.set(group.id, "Who will win AWC 2027");
+          break;
+        }
         const strike = market.outcomeLabels
           ? `${market.outcomeLabels.yes} vs ${market.outcomeLabels.no}`
           : market.username;
-        options.set(market.id, `${group.title} · ${strike}`);
+        options.set(
+          market.id,
+          roundTitle ? `${roundTitle}: ${strike}` : `${group.title} · ${strike}`,
+        );
       }
     }
 
@@ -462,10 +488,11 @@ export const BettingHistory = ({
       filterHistoryBets({
         bets,
         status: filters.status,
-        marketId: filters.market,
+        marketId: marketFilter,
+        awc2027MarketIds,
         bettor: mine ? "" : filters.bettor,
       }),
-    [bets, filters, mine],
+    [awc2027MarketIds, bets, filters, marketFilter, mine],
   );
   const filtersActive =
     filters.status !== "all" || filters.market !== "all" || (!mine && filters.bettor.trim());
@@ -478,16 +505,16 @@ export const BettingHistory = ({
       else nextUrl.searchParams.set(key, value);
     };
     setOrDelete("bettor", filters.bettor.trim(), "");
-    setOrDelete("strike", filters.market, "all");
+    setOrDelete("strike", marketFilter, "all");
     setOrDelete("status", filters.status, "open");
     window.history.replaceState({}, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
-  }, [filters, view]);
+  }, [filters, marketFilter, view]);
 
   useEffect(() => {
-    if (filters.market === "all") return;
-    if (marketOptions.some((market) => market.id === filters.market)) return;
-    setFilters((current) => ({ ...current, market: "all" }));
-  }, [filters.market, marketOptions]);
+    if (loading || filters.market === "all") return;
+    const next = marketOptions.some((market) => market.id === marketFilter) ? marketFilter : "all";
+    if (next !== filters.market) setFilters((current) => ({ ...current, market: next }));
+  }, [filters.market, loading, marketFilter, marketOptions]);
 
   const setFilter = (name: keyof HistoryFilters, value: string) => {
     setFilters((current) => ({ ...current, [name]: value }));
@@ -556,7 +583,7 @@ export const BettingHistory = ({
         <label className="betHistoryMarketFilter">
           <span>Market</span>
           <select
-            value={filters.market}
+            value={marketFilter}
             onChange={(event) => setFilter("market", event.target.value)}
           >
             <option value="all">All market strikes</option>

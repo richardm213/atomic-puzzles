@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { awcBettingRoundTitle } from "../../../shared/domain/betting";
 import type { BettorProfile } from "../../../shared/domain/bettorProfile";
 import {
   type PredictionPositionCredit,
@@ -67,6 +68,8 @@ export const loadTraderActivity = async (
 type TraderMarket = Parameters<typeof summarizePredictionTraderHistory>[0]["market"] & {
   id: string;
   question: string;
+  group_id: string | null;
+  display_name: string | null;
   group_path: string | null;
   outcome_yes_label: string | null;
   outcome_no_label: string | null;
@@ -127,7 +130,9 @@ export const loadBettorProfile = async (
   for (let offset = 0; offset < marketIds.length; offset += 50) {
     const { data, error } = await supabase
       .from("prediction_markets")
-      .select(`${traderMarketColumns},question,group_path,outcome_yes_label,outcome_no_label`)
+      .select(
+        `${traderMarketColumns},question,group_id,display_name,group_path,outcome_yes_label,outcome_no_label`,
+      )
       .in("id", marketIds.slice(offset, offset + 50));
     if (error) throw new Error(`Unable to load bettor markets: ${error.message}`);
     for (const market of (data ?? []) as TraderMarket[]) {
@@ -137,8 +142,10 @@ export const loadBettorProfile = async (
         ...byMarket.get(market.id)!,
       });
       if (!summary.history.length && !summary.openPositions.length) continue;
+      const roundTitle = awcBettingRoundTitle(market.group_id);
+      const strike = market.display_name?.trim();
       markets[market.id] = {
-        title: market.question,
+        title: roundTitle && strike ? `${roundTitle}: ${strike}` : market.question,
         path: market.group_path,
         yes: market.outcome_yes_label || "Yes",
         no: market.outcome_no_label || "No",

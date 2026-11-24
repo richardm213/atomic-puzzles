@@ -6,6 +6,19 @@ export type PredictionOutcome = (typeof predictionOutcomes)[number];
 export type PredictionOrderSide = "buy" | "sell";
 export type PredictionBookLevel = { priceCents: number; quantity: number };
 
+const awcRoundTitles: Readonly<Record<string, string>> = {
+  "awc-2026-round-of-16": "AWC Round of 16",
+  "awc-2026-quarterfinals": "AWC Quarterfinals",
+  "awc-2026-semifinals": "AWC Semifinals",
+  "awc-2026-finals": "AWC Finals",
+  "awc-2026-losers-round-1": "AWC Losers Round 1",
+  "awc-2026-losers-round-2": "AWC Losers Round 2",
+  "awc-2026-losers-round-3": "AWC Losers Round 3",
+};
+
+export const awcBettingRoundTitle = (groupId: string | null): string | undefined =>
+  awcRoundTitles[groupId ?? ""];
+
 type PredictionOrderDirection = {
   outcome: PredictionOutcome;
   side: PredictionOrderSide;

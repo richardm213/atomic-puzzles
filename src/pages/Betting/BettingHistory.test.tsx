@@ -1,10 +1,21 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { forwardRef, type ReactNode } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PredictionMarketState } from "../../lib/predictionMarkets/predictionMarkets";
 import { BettingHistory } from "./BettingHistory";
 import type { BetHistoryEntry } from "./bettingHistoryModel";
+
+vi.mock("../../components/PlayerLink/PlayerLink", () => ({
+  PlayerLink: forwardRef<HTMLAnchorElement, { children: ReactNode; username: string }>(
+    ({ children, username }, ref) => (
+      <a ref={ref} href={`/@/${username}/betting`}>
+        {children}
+      </a>
+    ),
+  ),
+}));
 
 const roundOf16Bet: BetHistoryEntry = {
   historyKey: "prediction-position:awc-r16-natso-crepuscular:buyer",
@@ -115,7 +126,7 @@ describe("BettingHistory", () => {
     expect(row).not.toHaveTextContent("natso vs crepuscular");
     expect(
       screen.getByRole("option", {
-        name: "AWC 2026 Round of 16 · rechesster vs renaudmerle",
+        name: "AWC Round of 16: rechesster vs renaudmerle",
       }),
     ).toBeInTheDocument();
     expect(
@@ -181,6 +192,12 @@ describe("BettingHistory", () => {
 
   it("keeps all-bets filters in the URL", async () => {
     const user = userEvent.setup();
+    const candidates = ["alice", "beta"];
+    const candidateMarkets = candidates.map((username) => ({
+      id: `awc-2027-champion-${username}`,
+      username,
+      countryCode: "",
+    }));
     render(
       <BettingHistory
         view="all"
@@ -188,8 +205,24 @@ describe("BettingHistory", () => {
         authLoading={false}
         onLogin={() => undefined}
         myBets={[]}
-        allBets={[]}
+        allBets={[
+          roundOf16Bet,
+          ...candidateMarkets.map((market) => ({
+            ...roundOf16Bet,
+            historyKey: market.id,
+            marketId: market.id,
+            predictionSelectionLabel: market.username,
+          })),
+        ]}
         predictionMarketGroups={[
+          {
+            id: "awc-2027-champion",
+            path: "/betting/awc-2027-champion",
+            title: "AWC 2027 Champion",
+            description: "",
+            displayOrder: 0,
+            markets: candidateMarkets,
+          },
           {
             id: "awc-2026-round-of-16",
             path: "/betting/awc-2026-round-of-16",
@@ -229,6 +262,14 @@ describe("BettingHistory", () => {
     );
 
     expect(screen.getByLabelText("Status")).toHaveValue("open");
+    const marketFilter = screen.getByLabelText("Market");
+    expect(screen.getByRole("option", { name: "Who will win AWC 2027" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /champion · (alice|beta)/i })).toBeNull();
+    await user.selectOptions(marketFilter, "awc-2027-champion");
+    expect(screen.getByText("alice", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText("beta", { exact: true })).toBeInTheDocument();
+    expect(screen.queryByText("crepuscular", { exact: true })).toBeNull();
+    expect(new URLSearchParams(window.location.search).get("strike")).toBe("awc-2027-champion");
 
     await user.type(screen.getByLabelText("Bettor"), "buyer");
     await user.selectOptions(screen.getByLabelText("Market"), "awc-r16-natso-crepuscular");

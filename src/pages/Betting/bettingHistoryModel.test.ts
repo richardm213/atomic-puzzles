@@ -296,7 +296,7 @@ describe("buildBetHistory", () => {
         predictionOutcome: "no",
         predictionSelectionLabel: "crepuscular",
         predictionSelectionCountryCode: "US",
-        predictionMarketTitle: "AWC 2026 Round of 16",
+        predictionMarketTitle: "AWC Round of 16",
       }),
     ]);
   });

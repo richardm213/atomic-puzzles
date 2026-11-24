@@ -1,3 +1,4 @@
+import { awcBettingRoundTitle } from "../../../shared/domain/betting";
 import type { BettingMarketSummary } from "../../lib/betting/betting";
 import {
   type PredictionHistoryPosition,
@@ -92,7 +93,10 @@ export const buildBetHistory = ({
     { definition: PredictionMarketDefinition; title: string }
   >();
   for (const group of predictionMarketGroups) {
-    const title = group.id === "awc-2026-champion" ? "Who will win 2026 AWC" : group.title;
+    const title =
+      group.id === "awc-2026-champion"
+        ? "Who will win 2026 AWC"
+        : (awcBettingRoundTitle(group.id) ?? group.title);
     for (const definition of group.markets) {
       predictionMarketById.set(definition.id, { definition, title });
     }
