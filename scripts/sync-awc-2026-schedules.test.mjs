@@ -52,6 +52,24 @@ test("replays every scheduling announcement audited on forum pages 1–17", asyn
   }
 });
 
+test("reads a hyphenated kickoff as one clock", () => {
+  const post = {
+    id: "0g7ssmat",
+    page: 21,
+    author: "quasabianth",
+    time: Date.parse("2026-11-23T09:36:47.706Z"),
+    text: "@Quasabianth vs @ReChesster Sunday, 19-00 utc",
+  };
+  const { schedules, review } = parseSchedulingPost(post);
+  deepEqual(review, []);
+  equal(schedules.length, 1);
+  equal(schedules[0].at, Date.parse("2026-11-29T19:00Z"));
+  equal(
+    parseSchedulingPost({ ...post, text: post.text.replace("19-00", "19-90") }).review.length,
+    1,
+  );
+});
+
 test("uses quoted pair/date only as context for a newly announced reschedule", () => {
   const post = {
     id: "NewPost1",

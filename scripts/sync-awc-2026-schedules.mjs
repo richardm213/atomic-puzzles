@@ -111,7 +111,7 @@ function kickoff(text, post) {
   const normalized = text.replace(/\b([ap])\.\s*m\./gi, "$1m");
   const clocks = [
     ...normalized.matchAll(
-      /\b(\d{1,4})(?::([0-5]\d))?\s*(am|pm)?\s*(UTC|GMT)(?:\s*([+-])\s*(\d{1,2})(?::([0-5]\d))?)?\b/gi,
+      /(?<![\d:-])\b(\d{1,4})(?:[:-]([0-5]\d))?\s*(am|pm)?\s*(UTC|GMT)(?:\s*([+-])\s*(\d{1,2})(?::([0-5]\d))?)?\b/gi,
     ),
   ];
   // Also accept a timezone before an AM/PM clock, e.g. "UTC 4 pm".

@@ -115,9 +115,13 @@ grant execute on function public.sync_awc_2026_admin_order_expiry(text) to servi
 
 insert into public.prediction_market_fixture_links (market_id, tournament, fixture_id)
 select m.id, f.tournament, f.id
-from public.prediction_markets m join public.tournament_matches f
-  on f.tournament = 'awc2026' and f.id = 'wb-r3-m2'
-where m.id = 'awc-2026-semifinal-jude-3-plus-points'
+from (values
+  ('awc-2026-semifinal-jude-3-plus-points', 'wb-r3-m2'),
+  ('awc2026-lb-r3-m1-quasabianth-plus-2', 'lb-r3-m1'),
+  ('awc2026-lb-r3-m1-rechesster-6-0', 'lb-r3-m1')
+) as links(market_id, fixture_id)
+join public.prediction_markets m on m.id = links.market_id
+join public.tournament_matches f on f.tournament = 'awc2026' and f.id = links.fixture_id
 on conflict do nothing;
 
 -- Only currently active quotes are changed: expired/cancelled orders are never revived.
