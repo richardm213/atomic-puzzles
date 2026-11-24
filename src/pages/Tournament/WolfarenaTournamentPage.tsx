@@ -322,7 +322,9 @@ const WolfarenaTournamentArchive = ({
               <table className="wolfarenaStandingsTable">
                 <thead>
                   <tr>
-                    <th scope="col">Rank</th>
+                    <th scope="col" aria-label="Rank">
+                      #
+                    </th>
                     <th scope="col">Player</th>
                     <th scope="col">Points</th>
                     <th scope="col">Rating</th>
@@ -331,7 +333,7 @@ const WolfarenaTournamentArchive = ({
                 <tbody>
                   {selectedRound.standings.map((standing) => (
                     <tr key={standing.player}>
-                      <td data-label="Rank">
+                      <td data-label="#">
                         <span
                           className={`wolfarenaRank${standing.rank <= 3 ? ` isRank${standing.rank}` : ""}`}
                         >

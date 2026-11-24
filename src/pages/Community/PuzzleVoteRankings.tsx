@@ -129,7 +129,9 @@ export const PuzzleVoteRankingsPage = () => {
           >
             <thead>
               <tr>
-                <th scope="col">Rank</th>
+                <th scope="col" aria-label="Rank">
+                  #
+                </th>
                 <th scope="col">Puzzle</th>
                 <SortableTableHeader
                   className="communityNumericCell"

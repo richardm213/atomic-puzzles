@@ -135,7 +135,7 @@ export const ProfileRankHistory = ({
                   <th>Mode</th>
                   {(
                     [
-                      ["rank", "Rank"],
+                      ["rank", "#"],
                       ["players", "Players"],
                       ["rating", "Rating"],
                     ] as const
@@ -153,6 +153,7 @@ export const ProfileRankHistory = ({
                       <button
                         className="profileRankHistorySortButton"
                         type="button"
+                        aria-label={column === "rank" ? "Rank" : undefined}
                         onClick={() => handleRankHistorySort(column)}
                       >
                         {label}

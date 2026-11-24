@@ -883,7 +883,9 @@ const TournamentStageSection = ({
                     <table className="tournamentGroupStandings">
                       <thead>
                         <tr>
-                          <th scope="col">Rank</th>
+                          <th scope="col" aria-label="Rank">
+                            #
+                          </th>
                           <th scope="col">Player</th>
                           <th scope="col">W-L-T</th>
                           <th scope="col">History</th>

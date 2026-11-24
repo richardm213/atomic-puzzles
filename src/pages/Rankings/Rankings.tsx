@@ -662,6 +662,7 @@ const LeaderboardView = ({ selectedPeriod }: { selectedPeriod: RankingPeriod }) 
                 {rankingColumns.map((column) => (
                   <SortableTableHeader
                     key={column.key}
+                    {...(column.key === "rank" ? { accessibleLabel: "Rank" } : {})}
                     active={sortKey === column.key}
                     direction={sortDirection}
                     label={column.label}

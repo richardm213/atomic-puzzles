@@ -338,7 +338,9 @@ export const CoinRankingsPage = () => {
                 >
                   <thead>
                     <tr>
-                      <th scope="col">Rank</th>
+                      <th scope="col" aria-label="Rank">
+                        #
+                      </th>
                       <th scope="col">Player</th>
                       <th scope="col">Net Worth</th>
                       <th scope="col">Balance</th>

@@ -134,7 +134,9 @@ export const AtomicTourRankingsPage = () => {
           <DataTable className="atomicTourTable" wrapperClassName="atomicTourTableWrap">
             <thead>
               <tr>
-                <th scope="col">Rank</th>
+                <th scope="col" aria-label="Rank">
+                  #
+                </th>
                 <th scope="col">
                   <abbr title="Rank change">+/−</abbr>
                 </th>
