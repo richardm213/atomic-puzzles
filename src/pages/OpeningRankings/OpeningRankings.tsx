@@ -11,11 +11,11 @@ import {
   fetchAtomicDbPositions,
   getAtomicDbPositionEvaluation,
 } from "../../utils/atomicDb";
-import { fenAfterUciMove } from "../../utils/chessNotation";
-import { TWO_KNIGHTS_OPENING_LINE } from "../../utils/openings";
+import { fenAfterUciMove, sanLineFromUci } from "../../utils/chessNotation";
 
-type OpeningDefinition = { move: string; moves: string[] };
-type OpeningRanking = OpeningDefinition & {
+type OpeningRanking = {
+  label: string;
+  moves: string[];
   evaluation: AtomicDbEvaluation;
   fen: string;
   key: string | null;
@@ -23,129 +23,48 @@ type OpeningRanking = OpeningDefinition & {
 
 // These are the established opening lines on this page. Their rankings and evaluations are
 // loaded from AtomicDB on every visit rather than being captured here as static values.
-const openingDefinitions: OpeningDefinition[] = [
-  {
-    move: TWO_KNIGHTS_OPENING_LINE,
-    moves: ["g1f3", "f7f6", "b1c3"],
-  },
-  {
-    move: "1. Nf3 f6 2. e3",
-    moves: ["g1f3", "f7f6", "e2e3"],
-  },
-  {
-    move: "1. Nh3 h6 2. d4",
-    moves: ["g1h3", "h7h6", "d2d4"],
-  },
-  {
-    move: "1. Nf3 f6 2. e4",
-    moves: ["g1f3", "f7f6", "e2e4"],
-  },
-  {
-    move: "1. Nh3 h6 2. e4",
-    moves: ["g1h3", "h7h6", "e2e4"],
-  },
-  {
-    move: "1. e3 e6 2. Nf3",
-    moves: ["e2e3", "e7e6", "g1f3"],
-  },
-  {
-    move: "1. Nf3 f6 2. d4",
-    moves: ["g1f3", "f7f6", "d2d4"],
-  },
-  {
-    move: "1. d4",
-    moves: ["d2d4"],
-  },
-  {
-    move: "1. e4",
-    moves: ["e2e4"],
-  },
-  {
-    move: "1. Nh3 h6 2. Nc3",
-    moves: ["g1h3", "h7h6", "b1c3"],
-  },
-  {
-    move: "1. Nh3 h6 2. Na3",
-    moves: ["g1h3", "h7h6", "b1a3"],
-  },
-  {
-    move: "1. e3 e6 2. Nh3",
-    moves: ["e2e3", "e7e6", "g1h3"],
-  },
-  {
-    move: "1. Nh3 h6 2. e3",
-    moves: ["g1h3", "h7h6", "e2e3"],
-  },
-  {
-    move: "1. Nh3 h6 2. c3",
-    moves: ["g1h3", "h7h6", "c2c3"],
-  },
-  {
-    move: "1. e3 e6 2. Nc3",
-    moves: ["e2e3", "e7e6", "b1c3"],
-  },
-  {
-    move: "1. Nc3",
-    moves: ["b1c3"],
-  },
-  {
-    move: "1. Nf3 f6 2. Na3",
-    moves: ["g1f3", "f7f6", "b1a3"],
-  },
-  {
-    move: "1. Nh3 h6 2. g3",
-    moves: ["g1h3", "h7h6", "g2g3"],
-  },
-  {
-    move: "1. Nf3 f6 2. Nd4",
-    moves: ["g1f3", "f7f6", "f3d4"],
-  },
-  {
-    move: "1. Nh3 h6 2. b4",
-    moves: ["g1h3", "h7h6", "b2b4"],
-  },
-  {
-    move: "1. Nf3 f6 2. c3",
-    moves: ["g1f3", "f7f6", "c2c3"],
-  },
-  {
-    move: "1. e3 e6 2. Bb5",
-    moves: ["e2e3", "e7e6", "f1b5"],
-  },
-  {
-    move: "1. Nf3 f6 2. Nh4",
-    moves: ["g1f3", "f7f6", "f3h4"],
-  },
-  {
-    move: "1. e3 e6 2. Qh5",
-    moves: ["e2e3", "e7e6", "d1h5"],
-  },
-  {
-    move: "1. e3 e6 2. Qf3",
-    moves: ["e2e3", "e7e6", "d1f3"],
-  },
-  {
-    move: "1. e3 e6 2. Na3",
-    moves: ["e2e3", "e7e6", "b1a3"],
-  },
-  { move: "1. c3", moves: ["c2c3"] },
-  { move: "1. g3", moves: ["g2g3"] },
-  { move: "1. b4", moves: ["b2b4"] },
-  { move: "1. Na3", moves: ["b1a3"] },
-  {
-    move: "1. e3 e6 2. b4",
-    moves: ["e2e3", "e7e6", "b2b4"],
-  },
-  { move: "1. h3", moves: ["h2h3"] },
-  { move: "1. a3", moves: ["a2a3"] },
-  { move: "1. f3", moves: ["f2f3"] },
-  { move: "1. d3", moves: ["d2d3"] },
-  { move: "1. b3", moves: ["b2b3"] },
-  { move: "1. f4", moves: ["f2f4"] },
-  { move: "1. h4", moves: ["h2h4"] },
-  { move: "1. a4", moves: ["a2a4"] },
-  { move: "1. g4", moves: ["g2g4"] },
-  { move: "1. c4", moves: ["c2c4"] },
+const openingLines: string[][] = [
+  ["g1f3", "f7f6", "b1c3"],
+  ["g1f3", "f7f6", "e2e3"],
+  ["g1h3", "h7h6", "d2d4"],
+  ["g1f3", "f7f6", "e2e4"],
+  ["g1h3", "h7h6", "e2e4"],
+  ["e2e3", "e7e6", "g1f3"],
+  ["g1f3", "f7f6", "d2d4"],
+  ["d2d4"],
+  ["e2e4"],
+  ["g1h3", "h7h6", "b1c3"],
+  ["g1h3", "h7h6", "b1a3"],
+  ["e2e3", "e7e6", "g1h3"],
+  ["g1h3", "h7h6", "e2e3"],
+  ["g1h3", "h7h6", "c2c3"],
+  ["e2e3", "e7e6", "b1c3"],
+  ["b1c3"],
+  ["g1f3", "f7f6", "b1a3"],
+  ["g1h3", "h7h6", "g2g3"],
+  ["g1f3", "f7f6", "f3d4"],
+  ["g1h3", "h7h6", "b2b4"],
+  ["g1f3", "f7f6", "c2c3"],
+  ["e2e3", "e7e6", "f1b5"],
+  ["g1f3", "f7f6", "f3h4"],
+  ["e2e3", "e7e6", "d1h5"],
+  ["e2e3", "e7e6", "d1f3"],
+  ["e2e3", "e7e6", "b1a3"],
+  ["c2c3"],
+  ["g2g3"],
+  ["b2b4"],
+  ["b1a3"],
+  ["e2e3", "e7e6", "b2b4"],
+  ["h2h3"],
+  ["a2a3"],
+  ["f2f3"],
+  ["d2d3"],
+  ["b2b3"],
+  ["f2f4"],
+  ["h2h4"],
+  ["a2a4"],
+  ["g2g4"],
+  ["c2c4"],
 ];
 
 const fenAfterMoves = (moves: string[]): string | null =>
@@ -154,10 +73,13 @@ const fenAfterMoves = (moves: string[]): string | null =>
     STARTING_FEN,
   );
 
-const openingsWithFens = openingDefinitions.map((opening) => {
-  const fen = fenAfterMoves(opening.moves);
-  if (!fen) throw new Error(`Invalid opening line: ${opening.move}`);
-  return { ...opening, fen };
+const openingsWithFens = openingLines.map((moves) => {
+  const fen = fenAfterMoves(moves);
+  if (!fen) throw new Error(`Invalid opening line: ${moves.join(" ")}`);
+  const label = sanLineFromUci(STARTING_FEN, moves)
+    .filter((_, ply) => ply % 2 === 0)
+    .join(" ");
+  return { moves, label, fen };
 });
 const openingFens = openingsWithFens.map((opening) => opening.fen);
 
@@ -185,7 +107,7 @@ const RankingList = ({ entries }: { entries: OpeningRanking[] }) => (
     {entries.map((entry, index) => {
       const formattedEvaluation = formatEvaluation(entry.evaluation);
       return (
-        <li key={entry.move} className="openingRankingRow">
+        <li key={entry.moves.join(" ")} className="openingRankingRow">
           <span className="openingRank" aria-label={`Rank ${index + 1}`}>
             {index + 1}
           </span>
@@ -196,10 +118,10 @@ const RankingList = ({ entries }: { entries: OpeningRanking[] }) => (
               target="_blank"
               rel="noreferrer"
             >
-              {entry.move}
+              {entry.label}
             </a>
           ) : (
-            <span className="openingMove">{entry.move}</span>
+            <span className="openingMove">{entry.label}</span>
           )}
           <span
             className={`openingEval ${evaluationClass(entry.evaluation)}`}
