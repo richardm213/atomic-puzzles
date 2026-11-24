@@ -7,6 +7,10 @@ import {
   SHOP_ITEM_COSTS,
   SHOP_REOPENS_AT,
 } from "../../../shared/domain/coins";
+import {
+  isUnsettledPredictionMarket,
+  type PredictionTraderMarket,
+} from "../../../shared/domain/predictionTraderHistory";
 import { resolveCanonicalArchiveUsername } from "../../archive/aliases";
 import { loadPredictionPositions } from "../../lib/predictionPositions";
 import {
@@ -122,34 +126,44 @@ const bodySchema = z.discriminatedUnion("action", [
 ]);
 
 const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => {
-  const [accounts, unsettledMarkets] = await Promise.all([
+  const [accounts, markets] = await Promise.all([
     loadAllLeaderboardRows<CoinAccountRow>((from, to) => {
       const query = supabase.from("coin_accounts").select("username,balance");
       if (username) query.eq("username", username);
       return query.order("username").range(from, to);
     }, "Unable to load coin rankings: coin accounts could not be read."),
-    loadAllLeaderboardRows<{ id: string }>(
-      (from, to) =>
-        supabase
-          .from("prediction_markets")
-          .select("id")
-          .in("status", ["open", "closed"])
-          .order("id")
-          .range(from, to),
-      "Unable to load coin rankings: prediction markets could not be read.",
-    ),
+    loadAllLeaderboardRows<PredictionTraderMarket & { id: string }>((from, to) => {
+      const query = supabase
+        .from("prediction_markets")
+        .select("id,status,resolved_at,outcome,settlement_price_cents");
+      if (username) query.in("status", ["open", "closed"]);
+      return query.order("id").range(from, to);
+    }, "Unable to load coin rankings: prediction markets could not be read."),
   ]);
 
   const openBetCosts = new Map<string, number>();
-  const unsettledMarketIds = unsettledMarkets.map((market) => market.id);
+  const realizedPnlByUsername = new Map<string, number>();
+  const marketById = new Map(markets.map((market) => [market.id, market]));
 
-  if (unsettledMarketIds.length > 0) {
-    const positions = await loadPredictionPositions(supabase, unsettledMarketIds, username, {
-      verifyHoldings: true,
-    });
+  if (marketById.size > 0) {
+    const positions = await loadPredictionPositions(
+      supabase,
+      username ? [...marketById.keys()] : undefined,
+      username,
+      {
+        verifyHoldings: true,
+        ...(username ? {} : { realizedPnlMarkets: marketById }),
+      },
+    );
     for (const position of positions) {
-      if (position.quantity > 0)
+      const market = marketById.get(position.market_id);
+      if (
+        position.quantity > 0 &&
+        (username || (market && isUnsettledPredictionMarket(market.status)))
+      )
         addAmount(openBetCosts, position.username, position.remaining_cost_coins);
+      if (position.realized_pnl_coins)
+        addAmount(realizedPnlByUsername, position.username, position.realized_pnl_coins);
     }
   }
 
@@ -164,6 +178,7 @@ const loadCoinRankings = async (supabase: SupabaseClient, username?: string) => 
         netWorth: account.balance + inBets,
         balance: account.balance,
         inBets,
+        realizedPnl: realizedPnlByUsername.get(account.username) ?? 0,
       };
     })
     .sort(

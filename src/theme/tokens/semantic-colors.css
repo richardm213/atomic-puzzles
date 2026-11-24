@@ -24,6 +24,8 @@
   --color-success-soft-text: var(--color-success);
   --color-pnl-profit: var(--color-success-soft-text);
   --color-pnl-loss: var(--color-payout-loss);
+  --color-pnl-profit-soft: color-mix(in oklab, var(--color-pnl-profit) 70%, var(--color-text));
+  --color-pnl-loss-soft: color-mix(in oklab, var(--color-pnl-loss) 70%, var(--color-text));
   --color-motif-confirmed: var(--color-success);
   --color-motif-unconfirmed: var(--color-danger);
   --color-loss-strip-bg: #3a1520;
@@ -100,6 +102,8 @@
   --color-loss-strip-bg: #fee2e2;
   --color-loss-strip-text: #b91c1c;
   --color-pnl-loss: var(--color-loss-strip-text);
+  --color-pnl-profit-soft: color-mix(in oklab, var(--color-pnl-profit) 85%, var(--color-panel));
+  --color-pnl-loss-soft: color-mix(in oklab, var(--color-pnl-loss) 85%, var(--color-panel));
   --color-market-yes: oklch(42% 0.12 var(--market-side-a-hue));
   --color-market-no: oklch(42% 0.12 var(--market-side-b-hue));
   --color-on-market: var(--color-on-primary);

@@ -30,6 +30,14 @@ export type PredictionHistoryReceipt = {
   metadata: Record<string, unknown> | null;
   created_at: string;
 };
+export type PredictionTraderMarket = {
+  status: string;
+  resolved_at: string | null;
+  outcome: string | null;
+  settlement_price_cents: number | null;
+};
+export const isUnsettledPredictionMarket = (status: string): boolean =>
+  status === "open" || status === "closed";
 type Entry = Omit<PredictionTraderHistoryEntry, "runningPnl">;
 const numeric = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -50,12 +58,7 @@ export const summarizePredictionTraderHistory = ({
   credits: readonly PredictionPositionCredit[];
   nettings: readonly PredictionPositionNetting[];
   receipts: readonly PredictionHistoryReceipt[];
-  market: {
-    status: string;
-    resolved_at: string | null;
-    outcome: string | null;
-    settlement_price_cents: number | null;
-  };
+  market: PredictionTraderMarket;
 }) => {
   const rows: Entry[] = [];
   const hasTrades = fills.length > 0 || credits.length > 0;
@@ -155,13 +158,13 @@ export const summarizePredictionTraderHistory = ({
   });
   return {
     history,
-    openPositions:
-      market.status === "open" || market.status === "closed"
-        ? (["yes", "no"] as const).flatMap((outcome) => {
-            const { quantity, costCents } = replay.positions[outcome];
-            return quantity > 0 ? [{ outcome, quantity, cost: roundCoins(costCents / 100) }] : [];
-          })
-        : [],
+    replay,
+    openPositions: isUnsettledPredictionMarket(market.status)
+      ? (["yes", "no"] as const).flatMap((outcome) => {
+          const { quantity, costCents } = replay.positions[outcome];
+          return quantity > 0 ? [{ outcome, quantity, cost: roundCoins(costCents / 100) }] : [];
+        })
+      : [],
   };
 };
 

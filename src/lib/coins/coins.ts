@@ -30,6 +30,7 @@ export type CoinRanking = {
   netWorth: number;
   balance: number;
   inBets: number;
+  realizedPnl: number;
 };
 
 export const coinTransactionReasons = COIN_TRANSACTION_REASONS;
@@ -106,12 +107,14 @@ const coinRankingsSchema = z.object({
         netWorth: z.number(),
         balance: z.number(),
         inBets: z.number(),
+        realizedPnl: z.number().default(0),
       })
       .transform((entry) => ({
         username: entry.username,
         netWorth: entry.netWorth,
         balance: entry.balance,
         inBets: entry.inBets,
+        realizedPnl: entry.realizedPnl,
       })),
   ),
 });

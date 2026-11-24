@@ -9,6 +9,12 @@ import {
   predictionTradingReceiptReasons,
   replayPredictionPosition,
 } from "../../shared/domain/predictionAccounting";
+import {
+  isUnsettledPredictionMarket,
+  type PredictionHistoryReceipt,
+  type PredictionTraderMarket,
+  summarizePredictionTraderHistory,
+} from "../../shared/domain/predictionTraderHistory";
 import { loadAllPages } from "../../shared/lib/pagination";
 
 export const predictionFillColumns = [
@@ -43,6 +49,7 @@ export type PredictionHistoryRow = PositionRow & {
   closed_proceeds_coins: number;
   fees_coins: number;
   terminal_return_coins: number;
+  realized_pnl_coins?: number;
 };
 
 type RowQuery = {
@@ -68,7 +75,13 @@ export const loadPredictionPositions = async (
   supabase: SupabaseClient,
   marketIds?: readonly string[],
   username?: string,
-  { verifyHoldings = false }: { verifyHoldings?: boolean } = {},
+  {
+    verifyHoldings = false,
+    realizedPnlMarkets,
+  }: {
+    verifyHoldings?: boolean;
+    realizedPnlMarkets?: ReadonlyMap<string, PredictionTraderMarket>;
+  } = {},
 ): Promise<PredictionHistoryRow[]> => {
   const positionQuery = () => {
     let query = supabase
@@ -110,7 +123,7 @@ export const loadPredictionPositions = async (
   const receiptQuery = () => {
     let query = supabase
       .from("coin_transactions")
-      .select("username,amount,reason,source_key,metadata,created_at")
+      .select("id,username,amount,reason,source_key,metadata,created_at")
       .in("reason", predictionTradingReceiptReasons)
       .neq("username", "prediction_admin")
       .order("id");
@@ -131,7 +144,7 @@ export const loadPredictionPositions = async (
     fills: PredictionPositionFill[];
     credits: PredictionPositionCredit[];
     nettings: PredictionPositionNetting[];
-    receipts: { reason: string; amount: number; metadata: Record<string, unknown> }[];
+    receipts: PredictionHistoryReceipt[];
     receiptDate: string;
     terminalReturn: number;
     reserved: Partial<Record<"yes" | "no", number>>;
@@ -180,14 +193,10 @@ export const loadPredictionPositions = async (
     username: string;
   })[])
     ownerFor(net.market_id, net.username)?.nettings.push(net);
-  for (const receipt of rawReceipts as {
+  for (const receipt of rawReceipts as (PredictionHistoryReceipt & {
     username: string;
-    amount: number;
-    reason: string;
-    source_key: string;
     metadata: { marketId?: string; fee?: number; kind?: string } | null;
-    created_at: string;
-  }[]) {
+  })[]) {
     const metadata = receipt.metadata;
     if (!metadata?.marketId) continue;
     const terminal =
@@ -195,31 +204,42 @@ export const loadPredictionPositions = async (
       isPredictionMarketRefund(receipt) ||
       (receipt.reason === "prediction_reconciliation" &&
         metadata.kind === "duplicate-legacy-payout");
-    if (!terminal && predictionTradingFee(receipt) === 0) continue;
+    const includeHistory = realizedPnlMarkets?.has(metadata.marketId);
+    if (!includeHistory && !terminal && predictionTradingFee(receipt) === 0) continue;
     const owner = ownerFor(metadata.marketId, receipt.username);
     if (!owner) continue;
     if (terminal) owner.terminalReturn += receipt.amount;
-    else owner.receipts.push({ ...receipt, metadata });
+    if (includeHistory || !terminal) owner.receipts.push(receipt);
     if (receipt.created_at > owner.receiptDate) owner.receiptDate = receipt.created_at;
   }
   const history: PredictionHistoryRow[] = [];
   for (const owner of owners.values()) {
     // A reset removes its trades, not the immutable redemption/fee receipts. Those
     // old redemptions no longer describe holdings in the reopened market.
-    const replay = replayPredictionPosition({
-      ...owner,
-      nettings: owner.fills.length || owner.credits.length ? owner.nettings : [],
-    });
+    const market = realizedPnlMarkets?.get(owner.marketId);
+    const summary = market ? summarizePredictionTraderHistory({ ...owner, market }) : undefined;
+    const realizedPnl = summary?.history.at(-1)?.runningPnl;
+    const replay =
+      summary?.replay ??
+      replayPredictionPosition({
+        ...owner,
+        nettings: owner.fills.length || owner.credits.length ? owner.nettings : [],
+      });
     // Keep ranking validation strict without failing a completed order when another
     // fill lands between its separate position and trade reads.
     if (
       verifyHoldings &&
+      (!market || isUnsettledPredictionMarket(market.status)) &&
       (["yes", "no"] as const).some(
         (outcome) => Math.abs(replay.positions[outcome].quantity - owner.held[outcome]) > 0.000001,
       )
     )
       throw new Error("Prediction position history is incomplete.");
-    if (replay.positions.yes.quantity > 0.000001 && replay.positions.no.quantity > 0.000001)
+    if (
+      (!market || isUnsettledPredictionMarket(market.status)) &&
+      replay.positions.yes.quantity > 0.000001 &&
+      replay.positions.no.quantity > 0.000001
+    )
       throw new Error("Prediction history contains unnetted holdings.");
     const outcome =
       replay.positions.yes.quantity > 0
@@ -232,7 +252,8 @@ export const loadPredictionPositions = async (
       position.quantity === 0 &&
       replay.closed.quantity === 0 &&
       replay.unallocatedFees === 0 &&
-      owner.terminalReturn === 0
+      owner.terminalReturn === 0 &&
+      !realizedPnl
     )
       continue;
     history.push({
@@ -253,6 +274,7 @@ export const loadPredictionPositions = async (
       closed_proceeds_coins: replay.closed.proceedsCents / 100,
       fees_coins: replay.unallocatedFees,
       terminal_return_coins: owner.terminalReturn,
+      ...(realizedPnl === undefined ? {} : { realized_pnl_coins: realizedPnl }),
     });
   }
   return history;

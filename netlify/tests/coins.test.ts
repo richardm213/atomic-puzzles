@@ -182,7 +182,16 @@ describe("coins function", () => {
         { username: "saver", balance: 1200 },
         { username: "bettor", balance: 850 },
       ],
-      prediction_markets: [{ id: "market-1" }],
+      prediction_markets: [
+        { id: "market-1", status: "open", resolved_at: null, outcome: null },
+        {
+          id: "market-2",
+          status: "resolved",
+          resolved_at: "2026-10-06T00:00:00Z",
+          outcome: "no",
+          settlement_price_cents: null,
+        },
+      ],
       prediction_positions: [
         {
           market_id: "market-1",
@@ -229,6 +238,15 @@ describe("coins function", () => {
           fee_coins: 2,
           credited_at: "2026-09-01T00:00:00Z",
         },
+        {
+          id: 3,
+          market_id: "market-2",
+          username: "bettor",
+          outcome: "yes",
+          quantity: 10,
+          price_cents: 40,
+          credited_at: "2026-10-01T00:00:00Z",
+        },
       ],
       prediction_position_nettings: [
         {
@@ -241,6 +259,7 @@ describe("coins function", () => {
       ],
       coin_transactions: [
         {
+          id: 15,
           username: "bettor",
           reason: "prediction_order_reserve",
           amount: -51,
@@ -273,8 +292,8 @@ describe("coins function", () => {
     });
     expect(response.statusCode).toBe(200);
     expect(JSON.parse(response.body).result).toEqual([
-      { username: "saver", netWorth: 1200, balance: 1200, inBets: 0 },
-      { username: "bettor", netWorth: 927.25, balance: 850, inBets: 77.25 },
+      { username: "saver", netWorth: 1200, balance: 1200, inBets: 0, realizedPnl: 0 },
+      { username: "bettor", netWorth: 927.25, balance: 850, inBets: 77.25, realizedPnl: 0.25 },
     ]);
     rows.prediction_positions = [];
     const inconsistent = await handler({

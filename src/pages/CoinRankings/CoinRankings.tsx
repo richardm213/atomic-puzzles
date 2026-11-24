@@ -5,11 +5,17 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import { DataTable } from "../../components/DataTable/DataTable";
+import { SortableTableHeader } from "../../components/DataTable/SortableTableHeader";
 import { InlineState } from "../../components/InlineState/InlineState";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
-import { formatCoinAmount, formatCoinBalance } from "../../lib/coins/coinDisplay";
+import { useTableSort } from "../../hooks/useTableSort";
+import {
+  formatCoinAmount,
+  formatCoinBalance,
+  formatSignedCoinValue,
+} from "../../lib/coins/coinDisplay";
 import {
   coinRankingsQueryOptions,
   coinTransactionsQueryOptions,
@@ -21,6 +27,20 @@ import { getErrorMessage } from "../../utils/errors";
 import { formatLocalDateTime } from "../../utils/formatters";
 
 type CoinView = "rankings" | "transactions";
+const rankingColumns = [
+  { key: "rank", label: "#" },
+  { key: "username", label: "Player" },
+  { key: "netWorth", label: "Net Worth" },
+  { key: "balance", label: "Balance" },
+  { key: "inBets", label: "In Bets" },
+  { key: "realizedPnl", label: "P&L" },
+] as const;
+type CoinRankingSortKey = (typeof rankingColumns)[number]["key"];
+
+const pnlExplanation =
+  "Lifetime betting profit and loss. Coins returned from settled bets and closed trades minus their cost and trading fees.";
+const smallPnlThreshold = 100;
+
 type TransactionCategory =
   | "fines"
   | "gifts"
@@ -213,12 +233,29 @@ export const CoinRankingsPage = () => {
     [selectedCategories],
   );
   const rankingsQuery = useQuery(coinRankingsQueryOptions());
+  const { changeSort, sortDirection, sortKey } = useTableSort<CoinRankingSortKey>({
+    initialKey: "netWorth",
+    getDefaultDirection: (key) => (key === "rank" || key === "username" ? "asc" : "desc"),
+  });
   const transactionsQuery = useQuery({
     ...coinTransactionsQueryOptions(selectedReasons, transactionPage, usernameFilter),
     enabled: view === "transactions" && selectedReasons.length > 0,
     placeholderData: keepPreviousData,
   });
-  const rankings = rankingsQuery.data ?? [];
+  const rankings = useMemo(() => {
+    const rows = (rankingsQuery.data ?? []).map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
+    }));
+    const direction = sortDirection === "asc" ? 1 : -1;
+    return rows.sort((left, right) => {
+      const comparison =
+        sortKey === "username"
+          ? left.username.localeCompare(right.username)
+          : left[sortKey] - right[sortKey];
+      return direction * comparison || left.rank - right.rank;
+    });
+  }, [rankingsQuery.data, sortDirection, sortKey]);
   const transactions = useMemo(
     () => transactionsQuery.data?.transactions ?? [],
     [transactionsQuery.data],
@@ -334,23 +371,27 @@ export const CoinRankingsPage = () => {
 
                 <DataTable
                   wrapperClassName="rankingsTableWrap coinRankingsTableWrap"
-                  className="rankingsTable coinRankingsTable coinLeaderboardTable"
+                  className="rankingsTable coinLeaderboardTable"
                 >
                   <thead>
                     <tr>
-                      <th scope="col" aria-label="Rank">
-                        #
-                      </th>
-                      <th scope="col">Player</th>
-                      <th scope="col">Net Worth</th>
-                      <th scope="col">Balance</th>
-                      <th scope="col">In Bets</th>
+                      {rankingColumns.map(({ key, label }) => (
+                        <SortableTableHeader
+                          key={key}
+                          {...(key === "rank" ? { accessibleLabel: "Rank" } : {})}
+                          active={sortKey === key}
+                          direction={sortDirection}
+                          label={label}
+                          onSort={() => changeSort(key)}
+                          title={key === "realizedPnl" ? pnlExplanation : undefined}
+                        />
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {rankings.map((entry, index) => (
+                    {rankings.map((entry) => (
                       <tr key={entry.username}>
-                        <td className="coinRankPosition">{index + 1}</td>
+                        <td className="coinRankPosition">{entry.rank}</td>
                         <td>
                           <Link
                             className="rankingLink"
@@ -368,6 +409,17 @@ export const CoinRankingsPage = () => {
                         </td>
                         <td className="coinAmount" data-label="In Bets">
                           {formatCoinBalance(entry.inBets)}
+                        </td>
+                        <td
+                          className="coinAmount"
+                          data-label="P&L"
+                          data-pnl={Math.sign(Math.round(entry.realizedPnl * 100))}
+                          data-pnl-size={
+                            Math.abs(entry.realizedPnl) < smallPnlThreshold ? "small" : undefined
+                          }
+                          title={pnlExplanation}
+                        >
+                          {formatSignedCoinValue(entry.realizedPnl)}
                         </td>
                       </tr>
                     ))}
