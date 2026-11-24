@@ -97,8 +97,16 @@ export const BettorPnlChart = ({ history }: { history: BettorProfile["pnlByDay"]
       context.moveTo(x(first.time), y(first.pnl));
       let previous = first;
       for (const point of points.slice(1)) {
-        context.lineTo(x(point.time), y(previous.pnl));
-        context.lineTo(x(point.time), y(point.pnl));
+        const pointX = x(point.time);
+        const midpointX = (x(previous.time) + pointX) / 2;
+        context.bezierCurveTo(
+          midpointX,
+          y(previous.pnl),
+          midpointX,
+          y(point.pnl),
+          pointX,
+          y(point.pnl),
+        );
         previous = point;
       }
       context.strokeStyle = ink;
@@ -112,14 +120,6 @@ export const BettorPnlChart = ({ history }: { history: BettorProfile["pnlByDay"]
       context.fill();
       context.globalAlpha = 1;
 
-      context.strokeStyle = color("--color-muted");
-      context.lineWidth = 1;
-      context.setLineDash([3, 3]);
-      context.beginPath();
-      context.moveTo(x(current.time), padding);
-      context.lineTo(x(current.time), height - padding);
-      context.stroke();
-      context.setLineDash([]);
       context.beginPath();
       context.arc(x(current.time), y(current.pnl), 4, 0, 2 * Math.PI);
       context.fill();
