@@ -1408,37 +1408,37 @@ const BracketTournamentPage = ({
       </section>
 
       <div className="tournamentBracketToolbar">
-        <div className="tournamentBracketControls">
-          {bracket.stages.length > 1 || seedEntries.length ? (
-            <div className="tournamentStageToggle" role="tablist" aria-label="Bracket type">
-              {bracket.stages.map((stage) => {
-                const isActive = stage.key === activeStageKey;
-                return (
-                  <button
-                    key={`${stage.key}-toggle`}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    className={`tournamentStageToggleButton${isActive ? " isActive" : ""}`}
-                    onClick={() => selectTournamentTab(stage.key)}
-                  >
-                    {stage.label}
-                  </button>
-                );
-              })}
-              {seedEntries.length ? (
+        {bracket.stages.length > 1 || seedEntries.length ? (
+          <div className="tournamentStageToggle" role="tablist" aria-label="Bracket type">
+            {bracket.stages.map((stage) => {
+              const isActive = stage.key === activeStageKey;
+              return (
                 <button
+                  key={`${stage.key}-toggle`}
                   type="button"
                   role="tab"
-                  aria-selected={activeStageKey === SEEDS_STAGE_KEY}
-                  className={`tournamentStageToggleButton${activeStageKey === SEEDS_STAGE_KEY ? " isActive" : ""}`}
-                  onClick={() => selectTournamentTab(SEEDS_STAGE_KEY)}
+                  aria-selected={isActive}
+                  className={`tournamentStageToggleButton${isActive ? " isActive" : ""}`}
+                  onClick={() => selectTournamentTab(stage.key)}
                 >
-                  Seeds
+                  {stage.label}
                 </button>
-              ) : null}
-            </div>
-          ) : null}
+              );
+            })}
+            {seedEntries.length ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeStageKey === SEEDS_STAGE_KEY}
+                className={`tournamentStageToggleButton${activeStageKey === SEEDS_STAGE_KEY ? " isActive" : ""}`}
+                onClick={() => selectTournamentTab(SEEDS_STAGE_KEY)}
+              >
+                Seeds
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="tournamentBracketControls">
           {activeStage && !isRoundRobinQualifyingStage(activeStage) ? (
             <TournamentZoomControls
               stageLabel={activeStage.label}
@@ -1448,23 +1448,25 @@ const BracketTournamentPage = ({
               onZoomIn={() => updateStageZoom(activeStage.key, 1)}
             />
           ) : null}
-          {activeStage ? (
-            <label className="tournamentDateSetting">
-              <input
-                type="checkbox"
-                checked={showMatchDates}
-                onChange={(event) => setShowMatchDates(event.target.checked)}
-              />
-              Show dates
-            </label>
-          ) : null}
+          <div className="tournamentBracketOptions">
+            {activeStage ? (
+              <label className="tournamentDateSetting">
+                <input
+                  type="checkbox"
+                  checked={showMatchDates}
+                  onChange={(event) => setShowMatchDates(event.target.checked)}
+                />
+                Show dates
+              </label>
+            ) : null}
+            <CommunityCommentsLink
+              target={{ type: "tournament", id: bracket.id }}
+              className="tournamentCommentsLink"
+              href="#tournament-comments"
+              onClick={scrollToComments}
+            />
+          </div>
         </div>
-        <CommunityCommentsLink
-          target={{ type: "tournament", id: bracket.id }}
-          className="tournamentCommentsLink"
-          href="#tournament-comments"
-          onClick={scrollToComments}
-        />
       </div>
 
       <div className="tournamentStages">

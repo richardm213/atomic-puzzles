@@ -775,22 +775,23 @@ a.tournamentGroupHistoryChip:focus-visible {
 }
 
 .tournamentBracketToolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  max-width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
 }
 
 .tournamentBracketControls {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 0;
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: thin;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tournamentBracketOptions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-inline-start: auto;
 }
 
 .tournamentDateSetting {
@@ -823,12 +824,16 @@ a.tournamentGroupHistoryChip:focus-visible {
   gap: 4px;
   padding: 4px;
   width: fit-content;
+  max-width: 100%;
   border-radius: 8px;
   border: 1px solid var(--color-border);
   background: var(--color-panel-strong);
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .tournamentStageToggleButton {
+  flex-shrink: 0;
   border: 0;
   border-radius: 5px;
   min-height: 40px;
@@ -837,6 +842,7 @@ a.tournamentGroupHistoryChip:focus-visible {
   color: var(--color-muted);
   font-size: 0.95rem;
   font-weight: 650;
+  white-space: nowrap;
   transition:
     background 160ms ease,
     color 160ms ease,
@@ -1364,20 +1370,9 @@ a.tournamentGroupHistoryChip:focus-visible {
       max(22px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   }
 
-  .tournamentBracketToolbar {
-    flex-wrap: wrap;
-  }
-
-  .tournamentBracketControls {
-    flex-wrap: wrap;
-    width: 100%;
-    overflow-x: visible;
-  }
-
-  .tournamentBracketControls .tournamentStageToggle {
-    flex: 0 0 100%;
-    max-width: 100%;
-    overflow-x: auto;
+  .tournamentStageToggleButton {
+    min-height: 44px;
+    padding-inline: var(--space-2);
   }
 
   .tournamentCommentsLink {
