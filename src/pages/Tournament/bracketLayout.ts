@@ -86,18 +86,21 @@ const isDecidedMatch = (match: TournamentMatch): boolean =>
   isTournamentByeMatch(match) ||
   Boolean(match.p1 && match.p2 && (match.s1 > match.s2 || match.s2 > match.s1));
 
-export const getAwcCurrentRound = (stage: TournamentBracketStage): string => {
+export const getAwcRoundView = (stage: TournamentBracketStage) => {
   const grandFinal = stage.rounds.find((round) => round.roundName === "Grand Final")?.matches[0];
   // The first Grand Final only forces a reset if the losers-bracket finalist (p2) wins.
   const resetRequired = Boolean(grandFinal && grandFinal.s2 > grandFinal.s1);
   const rounds = stage.rounds.filter(
     (round) => round.roundName !== "Grand Final Reset" || resetRequired,
   );
-  return (
-    rounds.find((round) => round.matches.some((match) => !isDecidedMatch(match)))?.roundName ??
-    rounds.at(-1)?.roundName ??
-    ""
+  const unfinishedIndex = rounds.findIndex((round) =>
+    round.matches.some((match) => !isDecidedMatch(match)),
   );
+  const currentIndex = unfinishedIndex >= 0 ? unfinishedIndex : rounds.length - 1;
+  return {
+    currentRound: rounds[currentIndex]?.roundName ?? "",
+    startRound: rounds[Math.max(0, currentIndex - 1)]?.roundName ?? "",
+  };
 };
 
 const roundShortLabels: Record<string, string> = {

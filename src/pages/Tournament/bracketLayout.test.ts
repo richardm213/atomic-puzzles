@@ -4,7 +4,7 @@ import {
   buildStageTreeLayout,
   buildStartRoundState,
   DEFAULT_STAGE_ZOOM,
-  getAwcCurrentRound,
+  getAwcRoundView,
   getStageRoundShortLabel,
   getStartRoundOptions,
   getVisibleRounds,
@@ -74,9 +74,7 @@ describe("bracket layout", () => {
       { label: "Player one / Player two", loserName: "Player two" },
     ]);
     expect(sources.get("lb-r2")?.[0]?.loserName).toBe("Player one");
-    expect(sources.get("lb-r4")).toEqual([
-      { label: "Player one / Player two", loserName: "" },
-    ]);
+    expect(sources.get("lb-r4")).toEqual([{ label: "Player one / Player two", loserName: "" }]);
     expect(sources.get("lb-final")).toEqual([{ label: "Loser of F #1", loserName: "" }]);
   });
 
@@ -114,7 +112,7 @@ describe("bracket layout", () => {
     expect(buildStartRoundState([stage], "Finals")).toEqual({ main: "Finals" });
   });
 
-  it("follows the oldest unfinished AWC round even when a later match has been played", () => {
+  it("starts one round before the oldest unfinished AWC round", () => {
     const lastR16 = match("r16-last");
     const awc = {
       ...stage,
@@ -130,9 +128,15 @@ describe("bracket layout", () => {
         },
       ],
     };
-    expect(getAwcCurrentRound(awc)).toBe("Round of 16");
+    expect(getAwcRoundView(awc)).toEqual({
+      currentRound: "Round of 16",
+      startRound: "Round of 32",
+    });
     lastR16.s2 = 6;
-    expect(getAwcCurrentRound(awc)).toBe("Quarterfinals");
+    expect(getAwcRoundView(awc)).toEqual({
+      currentRound: "Quarterfinals",
+      startRound: "Round of 16",
+    });
   });
 
   it("follows a grand final reset only if the losers-bracket finalist wins the first set", () => {
@@ -144,12 +148,19 @@ describe("bracket layout", () => {
         { roundName: "Grand Final Reset", matches: [match("reset")] },
       ],
     };
-    expect(getAwcCurrentRound(awc)).toBe("Grand Final");
+    expect(getAwcRoundView(awc)).toEqual({
+      currentRound: "Grand Final",
+      startRound: "Grand Final",
+    });
     grandFinal.s2 = 7;
-    expect(getAwcCurrentRound(awc)).toBe("Grand Final Reset");
-    expect(getStartRoundOptions(awc, "Grand Final Reset").map((round) => round.roundName)).toEqual([
-      "Grand Final Reset",
-    ]);
+    const { currentRound, startRound } = getAwcRoundView(awc);
+    expect({ currentRound, startRound }).toEqual({
+      currentRound: "Grand Final Reset",
+      startRound: "Grand Final",
+    });
+    expect(
+      getStartRoundOptions(awc, currentRound, startRound).map((round) => round.roundName),
+    ).toEqual(["Grand Final", "Grand Final Reset"]);
   });
 
   it("labels a single qualifying round Q1 instead of Q2", () => {

@@ -57,7 +57,7 @@ import {
   CARD_WIDTH,
   clampZoom,
   DEFAULT_STAGE_ZOOM,
-  getAwcCurrentRound,
+  getAwcRoundView,
   getRoundSlug,
   getStageRoundShortLabel,
   getStageStartRound,
@@ -784,7 +784,7 @@ const TournamentStageSection = ({
   layout,
   zoomLevel,
   startRoundName,
-  automaticStartRoundName,
+  currentRoundName,
   topSeedMap,
   entryMarkers,
   seedCount,
@@ -802,7 +802,7 @@ const TournamentStageSection = ({
   layout: StageLayout;
   zoomLevel: number;
   startRoundName: string;
-  automaticStartRoundName: string | undefined;
+  currentRoundName: string | undefined;
   topSeedMap: Map<string, number>;
   entryMarkers: Map<string, TournamentEntryMarker>;
   seedCount: number;
@@ -816,7 +816,7 @@ const TournamentStageSection = ({
   loserSourcesByMatchId: Map<string, LoserSource[]>;
 }) => {
   const [groupViews, setGroupViews] = useState<Record<string, "standings" | "matches">>({});
-  const startRoundOptions = getStartRoundOptions(stage, automaticStartRoundName, startRoundName);
+  const startRoundOptions = getStartRoundOptions(stage, currentRoundName, startRoundName);
   const trophyMatchId = trophyAssetPath ? getStageTrophyMatchId(stage, decisiveMatchId) : "";
   const roundRobinGroups = isRoundRobinQualifyingStage(stage) ? buildRoundRobinGroups(stage) : null;
 
@@ -1026,22 +1026,20 @@ const BracketTournamentPage = ({
     pageScrollY: number;
   } | null>(null);
 
-  const automaticStartRounds = useMemo<Record<string, string>>(
+  const awcRoundViews = useMemo(
     () =>
-      bracket?.id === "awc2026"
-        ? Object.fromEntries(
-            bracket.stages
+      new Map(
+        bracket?.id === "awc2026"
+          ? bracket.stages
               .filter((stage) => stage.key === "main" || stage.key === "losers")
-              .map((stage) => [stage.key, getAwcCurrentRound(stage)]),
-          )
-        : {},
+              .map((stage) => [stage.key, getAwcRoundView(stage)])
+          : [],
+      ),
     [bracket],
   );
   const displayedStartRounds = useMemo(() => {
-    const rounds = {
-      ...buildStartRoundState(bracket?.stages, bracket?.defaultMainBracketStartRound),
-      ...automaticStartRounds,
-    };
+    const rounds = buildStartRoundState(bracket?.stages, bracket?.defaultMainBracketStartRound);
+    for (const [stageKey, view] of awcRoundViews) rounds[stageKey] = view.startRound;
     if (tournamentRound && bracket) {
       const stage =
         bracket.stages.find((entry) => entry.key === normalizeTournamentTab(tournamentTab)) ??
@@ -1054,7 +1052,7 @@ const BracketTournamentPage = ({
       if (stage && round) rounds[stage.key] = round.roundName;
     }
     return rounds;
-  }, [automaticStartRounds, bracket, tournamentRound, tournamentTab]);
+  }, [awcRoundViews, bracket, tournamentRound, tournamentTab]);
 
   const saveViewState = useCallback(() => {
     if (!bracket || typeof window === "undefined") return;
@@ -1482,7 +1480,7 @@ const BracketTournamentPage = ({
               layout={stageLayouts.get(stage.key)}
               zoomLevel={zoomLevel}
               startRoundName={startRoundName}
-              automaticStartRoundName={automaticStartRounds[stage.key]}
+              currentRoundName={awcRoundViews.get(stage.key)?.currentRound}
               topSeedMap={topSeedMap}
               entryMarkers={entryMarkers}
               seedCount={topSeedMap.size}
