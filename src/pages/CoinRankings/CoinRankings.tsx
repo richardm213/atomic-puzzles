@@ -10,6 +10,7 @@ import { InlineState } from "../../components/InlineState/InlineState";
 import { PaginationRow } from "../../components/PaginationRow/PaginationRow";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { Seo } from "../../components/Seo/Seo";
+import { usePlayerDisplayNames } from "../../hooks/usePlayerDisplayNames";
 import { useTableSort } from "../../hooks/useTableSort";
 import {
   formatCoinAmount,
@@ -233,6 +234,7 @@ export const CoinRankingsPage = () => {
     [selectedCategories],
   );
   const rankingsQuery = useQuery(coinRankingsQueryOptions());
+  const displayName = usePlayerDisplayNames();
   const { changeSort, sortDirection, sortKey } = useTableSort<CoinRankingSortKey>({
     initialKey: "netWorth",
     getDefaultDirection: (key) => (key === "rank" || key === "username" ? "asc" : "desc"),
@@ -245,17 +247,18 @@ export const CoinRankingsPage = () => {
   const rankings = useMemo(() => {
     const rows = (rankingsQuery.data ?? []).map((entry, index) => ({
       ...entry,
+      label: displayName(entry.username).label,
       rank: index + 1,
     }));
     const direction = sortDirection === "asc" ? 1 : -1;
     return rows.sort((left, right) => {
       const comparison =
         sortKey === "username"
-          ? left.username.localeCompare(right.username)
+          ? left.label.localeCompare(right.label)
           : left[sortKey] - right[sortKey];
       return direction * comparison || left.rank - right.rank;
     });
-  }, [rankingsQuery.data, sortDirection, sortKey]);
+  }, [displayName, rankingsQuery.data, sortDirection, sortKey]);
   const transactions = useMemo(
     () => transactionsQuery.data?.transactions ?? [],
     [transactionsQuery.data],
@@ -397,8 +400,9 @@ export const CoinRankingsPage = () => {
                             className="rankingLink"
                             to="/@/$username/puzzles"
                             params={{ username: entry.username }}
+                            title={entry.label !== entry.username ? entry.username : undefined}
                           >
-                            {entry.username}
+                            {entry.label}
                           </Link>
                         </td>
                         <td className="coinAmount coinNetWorth" data-label="Net Worth">
@@ -531,8 +535,9 @@ export const CoinRankingsPage = () => {
                             className="rankingLink"
                             to="/@/$username/puzzles"
                             params={{ username: transaction.username }}
+                            title={transaction.username}
                           >
-                            {transaction.username}
+                            {displayName(transaction.username).label}
                           </Link>
                         </td>
                         <td>{transaction.description ?? transactionDescription(transaction)}</td>
