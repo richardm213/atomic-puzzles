@@ -121,6 +121,12 @@
   border-top: 1px solid var(--color-border);
 }
 
+.bettorSpending {
+  padding-top: var(--space-4);
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
 .bettorChart {
   display: grid;
   gap: var(--space-1);

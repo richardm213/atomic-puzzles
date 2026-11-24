@@ -11,6 +11,7 @@ export const bettorProfileSchema = z.object({
   openCost: z.number(),
   puzzleSolveCoins: z.number(),
   puzzleCreationCoins: z.number(),
+  coinsSpent: z.number().nonpositive(),
   markets: z.record(
     z.string(),
     z.object({

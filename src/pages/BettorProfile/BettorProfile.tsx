@@ -201,6 +201,12 @@ export const BettorProfilePage = ({ username }: { username: string }) => {
                   <dd>{formatCoinValue(profile.puzzleCreationCoins)}</dd>
                 </div>
               </dl>
+              <dl className="bettorStatList bettorSpending">
+                <div>
+                  <dt>Coins spent</dt>
+                  <dd>{formatSignedCoinValue(profile.coinsSpent)}</dd>
+                </div>
+              </dl>
             </section>
           </div>
           <BettorActivity profile={profile} />

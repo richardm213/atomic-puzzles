@@ -213,7 +213,6 @@ describe("betting function", () => {
           order: () => query,
           in: () => query,
           or: () => query,
-          gt: () => query,
           eq: (...args: unknown[]) => {
             eq(table, ...args);
             return query;
@@ -227,6 +226,11 @@ describe("betting function", () => {
                   ? [
                       { amount: 7, reason: "puzzle_correct" },
                       { amount: 12, reason: "puzzle_created" },
+                      { amount: -2, reason: "puzzle_correct" },
+                      { amount: -40, reason: "shop_redemption" },
+                      { amount: -10, reason: "game_analysis" },
+                      { amount: 10, reason: "game_analysis" },
+                      { amount: -6, reason: "opening_purchase" },
                     ]
                   : tradingReceipts,
             error: null,
@@ -251,6 +255,7 @@ describe("betting function", () => {
       netWorth: 53.2,
       puzzleSolveCoins: 7,
       puzzleCreationCoins: 12,
+      coinsSpent: -46,
       openPositions: [{ marketId: openFill.market_id, quantity: 8, cost: 3.2 }],
       settledBets: [{ marketId: settled, status: "resolved", pnl: 6 }],
       pnlByDay: [

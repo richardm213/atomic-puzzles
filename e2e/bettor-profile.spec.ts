@@ -17,6 +17,7 @@ test("the All bets bettor link opens a profile with trading history and position
     realizedPnl: 17,
     puzzleSolveCoins: 31,
     puzzleCreationCoins: 89,
+    coinsSpent: -46,
     markets: {
       [marketId]: { title: "AWC semifinal", path, yes: "Alice", no: "Bob" },
       [settledId]: {
@@ -89,6 +90,7 @@ test("the All bets bettor link opens a profile with trading history and position
   await expect(worth.getByText("304 coins")).toBeVisible();
   await expect(worth.getByText("31", { exact: true })).toBeVisible();
   await expect(worth.getByText("89", { exact: true })).toBeVisible();
+  await expect(worth.getByText("-46", { exact: true })).toBeVisible();
   const chart = pnl.getByRole("slider", { name: "Inspect cumulative P&L by date" });
   await chart.focus();
   await page.keyboard.press("Home");

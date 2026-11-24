@@ -71,14 +71,22 @@ type TraderMarket = Parameters<typeof summarizePredictionTraderHistory>[0]["mark
   outcome_yes_label: string | null;
   outcome_no_label: string | null;
 };
-type CoinReward = { reason: "puzzle_correct" | "puzzle_created"; amount: number };
+const coinActivityReasons = [
+  "puzzle_correct",
+  "puzzle_created",
+  "shop_redemption",
+  "game_analysis",
+  "opening_purchase",
+  "opening_publish",
+] as const;
+type CoinActivity = { reason: (typeof coinActivityReasons)[number]; amount: number };
 const roundCoins = (amount: number) => Math.round(amount * 1e6) / 1e6;
 
 export const loadBettorProfile = async (
   supabase: SupabaseClient,
   username: string,
 ): Promise<BettorProfile> => {
-  const [ledger, account, rewards] = await Promise.all([
+  const [ledger, account, coinActivity] = await Promise.all([
     loadTraderActivity(supabase, username),
     supabase.from("coin_accounts").select("balance").eq("username", username).maybeSingle(),
     readPredictionRows(
@@ -87,10 +95,9 @@ export const loadBettorProfile = async (
           .from("coin_transactions")
           .select("amount,reason")
           .eq("username", username)
-          .in("reason", ["puzzle_correct", "puzzle_created"])
-          .gt("amount", 0)
+          .in("reason", [...coinActivityReasons])
           .order("id"),
-      "bettor puzzle earnings",
+      "bettor coin activity",
     ),
   ]);
   if (account.error) throw new Error(`Unable to load bettor balance: ${account.error.message}`);
@@ -109,7 +116,7 @@ export const loadBettorProfile = async (
     const id = receipt.metadata?.marketId;
     if (typeof id === "string" && id) getMarket(id).receipts.push(receipt);
   }
-  if (!account.data && byMarket.size === 0 && rewards.length === 0)
+  if (!account.data && byMarket.size === 0 && coinActivity.length === 0)
     throw new HttpError(404, "Bettor profile not found.");
 
   const marketIds = [...byMarket.keys()];
@@ -161,7 +168,14 @@ export const loadBettorProfile = async (
   const balance = Number(account.data?.balance ?? 0);
   const openCost = roundCoins(openPositions.reduce((sum, position) => sum + position.cost, 0));
   const earnings = { puzzle_correct: 0, puzzle_created: 0 };
-  for (const reward of rewards as CoinReward[]) earnings[reward.reason] += Number(reward.amount);
+  let spending = 0;
+  for (const { reason, amount } of coinActivity as CoinActivity[]) {
+    if (reason === "puzzle_correct" || reason === "puzzle_created") {
+      earnings[reason] += Math.max(0, Number(amount));
+    } else {
+      spending += Number(amount);
+    }
+  }
   let realizedPnl = 0;
   const pnlByDay = [...pnlChangesByDay]
     .sort(([a], [b]) => a.localeCompare(b))
@@ -177,6 +191,7 @@ export const loadBettorProfile = async (
     realizedPnl,
     puzzleSolveCoins: roundCoins(earnings.puzzle_correct),
     puzzleCreationCoins: roundCoins(earnings.puzzle_created),
+    coinsSpent: roundCoins(Math.min(0, spending)),
     markets,
     openPositions,
     pnlByDay,
