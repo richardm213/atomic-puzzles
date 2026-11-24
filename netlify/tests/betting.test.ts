@@ -151,6 +151,122 @@ describe("betting function", () => {
     expect(mocks.createClient).not.toHaveBeenCalled();
   });
 
+  it("aggregates a public bettor's realized results, open cost and puzzle rewards", async () => {
+    const date = "2026-11-01T00:00:00Z";
+    const openFill = {
+      id: 1,
+      market_id: "open-market",
+      outcome: "yes",
+      quantity: 10,
+      price_cents: 40,
+      buyer_username: "trader",
+      seller_username: "maker",
+      pair_key: null,
+      created_at: date,
+    };
+    const settled = "settled-market";
+    const rows: Record<string, unknown[]> = {
+      prediction_fills: [
+        openFill,
+        { ...openFill, id: 2, market_id: settled },
+        {
+          ...openFill,
+          id: 3,
+          buyer_username: "maker",
+          seller_username: "trader",
+          quantity: 2,
+          price_cents: 50,
+        },
+      ],
+      prediction_markets: [
+        { id: openFill.market_id, status: "closed", question: "Open position", group_path: null },
+        {
+          id: settled,
+          status: "resolved",
+          outcome: "yes",
+          settlement_price_cents: null,
+          question: "Settled position",
+          group_path: "/betting/awc-2026-semifinals",
+          outcome_yes_label: "Player one",
+        },
+      ],
+    };
+    const tradingReceipts = [
+      {
+        id: 3,
+        reason: "prediction_market_payout",
+        amount: 10,
+        source_key: "private-payout-key",
+        metadata: { marketId: settled, outcome: "yes", contracts: 10, private: "not public" },
+        created_at: "2026-11-02T00:00:00Z",
+      },
+    ];
+    const eq = vi.fn();
+    mocks.createClient.mockReturnValue({
+      from: (table: string) => {
+        let selection = "";
+        const query = {
+          select: (columns: string) => {
+            selection = columns;
+            return query;
+          },
+          order: () => query,
+          in: () => query,
+          or: () => query,
+          gt: () => query,
+          eq: (...args: unknown[]) => {
+            eq(table, ...args);
+            return query;
+          },
+          maybeSingle: async () => ({ data: { balance: 50 }, error: null }),
+          range: async () => ({
+            data:
+              table !== "coin_transactions"
+                ? (rows[table] ?? [])
+                : selection === "amount,reason"
+                  ? [
+                      { amount: 7, reason: "puzzle_correct" },
+                      { amount: 12, reason: "puzzle_created" },
+                    ]
+                  : tradingReceipts,
+            error: null,
+          }),
+          then: (resolve: (result: unknown) => void) =>
+            resolve({ data: rows[table] ?? [], error: null }),
+        };
+        return query;
+      },
+    });
+
+    const response = await handler({
+      httpMethod: "POST",
+      headers: {},
+      body: JSON.stringify({ action: "bettorProfile", username: "Trader" }),
+    });
+    expect(response.statusCode).toBe(200);
+    expect(eq).toHaveBeenCalledWith("coin_accounts", "username", "trader");
+    expect(JSON.parse(response.body).result).toMatchObject({
+      username: "trader",
+      realizedPnl: 6.2,
+      netWorth: 53.2,
+      puzzleSolveCoins: 7,
+      puzzleCreationCoins: 12,
+      openPositions: [{ marketId: openFill.market_id, quantity: 8, cost: 3.2 }],
+      settledBets: [{ marketId: settled, status: "resolved", pnl: 6 }],
+      pnlByDay: [
+        { day: "2026-11-01", pnl: 0.2 },
+        { day: "2026-11-02", pnl: 6.2 },
+      ],
+    });
+    expect(response.body).not.toMatch(/private-payout-key|not public|seller_username/);
+    const house = await handler({
+      httpMethod: "POST",
+      headers: {},
+      body: JSON.stringify({ action: "bettorProfile", username: "prediction_admin" }),
+    });
+    expect(house.statusCode).toBe(400);
+  });
+
   it("paginates public chart trades and scopes time ranges to the selected resolved market", async () => {
     const end = Date.parse("2026-11-14T12:00:00Z");
     const fills = Array.from({ length: 1001 }, (_, id) => ({

@@ -1,0 +1,271 @@
+.bettorProfilePage {
+  display: grid;
+  gap: var(--space-5);
+  width: min(100%, var(--page-max-width));
+  margin-inline: auto;
+  padding: var(--page-shell-padding);
+}
+
+.bettorHeader {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.bettorHeader > a {
+  justify-self: start;
+  color: var(--color-muted);
+}
+
+.bettorHeader > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+}
+
+.bettorHeader h1 {
+  margin: 0;
+  font-size: clamp(1.85rem, 4vw, 2.75rem);
+  overflow-wrap: anywhere;
+}
+
+.bettorPanel {
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel);
+}
+
+.bettorSummary {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+}
+
+.bettorPerformance,
+.bettorWorth {
+  min-width: 0;
+  padding: clamp(var(--space-4), 3vw, var(--space-8));
+}
+
+.bettorWorth {
+  border-inline-start: 1px solid var(--color-border);
+  border-start-end-radius: inherit;
+  border-end-end-radius: inherit;
+  background: var(--color-panel-strong);
+}
+
+.bettorPanel h2,
+.bettorPanel h3 {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 0.95rem;
+}
+
+.bettorHeadline {
+  margin: var(--space-1) 0 var(--space-4);
+  color: var(--color-heading);
+  font-size: clamp(1.85rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1.12;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.bettorHeadline small {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.bettorProfilePage [data-pnl="1"] {
+  color: var(--color-pnl-profit);
+}
+
+.bettorProfilePage [data-pnl="-1"] {
+  color: var(--color-pnl-loss);
+}
+
+.bettorStatList {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.bettorStatList div {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.bettorStatList dt,
+.bettorMuted,
+.bettorRowDetail,
+.bettorMarketCell small,
+.bettorChart time,
+.bettorChartDates {
+  color: var(--color-muted);
+}
+
+.bettorStatList dd {
+  margin: 0;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.bettorWorth h3 {
+  margin-block: var(--space-5) var(--space-3);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.bettorChart {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.bettorChart figcaption,
+.bettorChartDates,
+.bettorChartPoint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: 0.8rem;
+}
+
+.bettorChartPeriods {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.bettorChartPeriods button {
+  min-height: var(--control-height-touch);
+  min-width: var(--control-height-touch);
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+}
+
+.bettorChartPeriods button[aria-pressed="true"] {
+  border-color: var(--color-border);
+  background: var(--color-panel-strong);
+  color: var(--color-heading);
+}
+
+.bettorChart canvas {
+  display: block;
+  width: 100%;
+  height: clamp(156px, 20vw, 215px);
+}
+
+.bettorChart input {
+  width: calc(100% - 48px);
+  min-height: var(--control-height-touch);
+  margin: 0;
+  accent-color: var(--color-muted);
+}
+
+.bettorChartDates {
+  padding-inline-end: 48px;
+}
+
+.bettorActivity {
+  display: grid;
+  gap: var(--space-3);
+  padding: clamp(var(--space-3), 2.4vw, var(--space-5));
+}
+
+.bettorViewOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.bettorViewOptions button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-touch);
+  margin-bottom: -1px;
+  padding: 0 var(--space-1);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font-weight: 650;
+}
+
+.bettorViewOptions button:hover,
+.bettorChartPeriods button:hover {
+  color: var(--color-heading);
+}
+
+.bettorViewOptions button[aria-pressed="true"] {
+  border-color: var(--color-primary);
+  color: var(--color-heading);
+}
+
+.bettorViewOptions span {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.bettorTable td {
+  overflow-wrap: anywhere;
+}
+
+.bettorMarketCell {
+  width: 54%;
+  font-weight: 650;
+}
+
+.bettorRowDetail,
+.bettorMarketCell small {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.bettorNumeric {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 700px) {
+  .bettorSummary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bettorWorth {
+    border-block-start: 1px solid var(--color-border);
+    border-inline-start: 0;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+
+  .bettorHeader a,
+  .bettorMarketCell a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--control-height-touch);
+  }
+
+  .bettorTable th,
+  .bettorTable td {
+    padding-inline: var(--space-2);
+  }
+
+  .bettorTable td {
+    vertical-align: top;
+  }
+}

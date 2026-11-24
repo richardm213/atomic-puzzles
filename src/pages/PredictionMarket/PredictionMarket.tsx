@@ -5,6 +5,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 
+import { isPublicBettor } from "../../../shared/domain/bettorProfile";
 import { InlineState } from "../../components/InlineState/InlineState";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { PredictionMarketExplainer } from "../../components/PredictionMarketExplainer/PredictionMarketExplainer";
@@ -55,12 +56,12 @@ import { personalMarketPnl } from "../Betting/bettingHistoryModel";
 
 const outcomeLabel = (outcome: PredictionOutcome, definition?: PredictionMarketDefinition) =>
   predictionOutcomeLabel(definition, outcome);
-const predictionAdminUsername = "prediction_admin";
 export const PredictionMarketPage = () => {
   const { isAuthenticated, isLoading: authLoading, login, user } = useAuth();
   const queryClient = useQueryClient();
   const username = user?.username ?? "anonymous";
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { pathname, searchStr } = useRouterState({ select: (state) => state.location });
+  const requestedMarketId = new URLSearchParams(searchStr).get("market");
   const catalogQuery = useQuery(predictionMarketCatalogQueryOptions());
   const marketGroup = catalogQuery.data?.find((group) => group.path === pathname);
   const marketDefinitions: readonly PredictionMarketDefinition[] = useMemo(
@@ -104,13 +105,14 @@ export const PredictionMarketPage = () => {
   );
 
   useEffect(() => {
-    const firstMarketId = marketDefinitions[0]?.id;
-    if (!firstMarketId) return;
-    setActiveMarketId(firstMarketId);
-    setExpandedMarketId(null);
+    const requestedMarket = marketDefinitions.find((market) => market.id === requestedMarketId);
+    const initialMarketId = requestedMarket?.id ?? marketDefinitions[0]?.id;
+    if (!initialMarketId) return;
+    setActiveMarketId(initialMarketId);
+    setExpandedMarketId(requestedMarket?.id ?? null);
     setOutcome("yes");
     setSuccessMessage("");
-  }, [marketDefinitions]);
+  }, [marketDefinitions, requestedMarketId]);
 
   const marketState =
     marketStateById.get(activeMarketId) ?? marketStateById.get(marketDefinitions[0]?.id ?? "");
@@ -188,7 +190,7 @@ export const PredictionMarketPage = () => {
       (marketStateById.get(definition.id)?.fills ?? []).map((fill) => ({ ...fill, definition })),
     );
     return exchangeFills
-      .filter((fill) => fill.buyerUsername.toLowerCase() !== predictionAdminUsername)
+      .filter((fill) => isPublicBettor(fill.buyerUsername))
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || right.id - left.id)
       .slice(0, 20);
   }, [marketDefinitions, marketStateById]);
@@ -505,14 +507,13 @@ export const PredictionMarketPage = () => {
                             {formatLocalDateTime(fill.createdAt)}
                           </time>
                           <span className="predictionTradeParties">
-                            <PlayerLink username={fill.buyerUsername}>
+                            <PlayerLink username={fill.buyerUsername} variant="betting">
                               {fill.buyerUsername}
                             </PlayerLink>
-                            {fill.sellerUsername &&
-                            fill.sellerUsername.toLowerCase() !== predictionAdminUsername ? (
+                            {fill.sellerUsername && isPublicBettor(fill.sellerUsername) ? (
                               <>
                                 <small>bought from</small>
-                                <PlayerLink username={fill.sellerUsername}>
+                                <PlayerLink username={fill.sellerUsername} variant="betting">
                                   {fill.sellerUsername}
                                 </PlayerLink>
                               </>

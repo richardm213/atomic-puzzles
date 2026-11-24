@@ -6,6 +6,7 @@ import {
   type PredictionPositionFill,
   type PredictionPositionNetting,
   predictionTradingFee,
+  predictionTradingReceiptReasons,
   replayPredictionPosition,
 } from "../../shared/domain/predictionAccounting";
 import { loadAllPages } from "../../shared/lib/pagination";
@@ -110,14 +111,7 @@ export const loadPredictionPositions = async (
     let query = supabase
       .from("coin_transactions")
       .select("username,amount,reason,source_key,metadata,created_at")
-      .in("reason", [
-        "prediction_trade_fee",
-        "prediction_order_reserve",
-        "prediction_trade_credit",
-        "prediction_market_payout",
-        "prediction_order_refund",
-        "prediction_reconciliation",
-      ])
+      .in("reason", predictionTradingReceiptReasons)
       .neq("username", "prediction_admin")
       .order("id");
     if (marketIds) query = query.in("metadata->>marketId", [...marketIds]);

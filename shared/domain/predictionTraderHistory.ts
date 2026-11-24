@@ -37,7 +37,7 @@ const roundCoins = (amount: number): number => Math.round(amount * 1e6) / 1e6;
 
 // Trades share the holdings replay. Cash receipts supply fees, actual
 // settlements and corrections, so the final running total also explains historical repairs.
-export const buildPredictionTraderHistory = ({
+export const summarizePredictionTraderHistory = ({
   username,
   fills,
   credits,
@@ -56,7 +56,7 @@ export const buildPredictionTraderHistory = ({
     outcome: string | null;
     settlement_price_cents: number | null;
   };
-}): PredictionTraderHistoryEntry[] => {
+}) => {
   const rows: Entry[] = [];
   const hasTrades = fills.length > 0 || credits.length > 0;
   const replay = replayPredictionPosition({
@@ -148,9 +148,34 @@ export const buildPredictionTraderHistory = ({
     } else grouped.push({ ...row });
   }
   let runningPnl = 0;
-  return grouped.map((row) => {
+  const history = grouped.map((row) => {
     const pnlChange = roundCoins(row.pnlChange);
     runningPnl = roundCoins(runningPnl + pnlChange);
     return { ...row, pnlChange, runningPnl };
   });
+  return {
+    history,
+    openPositions:
+      market.status === "open" || market.status === "closed"
+        ? (["yes", "no"] as const).flatMap((outcome) => {
+            const { quantity, costCents } = replay.positions[outcome];
+            return quantity > 0 ? [{ outcome, quantity, cost: roundCoins(costCents / 100) }] : [];
+          })
+        : [],
+  };
 };
+
+export const buildPredictionTraderHistory = (
+  input: Parameters<typeof summarizePredictionTraderHistory>[0],
+): PredictionTraderHistoryEntry[] => summarizePredictionTraderHistory(input).history;
+
+export const predictionTraderActionLabels: Record<PredictionTraderHistoryEntry["action"], string> =
+  {
+    buy: "Buy",
+    sell: "Sell",
+    fee: "Fee",
+    settlement: "Settlement",
+    correction: "Correction",
+    refund: "Refund",
+    payment: "Payment",
+  };

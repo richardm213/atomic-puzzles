@@ -14,6 +14,11 @@ export const formatCoinBalance = (value: number): string =>
 export const formatCoinValue = (value: number): string =>
   normalizedCoinValue(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
+export const formatSignedCoinValue = (value: number): string => {
+  const rounded = Math.round(normalizedCoinValue(value) * 100) / 100 || 0;
+  return `${rounded > 0 ? "+" : ""}${formatCoinValue(rounded)}`;
+};
+
 export const formatCoinVolume = (value: number): string =>
   normalizedCoinValue(value).toLocaleString(undefined, {
     maximumFractionDigits: value > 1000 ? 0 : 2,

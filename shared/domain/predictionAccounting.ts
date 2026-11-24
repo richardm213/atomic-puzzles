@@ -1,5 +1,14 @@
 import type { PredictionOutcome } from "./betting";
 
+export const predictionTradingReceiptReasons = [
+  "prediction_trade_fee",
+  "prediction_market_payout",
+  "prediction_reconciliation",
+  "prediction_order_reserve",
+  "prediction_order_refund",
+  "prediction_trade_credit",
+];
+
 export type PredictionPositionFill = {
   id: number;
   outcome: PredictionOutcome;

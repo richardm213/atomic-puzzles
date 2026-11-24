@@ -1,14 +1,15 @@
-import type { BettingMarketSummary } from "../../lib/betting/betting";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
+import { isPublicBettor } from "../../../shared/domain/bettorProfile";
 import { BetShareSlip } from "../../components/BetShareSlip/BetShareSlip";
 import { InlineState } from "../../components/InlineState/InlineState";
 import { PlayerLink } from "../../components/PlayerLink/PlayerLink";
 import { RouteLoadingFallback } from "../../components/RouteLoadingFallback/RouteLoadingFallback";
 import { usePersistedState } from "../../hooks/usePersistedState";
 import { useUnderscoreUsernameCutoff } from "../../hooks/useUnderscoreUsernameCutoff";
-import { formatCoinValue } from "../../lib/coins/coinDisplay";
+import type { BettingMarketSummary } from "../../lib/betting/betting";
+import { formatCoinValue, formatSignedCoinValue } from "../../lib/coins/coinDisplay";
 import {
   type PredictionMarketGroup,
   sortPredictionMarketsByChance,
@@ -34,8 +35,15 @@ const BetHistoryUsername = ({ username }: { username: string }) => {
 
 const BetHistoryBettorLink = ({ username }: { username: string }) => {
   const { displayName, elementRef } = useUnderscoreUsernameCutoff<HTMLAnchorElement>(username);
+  if (!isPublicBettor(username)) return <BetHistoryUsername username={username} />;
   return (
-    <PlayerLink ref={elementRef} username={username} title={username} aria-label={username}>
+    <PlayerLink
+      ref={elementRef}
+      username={username}
+      variant="betting"
+      title={username}
+      aria-label={username}
+    >
       {displayName}
     </PlayerLink>
   );
@@ -311,9 +319,7 @@ export const BetHistoryTable = ({
                     data-result={result}
                   >
                     <strong>
-                      {showPnl
-                        ? `${pnl > 0 ? "+" : ""}${formatCoinValue(pnl)}`
-                        : formatCoinValue(payout)}
+                      {showPnl ? formatSignedCoinValue(pnl) : formatCoinValue(payout)}
                     </strong>
                     {showUnits ? (
                       <small

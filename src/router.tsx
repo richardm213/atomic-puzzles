@@ -39,6 +39,10 @@ const AtomicOpeningsPage = lazyRouteComponent(
 const ArenasPage = lazyRouteComponent(() => import("./pages/Arenas/Arenas"), "ArenasPage");
 const CalendarPage = lazyRouteComponent(() => import("./pages/Calendar/Calendar"), "CalendarPage");
 const BettingPage = lazyRouteComponent(() => import("./pages/Betting/Betting"), "BettingPage");
+const BettorProfilePage = lazyRouteComponent(
+  () => import("./pages/BettorProfile/BettorProfile"),
+  "BettorProfilePage",
+);
 const PredictionMarketPage = lazyRouteComponent(
   () => import("./pages/PredictionMarket/PredictionMarket"),
   "PredictionMarketPage",
@@ -939,6 +943,15 @@ const profileRoute = createRoute({
   },
 });
 
+const bettorProfileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/@/$username/betting",
+  component: function BettorProfileRoute() {
+    const { username } = useParams({ from: "/@/$username/betting" });
+    return <BettorProfilePage key={username} username={username} />;
+  },
+});
+
 const profileRatingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/@/$username/ratings",
@@ -1052,6 +1065,7 @@ const routeTree = rootRoute.addChildren([
   solveDashboardSetWithIdRoute,
   solveWithIdRoute,
   profileRatingsRoute,
+  bettorProfileRoute,
   profileAchievementsRoute,
   profileHistoryRoute,
   profileRoute,

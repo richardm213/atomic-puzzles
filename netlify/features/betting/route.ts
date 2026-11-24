@@ -1,20 +1,14 @@
 import { z } from "zod";
 
 import { MAX_PREDICTION_ORDER_QUANTITY } from "../../../shared/domain/betting";
-import {
-  type PredictionPositionCredit,
-  type PredictionPositionFill,
-  type PredictionPositionNetting,
-} from "../../../shared/domain/predictionAccounting";
+import { isPublicBettor } from "../../../shared/domain/bettorProfile";
+import type { PredictionPositionFill } from "../../../shared/domain/predictionAccounting";
 import {
   buildPredictionPriceHistory,
   predictionHistoryDuration,
   predictionHistoryPeriodSchema,
 } from "../../../shared/domain/predictionHistory";
-import {
-  buildPredictionTraderHistory,
-  type PredictionHistoryReceipt,
-} from "../../../shared/domain/predictionTraderHistory";
+import { buildPredictionTraderHistory } from "../../../shared/domain/predictionTraderHistory";
 import { voteValueSchema } from "../../../shared/domain/voting";
 import {
   loadPredictionPositions,
@@ -31,6 +25,7 @@ import type { FunctionEvent } from "../../platform/defineFunction";
 import { createServerSupabase } from "../../platform/environment";
 import { HttpError } from "../../platform/errors";
 import { parseJsonBody } from "../../platform/validation";
+import { loadBettorProfile, loadTraderActivity, traderMarketColumns } from "./bettorProfile";
 import { buildPredictionBook, type PredictionBookOrder } from "./predictionBook";
 
 const exchangeMarketIdSchema = z
@@ -39,6 +34,15 @@ const exchangeMarketIdSchema = z
   .min(1)
   .max(100)
   .regex(/^[a-z0-9-]+$/);
+
+const bettorUsernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1)
+  .max(100)
+  .regex(/^[a-z0-9_-]+$/)
+  .refine((username) => username !== "prediction_admin", "Select a bettor.");
 
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("exchangeMarkets") }),
@@ -49,14 +53,11 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("exchangeTraderHistory"),
     marketId: exchangeMarketIdSchema,
-    username: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .min(1)
-      .max(100)
-      .regex(/^[a-z0-9_-]+$/)
-      .refine((username) => username !== "prediction_admin", "Select a bettor."),
+    username: bettorUsernameSchema,
+  }),
+  z.object({
+    action: z.literal("bettorProfile"),
+    username: bettorUsernameSchema.refine(isPublicBettor, "Select a bettor."),
   }),
   z.object({
     action: z.literal("exchangePriceHistory"),
@@ -331,78 +332,31 @@ export const bettingRoute = async (event: FunctionEvent) => {
       input.action === "suggestions" ||
       input.action === "exchangeMarketBatch" ||
       input.action === "exchangeTraderHistory" ||
+      input.action === "bettorProfile" ||
       input.action === "exchangePriceHistory",
   );
   const supabase = createServerSupabase("Tournament betting service");
 
+  if (input.action === "bettorProfile") {
+    return identityResponse(identity, 200, {
+      result: await loadBettorProfile(supabase, input.username),
+    });
+  }
+
   if (input.action === "exchangeTraderHistory") {
     const { marketId, username } = input;
-    const [market, fills, credits, nettings] = await Promise.all([
+    const [market, activity] = await Promise.all([
       supabase
         .from("prediction_markets")
-        .select("id,status,resolved_at,outcome,settlement_price_cents")
+        .select(traderMarketColumns)
         .eq("id", marketId)
         .maybeSingle(),
-      readPredictionRows(
-        () =>
-          supabase
-            .from("prediction_fills")
-            .select(predictionFillColumns)
-            .eq("market_id", marketId)
-            .or(`buyer_username.eq.${username},seller_username.eq.${username}`)
-            .order("id"),
-        "trader fills",
-      ),
-      readPredictionRows(
-        () =>
-          supabase
-            .from("prediction_position_credits")
-            .select("id,outcome,quantity,price_cents,credited_at,fee_coins,cost_coins")
-            .eq("market_id", marketId)
-            .eq("username", username)
-            .order("id"),
-        "prediction position credits",
-      ),
-      readPredictionRows(
-        () =>
-          supabase
-            .from("prediction_position_nettings")
-            .select("id,quantity,created_at")
-            .eq("market_id", marketId)
-            .eq("username", username)
-            .order("id"),
-        "trader redemptions",
-      ),
+      loadTraderActivity(supabase, username, marketId),
     ]);
     if (market.error) throw new Error(`Unable to load this market: ${market.error.message}`);
     if (!market.data) throw new HttpError(404, "This market is unavailable.");
-    const positionCredits = credits as PredictionPositionCredit[];
-    const receipts = await readPredictionRows(() => {
-      const query = supabase
-        .from("coin_transactions")
-        .select("id,amount,reason,source_key,metadata,created_at")
-        .eq("username", username)
-        .in("reason", [
-          "prediction_trade_fee",
-          "prediction_market_payout",
-          "prediction_reconciliation",
-          "prediction_order_reserve",
-          "prediction_order_refund",
-          "prediction_trade_credit",
-        ])
-        .order("id");
-      query.eq("metadata->>marketId", marketId);
-      return query;
-    }, "trader cash receipts");
     return identityResponse(identity, 200, {
-      result: buildPredictionTraderHistory({
-        username,
-        market: market.data,
-        fills: fills as PredictionPositionFill[],
-        credits: positionCredits,
-        nettings: nettings as PredictionPositionNetting[],
-        receipts: receipts as PredictionHistoryReceipt[],
-      }),
+      result: buildPredictionTraderHistory({ username, market: market.data, ...activity }),
     });
   }
 

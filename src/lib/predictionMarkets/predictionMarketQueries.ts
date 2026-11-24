@@ -1,6 +1,7 @@
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
 
+import { bettorProfileSchema } from "../../../shared/domain/bettorProfile";
 import {
   type PredictionHistoryPeriod,
   predictionPriceHistorySchema,
@@ -15,6 +16,25 @@ import {
 } from "./predictionMarkets";
 
 export const predictionMarketQueryRoot = ["prediction-market"] as const;
+export const bettorProfileQueryOptions = (username: string) =>
+  queryOptions({
+    queryKey: [...predictionMarketQueryRoot, "bettor-profile", username],
+    queryFn: async ({ signal }) => {
+      const response = await postApi(
+        "/api/betting",
+        { action: "bettorProfile", username },
+        {
+          signal,
+          schema: z.object({ result: bettorProfileSchema }),
+          errorMessage: "Unable to load this bettor profile.",
+          invalidMessage: "The betting service returned an invalid profile.",
+        },
+      );
+      return response.result;
+    },
+    staleTime: 15_000,
+  });
+
 export const predictionTraderHistoryQueryOptions = (marketId: string, username: string) =>
   queryOptions({
     queryKey: [...predictionMarketQueryRoot, "trader-history", marketId, username],
