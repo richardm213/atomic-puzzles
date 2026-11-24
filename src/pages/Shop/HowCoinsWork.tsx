@@ -52,7 +52,7 @@ export const HowCoinsWorkPage = () => (
   <div className="page coinGuidePage">
     <Seo
       title="How to Earn Coins"
-      description="Puzzle payouts, retry rewards, grading cooldowns, and attempt colors at a glance."
+      description="Learn how to earn Atomic Coins from puzzles, daily bonuses, and betting."
       path="/shop/how-coins-work"
     />
     <div className="panel coinGuidePanel">
@@ -300,6 +300,15 @@ export const HowCoinsWorkPage = () => (
           Only tags you originally submit that remain in the final puzzle earn these rewards on
           approval or publication, together with the creation reward.
         </p>
+      </section>
+
+      <section className="coinGuideSection" aria-labelledby="betting-rewards">
+        <h2 id="betting-rewards">Betting</h2>
+        <p>
+          Use Atomic Coins to bet on match and tournament outcomes. Winning bets pay out in coins.
+          You can lose the coins you stake.
+        </p>
+        <Link to="/betting">Browse betting markets</Link>
       </section>
 
       <div className="coinDailyReward">
