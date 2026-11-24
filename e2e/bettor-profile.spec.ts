@@ -85,7 +85,11 @@ test("the All bets bettor link opens a profile with trading history and position
   await page.getByRole("link", { name: username, exact: true }).click();
   await expect(page).toHaveURL(/\/@\/alice\/betting$/);
   const pnl = page.getByRole("region", { name: "Realized P&L" });
-  await expect(pnl.getByText("+17 coins").first()).toBeVisible();
+  await expect(pnl.getByText("+17 coins", { exact: true })).toHaveCount(1);
+  await pnl.locator("canvas").hover({ position: { x: 5, y: 35 } });
+  await expect(pnl.getByText("0 coins", { exact: true })).toBeVisible();
+  await pnl.getByRole("heading").hover();
+  await expect(pnl.getByText("+17 coins", { exact: true })).toBeVisible();
   const worth = page.getByRole("region", { name: "Net worth" });
   await expect(worth.getByText("304 coins")).toBeVisible();
   await expect(worth.getByText("31", { exact: true })).toBeVisible();

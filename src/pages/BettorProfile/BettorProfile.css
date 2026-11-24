@@ -134,8 +134,7 @@
 }
 
 .bettorChart figcaption,
-.bettorChartDates,
-.bettorChartPoint {
+.bettorChartDates {
   display: flex;
   align-items: center;
   justify-content: space-between;

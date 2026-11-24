@@ -170,10 +170,7 @@ export const BettorProfilePage = ({ username }: { username: string }) => {
           <div className="bettorSummary bettorPanel">
             <section className="bettorPerformance" aria-labelledby="bettor-performance-title">
               <h2 id="bettor-performance-title">Realized P&amp;L</h2>
-              <p className="bettorHeadline" data-pnl={Math.sign(profile.realizedPnl)}>
-                {formatSignedCoinValue(profile.realizedPnl)} <small>coins</small>
-              </p>
-              <BettorPnlChart history={profile.pnlByDay} />
+              <BettorPnlChart history={profile.pnlByDay} realizedPnl={profile.realizedPnl} />
             </section>
             <section className="bettorWorth" aria-labelledby="bettor-worth-title">
               <h2 id="bettor-worth-title">Net worth</h2>

@@ -19,11 +19,18 @@ const axisNumber = new Intl.NumberFormat(undefined, {
 const axisWidth = 48;
 const padding = 10;
 
-export const BettorPnlChart = ({ history }: { history: BettorProfile["pnlByDay"] }) => {
+export const BettorPnlChart = ({
+  history,
+  realizedPnl,
+}: {
+  history: BettorProfile["pnlByDay"];
+  realizedPnl: number;
+}) => {
   const { theme, colorMode } = useAppSettings();
   const canvas = useRef<HTMLCanvasElement>(null);
   const [period, setPeriod] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
   const points = useMemo(() => {
     if (!history.length) return [];
     const entries = history.map(({ day, pnl }) => ({ day, pnl, time: Date.parse(day) }));
@@ -43,7 +50,7 @@ export const BettorPnlChart = ({ history }: { history: BettorProfile["pnlByDay"]
       ...(last.time < end ? [{ day: dateKey(end), time: end, pnl: last.pnl }] : []),
     ];
   }, [history, period]);
-  const index = Math.min(selected ?? points.length - 1, points.length - 1);
+  const index = Math.min(hovered ?? selected ?? points.length - 1, points.length - 1);
   const current = points[index];
 
   useEffect(() => {
@@ -130,57 +137,64 @@ export const BettorPnlChart = ({ history }: { history: BettorProfile["pnlByDay"]
     return () => resize.disconnect();
   }, [colorMode, current, points, theme]);
 
-  if (!current) return <p className="bettorMuted">No trading history yet.</p>;
-
+  const value = current?.pnl ?? realizedPnl;
   return (
-    <figure className="bettorChart">
-      <figcaption>
-        <div className="bettorChartPoint">
-          <time dateTime={current.day}>{formatCalendarDate(current.day)}</time>
-          <strong data-pnl={Math.sign(current.pnl)}>{formatSignedCoinValue(current.pnl)}</strong>
-        </div>
-        <div className="bettorChartPeriods" role="group" aria-label="Chart range">
-          {periods.map(({ label, days }) => (
-            <button
-              key={days}
-              type="button"
-              aria-pressed={period === days}
-              onClick={() => {
-                setSelected(null);
-                setPeriod(days);
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </figcaption>
-      <canvas
-        ref={canvas}
-        aria-hidden="true"
-        onPointerMove={(event) => {
-          if (event.pointerType !== "mouse") return;
-          const { left, width } = event.currentTarget.getBoundingClientRect();
-          const ratio = (event.clientX - left - padding) / (width - axisWidth - padding);
-          const start = points[0]!.time;
-          const time = start + ratio * (points.at(-1)!.time - start);
-          const next = points.findIndex((point) => point.time > time);
-          setSelected(next < 0 ? points.length - 1 : Math.max(0, next - 1));
-        }}
-      />
-      <input
-        type="range"
-        min={0}
-        max={points.length - 1}
-        value={index}
-        onChange={(event) => setSelected(event.currentTarget.valueAsNumber)}
-        aria-label="Inspect cumulative P&L by date"
-        aria-valuetext={`${formatCalendarDate(current.day)}, ${formatSignedCoinValue(current.pnl)} coins`}
-      />
-      <div className="bettorChartDates" aria-hidden="true">
-        <span>{formatCalendarDate(points[0]?.day)}</span>
-        <span>{formatCalendarDate(points.at(-1)?.day)}</span>
-      </div>
-    </figure>
+    <>
+      <p className="bettorHeadline" data-pnl={Math.sign(value)}>
+        {formatSignedCoinValue(value)} <small>coins</small>
+      </p>
+      {current ? (
+        <figure className="bettorChart">
+          <figcaption>
+            <time dateTime={current.day}>{formatCalendarDate(current.day)}</time>
+            <div className="bettorChartPeriods" role="group" aria-label="Chart range">
+              {periods.map(({ label, days }) => (
+                <button
+                  key={days}
+                  type="button"
+                  aria-pressed={period === days}
+                  onClick={() => {
+                    setSelected(null);
+                    setHovered(null);
+                    setPeriod(days);
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </figcaption>
+          <canvas
+            ref={canvas}
+            aria-hidden="true"
+            onPointerMove={(event) => {
+              if (event.pointerType !== "mouse") return;
+              const { left, width } = event.currentTarget.getBoundingClientRect();
+              const ratio = (event.clientX - left - padding) / (width - axisWidth - padding);
+              const start = points[0]!.time;
+              const time = start + ratio * (points.at(-1)!.time - start);
+              const next = points.findIndex((point) => point.time > time);
+              setHovered(next < 0 ? points.length - 1 : Math.max(0, next - 1));
+            }}
+            onPointerLeave={() => setHovered(null)}
+          />
+          <input
+            type="range"
+            min={0}
+            max={points.length - 1}
+            value={index}
+            onChange={(event) => setSelected(event.currentTarget.valueAsNumber)}
+            aria-label="Inspect cumulative P&L by date"
+            aria-valuetext={`${formatCalendarDate(current.day)}, ${formatSignedCoinValue(current.pnl)} coins`}
+          />
+          <div className="bettorChartDates" aria-hidden="true">
+            <span>{formatCalendarDate(points[0]?.day)}</span>
+            <span>{formatCalendarDate(points.at(-1)?.day)}</span>
+          </div>
+        </figure>
+      ) : (
+        <p className="bettorMuted">No trading history yet.</p>
+      )}
+    </>
   );
 };
