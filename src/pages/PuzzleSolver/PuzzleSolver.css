@@ -922,22 +922,6 @@ button.puzzleRatingBadge.editable:focus-visible {
   outline-offset: 2px;
 }
 
-.puzzleOpaBadge {
-  position: relative;
-  flex: 0 0 auto;
-  min-height: 28px;
-  padding: 5px 8px;
-  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 48%, var(--color-border));
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-panel-strong));
-  color: var(--color-primary-pale);
-  display: inline-flex;
-  align-items: center;
-  font-size: 11px;
-  font-weight: 650;
-  line-height: 1;
-}
-
 .puzzleUnratedBadge {
   position: relative;
   flex: 0 0 auto;
@@ -954,7 +938,7 @@ button.puzzleRatingBadge.editable:focus-visible {
   line-height: 1;
 }
 
-.puzzleOpaBadge::after,
+.puzzleOpaBadge[data-tooltip]::after,
 .puzzleUnratedBadge::after {
   position: absolute;
   top: calc(100% + 8px);
@@ -980,8 +964,8 @@ button.puzzleRatingBadge.editable:focus-visible {
     transform 120ms ease;
 }
 
-.puzzleOpaBadge:hover::after,
-.puzzleOpaBadge:focus-visible::after,
+.puzzleOpaBadge[data-tooltip]:hover::after,
+.puzzleOpaBadge[data-tooltip]:focus-visible::after,
 .puzzleUnratedBadge:hover::after,
 .puzzleUnratedBadge:focus-visible::after {
   opacity: 1;

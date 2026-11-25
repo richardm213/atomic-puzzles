@@ -42,6 +42,8 @@
   --color-rating-graph-rapid: #f0a33a;
   --color-rating-graph-atomic960: #22cda2;
   --color-calendar-monthly: #aa8cff;
+  --color-opa-badge-bg: oklch(79% 0.13 var(--opa-badge-hue));
+  --color-opa-badge-text: oklch(22% 0.048 var(--opa-badge-hue));
   --puzzle-level-lightness: 80%;
   --puzzle-level-chroma: 0.14;
   --color-puzzle-v1: oklch(
@@ -80,6 +82,8 @@
 }
 
 :root[data-theme="light"] {
+  --color-opa-badge-bg: oklch(43% 0.13 var(--opa-badge-hue));
+  --color-opa-badge-text: oklch(98% 0.01 var(--opa-badge-hue));
   --color-pychess-icon: #6d28d9;
   --color-pychess-icon-hover: #581c87;
   --color-pychess-bg: #f1eafe;

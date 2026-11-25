@@ -9,6 +9,7 @@
   --puzzle-level-hue-3: 85;
   --puzzle-level-hue-4: 25;
   --puzzle-level-hue-5: 310;
+  --opa-badge-hue: 252;
 
   --market-side-a-hue: 225;
   --market-side-b-hue: 325;
@@ -158,6 +159,7 @@
 :root[data-palette="amethyst"] {
   --market-side-a-hue: 295;
   --market-side-b-hue: 165;
+  --opa-badge-hue: 83;
   --gem-hue: 295;
   --gem-nav-hue: 295;
   --gem-action-chroma: 0.2;
@@ -168,6 +170,7 @@
 :root[data-palette="ruby"] {
   --market-side-a-hue: 25;
   --market-side-b-hue: 225;
+  --opa-badge-hue: 192;
   --color-pnl-loss: var(--color-market-yes);
   --gem-hue: 20;
   --gem-action-chroma: 0.18;
@@ -181,6 +184,7 @@
 :root[data-palette="emerald"] {
   --market-side-a-hue: 160;
   --market-side-b-hue: 300;
+  --opa-badge-hue: 27;
   --gem-hue: 164;
   --gem-nav-hue: 157;
   --board-threat-ink: oklch(42% 0.22 321);
@@ -373,6 +377,7 @@
 
   --market-side-a-hue: 250;
   --market-side-b-hue: 70;
+  --opa-badge-hue: 128;
   --theme-panel-ink: #191919;
   --theme-nav-ink: #0d0d0d;
   --theme-inset-ink: #080808;

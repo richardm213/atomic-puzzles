@@ -1,5 +1,21 @@
 /* Shared visual recipes. Page styles should keep layout and intentional variants local. */
 
+.puzzleOpaBadge {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 28px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-opa-badge-bg);
+  color: var(--color-opa-badge-text);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 :where(button, input, select, textarea, a):focus-visible {
   outline: 3px solid var(--color-primary-ring);
   outline-offset: 2px;
