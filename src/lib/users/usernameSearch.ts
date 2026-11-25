@@ -122,6 +122,20 @@ export const searchUsernameSuggestions = async (
       fetchMatchingUsernames(query),
     ]);
 
+    const pyChessNames = new Set<string>();
+    const otherNames = new Set<string>();
+    if (options.excludePyChessAliases) {
+      for (const row of aliasRows) {
+        otherNames.add(row.username);
+        for (const account of row.accounts) {
+          const names = account.source === "pychess" ? pyChessNames : otherNames;
+          names.add(normalizeUsername(account.alias));
+          names.add(normalizeUsername(account.displayAlias));
+        }
+      }
+    }
+    const isPyChessOnly = (name: string) => pyChessNames.has(name) && !otherNames.has(name);
+
     aliasRows.forEach((row) => {
       const members = [
         { value: row.username, matchType: "username" as const },
@@ -130,17 +144,15 @@ export const searchUsernameSuggestions = async (
 
       members.forEach((member) => {
         const normalizedMatchedName = normalizeUsername(member.value);
-        const matchingAccounts = row.accounts.filter(
-          (account) =>
-            normalizeUsername(account.alias) === normalizedMatchedName ||
-            normalizeUsername(account.displayAlias) === normalizedMatchedName,
-        );
-        const pyChessAccount = matchingAccounts.find((account) => account.source === "pychess");
-        const isPyChessOnlyAlias =
-          member.matchType === "alias" &&
-          Boolean(pyChessAccount) &&
-          matchingAccounts.every((account) => account.source === "pychess");
-        if (options.excludePyChessAliases && isPyChessOnlyAlias) return;
+        if (isPyChessOnly(normalizedMatchedName)) return;
+        const pyChessAccount = options.excludePyChessAliases
+          ? undefined
+          : row.accounts.find(
+              (account) =>
+                account.source === "pychess" &&
+                (normalizeUsername(account.alias) === normalizedMatchedName ||
+                  normalizeUsername(account.displayAlias) === normalizedMatchedName),
+            );
         const matchedName = pyChessAccount
           ? String(pyChessAccount.alias).trim()
           : normalizedMatchedName;
@@ -160,6 +172,7 @@ export const searchUsernameSuggestions = async (
     });
 
     usernames.forEach((username) => {
+      if (isPyChessOnly(username)) return;
       const rank = getSuggestionRank(query, username, "username");
       if (rank === null) return;
 
