@@ -1,25 +1,26 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  clearPreloadedAtomicDbGamePositions,
-  replacePreloadedAtomicDbGamePositions,
-} from "../lib/atomicDb/analysisRepository";
+import { gameAnalysisPositionKey } from "../../shared/domain/gameAnalysis";
+import type { PreloadedAtomicDbGamePosition } from "../lib/atomicDb/analysisRepository";
 import { analyzeFairyStockfishPosition } from "../lib/practice/fairyStockfish";
 import { threatFenFromFen } from "../utils/chessNotation";
 import { useAtomicDbBoardAnalysis } from "./useAtomicDbBoardAnalysis";
 
 vi.mock("../lib/practice/fairyStockfish", () => ({
   analyzeFairyStockfishPosition: vi.fn(),
+  warmLocalAnalysisEngine: vi.fn(),
 }));
 const analyzeWithEngineMock = vi.mocked(analyzeFairyStockfishPosition);
 
 const FEN = "8/8/8/8/3k4/2ppp3/1K3P1P/6NR w - - 0 201";
 const TABLEBASE_FEN = "8/8/8/8/3k4/8/1K3P1P/6N1 w - - 3 71";
 
+const stored = (positions: PreloadedAtomicDbGamePosition[]) =>
+  new Map(positions.map((position) => [gameAnalysisPositionKey(position.fen), position]));
+
 describe("useAtomicDbBoardAnalysis", () => {
   afterEach(() => {
-    clearPreloadedAtomicDbGamePositions();
     vi.unstubAllGlobals();
     analyzeWithEngineMock.mockReset();
   });
@@ -67,7 +68,7 @@ describe("useAtomicDbBoardAnalysis", () => {
   it("uses a complete stored game analysis without refreshing AtomicDB", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    replacePreloadedAtomicDbGamePositions([
+    const storedPositions = stored([
       {
         fen: FEN,
         complete: true,
@@ -96,6 +97,7 @@ describe("useAtomicDbBoardAnalysis", () => {
 
     const { result } = renderHook(() =>
       useAtomicDbBoardAnalysis({
+        storedPositions,
         currentFen: FEN,
         enabled: true,
         navigation: null,
@@ -130,7 +132,7 @@ describe("useAtomicDbBoardAnalysis", () => {
         principalVariation: ["b2b3", "d4e5"],
       },
     ]);
-    replacePreloadedAtomicDbGamePositions([
+    const storedPositions = stored([
       {
         fen: FEN,
         complete: true,
@@ -168,6 +170,7 @@ describe("useAtomicDbBoardAnalysis", () => {
 
     const { result } = renderHook(() =>
       useAtomicDbBoardAnalysis({
+        storedPositions,
         currentFen: FEN,
         enabled: true,
         navigation: null,
@@ -197,7 +200,7 @@ describe("useAtomicDbBoardAnalysis", () => {
         depth: 18,
       },
     ]);
-    replacePreloadedAtomicDbGamePositions([
+    const storedPositions = stored([
       {
         fen: TABLEBASE_FEN,
         complete: true,
@@ -217,6 +220,7 @@ describe("useAtomicDbBoardAnalysis", () => {
     const { result, rerender } = renderHook(
       ({ currentFen, enabled }) =>
         useAtomicDbBoardAnalysis({
+          storedPositions,
           currentFen,
           enabled,
           navigation: null,
@@ -242,7 +246,7 @@ describe("useAtomicDbBoardAnalysis", () => {
   it("shares threat analysis and clears it when the engine is disabled", async () => {
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     const threat = threatFenFromFen(fen)!;
-    replacePreloadedAtomicDbGamePositions(
+    const storedPositions = stored(
       [
         [fen, "e2e4"],
         [threat, "e7e5"],
@@ -273,7 +277,13 @@ describe("useAtomicDbBoardAnalysis", () => {
     );
     const { result, rerender } = renderHook(
       ({ enabled }) =>
-        useAtomicDbBoardAnalysis({ currentFen: fen, enabled, navigation: null, lineCount: 1 }),
+        useAtomicDbBoardAnalysis({
+          currentFen: fen,
+          enabled,
+          navigation: null,
+          lineCount: 1,
+          storedPositions,
+        }),
       { initialProps: { enabled: true } },
     );
     await waitFor(() => expect(result.current.analysis.status).toBe("ready"));

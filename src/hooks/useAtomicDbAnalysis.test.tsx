@@ -8,6 +8,7 @@ import { useAtomicDbAnalysis } from "./useAtomicDbAnalysis";
 
 vi.mock("../lib/practice/fairyStockfish", () => ({
   analyzeFairyStockfishPosition: vi.fn(),
+  warmLocalAnalysisEngine: vi.fn(),
 }));
 const analyzeWithEngineMock = vi.mocked(analyzeFairyStockfishPosition);
 
@@ -881,21 +882,31 @@ describe("useAtomicDbAnalysis", () => {
       best_move: "e2e4",
       moves: [{ uci: "e2e4", status: "UNKNOWN", score: 110 }],
     };
-    const fetchMock = vi
-      .fn()
-      .mockImplementation(() =>
-        Promise.resolve(bundleResponse(position, { e2e4: ["e2e4", "f7f6"] })),
+    const fetchMock = vi.fn().mockImplementation((input: string) => {
+      const url = new URL(input, "https://example.test");
+      return Promise.resolve(
+        url.searchParams.has("line_count")
+          ? bundleResponse(position, { e2e4: ["e2e4", "f7f6"] })
+          : Response.json(position),
       );
+    });
     vi.stubGlobal("fetch", fetchMock);
-    analyzeWithEngineMock.mockResolvedValue([
+    const engineCandidates = [
       {
         move: "e2e4",
         multipv: 1,
-        scoreType: "cp",
+        scoreType: "cp" as const,
         score: 25,
         principalVariation: ["e2e4", "e7e5", "g1f3"],
       },
-    ]);
+    ];
+    let finishEngine = () => {};
+    analyzeWithEngineMock.mockImplementation((_fen, _count, _signal, progress) => {
+      progress?.(engineCandidates);
+      return new Promise((resolve) => {
+        finishEngine = () => resolve(engineCandidates);
+      });
+    });
 
     const { result, rerender } = renderHook(
       ({ atomicDbFollowUps }) =>
@@ -920,18 +931,49 @@ describe("useAtomicDbAnalysis", () => {
       fen,
       1,
       expect.any(AbortSignal),
-      undefined,
+      expect.any(Function),
       "atomic-stockfish",
       { searchMoves: ["e2e4"], candidateLimit: 1 },
     );
     const requestedUrl = new URL(String(fetchMock.mock.calls[0]![0]), "https://example.test");
-    expect(requestedUrl.searchParams.get("ply_count")).toBe("1");
+    expect(requestedUrl.searchParams.has("line_count")).toBe(false);
 
     rerender({ atomicDbFollowUps: true });
+    await act(async () => finishEngine());
     await waitFor(() => {
       expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "f7f6"]);
     });
     expect(analyzeWithEngineMock).toHaveBeenCalledOnce();
+  });
+
+  it("shows the fast position lookup while the backed continuations are still loading", async () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 18 38";
+    const position = {
+      status: "UNKNOWN",
+      score: 110,
+      best_move: "e2e4",
+      moves: [{ uci: "e2e4", status: "UNKNOWN", score: 110 }],
+    };
+    let finishBundle = () => {};
+    const fetchMock = vi.fn().mockImplementation((input: string) => {
+      const url = new URL(input, "https://example.test");
+      if (!url.searchParams.has("line_count")) return Promise.resolve(Response.json(position));
+      return new Promise((resolve) => {
+        finishBundle = () => resolve(bundleResponse(position, { e2e4: ["e2e4", "f7f6"] }));
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { result } = renderHook(() =>
+      useAtomicDbAnalysis(fen, { lineCount: 1, progressivePreview: true }),
+    );
+
+    await waitFor(() => expect(result.current.result?.position?.score).toBe(110));
+    expect(result.current.status).toBe("loading");
+    expect(result.current.principalVariations.e2e4).toEqual(["e2e4"]);
+    await act(async () => finishBundle());
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "f7f6"]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("keeps bundled follow-up moves visible while refreshing a child position", async () => {

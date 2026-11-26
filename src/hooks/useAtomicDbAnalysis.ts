@@ -13,11 +13,13 @@ import {
   peekAtomicDbAnalysisBundle,
   peekAtomicDbPosition,
   peekAtomicDbVariationLines,
+  type PreloadedAtomicDbGamePosition,
 } from "../lib/atomicDb/analysisRepository";
 import { isAtomicTablebasePosition } from "../lib/atomicTablebase/material";
 import {
   analyzeFairyStockfishPosition,
   type EngineCandidate,
+  warmLocalAnalysisEngine,
 } from "../lib/practice/fairyStockfish";
 import {
   DEFAULT_LOCAL_ANALYSIS_ENGINE,
@@ -42,6 +44,8 @@ type AtomicDbAnalysisOptions = {
   enabled?: boolean;
   atomicDbEnabled?: boolean;
   atomicDbFollowUps?: boolean;
+  progressivePreview?: boolean;
+  storedPosition?: PreloadedAtomicDbGamePosition | undefined;
   debounceMs?: number;
   lineCount?: number;
   plyCount?: number;
@@ -58,6 +62,7 @@ type RequestState = AtomicDbAnalysisState & {
 };
 
 const NAVIGATION_SETTLE_MS = 160;
+const ATOMIC_DB_PREVIEW_DELAY_MS = 180;
 const ATOMIC_DB_GRACE_MS = 2_000;
 const EMPTY_ANALYSIS: AtomicDbAnalysisState = {
   result: null,
@@ -81,6 +86,8 @@ export const useAtomicDbAnalysis = (
     enabled = true,
     atomicDbEnabled = true,
     atomicDbFollowUps = true,
+    progressivePreview = false,
+    storedPosition,
     debounceMs = NAVIGATION_SETTLE_MS,
     lineCount: requestedLineCount = 3,
     plyCount: requestedPlyCount = 5,
@@ -100,6 +107,8 @@ export const useAtomicDbAnalysis = (
     engineThinkTimeMs,
     engineMaxDepth,
     candidateLimit,
+    storedPosition?.position?.key,
+    storedPosition?.complete,
   ]);
   const [state, setState] = useState<RequestState>(INITIAL_STATE);
   const [engineFocusEpoch, setEngineFocusEpoch] = useState(0);
@@ -173,7 +182,10 @@ export const useAtomicDbAnalysis = (
     };
 
     const publishCachedPosition = (rawPosition: AtomicDbPosition): void => {
-      const { position, lines } = prepareDatabasePosition(rawPosition, cachedLinesFor(rawPosition));
+      const { position, lines } = prepareDatabasePosition(
+        rawPosition,
+        storedPosition?.principalVariations ?? cachedLinesFor(rawPosition),
+      );
       setState({
         result: { fen, position },
         requestedFen: fen,
@@ -306,12 +318,14 @@ export const useAtomicDbAnalysis = (
       };
       // Publish the root moves first so a local search never holds up their evaluations.
       void (async () => {
-        const verified = await verifyAtomicDbMates(fen, analysis, controller.signal, true);
-        publishSupplement(verified, analysis);
-        if (!atomicDbFollowUps && !controller.signal.aborted) {
-          const extended = await withEngineFollowUps(verified, controller.signal);
-          publishSupplement(extended, verified);
-        }
+        const extended = atomicDbFollowUps
+          ? analysis
+          : await withEngineFollowUps(analysis, controller.signal, (progress) =>
+              publishSupplement(progress, analysis),
+            ).catch(() => analysis);
+        publishSupplement(extended, analysis);
+        const verified = await verifyAtomicDbMates(fen, extended, controller.signal, true);
+        publishSupplement(verified, extended);
       })().catch(() => undefined);
     };
 
@@ -325,26 +339,26 @@ export const useAtomicDbAnalysis = (
       return abort;
     }
 
+    if (!atomicDbFollowUps && fallbackToEngine) warmLocalAnalysisEngine(assistanceEngine);
+
+    if (storedPosition?.complete) {
+      publishAtomicDbOrFallback(storedPosition.position, storedPosition.principalVariations);
+      return abort;
+    }
+
     const completeBundle = peekAtomicDbAnalysisBundle(fen, databaseLineCount, databasePlyCount);
     if (completeBundle) {
       publishAtomicDbOrFallback(completeBundle.position, completeBundle.lines);
       return abort;
     }
 
-    let showingCachedPosition = false;
+    let preview = storedPosition?.position ?? null;
     const cached = peekAtomicDbPosition(fen);
-    if (cached.found) {
-      if (cached.completePreload) {
-        publishAtomicDbOrFallback(cached.value, cachedLinesFor(cached.value));
-        return abort;
-      }
-      if (cached.value) {
-        showingCachedPosition = true;
-        publishCachedPosition(cached.value);
-      }
-    }
+    if (!preview && cached.found) preview = cached.value;
 
-    if (!showingCachedPosition) {
+    if (preview) {
+      publishCachedPosition(preview);
+    } else {
       setState((current) => ({
         ...current,
         requestedFen: fen,
@@ -357,9 +371,27 @@ export const useAtomicDbAnalysis = (
     }
 
     let graceTimer: number | undefined;
+    let previewTimer: number | undefined;
+    const previewController = new AbortController();
     const requestPosition = async (): Promise<void> => {
       databasePending = true;
-      if (fallbackToEngine) graceTimer = window.setTimeout(startEngine, ATOMIC_DB_GRACE_MS);
+      if (fallbackToEngine) {
+        graceTimer = window.setTimeout(() => {
+          if (!preview || analyzedAtomicDbMoves(fen, preview).length < lineCount) startEngine();
+        }, ATOMIC_DB_GRACE_MS);
+      }
+      if (progressivePreview && databasePlyCount > 1 && !preview) {
+        previewTimer = window.setTimeout(() => {
+          void loadAtomicDbAnalysisBundle(fen, databaseLineCount, 1, previewController.signal)
+            .then(({ position }) => {
+              if (!position?.moves.length || !databasePending || previewController.signal.aborted)
+                return;
+              preview = position;
+              if (!engine) publishCachedPosition(position);
+            })
+            .catch(() => undefined);
+        }, ATOMIC_DB_PREVIEW_DELAY_MS);
+      }
       try {
         const bundle = await loadAtomicDbAnalysisBundle(
           fen,
@@ -373,6 +405,13 @@ export const useAtomicDbAnalysis = (
       } catch (error: unknown) {
         if (controller.signal.aborted) return;
         databasePending = false;
+        if (preview) {
+          publishAtomicDbOrFallback(
+            preview,
+            storedPosition?.principalVariations ?? cachedLinesFor(preview),
+          );
+          return;
+        }
         if (fallbackToEngine) {
           startEngine(true);
           return;
@@ -392,6 +431,8 @@ export const useAtomicDbAnalysis = (
         });
       } finally {
         window.clearTimeout(graceTimer);
+        window.clearTimeout(previewTimer);
+        previewController.abort();
       }
     };
 
@@ -404,6 +445,8 @@ export const useAtomicDbAnalysis = (
     return () => {
       if (timeout !== null) window.clearTimeout(timeout);
       window.clearTimeout(graceTimer);
+      window.clearTimeout(previewTimer);
+      previewController.abort();
       abort();
     };
   }, [
@@ -415,6 +458,8 @@ export const useAtomicDbAnalysis = (
     enabled,
     atomicDbEnabled,
     atomicDbFollowUps,
+    progressivePreview,
+    storedPosition,
     fallbackToEngine,
     engineFocusEpoch,
     fen,
@@ -426,6 +471,25 @@ export const useAtomicDbAnalysis = (
 
   if (!enabled) return EMPTY_ANALYSIS;
   if (state.requestedFen === fen && state.requestedOptions === requestOptions) return state;
+
+  if (!useAtomicStockfishOnly && storedPosition?.position) {
+    const { databaseResult, linesForMoves } = createAnalysisMoveComposer(
+      fen,
+      requestedLineCount,
+      requestedPlyCount,
+    );
+    const { position, lines } = databaseResult(
+      storedPosition.position,
+      storedPosition.principalVariations,
+    );
+    return {
+      result: { fen, position },
+      status: storedPosition.complete ? "ready" : "loading",
+      error: "",
+      principalVariations: linesForMoves(position.moves, atomicDbFollowUps ? lines : {}),
+      source: "atomicdb",
+    };
+  }
 
   // Effects run after render. Immediately expose the transition without discarding the last
   // settled result, which prevents the evaluation bar and move list from flashing empty.

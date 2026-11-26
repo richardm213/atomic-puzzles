@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 import { applyGameAnalysisOpeningReview } from "../../shared/domain/gameAnalysis";
 import type { ArchiveGame } from "../lib/archive/games";
 import { coinQueryKeys, updateCachedCoinBalance } from "../lib/coins/coinQueries";
 import { fetchGameAnalysis, requestGameAnalysis } from "../lib/gameAnalysis/gameAnalysis";
-import { preloadCompletedGameAnalysis } from "../lib/gameAnalysis/preload";
+import { completedGameAnalysisPositions } from "../lib/gameAnalysis/preload";
 
 const queryKey = (gameId: string) => ["game-analysis", gameId] as const;
 export const useGameAnalysis = (
@@ -37,9 +37,7 @@ export const useGameAnalysis = (
       }),
     };
   }, [game?.mode, query.data]);
-  useEffect(() => {
-    preloadCompletedGameAnalysis(analysis);
-  }, [analysis]);
+  const storedPositions = useMemo(() => completedGameAnalysisPositions(analysis), [analysis]);
   const mutation = useMutation({
     mutationFn: async () => {
       if (!game?.moves) throw new Error("This game does not have a complete move list.");
@@ -56,6 +54,7 @@ export const useGameAnalysis = (
 
   return {
     analysis,
+    storedPositions,
     isLoading: query.isPending,
     loadError: query.error,
     request: mutation.mutate,

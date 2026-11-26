@@ -1,18 +1,14 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import type { GameAnalysisRecord } from "../../../shared/domain/gameAnalysis";
 import {
-  clearPreloadedAtomicDbGamePositions,
-  peekAtomicDbPosition,
-  peekAtomicDbVariationLines,
-} from "../atomicDb/analysisRepository";
-import { preloadCompletedGameAnalysis } from "./preload";
+  gameAnalysisPositionKey,
+  type GameAnalysisRecord,
+} from "../../../shared/domain/gameAnalysis";
+import { completedGameAnalysisPositions } from "./preload";
 
 const FEN = "8/8/8/8/8/8/8/K6k w - - 0 1";
 
 describe("completed game analysis preload", () => {
-  afterEach(() => clearPreloadedAtomicDbGamePositions());
-
   it("does not present the report search depth as AtomicDB-backed plies", () => {
     const analysis: GameAnalysisRecord = {
       gameId: "game-1",
@@ -82,23 +78,18 @@ describe("completed game analysis preload", () => {
       completedAt: "2026-11-04T00:00:00.000Z",
     };
 
-    preloadCompletedGameAnalysis(analysis);
+    const key = gameAnalysisPositionKey(FEN);
+    const cached = completedGameAnalysisPositions(analysis)?.get(key);
+    expect(cached?.position?.moves.map((move) => move.nodeBackedPlies)).toEqual([null, null]);
+    expect(cached?.position?.moves.map((move) => move.searchDepth)).toEqual([26, 26]);
+    expect(cached?.complete).toBe(false);
 
-    const cached = peekAtomicDbPosition(FEN);
-    expect(cached.found).toBe(true);
-    if (!cached.found) return;
-    expect(cached.value?.moves.map((move) => move.nodeBackedPlies)).toEqual([null, null]);
-    expect(cached.value?.moves.map((move) => move.searchDepth)).toEqual([26, 26]);
-
-    expect(cached.completePreload).toBe(false);
     const stored = analysis.result!.positions[0]!;
     stored.variationPlies = 5;
     stored.lines[1]!.pv = ["a1b1", "h1h2"];
-    preloadCompletedGameAnalysis(analysis);
-    expect(peekAtomicDbPosition(FEN)).toMatchObject({ completePreload: true });
-    expect(peekAtomicDbVariationLines(FEN, ["a1b1"], 5)).toEqual({ a1b1: ["a1b1", "h1h2"] });
-
-    preloadCompletedGameAnalysis(null);
-    expect(peekAtomicDbPosition(FEN).found).toBe(false);
+    const completed = completedGameAnalysisPositions(analysis)?.get(key);
+    expect(completed?.complete).toBe(true);
+    expect(completed?.principalVariations.a1b1).toEqual(["a1b1", "h1h2"]);
+    expect(completedGameAnalysisPositions(null)).toBeUndefined();
   });
 });

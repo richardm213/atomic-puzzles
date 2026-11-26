@@ -19,14 +19,6 @@ type SharedRequest<T> = {
 };
 
 type CacheLookup<T> = { found: true; value: T } | { found: false };
-type AtomicDbPositionCacheLookup =
-  | {
-      found: true;
-      value: AtomicDbPosition | null;
-      completePreload: boolean;
-    }
-  | { found: false };
-
 class AtomicDbRequestStore<T> {
   private readonly cache = new Map<string, CacheEntry<T>>();
   private readonly requests = new Map<string, SharedRequest<T>>();
@@ -145,12 +137,6 @@ const positions = new AtomicDbRequestStore<AtomicDbPosition | null>(128);
 const previewPositions = new AtomicDbRequestStore<AtomicDbPosition>(128);
 const analysisBundles = new AtomicDbRequestStore<AtomicDbAnalysisBundle>(64);
 const variationLines = new AtomicDbRequestStore<string[]>(128);
-const preloadedGamePositions = new Map<
-  string,
-  { position: AtomicDbPosition | null; complete: boolean }
->();
-const preloadedGameVariationLines = new Map<string, string[]>();
-
 const analysisBundleKey = (fen: string, lineCount: number, plyCount: number): string =>
   `${fen}\n${lineCount}\n${plyCount}`;
 const variationLineKey = (fen: string, rootMove: string, plyCount: number): string =>
@@ -189,49 +175,9 @@ export type PreloadedAtomicDbGamePosition = {
   complete?: boolean;
 };
 
-export const replacePreloadedAtomicDbGamePositions = (
-  entries: PreloadedAtomicDbGamePosition[],
-): void => {
-  preloadedGamePositions.clear();
-  preloadedGameVariationLines.clear();
-  for (const { fen, position, principalVariations, complete = false } of entries) {
-    preloadedGamePositions.set(fen, { position, complete });
-    for (const move of position?.moves ?? []) {
-      const line = principalVariations[move.uci] ?? [move.uci];
-      for (let plyCount = 1; plyCount <= MAX_ATOMIC_DB_PLIES; plyCount += 1) {
-        preloadedGameVariationLines.set(
-          variationLineKey(fen, move.uci, plyCount),
-          line.slice(0, plyCount),
-        );
-      }
-    }
-  }
-};
-
-export const clearPreloadedAtomicDbGamePositions = (): void => {
-  preloadedGamePositions.clear();
-  preloadedGameVariationLines.clear();
-};
-
-export const peekAtomicDbPosition = (fen: string): AtomicDbPositionCacheLookup => {
-  if (preloadedGamePositions.has(fen)) {
-    const preloaded = preloadedGamePositions.get(fen)!;
-    return preloaded.position
-      ? {
-          found: true,
-          value: preloaded.position,
-          completePreload: preloaded.complete,
-        }
-      : {
-          found: true,
-          value: null,
-          completePreload: preloaded.complete,
-        };
-  }
+export const peekAtomicDbPosition = (fen: string): CacheLookup<AtomicDbPosition | null> => {
   const complete = positions.peek(fen);
-  if (complete.found) return { ...complete, completePreload: false };
-  const preview = previewPositions.peek(fen);
-  return preview.found ? { ...preview, completePreload: false } : preview;
+  return complete.found ? complete : previewPositions.peek(fen);
 };
 
 export const peekAtomicDbVariationLines = (
@@ -241,11 +187,6 @@ export const peekAtomicDbVariationLines = (
 ): Record<string, string[]> => {
   const lines: Record<string, string[]> = {};
   for (const rootMove of rootMoves) {
-    const preloaded = preloadedGameVariationLines.get(variationLineKey(fen, rootMove, plyCount));
-    if (preloaded) {
-      lines[rootMove] = preloaded;
-      continue;
-    }
     const cached = variationLines.peek(variationLineKey(fen, rootMove, plyCount));
     if (cached.found) lines[rootMove] = cached.value;
   }
@@ -283,10 +224,14 @@ export const loadAtomicDbAnalysisBundle = async (
   signal.throwIfAborted();
   const cached = peekAtomicDbAnalysisBundle(fen, lineCount, plyCount);
   if (cached) return cached;
+  const exactKey = analysisBundleKey(fen, lineCount, plyCount);
+  // A root lookup can preview an in-flight variation bundle only if it runs independently.
   const batchKey =
-    [...coveringBundleKeys(fen, lineCount, plyCount)].find((key) =>
-      analysisBundles.hasRequest(key),
-    ) ?? analysisBundleKey(fen, lineCount, plyCount);
+    plyCount === 1
+      ? exactKey
+      : ([...coveringBundleKeys(fen, lineCount, plyCount)].find((key) =>
+          analysisBundles.hasRequest(key),
+        ) ?? exactKey);
   return analysisBundles.load(
     batchKey,
     async (sharedSignal) => {

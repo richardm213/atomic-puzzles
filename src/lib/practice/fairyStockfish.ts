@@ -514,6 +514,12 @@ const getEngine = (kind: LocalAnalysisEngine): Promise<StockfishEngine> => {
   return enginePromises[kind];
 };
 
+export const warmLocalAnalysisEngine = (kind: LocalAnalysisEngine): void => {
+  if (document.visibilityState === "visible" && document.hasFocus()) {
+    void getEngine(kind).catch(() => undefined);
+  }
+};
+
 export const disposeInactiveLocalAnalysisEngine = (active: LocalAnalysisEngine): void => {
   const inactive: LocalAnalysisEngine =
     active === "atomic-stockfish" ? "fairy-stockfish-14" : "atomic-stockfish";
@@ -540,6 +546,7 @@ const waitForBestMove = (
     let abortRequested = false;
     let stoppedEarly = false;
     let lastProgressAt = Number.NEGATIVE_INFINITY;
+    let publishedLineCount = 0;
     const timeout = window.setTimeout(() => {
       engine.postMessage("stop");
       cleanup();
@@ -552,6 +559,7 @@ const waitForBestMove = (
     };
     const handleLine = (line: string): void => {
       if (line.startsWith("info ")) {
+        if (abortRequested) return;
         const candidate = parseEngineCandidate(line);
         if (candidate) {
           candidatesByRank.set(candidate.multipv, candidate);
@@ -564,13 +572,15 @@ const waitForBestMove = (
             engine.postMessage("stop");
           }
           const now = performance.now();
-          if (
-            onProgress &&
+          const firstLine = publishedLineCount === 0 && candidate.multipv === 1;
+          const fullUpdate =
             candidate.multipv === requestedLineCount &&
             candidatesByRank.size >= requestedLineCount &&
-            now - lastProgressAt >= ENGINE_PROGRESS_INTERVAL_MS
-          ) {
+            (publishedLineCount < requestedLineCount ||
+              now - lastProgressAt >= ENGINE_PROGRESS_INTERVAL_MS);
+          if (onProgress && (firstLine || fullUpdate)) {
             lastProgressAt = now;
+            publishedLineCount = candidatesByRank.size;
             onProgress(
               [...candidatesByRank.values()]
                 .sort((left, right) => left.multipv - right.multipv)
@@ -628,6 +638,7 @@ const searchFairyStockfish = async (
     let engine: StockfishEngine | null = null;
 
     try {
+      signal.throwIfAborted();
       engine = await getEngine(kind);
       if (signal?.aborted) throw new DOMException("Engine search cancelled", "AbortError");
 
@@ -725,6 +736,7 @@ export const analyzeFairyStockfishPosition = async (
     cacheEvaluationIfDeepEnough(engine, fen, candidates, requestedLineCount, searchMoves);
     if (
       publishedCandidates.length === 0 ||
+      candidates.length > publishedCandidates.length ||
       isDeeperFairyStockfishEvaluation(publishedCandidates, candidates)
     ) {
       publishedCandidates = candidates;

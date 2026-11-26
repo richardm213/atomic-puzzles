@@ -355,19 +355,24 @@ export const fetchAtomicDbAnalysisBundle = async (
 ): Promise<AtomicDbAnalysisBundle> => {
   let body: unknown;
   try {
-    body = await apiRequest<unknown>(
-      atomicDbPrincipalVariationsRequestPath(fen, lineCount, plyCount),
-      {
-        errorMessage: "AtomicDB analysis is unavailable.",
-        invalidMessage: "AtomicDB returned an unexpected response.",
-        ...(signal ? { signal } : {}),
-      },
-    );
+    const path =
+      plyCount === 1
+        ? `/api/atomicdb-analysis?${new URLSearchParams({ fen })}`
+        : atomicDbPrincipalVariationsRequestPath(fen, lineCount, plyCount);
+    body = await apiRequest<unknown>(path, {
+      errorMessage: "AtomicDB analysis is unavailable.",
+      invalidMessage: "AtomicDB returned an unexpected response.",
+      ...(signal ? { signal } : {}),
+    });
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
       return { position: null, lines: {}, positions: {} };
     }
     throw error;
+  }
+
+  if (plyCount === 1) {
+    return { position: parseAtomicDbResponse(body), lines: {}, positions: {} };
   }
 
   const payload =

@@ -2,6 +2,8 @@ import { isNormal, kingCastlesTo, makeSquare } from "chessops";
 import { castlingSide } from "chessops/chess";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { gameAnalysisPositionKey } from "../../shared/domain/gameAnalysis";
+import type { PreloadedAtomicDbGamePosition } from "../lib/atomicDb/analysisRepository";
 import { createAtomicPosition, moveFromUci } from "../lib/chess/pgn";
 import type { SolutionNavigation } from "../types/chessboard";
 import { threatFenFromFen } from "../utils/chessNotation";
@@ -19,6 +21,7 @@ export const useAtomicDbBoardAnalysis = ({
   atomicDbFollowUps = true,
   terminalOutcome = null,
   suspended = false,
+  storedPositions,
 }: {
   currentFen: string;
   enabled: boolean;
@@ -28,6 +31,7 @@ export const useAtomicDbBoardAnalysis = ({
   atomicDbFollowUps?: boolean;
   terminalOutcome?: "white" | "black" | "draw" | null;
   suspended?: boolean;
+  storedPositions?: ReadonlyMap<string, PreloadedAtomicDbGamePosition> | undefined;
 }) => {
   const [requestedThreatMode, setRequestedThreatMode] = useState(false);
   const threatFen = useMemo(
@@ -57,6 +61,8 @@ export const useAtomicDbBoardAnalysis = ({
     lineCount,
     atomicDbEnabled,
     atomicDbFollowUps,
+    progressivePreview: true,
+    storedPosition: storedPositions?.get(gameAnalysisPositionKey(fen)),
     plyCount: PRINCIPAL_VARIATION_PLIES,
     suspended: navigationPending || suspended,
     fallbackToEngine: enabled,
@@ -66,6 +72,10 @@ export const useAtomicDbBoardAnalysis = ({
     enabled: threatMode && !variationPlaying,
     atomicDbEnabled,
     atomicDbFollowUps,
+    progressivePreview: true,
+    storedPosition: threatFen
+      ? storedPositions?.get(gameAnalysisPositionKey(threatFen))
+      : undefined,
     fallbackToEngine: threatMode,
     lineCount,
     plyCount: PRINCIPAL_VARIATION_PLIES,

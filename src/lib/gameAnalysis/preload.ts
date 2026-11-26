@@ -1,14 +1,11 @@
 import {
   GAME_ANALYSIS_VARIATION_SIZE,
+  gameAnalysisPositionKey,
   type GameAnalysisRecord,
   type StoredAtomicDbPosition,
 } from "../../../shared/domain/gameAnalysis";
 import type { AtomicDbOutcome, AtomicDbPosition } from "../../utils/atomicDb";
-import {
-  clearPreloadedAtomicDbGamePositions,
-  type PreloadedAtomicDbGamePosition,
-  replacePreloadedAtomicDbGamePositions,
-} from "../atomicDb/analysisRepository";
+import type { PreloadedAtomicDbGamePosition } from "../atomicDb/analysisRepository";
 
 const UCI_MOVE = /^[a-h][1-8][a-h][1-8][nbrq]?$/;
 
@@ -103,10 +100,14 @@ export const atomicDbGamePosition = (
   };
 };
 
-export const preloadCompletedGameAnalysis = (analysis: GameAnalysisRecord | null): void => {
-  if (analysis?.status !== "ready" || !analysis.result) {
-    clearPreloadedAtomicDbGamePositions();
-    return;
-  }
-  replacePreloadedAtomicDbGamePositions(analysis.result.positions.map(atomicDbGamePosition));
-};
+export const completedGameAnalysisPositions = (
+  analysis: GameAnalysisRecord | null,
+): ReadonlyMap<string, PreloadedAtomicDbGamePosition> | undefined =>
+  analysis?.status === "ready" && analysis.result
+    ? new Map(
+        analysis.result.positions.map((position) => [
+          gameAnalysisPositionKey(position.fen),
+          atomicDbGamePosition(position),
+        ]),
+      )
+    : undefined;

@@ -184,6 +184,7 @@ export const createAnalysisMoveComposer = (fen: string, lineCount: number, plyCo
   const withEngineFollowUps = async (
     analysis: PositionAnalysis,
     signal: AbortSignal,
+    onProgress: (next: PositionAnalysis) => void,
   ): Promise<PositionAnalysis> => {
     if (!board || plyCount < 2) return analysis;
     const visibleMoves = analyzedAtomicDbMoves(fen, analysis.position).slice(0, lineCount);
@@ -196,23 +197,25 @@ export const createAnalysisMoveComposer = (fen: string, lineCount: number, plyCo
       ),
     ];
     if (!searchMoves.length || signal.aborted) return analysis;
+    const applyCandidates = (candidates: EngineCandidate[]) => {
+      if (signal.aborted) return analysis;
+      const lines = linesForMoves(visibleMoves, analysis.lines, engineLinesFor(candidates));
+      const moves = analysis.position.moves.map((move) =>
+        (lines[move.uci]?.length ?? 0) > Math.max(1, analysis.lines[move.uci]?.length ?? 0)
+          ? { ...move, variationSource: "engine" as const }
+          : move,
+      );
+      return { position: { ...analysis.position, moves }, lines: { ...analysis.lines, ...lines } };
+    };
     const candidates = await analyzeFairyStockfishPosition(
       fen,
       searchMoves.length,
       signal,
-      undefined,
+      (candidates) => onProgress(applyCandidates(candidates)),
       DEFAULT_LOCAL_ANALYSIS_ENGINE,
       { searchMoves, candidateLimit: searchMoves.length },
     );
-    if (signal.aborted) return analysis;
-
-    const lines = linesForMoves(visibleMoves, analysis.lines, engineLinesFor(candidates));
-    const moves = analysis.position.moves.map((move) =>
-      (lines[move.uci]?.length ?? 0) > Math.max(1, analysis.lines[move.uci]?.length ?? 0)
-        ? { ...move, variationSource: "engine" as const }
-        : move,
-    );
-    return { position: { ...analysis.position, moves }, lines: { ...analysis.lines, ...lines } };
+    return applyCandidates(candidates);
   };
 
   const databaseResult = (position: AtomicDbPosition, lines: AnalysisLines): PositionAnalysis => {

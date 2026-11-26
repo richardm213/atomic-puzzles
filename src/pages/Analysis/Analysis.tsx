@@ -593,7 +593,7 @@ export const AnalysisPage = ({
     lineCount: atomicDbEngineSettings.lineCount,
     atomicDbFollowUps: atomicDbEngineSettings.atomicDbFollowUps,
     terminalOutcome,
-    suspended: Boolean(game && gameAnalysis.isLoading),
+    storedPositions: gameAnalysis.storedPositions,
   });
   const atomicDbResultIsCurrent = atomicDbAnalysis.result?.fen === currentFen;
   const atomicDbPositionKey = atomicDbResultIsCurrent
