@@ -175,9 +175,11 @@ export type PreloadedAtomicDbGamePosition = {
   complete?: boolean;
 };
 
-export const peekAtomicDbPosition = (fen: string): CacheLookup<AtomicDbPosition | null> => {
+export const peekAtomicDbPosition = (fen: string): AtomicDbPosition | null => {
   const complete = positions.peek(fen);
-  return complete.found ? complete : previewPositions.peek(fen);
+  if (complete.found) return complete.value;
+  const preview = previewPositions.peek(fen);
+  return preview.found ? preview.value : null;
 };
 
 export const peekAtomicDbVariationLines = (

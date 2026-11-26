@@ -1,7 +1,5 @@
 import {
-  ATOMIC_DB_UCI_PATTERN,
   createAtomicDbQuery,
-  fenAfterAtomicDbMove,
   isValidAtomicDbFen,
   queryAtomicDbPrincipalVariations,
   trimAtomicDbPosition,
@@ -136,48 +134,6 @@ const atomicDbAnalysisRoute = async (event: FunctionEvent) => {
       );
     }
 
-    const rootMoves = (event.queryStringParameters?.line_moves ?? "").split(",").filter(Boolean);
-    if (rootMoves.length > 0) {
-      const plyCount = Number(event.queryStringParameters?.plies ?? MAX_PLIES);
-      if (
-        rootMoves.length > MAX_LINES ||
-        rootMoves.some((move) => !ATOMIC_DB_UCI_PATTERN.test(move)) ||
-        !Number.isInteger(plyCount) ||
-        plyCount < 1 ||
-        plyCount > MAX_PLIES
-      ) {
-        return json(400, {
-          error: "Valid line moves and ply count are required.",
-          code: "validation_failed",
-        });
-      }
-
-      const positions: Record<string, ReturnType<typeof trimAtomicDbPosition>> = {};
-      const lineEntries = await Promise.all(
-        rootMoves.map(async (rootMove) => {
-          const moves = [rootMove];
-          let currentFen = fenAfterAtomicDbMove(fen, rootMove);
-          try {
-            while (currentFen && moves.length < plyCount) {
-              const position = await queryPosition(currentFen);
-              if (!position) break;
-              positions[currentFen] = trimAtomicDbPosition(position);
-
-              const bestMove = typeof position.best_move === "string" ? position.best_move : null;
-              if (!bestMove || !ATOMIC_DB_UCI_PATTERN.test(bestMove)) break;
-              currentFen = fenAfterAtomicDbMove(currentFen, bestMove);
-              if (currentFen) moves.push(bestMove);
-            }
-          } catch (error: unknown) {
-            if (error instanceof Error && error.name === "AbortError") throw error;
-            // Preserve the completed portion of this branch if only one continuation fails.
-          }
-          return [rootMove, moves] as const;
-        }),
-      );
-      return json(200, { lines: Object.fromEntries(lineEntries), positions }, true);
-    }
-
     const position = await queryPosition(fen);
     if (!position) {
       return json(
@@ -215,8 +171,7 @@ export const handler = defineFunction(atomicDbAnalysisRoute, {
           return 1;
         }
       }
-      const lines = event.queryStringParameters?.line_moves?.split(",").filter(Boolean).length ?? 0;
-      return event.queryStringParameters?.line_count ? 1 : Math.max(1, lines);
+      return 1;
     },
     message: "Too many AtomicDB requests. Please wait and try again.",
   },

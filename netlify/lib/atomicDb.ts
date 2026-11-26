@@ -1,11 +1,9 @@
-export { fenAfterAtomicMove as fenAfterAtomicDbMove } from "../../shared/domain/puzzles/solutionPgn";
-
 const ATOMIC_DB_QUERY_URL = "https://belzedar.duckdns.org/atomicdb/api/query";
 const ATOMIC_DB_PRINCIPAL_VARIATIONS_URL =
   "https://belzedar.duckdns.org/atomicdb/api/principal-variations";
 const ATOMIC_DB_REQUEST_URL = "https://belzedar.duckdns.org/atomicdb/api/request";
 export const MAX_ATOMIC_DB_FEN_LENGTH = 160;
-export const ATOMIC_DB_UCI_PATTERN = /^[a-h][1-8][a-h][1-8][nbrq]?$/;
+const ATOMIC_DB_UCI_PATTERN = /^[a-h][1-8][a-h][1-8][nbrq]?$/;
 
 export type AtomicDbUpstreamPosition = Record<string, unknown> & { moves: unknown[] };
 

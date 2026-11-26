@@ -7,8 +7,7 @@ import type { PreloadedAtomicDbGamePosition } from "../lib/atomicDb/analysisRepo
 import { createAtomicPosition, moveFromUci } from "../lib/chess/pgn";
 import type { SolutionNavigation } from "../types/chessboard";
 import { threatFenFromFen } from "../utils/chessNotation";
-import type { AtomicDbAnalysisState } from "./useAtomicDbAnalysis";
-import { useAtomicDbAnalysis } from "./useAtomicDbAnalysis";
+import { type AtomicDbAnalysisState, useAtomicDbAnalysis } from "./useAtomicDbAnalysis";
 
 const PRINCIPAL_VARIATION_PLIES = 5;
 
@@ -55,31 +54,27 @@ export const useAtomicDbBoardAnalysis = ({
   const variationPlaying = navigation?.type === "line";
   const navigationPending = navigation !== null;
   const fen = variationPlaying ? (variationStartFenRef.current ?? currentFen) : currentFen;
-  const analysis = useAtomicDbAnalysis(fen, {
-    // A disabled panel is fully dormant. Any board navigation preempts the current request so the
-    // move is applied before analysis resumes on its destination.
+  const analysisOptions = {
     lineCount,
     atomicDbEnabled,
     atomicDbFollowUps,
     progressivePreview: true,
-    storedPosition: storedPositions?.get(gameAnalysisPositionKey(fen)),
     plyCount: PRINCIPAL_VARIATION_PLIES,
+    // Let the board finish navigating before starting another search.
     suspended: navigationPending || suspended,
+  };
+  const storedPositionFor = (fen: string) => storedPositions?.get(gameAnalysisPositionKey(fen));
+  const positionAnalysis = useAtomicDbAnalysis(fen, {
+    ...analysisOptions,
+    storedPosition: storedPositionFor(fen),
     fallbackToEngine: enabled,
     enabled: enabled && !threatMode && terminalOutcome === null,
   });
   const threatAnalysis = useAtomicDbAnalysis(threatFen ?? currentFen, {
+    ...analysisOptions,
     enabled: threatMode && !variationPlaying,
-    atomicDbEnabled,
-    atomicDbFollowUps,
-    progressivePreview: true,
-    storedPosition: threatFen
-      ? storedPositions?.get(gameAnalysisPositionKey(threatFen))
-      : undefined,
+    storedPosition: threatFen ? storedPositionFor(threatFen) : undefined,
     fallbackToEngine: threatMode,
-    lineCount,
-    plyCount: PRINCIPAL_VARIATION_PLIES,
-    suspended: navigationPending || suspended,
   });
   const threatMove =
     threatMode && !navigationPending && threatAnalysis.result?.fen === threatFen
@@ -113,7 +108,8 @@ export const useAtomicDbBoardAnalysis = ({
     } satisfies AtomicDbAnalysisState;
   }, [currentFen, terminalOutcome]);
 
-  const position = analysis.result?.fen === currentFen ? analysis.result.position : null;
+  const position =
+    positionAnalysis.result?.fen === currentFen ? positionAnalysis.result.position : null;
   const engineMoves = useMemo(() => {
     if (!enabled || threatMode || navigationPending || suspended || terminalOutcome || !position)
       return null;
@@ -155,24 +151,25 @@ export const useAtomicDbBoardAnalysis = ({
     variationStartFenRef.current = null;
   }, []);
 
+  const analysis = terminalAnalysis ?? positionAnalysis;
+  const displayedAnalysis = threatMode ? threatAnalysis : analysis;
+  const displayedFen = threatMode && threatFen ? threatFen : terminalAnalysis ? currentFen : fen;
   return {
-    analysis: terminalAnalysis ?? analysis,
-    displayedAnalysis: threatMode ? threatAnalysis : (terminalAnalysis ?? analysis),
-    displayedFen: threatMode && threatFen ? threatFen : terminalAnalysis ? currentFen : fen,
-    threatFen,
+    analysis,
+    displayedAnalysis,
+    displayedFen,
     threatMode,
     setThreatMode,
     threatMove,
     panelProps: {
-      fen: threatMode && threatFen ? threatFen : terminalAnalysis ? currentFen : fen,
-      analysis: threatMode ? threatAnalysis : (terminalAnalysis ?? analysis),
+      fen: displayedFen,
+      analysis: displayedAnalysis,
       threatMode,
       threatAvailable,
       onThreatModeChange: setThreatMode,
     },
     engineMoves,
     beginVariationPlayback,
-    fen: terminalAnalysis ? currentFen : fen,
     finishVariationPlayback,
     variationPlaying,
   };

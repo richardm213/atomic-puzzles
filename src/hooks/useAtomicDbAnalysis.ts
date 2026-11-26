@@ -136,7 +136,15 @@ export const useAtomicDbAnalysis = (
     const positionChanged = lastFenRef.current !== null && lastFenRef.current !== fen;
     lastFenRef.current = fen;
     const controller = new AbortController();
-    const assistanceEngine = DEFAULT_LOCAL_ANALYSIS_ENGINE;
+    const request = { requestedFen: fen, requestedOptions: requestOptions };
+    const publish = (
+      next: (current: RequestState) => AtomicDbAnalysisState,
+      signal = controller.signal,
+    ): void => {
+      startTransition(() => {
+        setState((current) => (signal.aborted ? current : { ...next(current), ...request }));
+      });
+    };
     const requestedLines = clampInteger(requestedLineCount, 1, candidateLimit);
     const legalMoveCount = atomicLegalMoveCount(fen);
     const lineCount =
@@ -146,34 +154,28 @@ export const useAtomicDbAnalysis = (
     const databasePlyCount = atomicDbFollowUps ? plyCount : 1;
     const { databaseResult, linesForMoves, engineResult, withEngineFollowUps } =
       createAnalysisMoveComposer(fen, lineCount, plyCount);
-    const cachedLinesFor = (position: AtomicDbPosition | null): Record<string, string[]> => {
-      const rootMoves = position?.moves.map((move) => move.uci) ?? [];
-      return peekAtomicDbVariationLines(fen, rootMoves, databasePlyCount);
-    };
+    const needsEngine = (position: AtomicDbPosition | null) =>
+      fallbackToEngine && (!position || analyzedAtomicDbMoves(fen, position).length < lineCount);
+    const previewLinesFor = (position: AtomicDbPosition) =>
+      storedPosition?.principalVariations ??
+      peekAtomicDbVariationLines(
+        fen,
+        position.moves.map((move) => move.uci),
+        databasePlyCount,
+      );
 
-    const publishPosition = (
-      position: AtomicDbPosition | null,
-      lines: Record<string, string[]> = cachedLinesFor(position),
-    ): void => {
+    const publishPosition = (position: AtomicDbPosition | null, lines: AnalysisLines): void => {
       const supplemented = position?.moves.some(
         (move) => move.origin === "engine" || move.variationSource === "engine",
       );
-      startTransition(() => {
-        setState((current) =>
-          controller.signal.aborted
-            ? current
-            : {
-                result: { fen, position },
-                requestedFen: fen,
-                requestedOptions: requestOptions,
-                status: "ready",
-                error: "",
-                principalVariations: linesForMoves(position?.moves ?? [], lines),
-                source: supplemented ? "mixed" : "atomicdb",
-                ...(supplemented ? { engine: assistanceEngine } : {}),
-              },
-        );
-      });
+      publish(() => ({
+        result: { fen, position },
+        status: "ready",
+        error: "",
+        principalVariations: linesForMoves(position?.moves ?? [], lines),
+        source: supplemented ? "mixed" : "atomicdb",
+        ...(supplemented ? { engine: DEFAULT_LOCAL_ANALYSIS_ENGINE } : {}),
+      }));
     };
 
     const prepareDatabasePosition = (rawPosition: AtomicDbPosition, lines: AnalysisLines) => {
@@ -181,15 +183,14 @@ export const useAtomicDbAnalysis = (
       return atomicDbFollowUps ? normalized : { ...normalized, lines: {} };
     };
 
-    const publishCachedPosition = (rawPosition: AtomicDbPosition): void => {
+    const publishPreview = (rawPosition: AtomicDbPosition): void => {
       const { position, lines } = prepareDatabasePosition(
         rawPosition,
-        storedPosition?.principalVariations ?? cachedLinesFor(rawPosition),
+        previewLinesFor(rawPosition),
       );
       setState({
+        ...request,
         result: { fen, position },
-        requestedFen: fen,
-        requestedOptions: requestOptions,
         status: "loading",
         error: "",
         principalVariations: linesForMoves(position.moves, lines),
@@ -224,26 +225,18 @@ export const useAtomicDbAnalysis = (
       const lines = result?.lines ?? linesForMoves(position?.moves ?? [], database?.lines ?? {});
       const { status, error } = search;
       const source = database ? "mixed" : "engine";
-      startTransition(() => {
-        setState((current) =>
-          search.controller.signal.aborted
-            ? current
-            : {
-                result: position
-                  ? { fen, position }
-                  : status === "error"
-                    ? { fen, position: null }
-                    : current.result,
-                requestedFen: fen,
-                requestedOptions: requestOptions,
-                status,
-                error,
-                principalVariations: lines,
-                source,
-                engine: assistanceEngine,
-              },
-        );
-      });
+      publish(
+        (current) => ({
+          result:
+            position || status === "error" ? { fen, position: position ?? null } : current.result,
+          status,
+          error,
+          principalVariations: lines,
+          source,
+          engine: DEFAULT_LOCAL_ANALYSIS_ENGINE,
+        }),
+        search.controller.signal,
+      );
     };
 
     const startEngine = (restartFailed = false) => {
@@ -267,7 +260,7 @@ export const useAtomicDbAnalysis = (
           lineCount,
           search.controller.signal,
           (candidates) => publish(candidates, "loading"),
-          assistanceEngine,
+          DEFAULT_LOCAL_ANALYSIS_ENGINE,
           {
             ...(engineThinkTimeMs === undefined ? {} : { thinkTimeMs: engineThinkTimeMs }),
             ...(engineMaxDepth === undefined ? {} : { maxDepth: engineMaxDepth }),
@@ -291,17 +284,14 @@ export const useAtomicDbAnalysis = (
       lines: AnalysisLines,
     ): void => {
       const analysis = rawPosition && prepareDatabasePosition(rawPosition, lines);
-      if (fallbackToEngine && !analysis?.position.moves.length) {
-        startEngine(true);
-        return;
-      }
-      if (
-        analysis &&
-        fallbackToEngine &&
-        analyzedAtomicDbMoves(fen, analysis.position).length < lineCount
-      ) {
-        database = analysis;
-        startEngine();
+      if (needsEngine(analysis?.position ?? null)) {
+        if (analysis?.position.moves.length) {
+          database = analysis;
+          startEngine();
+        } else {
+          startEngine(true);
+          return;
+        }
       } else {
         engine?.controller.abort();
         publishPosition(analysis?.position ?? null, analysis?.lines ?? lines);
@@ -339,7 +329,9 @@ export const useAtomicDbAnalysis = (
       return abort;
     }
 
-    if (!atomicDbFollowUps && fallbackToEngine) warmLocalAnalysisEngine(assistanceEngine);
+    if (!atomicDbFollowUps && fallbackToEngine) {
+      warmLocalAnalysisEngine(DEFAULT_LOCAL_ANALYSIS_ENGINE);
+    }
 
     if (storedPosition?.complete) {
       publishAtomicDbOrFallback(storedPosition.position, storedPosition.principalVariations);
@@ -352,17 +344,14 @@ export const useAtomicDbAnalysis = (
       return abort;
     }
 
-    let preview = storedPosition?.position ?? null;
-    const cached = peekAtomicDbPosition(fen);
-    if (!preview && cached.found) preview = cached.value;
+    let preview = storedPosition?.position ?? peekAtomicDbPosition(fen);
 
     if (preview) {
-      publishCachedPosition(preview);
+      publishPreview(preview);
     } else {
       setState((current) => ({
         ...current,
-        requestedFen: fen,
-        requestedOptions: requestOptions,
+        ...request,
         status: "loading",
         error: "",
         principalVariations: {},
@@ -373,21 +362,25 @@ export const useAtomicDbAnalysis = (
     let graceTimer: number | undefined;
     let previewTimer: number | undefined;
     const previewController = new AbortController();
+    const finishDatabaseRequest = () => {
+      window.clearTimeout(graceTimer);
+      window.clearTimeout(previewTimer);
+      previewController.abort();
+    };
     const requestPosition = async (): Promise<void> => {
       databasePending = true;
       if (fallbackToEngine) {
         graceTimer = window.setTimeout(() => {
-          if (!preview || analyzedAtomicDbMoves(fen, preview).length < lineCount) startEngine();
+          if (needsEngine(preview)) startEngine();
         }, ATOMIC_DB_GRACE_MS);
       }
       if (progressivePreview && databasePlyCount > 1 && !preview) {
         previewTimer = window.setTimeout(() => {
           void loadAtomicDbAnalysisBundle(fen, databaseLineCount, 1, previewController.signal)
             .then(({ position }) => {
-              if (!position?.moves.length || !databasePending || previewController.signal.aborted)
-                return;
+              if (!position?.moves.length || previewController.signal.aborted) return;
               preview = position;
-              if (!engine) publishCachedPosition(position);
+              if (!engine) publishPreview(position);
             })
             .catch(() => undefined);
         }, ATOMIC_DB_PREVIEW_DELAY_MS);
@@ -406,33 +399,20 @@ export const useAtomicDbAnalysis = (
         if (controller.signal.aborted) return;
         databasePending = false;
         if (preview) {
-          publishAtomicDbOrFallback(
-            preview,
-            storedPosition?.principalVariations ?? cachedLinesFor(preview),
-          );
+          publishAtomicDbOrFallback(preview, previewLinesFor(preview));
           return;
         }
         if (fallbackToEngine) {
           startEngine(true);
           return;
         }
-        startTransition(() => {
-          setState((current) =>
-            controller.signal.aborted
-              ? current
-              : {
-                  ...current,
-                  requestedFen: fen,
-                  requestedOptions: requestOptions,
-                  status: "error",
-                  error: getErrorMessage(error, "AtomicDB analysis failed."),
-                },
-          );
-        });
+        publish((current) => ({
+          ...current,
+          status: "error",
+          error: getErrorMessage(error, "AtomicDB analysis failed."),
+        }));
       } finally {
-        window.clearTimeout(graceTimer);
-        window.clearTimeout(previewTimer);
-        previewController.abort();
+        finishDatabaseRequest();
       }
     };
 
@@ -444,9 +424,7 @@ export const useAtomicDbAnalysis = (
 
     return () => {
       if (timeout !== null) window.clearTimeout(timeout);
-      window.clearTimeout(graceTimer);
-      window.clearTimeout(previewTimer);
-      previewController.abort();
+      finishDatabaseRequest();
       abort();
     };
   }, [
