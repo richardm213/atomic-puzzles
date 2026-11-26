@@ -32,7 +32,7 @@ export const keyboardShortcutDefinitions = {
     keys: ["z"],
   },
   toggleFollowUps: {
-    label: "Toggle follow-up moves",
+    label: "Toggle AtomicDB follow-up moves",
     section: "Analysis and practice",
     keys: ["k"],
   },

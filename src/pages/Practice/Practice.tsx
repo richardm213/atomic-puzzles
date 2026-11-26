@@ -290,7 +290,7 @@ export const PracticePage = () => {
     atomicDbEnabled: atomicDbEngineSettings.atomicDbEnabled !== false,
     navigation: puzzleDraft ? draftNavigation : navigation,
     lineCount: atomicDbEngineSettings.lineCount,
-    showFollowUpMoves: atomicDbEngineSettings.showFollowUpMoves,
+    atomicDbFollowUps: atomicDbEngineSettings.atomicDbFollowUps,
     terminalOutcome: puzzleDraft ? draftBoard.terminalOutcome : terminalOutcome,
   });
   const currentLichessAnalysisUrl = lichessAtomicAnalysisUrl(analysisFen);

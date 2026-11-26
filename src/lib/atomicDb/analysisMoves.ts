@@ -11,6 +11,7 @@ import {
   getAtomicDbPositionEvaluation,
 } from "../../utils/atomicDb";
 import { analyzeFairyStockfishPosition, type EngineCandidate } from "../practice/fairyStockfish";
+import { DEFAULT_LOCAL_ANALYSIS_ENGINE } from "../practice/localAnalysisEngine";
 
 export type AnalysisLines = Record<string, string[]>;
 type PositionAnalysis = { position: AtomicDbPosition; lines: AnalysisLines };
@@ -180,6 +181,40 @@ export const createAnalysisMoveComposer = (fen: string, lineCount: number, plyCo
       ]),
     );
 
+  const withEngineFollowUps = async (
+    analysis: PositionAnalysis,
+    signal: AbortSignal,
+  ): Promise<PositionAnalysis> => {
+    if (!board || plyCount < 2) return analysis;
+    const visibleMoves = analyzedAtomicDbMoves(fen, analysis.position).slice(0, lineCount);
+    const searchMoves = [
+      ...new Set(
+        visibleMoves.flatMap(({ uci }) => {
+          const root = canonicalAtomicMoveUci(board, uci);
+          return root && (analysis.lines[uci]?.length ?? 0) < plyCount ? [root] : [];
+        }),
+      ),
+    ];
+    if (!searchMoves.length || signal.aborted) return analysis;
+    const candidates = await analyzeFairyStockfishPosition(
+      fen,
+      searchMoves.length,
+      signal,
+      undefined,
+      DEFAULT_LOCAL_ANALYSIS_ENGINE,
+      { searchMoves, candidateLimit: searchMoves.length },
+    );
+    if (signal.aborted) return analysis;
+
+    const lines = linesForMoves(visibleMoves, analysis.lines, engineLinesFor(candidates));
+    const moves = analysis.position.moves.map((move) =>
+      (lines[move.uci]?.length ?? 0) > Math.max(1, analysis.lines[move.uci]?.length ?? 0)
+        ? { ...move, variationSource: "engine" as const }
+        : move,
+    );
+    return { position: { ...analysis.position, moves }, lines: { ...analysis.lines, ...lines } };
+  };
+
   const databaseResult = (position: AtomicDbPosition, lines: AnalysisLines): PositionAnalysis => {
     if (!board) return { position, lines };
     const replays = (root: string, tail: string[]): boolean => {
@@ -259,5 +294,5 @@ export const createAnalysisMoveComposer = (fen: string, lineCount: number, plyCo
     }
     return { position, lines };
   };
-  return { databaseResult, linesForMoves, engineResult };
+  return { databaseResult, linesForMoves, engineResult, withEngineFollowUps };
 };

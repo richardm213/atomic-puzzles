@@ -873,6 +873,67 @@ describe("useAtomicDbAnalysis", () => {
     expect(requestedUrl.searchParams.get("ply_count")).toBe("3");
   });
 
+  it("keeps AtomicDB root evaluations while replacing its follow-ups with engine lines", async () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 17 37";
+    const position = {
+      status: "UNKNOWN",
+      score: 110,
+      best_move: "e2e4",
+      moves: [{ uci: "e2e4", status: "UNKNOWN", score: 110 }],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve(bundleResponse(position, { e2e4: ["e2e4", "f7f6"] })),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    analyzeWithEngineMock.mockResolvedValue([
+      {
+        move: "e2e4",
+        multipv: 1,
+        scoreType: "cp",
+        score: 25,
+        principalVariation: ["e2e4", "e7e5", "g1f3"],
+      },
+    ]);
+
+    const { result, rerender } = renderHook(
+      ({ atomicDbFollowUps }) =>
+        useAtomicDbAnalysis(fen, {
+          atomicDbFollowUps,
+          debounceMs: 0,
+          fallbackToEngine: true,
+          lineCount: 1,
+        }),
+      { initialProps: { atomicDbFollowUps: false } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "e7e5", "g1f3"]);
+    });
+    expect(result.current.result?.position?.moves[0]).toMatchObject({
+      uci: "e2e4",
+      score: 110,
+      variationSource: "engine",
+    });
+    expect(analyzeWithEngineMock).toHaveBeenCalledExactlyOnceWith(
+      fen,
+      1,
+      expect.any(AbortSignal),
+      undefined,
+      "atomic-stockfish",
+      { searchMoves: ["e2e4"], candidateLimit: 1 },
+    );
+    const requestedUrl = new URL(String(fetchMock.mock.calls[0]![0]), "https://example.test");
+    expect(requestedUrl.searchParams.get("ply_count")).toBe("1");
+
+    rerender({ atomicDbFollowUps: true });
+    await waitFor(() => {
+      expect(result.current.principalVariations.e2e4).toEqual(["e2e4", "f7f6"]);
+    });
+    expect(analyzeWithEngineMock).toHaveBeenCalledOnce();
+  });
+
   it("keeps bundled follow-up moves visible while refreshing a child position", async () => {
     const parentFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 21 40";
     const childFen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 40";

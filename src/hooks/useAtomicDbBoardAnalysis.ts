@@ -16,7 +16,7 @@ export const useAtomicDbBoardAnalysis = ({
   atomicDbEnabled = true,
   navigation,
   lineCount,
-  showFollowUpMoves = true,
+  atomicDbFollowUps = true,
   terminalOutcome = null,
   suspended = false,
 }: {
@@ -25,7 +25,7 @@ export const useAtomicDbBoardAnalysis = ({
   atomicDbEnabled?: boolean;
   navigation: SolutionNavigation | null;
   lineCount: number;
-  showFollowUpMoves?: boolean;
+  atomicDbFollowUps?: boolean;
   terminalOutcome?: "white" | "black" | "draw" | null;
   suspended?: boolean;
 }) => {
@@ -56,7 +56,8 @@ export const useAtomicDbBoardAnalysis = ({
     // move is applied before analysis resumes on its destination.
     lineCount,
     atomicDbEnabled,
-    plyCount: showFollowUpMoves ? PRINCIPAL_VARIATION_PLIES : 1,
+    atomicDbFollowUps,
+    plyCount: PRINCIPAL_VARIATION_PLIES,
     suspended: navigationPending || suspended,
     fallbackToEngine: enabled,
     enabled: enabled && !threatMode && terminalOutcome === null,
@@ -64,9 +65,10 @@ export const useAtomicDbBoardAnalysis = ({
   const threatAnalysis = useAtomicDbAnalysis(threatFen ?? currentFen, {
     enabled: threatMode && !variationPlaying,
     atomicDbEnabled,
+    atomicDbFollowUps,
     fallbackToEngine: threatMode,
     lineCount,
-    plyCount: showFollowUpMoves ? PRINCIPAL_VARIATION_PLIES : 1,
+    plyCount: PRINCIPAL_VARIATION_PLIES,
     suspended: navigationPending || suspended,
   });
   const threatMove =

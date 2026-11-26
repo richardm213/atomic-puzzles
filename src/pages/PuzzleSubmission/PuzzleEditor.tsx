@@ -477,7 +477,7 @@ const PuzzleEditorDraft = ({
     atomicDbEnabled: engineSettings.atomicDbEnabled !== false,
     navigation,
     lineCount: engineSettings.lineCount,
-    showFollowUpMoves: engineSettings.showFollowUpMoves,
+    atomicDbFollowUps: engineSettings.atomicDbFollowUps,
   });
 
   const playEngineLine = (ucis: string[]): void => {

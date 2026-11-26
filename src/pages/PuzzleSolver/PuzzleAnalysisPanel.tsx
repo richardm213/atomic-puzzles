@@ -81,7 +81,7 @@ export const PuzzleAnalysisPanel = ({
     atomicDbEnabled: engineSettings.atomicDbEnabled !== false,
     navigation: null,
     lineCount: engineSettings.lineCount,
-    showFollowUpMoves: engineSettings.showFollowUpMoves,
+    atomicDbFollowUps: engineSettings.atomicDbFollowUps,
     terminalOutcome,
   });
 

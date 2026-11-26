@@ -591,7 +591,7 @@ export const AnalysisPage = ({
     atomicDbEnabled: atomicDbEngineSettings.atomicDbEnabled !== false,
     navigation,
     lineCount: atomicDbEngineSettings.lineCount,
-    showFollowUpMoves: atomicDbEngineSettings.showFollowUpMoves,
+    atomicDbFollowUps: atomicDbEngineSettings.atomicDbFollowUps,
     terminalOutcome,
     suspended: Boolean(game && gameAnalysis.isLoading),
   });

@@ -9,7 +9,7 @@ export type AtomicDbEngineSettings = {
   enabled: boolean;
   atomicDbEnabled?: boolean;
   lineCount: number;
-  showFollowUpMoves: boolean;
+  atomicDbFollowUps: boolean;
   settingsVersion?: typeof ENGINE_SETTINGS_VERSION;
 };
 
@@ -33,13 +33,13 @@ const engineSettingsSchema = (defaultEnabled: boolean, defaultLineCount: number)
     const enabled = typeof value.enabled === "boolean" ? value.enabled : defaultEnabled;
     const atomicDbEnabled =
       typeof value.atomicDbEnabled === "boolean" ? value.atomicDbEnabled : true;
-    const showFollowUpMoves =
-      typeof value.showFollowUpMoves === "boolean" ? value.showFollowUpMoves : true;
+    const storedFollowUps = value.atomicDbFollowUps ?? value.showFollowUpMoves;
+    const atomicDbFollowUps = typeof storedFollowUps === "boolean" ? storedFollowUps : true;
     return {
       enabled,
       atomicDbEnabled,
       lineCount,
-      showFollowUpMoves,
+      atomicDbFollowUps,
       settingsVersion: ENGINE_SETTINGS_VERSION,
     };
   });
@@ -59,7 +59,7 @@ export const useAtomicDbEngineSettings = ({
       enabled: defaultEnabled,
       atomicDbEnabled: true,
       lineCount: defaultLineCount,
-      showFollowUpMoves: true,
+      atomicDbFollowUps: true,
       settingsVersion: ENGINE_SETTINGS_VERSION,
     },
   );

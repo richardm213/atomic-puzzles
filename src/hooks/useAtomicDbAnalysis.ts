@@ -19,7 +19,10 @@ import {
   analyzeFairyStockfishPosition,
   type EngineCandidate,
 } from "../lib/practice/fairyStockfish";
-import type { LocalAnalysisEngine } from "../lib/practice/localAnalysisEngine";
+import {
+  DEFAULT_LOCAL_ANALYSIS_ENGINE,
+  type LocalAnalysisEngine,
+} from "../lib/practice/localAnalysisEngine";
 import { atomicLegalMoveCount } from "../lib/puzzles/solutionPgn";
 import type { AtomicDbPosition, AtomicDbResult } from "../utils/atomicDb";
 import { getErrorMessage } from "../utils/errors";
@@ -38,6 +41,7 @@ export type AtomicDbAnalysisState = {
 type AtomicDbAnalysisOptions = {
   enabled?: boolean;
   atomicDbEnabled?: boolean;
+  atomicDbFollowUps?: boolean;
   debounceMs?: number;
   lineCount?: number;
   plyCount?: number;
@@ -76,6 +80,7 @@ export const useAtomicDbAnalysis = (
   {
     enabled = true,
     atomicDbEnabled = true,
+    atomicDbFollowUps = true,
     debounceMs = NAVIGATION_SETTLE_MS,
     lineCount: requestedLineCount = 3,
     plyCount: requestedPlyCount = 5,
@@ -88,6 +93,7 @@ export const useAtomicDbAnalysis = (
 ): AtomicDbAnalysisState => {
   const requestOptions = JSON.stringify([
     atomicDbEnabled,
+    atomicDbFollowUps,
     fallbackToEngine,
     requestedLineCount,
     requestedPlyCount,
@@ -121,21 +127,19 @@ export const useAtomicDbAnalysis = (
     const positionChanged = lastFenRef.current !== null && lastFenRef.current !== fen;
     lastFenRef.current = fen;
     const controller = new AbortController();
-    const assistanceEngine: LocalAnalysisEngine = "atomic-stockfish";
+    const assistanceEngine = DEFAULT_LOCAL_ANALYSIS_ENGINE;
     const requestedLines = clampInteger(requestedLineCount, 1, candidateLimit);
     const legalMoveCount = atomicLegalMoveCount(fen);
     const lineCount =
       legalMoveCount > 0 ? Math.min(requestedLines, legalMoveCount) : requestedLines;
     const plyCount = clampInteger(requestedPlyCount, 1, MAX_ATOMIC_DB_PLIES);
     const databaseLineCount = Math.min(lineCount, MAX_ATOMIC_DB_LINES);
-    const { databaseResult, linesForMoves, engineResult } = createAnalysisMoveComposer(
-      fen,
-      lineCount,
-      plyCount,
-    );
+    const databasePlyCount = atomicDbFollowUps ? plyCount : 1;
+    const { databaseResult, linesForMoves, engineResult, withEngineFollowUps } =
+      createAnalysisMoveComposer(fen, lineCount, plyCount);
     const cachedLinesFor = (position: AtomicDbPosition | null): Record<string, string[]> => {
       const rootMoves = position?.moves.map((move) => move.uci) ?? [];
-      return peekAtomicDbVariationLines(fen, rootMoves, plyCount);
+      return peekAtomicDbVariationLines(fen, rootMoves, databasePlyCount);
     };
 
     const publishPosition = (
@@ -163,8 +167,13 @@ export const useAtomicDbAnalysis = (
       });
     };
 
+    const prepareDatabasePosition = (rawPosition: AtomicDbPosition, lines: AnalysisLines) => {
+      const normalized = databaseResult(rawPosition, lines);
+      return atomicDbFollowUps ? normalized : { ...normalized, lines: {} };
+    };
+
     const publishCachedPosition = (rawPosition: AtomicDbPosition): void => {
-      const { position, lines } = databaseResult(rawPosition, cachedLinesFor(rawPosition));
+      const { position, lines } = prepareDatabasePosition(rawPosition, cachedLinesFor(rawPosition));
       setState({
         result: { fen, position },
         requestedFen: fen,
@@ -269,7 +278,7 @@ export const useAtomicDbAnalysis = (
       rawPosition: AtomicDbPosition | null,
       lines: AnalysisLines,
     ): void => {
-      const analysis = rawPosition && databaseResult(rawPosition, lines);
+      const analysis = rawPosition && prepareDatabasePosition(rawPosition, lines);
       if (fallbackToEngine && !analysis?.position.moves.length) {
         startEngine(true);
         return;
@@ -286,19 +295,24 @@ export const useAtomicDbAnalysis = (
         publishPosition(analysis?.position ?? null, analysis?.lines ?? lines);
       }
       if (!analysis) return;
-      // Publish the database result immediately. The position-scoped check only replaces
-      // values for which Atomic-Stockfish found a mate.
-      void verifyAtomicDbMates(fen, analysis, controller.signal, true)
-        .then((verified) => {
-          if (controller.signal.aborted || verified === analysis) return;
-          if (database) {
-            database = verified;
-            publishEngine();
-          } else {
-            publishPosition(verified.position, verified.lines);
-          }
-        })
-        .catch(() => undefined);
+      const publishSupplement = (next: typeof analysis, previous: typeof analysis): void => {
+        if (controller.signal.aborted || next === previous) return;
+        if (database) {
+          database = next;
+          publishEngine();
+        } else {
+          publishPosition(next.position, next.lines);
+        }
+      };
+      // Publish the root moves first so a local search never holds up their evaluations.
+      void (async () => {
+        const verified = await verifyAtomicDbMates(fen, analysis, controller.signal, true);
+        publishSupplement(verified, analysis);
+        if (!atomicDbFollowUps && !controller.signal.aborted) {
+          const extended = await withEngineFollowUps(verified, controller.signal);
+          publishSupplement(extended, verified);
+        }
+      })().catch(() => undefined);
     };
 
     const abort = () => {
@@ -311,7 +325,7 @@ export const useAtomicDbAnalysis = (
       return abort;
     }
 
-    const completeBundle = peekAtomicDbAnalysisBundle(fen, databaseLineCount, plyCount);
+    const completeBundle = peekAtomicDbAnalysisBundle(fen, databaseLineCount, databasePlyCount);
     if (completeBundle) {
       publishAtomicDbOrFallback(completeBundle.position, completeBundle.lines);
       return abort;
@@ -350,7 +364,7 @@ export const useAtomicDbAnalysis = (
         const bundle = await loadAtomicDbAnalysisBundle(
           fen,
           databaseLineCount,
-          plyCount,
+          databasePlyCount,
           controller.signal,
         );
         if (controller.signal.aborted) return;
@@ -400,6 +414,7 @@ export const useAtomicDbAnalysis = (
     candidateLimit,
     enabled,
     atomicDbEnabled,
+    atomicDbFollowUps,
     fallbackToEngine,
     engineFocusEpoch,
     fen,
@@ -418,8 +433,8 @@ export const useAtomicDbAnalysis = (
     result: state.result,
     status: "loading",
     error: "",
-    principalVariations: state.principalVariations,
+    principalVariations: state.requestedOptions === requestOptions ? state.principalVariations : {},
     source: useAtomicStockfishOnly ? "engine" : "atomicdb",
-    ...(useAtomicStockfishOnly ? { engine: "atomic-stockfish" } : {}),
+    ...(useAtomicStockfishOnly ? { engine: DEFAULT_LOCAL_ANALYSIS_ENGINE } : {}),
   };
 };

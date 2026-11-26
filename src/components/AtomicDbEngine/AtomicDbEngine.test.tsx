@@ -17,7 +17,7 @@ describe("AtomicDbEngine", () => {
         <AtomicDbEngineControls
           fen={STARTING_FEN}
           analysis={{ status: "idle", error: "", result: null, principalVariations: {} }}
-          settings={{ enabled: false, lineCount: 1, showFollowUpMoves: true }}
+          settings={{ enabled: false, lineCount: 1, atomicDbFollowUps: true }}
           setSettings={setSettings}
           onDisable={onDisable}
         />
@@ -31,7 +31,7 @@ describe("AtomicDbEngine", () => {
       setSettings.mock.calls[0]?.[0]({
         enabled: false,
         lineCount: 1,
-        showFollowUpMoves: true,
+        atomicDbFollowUps: true,
       }),
     ).toMatchObject({ enabled: true });
     expect(onDisable).toHaveBeenCalledOnce();
@@ -47,7 +47,7 @@ describe("AtomicDbEngine", () => {
       <AtomicDbEngineControls
         fen={STARTING_FEN}
         analysis={{ status: "idle", error: "", result: null, principalVariations: {} }}
-        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: true }}
+        settings={{ enabled: true, lineCount: 1, atomicDbFollowUps: true }}
         setSettings={setSettings}
         onDisable={onDisable}
       />,
@@ -61,7 +61,7 @@ describe("AtomicDbEngine", () => {
       setSettings.mock.calls[0]?.[0]({
         enabled: true,
         lineCount: 1,
-        showFollowUpMoves: true,
+        atomicDbFollowUps: true,
       }),
     ).toMatchObject({ enabled: true, atomicDbEnabled: false });
     expect(onDisable).not.toHaveBeenCalled();
@@ -74,7 +74,7 @@ describe("AtomicDbEngine", () => {
       <AtomicDbEngineControls
         fen={STARTING_FEN}
         analysis={{ status: "idle", error: "", result: null, principalVariations: {} }}
-        settings={{ enabled: false, lineCount: 3, showFollowUpMoves: true }}
+        settings={{ enabled: false, lineCount: 3, atomicDbFollowUps: true }}
         setSettings={setSettings}
         onDisable={onDisable}
       />,
@@ -91,9 +91,9 @@ describe("AtomicDbEngine", () => {
       setSettings.mock.calls[0]?.[0]({
         enabled: false,
         lineCount: 3,
-        showFollowUpMoves: true,
+        atomicDbFollowUps: true,
       }),
-    ).toEqual({ enabled: false, lineCount: 4, showFollowUpMoves: true });
+    ).toEqual({ enabled: false, lineCount: 4, atomicDbFollowUps: true });
     expect(onDisable).not.toHaveBeenCalled();
   });
 
@@ -124,7 +124,7 @@ describe("AtomicDbEngine", () => {
           result: { fen: STARTING_FEN, position },
           principalVariations: {},
         }}
-        settings={{ enabled: true, lineCount, showFollowUpMoves: true }}
+        settings={{ enabled: true, lineCount, atomicDbFollowUps: true }}
         setSettings={vi.fn()}
         onDisable={vi.fn()}
       />
@@ -164,7 +164,7 @@ describe("AtomicDbEngine", () => {
         <AtomicDbEngineControls
           fen={fen}
           analysis={analysis}
-          settings={{ enabled: true, lineCount: 1, showFollowUpMoves: true }}
+          settings={{ enabled: true, lineCount: 1, atomicDbFollowUps: true }}
           setSettings={vi.fn()}
           onDisable={vi.fn()}
         />
@@ -223,7 +223,7 @@ describe("AtomicDbEngine", () => {
     render(
       <AtomicDbEngine
         fen={STARTING_FEN}
-        settings={{ enabled: true, lineCount: 2, showFollowUpMoves: true }}
+        settings={{ enabled: true, lineCount: 2, atomicDbFollowUps: true }}
         analysis={analysis}
         onPlayLine={vi.fn()}
         onHoverMove={vi.fn()}
@@ -253,7 +253,7 @@ describe("AtomicDbEngine", () => {
     render(
       <AtomicDbEngine
         fen={STARTING_FEN}
-        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: false }}
+        settings={{ enabled: true, lineCount: 1, atomicDbFollowUps: false }}
         analysis={{
           status: "ready",
           error: "",
@@ -289,7 +289,7 @@ describe("AtomicDbEngine", () => {
       ],
     });
 
-    const settings = { enabled: true, lineCount: 5, showFollowUpMoves: false };
+    const settings = { enabled: true, lineCount: 5, atomicDbFollowUps: false };
     const analysis: AtomicDbAnalysisState = {
       status: "ready",
       error: "",
@@ -340,7 +340,7 @@ describe("AtomicDbEngine", () => {
     render(
       <AtomicDbEngine
         fen={STARTING_FEN}
-        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: false }}
+        settings={{ enabled: true, lineCount: 1, atomicDbFollowUps: false }}
         analysis={{
           status: "ready",
           error: "",
@@ -368,7 +368,7 @@ describe("AtomicDbEngine", () => {
       result: { fen: STARTING_FEN, position },
       principalVariations: {},
     };
-    const settings = { enabled: true, lineCount: 1, showFollowUpMoves: true };
+    const settings = { enabled: true, lineCount: 1, atomicDbFollowUps: true };
     const renderDisplay = (analysis: AtomicDbAnalysisState) => (
       <>
         <AtomicDbEngineControls
@@ -441,7 +441,7 @@ describe("AtomicDbEngine", () => {
       },
       principalVariations: {},
     };
-    const settings = { enabled: true, lineCount: 3, showFollowUpMoves: true };
+    const settings = { enabled: true, lineCount: 3, atomicDbFollowUps: true };
 
     const { container } = render(
       <>
@@ -492,7 +492,7 @@ describe("AtomicDbEngine", () => {
     render(
       <AtomicDbEngine
         fen={STARTING_FEN}
-        settings={{ enabled: true, lineCount: 2, showFollowUpMoves: true }}
+        settings={{ enabled: true, lineCount: 2, atomicDbFollowUps: true }}
         analysis={{
           status: "ready",
           error: "",
@@ -528,7 +528,7 @@ describe("AtomicDbEngine", () => {
     });
     const props = {
       fen: STARTING_FEN,
-      settings: { enabled: true, lineCount: 1, showFollowUpMoves: false },
+      settings: { enabled: true, lineCount: 1, atomicDbFollowUps: false },
       onPlayLine: vi.fn(),
       onHoverMove,
     };
@@ -570,7 +570,7 @@ describe("AtomicDbEngine", () => {
     expect(onHoverMove).toHaveBeenLastCalledWith(null);
   });
 
-  it("shows only each root move and its evaluation when follow-up moves are off", () => {
+  it("plays engine continuations when AtomicDB follow-ups are disabled", () => {
     const position = parseAtomicDbResponse({
       status: "UNKNOWN",
       score: 1100,
@@ -578,10 +578,11 @@ describe("AtomicDbEngine", () => {
       moves: [{ uci: "g1f3", status: "UNKNOWN", score: 1100, backed_plies: 29 }],
     });
 
+    const onPlayLine = vi.fn();
     render(
       <AtomicDbEngine
         fen={STARTING_FEN}
-        settings={{ enabled: true, lineCount: 1, showFollowUpMoves: false }}
+        settings={{ enabled: true, lineCount: 1, atomicDbFollowUps: false }}
         analysis={{
           status: "ready",
           error: "",
@@ -590,16 +591,15 @@ describe("AtomicDbEngine", () => {
             g1f3: ["g1f3", "f7f6", "e2e3"],
           },
         }}
-        onPlayLine={() => undefined}
+        onPlayLine={onPlayLine}
         onHoverMove={() => undefined}
       />,
     );
 
-    const engineLine = screen.getByRole("listitem", { name: /line 1\. Nf3$/ });
+    const engineLine = screen.getByRole("listitem", { name: /line 1\. Nf3 f6 2\. e3$/ });
     expect(within(engineLine).getByText("+11.0")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Play variation through f6" }),
-    ).not.toBeInTheDocument();
+    fireEvent.click(within(engineLine).getByRole("button", { name: "Play variation through f6" }));
+    expect(onPlayLine).toHaveBeenCalledExactlyOnceWith(["g1f3", "f7f6"]);
   });
 });
 
@@ -623,7 +623,7 @@ it("uses the shared best-move shortcut without playing threat or disabled analys
   const props = {
     fen: STARTING_FEN,
     analysis,
-    settings: { enabled: true, lineCount: 1, showFollowUpMoves: true },
+    settings: { enabled: true, lineCount: 1, atomicDbFollowUps: true },
     setSettings: vi.fn(),
     onDisable: vi.fn(),
     onHoverMove: vi.fn(),

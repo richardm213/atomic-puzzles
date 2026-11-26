@@ -150,8 +150,11 @@ export const AtomicDbEngineControls = ({
       setSettings((current) => ({ ...current, enabled: !current.enabled }));
       onDisable();
     },
-    toggleFollowUps: () =>
-      setSettings((current) => ({ ...current, showFollowUpMoves: !current.showFollowUpMoves })),
+    toggleFollowUps: () => {
+      if (settings.atomicDbEnabled === false) return false;
+      setSettings((current) => ({ ...current, atomicDbFollowUps: !current.atomicDbFollowUps }));
+      return undefined;
+    },
     ...(onFlipBoard ? { flipBoard: onFlipBoard } : {}),
     ...(onThreatModeChange
       ? {
@@ -239,17 +242,18 @@ export const AtomicDbEngineControls = ({
               />
             </label>
             <label className="atomicDbFollowUpSetting">
-              <span>Follow-up moves</span>
+              <span>AtomicDB follow-up moves</span>
               <span className="atomicDbSettingShortcut" aria-hidden="true">
                 {keyboardShortcutHint(keyboardShortcuts, "toggleFollowUps")}
               </span>
               <input
                 type="checkbox"
-                checked={settings.showFollowUpMoves}
+                checked={settings.atomicDbFollowUps}
+                disabled={settings.atomicDbEnabled === false}
                 onChange={(event) =>
                   setSettings((current) => ({
                     ...current,
-                    showFollowUpMoves: event.target.checked,
+                    atomicDbFollowUps: event.target.checked,
                   }))
                 }
               />
@@ -308,7 +312,7 @@ export const AtomicDbEngine = ({
   disabled = false,
   threatMode = false,
 }: AtomicDbEngineProps) => {
-  const { enabled, lineCount, showFollowUpMoves } = settings;
+  const { enabled, lineCount } = settings;
   const { status, error } = analysis;
   const view = useRetainedAtomicDbView(analysis, fen);
   const sourceLabel = analysisSourceLabel(analysis, view, threatMode, settings.lineCount);
@@ -370,10 +374,7 @@ export const AtomicDbEngine = ({
                 </li>
               );
             }
-            const principalVariation = analysis.principalVariations[move.uci];
-            const displayedUcis = showFollowUpMoves
-              ? (principalVariation ?? [move.uci])
-              : [move.uci];
+            const displayedUcis = analysis.principalVariations[move.uci] ?? [move.uci];
             const lineTokens = numberedSanLineFromUci(view.fen, displayedUcis);
             if (lineTokens.length === 0) {
               return (
